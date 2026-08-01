@@ -76,6 +76,30 @@ collects static files. Restart (`make restart`) and it is live at `/workout/`.
 This whole sequence — copy, rename, `install_app` — is tested end-to-end against a
 fresh clone as part of this platform's own verification, not just described.
 
+`install_app` also commits `houseapps/workout/` into this platform repo's own git
+history. That is what makes the app survive a fresh clone or a dead SD card —
+without it, the app is just loose files that only ever existed on the one Pi that
+ran the install.
+
+### Uninstalling and reinstalling
+
+```bash
+python manage.py uninstall_app workout                       # unregister only
+python manage.py uninstall_app workout --purge-data --yes    # + drop its tables
+python manage.py uninstall_app workout --remove-files --yes  # + delete the code
+```
+
+Plain `uninstall_app workout` only takes it out of `NORA_HOME_HOUSE_APPS` — the
+nav entry, dashboard cards, and URL mount disappear, but its code, migrations, and
+database rows are untouched. `install_app houseapps.workout` (the module-path
+form, not a git URL) re-registers it later with every row of data still there —
+this is the normal "reinstall" path and it is non-destructive.
+
+`--purge-data` and `--remove-files` are separate, both opt-in, both require
+`--yes`. Purge without removing files if you want the code around to reinstall
+against a clean slate; remove files without purging if you're moving the app to
+a different install and want the data to survive until it's re-registered there.
+
 ---
 
 ## The contract: `apps.py`

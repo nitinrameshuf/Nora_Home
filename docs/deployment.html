@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nora Home — deployment, installs &amp; data guide</title>
+<style>
+  /* Standalone on purpose: this file has to open from a USB stick, from the repo,
+     or over the LAN without needing the rest of the app. */
+  :root {
+    --bg: #0c1015; --raised: #141b24; --line: #26313f;
+    --text: #e6ecf2; --dim: #93a5b8; --faint: #62778c;
+    --acc: #ff9a5c; --ok: #4fd1a5; --warn: #f5c451; --off: #62778c; --bad: #f16c6c;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f6f8fa; --raised: #fff; --line: #dde4ec;
+      --text: #16202b; --dim: #4c5c6d; --faint: #74849a;
+    }
+  }
+  *,*::before,*::after { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.65 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .page { max-width: 940px; margin: 0 auto; padding: 3.5rem 1.5rem 6rem; }
+
+  header { border-bottom: 1px solid var(--line); padding-bottom: 2rem; margin-bottom: 2.5rem; }
+  .brand { display: flex; align-items: center; gap: .7rem; margin-bottom: 1.2rem; }
+  .mark {
+    width: 34px; height: 34px; border-radius: 44% 56% 52% 48% / 50% 46% 54% 50%;
+    background: radial-gradient(circle at 34% 30%, #ffb381, #e87d3c 72%);
+    box-shadow: 0 0 18px rgba(255,154,92,.4);
+  }
+  h1 { font-size: 2.5rem; margin: 0 0 .5rem; letter-spacing: -.03em; }
+  .lede { color: var(--dim); max-width: 64ch; font-size: 1.05rem; }
+  .stamp { color: var(--faint); font-size: .85rem; margin-top: 1.2rem; }
+
+  nav.toc {
+    background: var(--raised); border: 1px solid var(--line); border-radius: 12px;
+    padding: 1rem 1.3rem; margin: 1.6rem 0 0;
+  }
+  nav.toc b { display: block; margin-bottom: .5rem; font-size: .82rem; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--faint); }
+  nav.toc ol { margin: 0; padding-left: 1.2rem; columns: 2; column-gap: 2rem; }
+  nav.toc li { margin: .2rem 0; }
+  nav.toc a { color: var(--text); text-decoration: none; }
+  nav.toc a:hover { color: var(--acc); }
+
+  h2 {
+    font-size: 1.5rem; margin: 3rem 0 .3rem; letter-spacing: -.02em;
+    padding-top: 1.2rem; border-top: 1px solid var(--line);
+    scroll-margin-top: 1.5rem;
+  }
+  h2:first-of-type { border-top: 0; padding-top: 0; }
+  h3 { font-size: 1.1rem; margin: 1.8rem 0 .4rem; }
+  .section-lede { color: var(--dim); margin: 0 0 1.2rem; max-width: 68ch; }
+
+  .status {
+    display: inline-block; padding: .12rem .55rem; border-radius: 999px;
+    font-size: .7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; white-space: nowrap;
+  }
+  .status.ok { background: rgba(79,209,165,.16); color: var(--ok); }
+  .status.warn { background: rgba(245,196,81,.16); color: var(--warn); }
+  .status.bad { background: rgba(241,108,108,.16); color: var(--bad); }
+  .status.off { background: rgba(98,119,140,.18); color: var(--off); }
+
+  code {
+    background: var(--raised); border: 1px solid var(--line);
+    padding: .08em .38em; border-radius: 4px; font-size: .88em;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  pre {
+    background: var(--raised); border: 1px solid var(--line); border-radius: 10px;
+    padding: 1rem 1.1rem; overflow-x: auto; font-size: .88rem;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  pre code { background: none; border: 0; padding: 0; }
+  pre .c { color: var(--faint); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; margin: 1.2rem 0; }
+  .box { background: var(--raised); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.15rem; }
+  .box h4 { margin: 0 0 .3rem; font-size: 1rem; }
+  .box p { margin: 0; color: var(--dim); font-size: .9rem; }
+
+  .note {
+    background: var(--raised); border: 1px solid var(--line);
+    border-left: 3px solid var(--acc); border-radius: 10px;
+    padding: 1rem 1.2rem; margin: 1.4rem 0;
+  }
+  .note.danger { border-left-color: var(--bad); }
+  .note p { margin: 0 0 .6rem; color: var(--dim); }
+  .note p:last-child { margin: 0; }
+  .note strong { color: var(--text); }
+
+  table { width: 100%; border-collapse: collapse; margin: 1.2rem 0; font-size: .92rem; }
+  th, td { text-align: left; padding: .6rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+  td.yes { color: var(--ok); font-weight: 600; }
+  td.no { color: var(--bad); font-weight: 600; }
+  .tblwrap { overflow-x: auto; }
+
+  details {
+    background: var(--raised); border: 1px solid var(--line); border-radius: 10px;
+    padding: .9rem 1.1rem; margin: .8rem 0;
+  }
+  details summary { cursor: pointer; font-weight: 600; }
+  details summary::marker { color: var(--acc); }
+  details[open] summary { margin-bottom: .6rem; }
+  details p, details pre { margin-top: .6rem; }
+
+  footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: var(--faint); font-size: .88rem; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <div class="brand">
+    <span class="mark" aria-hidden="true"></span>
+    <strong style="font-size:1.15rem">Nora Home</strong>
+  </div>
+  <h1>Deployment, installs &amp; data guide</h1>
+  <p class="lede">
+    How to get the house running, how to update it, how to add or remove an app a
+    family member wrote, and — the part that actually matters — what happens to
+    your data every time you do one of those things.
+  </p>
+  <p class="stamp">
+    For people, not agents — the machine-readable version of this project lives in
+    <code>CLAUDE.md</code> and <code>DEVELOPMENT.md</code>. Reflects the code as of
+    <strong>1 August 2026</strong>.
+  </p>
+  <nav class="toc">
+    <b>On this page</b>
+    <ol>
+      <li><a href="#first-install">First install, on the Pi</a></li>
+      <li><a href="#updating">Updating the house</a></li>
+      <li><a href="#installing-apps">Installing a house app</a></li>
+      <li><a href="#uninstalling-apps">Uninstalling a house app</a></li>
+      <li><a href="#data-matrix">What happens to your data — the full picture</a></li>
+      <li><a href="#backups">Backups and restore</a></li>
+      <li><a href="#troubleshooting">Troubleshooting real snags</a></li>
+    </ol>
+  </nav>
+</header>
+
+<h2 id="first-install">First install, on the Pi</h2>
+<p class="section-lede">
+  One script takes a bare Raspberry Pi 5 to a running house: Docker, the repo, both
+  HDMI displays in kiosk mode, and a service that starts the house on boot.
+</p>
+<pre><code><span class="c"># on the Pi itself</span>
+export NORA_HOME_REPO=&lt;your git url&gt;
+curl -fsSL https://raw.githubusercontent.com/&lt;you&gt;/nora-home/main/scripts/install-pi.sh | bash</code></pre>
+<p>or, from a clone already on the Pi:</p>
+<pre><code>NORA_HOME_DIR=$HOME/&lt;your-clone-dir&gt; ./scripts/install-pi.sh</code></pre>
+<div class="note">
+  <p><strong>If you already cloned the repo by hand</strong> (rather than letting the
+  script clone it), set <code>NORA_HOME_DIR</code> to that folder as shown above —
+  otherwise the script tries to clone a second copy next to it and stops, asking for
+  <code>NORA_HOME_REPO</code> it doesn't need.</p>
+  <p><strong>If Docker was already installed</strong> before you ran the script, your
+  user may not be in the <code>docker</code> group yet, and the build will fail with
+  <code>permission denied … docker.sock</code>. Fix once:</p>
+</div>
+<pre><code>sudo usermod -aG docker $USER
+newgrp docker   <span class="c"># applies it to this shell immediately, no logout needed</span></code></pre>
+<p>What the script does, in order:</p>
+<div class="grid">
+  <div class="box"><h4>1. Packages</h4><p>Docker (if missing), git, make, Chromium, and the kiosk helper tools.</p></div>
+  <div class="box"><h4>2. The repo &amp; .env</h4><p>Clones if needed, creates <code>.env</code> with a fresh secret key and Pi-specific settings.</p></div>
+  <div class="box"><h4>3. The stack</h4><p><code>docker compose up -d --build</code> — first run builds images, ~10 minutes.</p></div>
+  <div class="box"><h4>4. Start on boot</h4><p>Installs a systemd unit so the house comes back up after a power cut.</p></div>
+  <div class="box"><h4>5. Both displays</h4><p>HDMI-0 (24" wall) and HDMI-1 (10.1" kiosk) each auto-start Chromium in kiosk mode, pointed at the right URL.</p></div>
+</div>
+<p>Once it finishes:</p>
+<pre><code>cd ~/nora-home &amp;&amp; make member NAME=&lt;you&gt;   <span class="c"># create your login</span>
+<span class="c"># sign in once on the wall and kiosk screens — they stay signed in</span>
+sudo reboot                                  <span class="c"># both screens now come up on their own</span></code></pre>
+
+<h2 id="updating">Updating the house</h2>
+<p class="section-lede">From here on, every update to the platform itself is one command.</p>
+<pre><code>cd ~/nora-home &amp;&amp; make deploy</code></pre>
+<div class="box" style="max-width:640px">
+  <h4>What <code>make deploy</code> actually runs</h4>
+  <p><code>git pull --ff-only</code> → <code>docker compose build</code> → <code>docker compose up -d</code>.
+  Migrations run automatically inside the container on start — there is no separate
+  migration step to remember. Your data lives in Docker's own volumes (MariaDB,
+  Mongo, MinIO), which none of this touches.</p>
+</div>
+
+<h2 id="installing-apps">Installing a house app</h2>
+<p class="section-lede">
+  A family member writes an app (see <code>DEVELOPMENT.md</code>), then it gets
+  installed once:
+</p>
+<pre><code>make app SRC=https://github.com/you/nora-workout
+<span class="c"># or, for something already sitting in houseapps/ locally:</span>
+python manage.py install_app houseapps.workout</code></pre>
+<p>This does five things, and the last one is the one people don't expect:</p>
+<ol>
+  <li>Clones or copies the app into <code>houseapps/&lt;name&gt;</code></li>
+  <li>Checks it actually declares itself as a Nora Home app</li>
+  <li>Registers it in <code>.env</code> so the platform loads it</li>
+  <li>Generates and applies its database migrations</li>
+  <li><strong>Commits the app into this platform repo's own git history</strong></li>
+</ol>
+<div class="note">
+  <p><strong>Why the commit matters.</strong> Without it, an installed app is just
+  loose files sitting on one Pi's disk — invisible to <code>git status</code>, not
+  included in a fresh clone, gone the moment the SD card dies. Committing it is what
+  makes the app part of the house's permanent record, the same as any platform code.</p>
+</div>
+
+<h2 id="uninstalling-apps">Uninstalling a house app</h2>
+<p class="section-lede">
+  There are three levels, from safest to most permanent. The command is the same;
+  the flags decide how much you're actually removing.
+</p>
+<div class="tblwrap"><table>
+  <tr><th>Command</th><th>Nav entry</th><th>App code</th><th>Database rows</th><th>When to use it</th></tr>
+  <tr>
+    <td><code>uninstall_app workout</code></td>
+    <td class="no">removed</td><td class="yes">kept</td><td class="yes">kept</td>
+    <td>Pausing an app. Reinstalling brings it back exactly as it was.</td>
+  </tr>
+  <tr>
+    <td><code>uninstall_app workout --purge-data --yes</code></td>
+    <td class="no">removed</td><td class="yes">kept</td><td class="no">dropped</td>
+    <td>Starting that app over from a clean slate, keeping the code.</td>
+  </tr>
+  <tr>
+    <td><code>uninstall_app workout --remove-files --yes</code></td>
+    <td class="no">removed</td><td class="no">deleted</td><td class="yes">kept</td>
+    <td>Moving the app elsewhere; data waits to be re-registered against.</td>
+  </tr>
+  <tr>
+    <td>both flags together, <code>--yes</code></td>
+    <td class="no">removed</td><td class="no">deleted</td><td class="no">dropped</td>
+    <td>Actually done with the app. Full removal.</td>
+  </tr>
+</table></div>
+<p><code>make uninstall NAME=workout</code> runs the safe, default form.</p>
+<div class="note danger">
+  <p><strong>--purge-data and --remove-files both refuse to run without --yes.</strong>
+  They are real, immediate data loss — there is no undo beyond restoring a backup.</p>
+</div>
+
+<h2 id="data-matrix">What happens to your data — the full picture</h2>
+<p class="section-lede">
+  The single question worth answering clearly: which of these operations can lose
+  data, and which can't.
+</p>
+<div class="tblwrap"><table>
+  <tr><th>Operation</th><th>Your data</th><th>Why</th></tr>
+  <tr>
+    <td><code>make deploy</code> (routine update)</td>
+    <td class="yes">Safe</td>
+    <td>Data lives in Docker volumes, untouched by a git pull or an image rebuild. Migrations only ever add.</td>
+  </tr>
+  <tr>
+    <td><code>install_app</code> (new app)</td>
+    <td class="yes">Safe</td>
+    <td>Purely additive — new tables, new nav entry, nothing existing is touched.</td>
+  </tr>
+  <tr>
+    <td><code>uninstall_app</code> (no flags)</td>
+    <td class="yes">Safe</td>
+    <td>Only edits <code>.env</code>. Code and tables are untouched.</td>
+  </tr>
+  <tr>
+    <td><code>uninstall_app --purge-data</code></td>
+    <td class="no">Destructive</td>
+    <td>Drops that app's tables on purpose. Everything else in the house is unaffected.</td>
+  </tr>
+  <tr>
+    <td><code>uninstall_app --remove-files</code></td>
+    <td class="warn" style="color:var(--warn);font-weight:600">Code only</td>
+    <td>Deletes the app's source, not its data — rows sit orphaned until the app is reinstalled or purged.</td>
+  </tr>
+  <tr>
+    <td>Fresh <code>git clone</code> instead of reusing the existing checkout</td>
+    <td class="no">Risky</td>
+    <td>Any house app installed on the old checkout is committed to <em>that</em> checkout's git history. A brand new clone from the same remote will still have it, as long as it was pushed — but a clone made before pushing, or from a different remote, will not.</td>
+  </tr>
+  <tr>
+    <td>SD card failure / lost Pi</td>
+    <td class="warn" style="color:var(--warn);font-weight:600">Depends on backups</td>
+    <td>See <a href="#backups">Backups and restore</a> below — this is the one scenario version control alone doesn't cover.</td>
+  </tr>
+  <tr>
+    <td><code>docker compose down -v</code></td>
+    <td class="no">Destructive</td>
+    <td>The <code>-v</code> deletes the volumes themselves. Nothing in this guide's normal commands does this — it would have to be typed by hand.</td>
+  </tr>
+</table></div>
+
+<h2 id="backups">Backups and restore</h2>
+<p class="section-lede">
+  The one thing git doesn't cover is the SD card itself dying. That's what backups
+  are for.
+</p>
+<pre><code>make backup                              <span class="c"># SQL + Mongo + media + a portable fixture dump, right now</span>
+make restore FROM=/var/backups/nora/nora-....tar.gz</code></pre>
+<div class="box" style="max-width:640px">
+  <h4>What a backup actually contains</h4>
+  <p>A SQL dump (fast, exact restore to the same engine), a Mongo archive, copied
+  media files, and a portable JSON fixture of the entire ORM — the fixture is what
+  lets you restore onto a <em>different</em> database engine entirely, which is the
+  escape hatch for moving off this Pi someday.</p>
+</div>
+<div class="note">
+  <p><strong>Status: written, not yet run against real infrastructure.</strong> Backup
+  and restore have been reviewed but never executed against a live MySQL/Mongo stack
+  — see the story dashboard for current status before relying on this as your only
+  safety net.</p>
+</div>
+
+<h2 id="troubleshooting">Troubleshooting real snags</h2>
+<p class="section-lede">Two things that actually happened on the first real Pi install, kept here so the next person doesn't lose an afternoon to them.</p>
+
+<details>
+<summary>docker: permission denied while trying to connect to the docker API</summary>
+<p>Your user isn't in the <code>docker</code> group yet — this happens when Docker was
+already installed before the install script ran, so it skipped the step that adds you.</p>
+<pre><code>sudo usermod -aG docker $USER
+newgrp docker   <span class="c"># picks it up immediately, no logout required</span></code></pre>
+</details>
+
+<details>
+<summary>Image build fails on "apt-get install mongodb-database-tools"</summary>
+<p><code>mongodb-database-tools</code> is not a Debian package — it only exists in
+MongoDB's own apt repository, so this always failed on stock Debian or Raspberry Pi
+OS. Fixed in the <code>Dockerfile</code>: the platform's own backup/restore commands
+already skip Mongo tooling gracefully when it's absent, so the house runs fine
+without it. If you're on a version of this repo from before that fix, pull the
+latest before building.</p>
+</details>
+
+<footer>
+  Nora Home is the house system, not the robot — see <code>CLAUDE.md</code> for that
+  distinction. This page is maintained by hand alongside the code; if a command here
+  stops matching reality, that's a bug in the deployment, not just the doc.
+</footer>
+
+</div>
+</body>
+</html>

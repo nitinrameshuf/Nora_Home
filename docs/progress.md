@@ -143,6 +143,52 @@ without Mongo backup/restore, which matches the "Mongo is optional" decision in
 `CLAUDE.md` §4. Not yet re-verified end to end on the Pi past this point — the
 build had not been retried at the time of writing.
 
+Auditing that Pi run also surfaced two design gaps in `install_app`, raised by the
+user directly: no `.dockerignore` (the image build was copying in `.git`, any
+stray `db.sqlite3`, logs, etc., since `Dockerfile` does a bare `COPY . .`), and no
+durable story for an installed house app or a clean way to remove one.
+
+- **Added `.dockerignore`** mirroring `.gitignore` plus `.git/` itself.
+- **`install_app` now commits the app into this platform repo's own git history**
+  (`git add houseapps/<name> && git commit`) after migrating it. Previously an
+  installed app was pure loose files on one Pi's disk — invisible to
+  `git status`, absent from a fresh clone, gone if the SD card died — with
+  nothing but orphaned database rows left behind. Non-fatal if git isn't
+  configured for commits, but loud about it either way.
+- **Added `uninstall_app`** (Story: platform completeness). Default behavior only
+  removes the app from `NORA_HOME_HOUSE_APPS` in `.env` — code, migrations, and
+  data are untouched, and `install_app houseapps.<name>` (module-path form)
+  re-registers it later with everything intact. `--purge-data` additionally runs
+  `migrate <label> zero` to drop its tables; `--remove-files` additionally
+  deletes `houseapps/<name>/` (via `git rm` if it was committed). Both destructive
+  flags refuse to run without `--yes`, matching `nora_restore`'s existing
+  confirmation pattern. `make uninstall NAME=<app>` added alongside `make app`.
+  Documented in `DEVELOPMENT.md` under "Uninstalling and reinstalling".
+- Not yet run against a live house app on real infrastructure — written and
+  `manage.py check`-clean, not yet observed doing an install/uninstall/reinstall
+  cycle end to end. Status: **built, unproven**.
+
+Also cleaned up documentation drift the user flagged directly: the root
+`README.md` still described the pre-rename `nora/` package layout (it predated the
+`nora` → `nora_home` rename and was never updated) and both it and `docs/README.md`
+pointed at `docs/deployment-pi.md`, which had never actually been written —
+a dangling link, not a missing file someone forgot to open.
+
+- **Deleted the root `README.md`.** It duplicated `CLAUDE.md` (the actual "read
+  this first" doc per this project's own convention) and was actively wrong about
+  paths.
+- **Added `docs/deployment.html`** — the human-facing deployment guide the stale
+  link was supposed to be: first install on the Pi, `make deploy`, installing and
+  uninstalling a house app (with the same three-level flag table as
+  `DEVELOPMENT.md`), a full data-safety matrix ("what happens to your data" for
+  every operation above), backup/restore, and the two real snags hit during this
+  session's Pi install (docker group membership, `mongodb-database-tools`). This
+  is the project's split going forward: `.md` files are for agents and this
+  project's own record of itself; `.html` files under `docs/` are for the people
+  actually running the house.
+- Updated `docs/README.md` and `CLAUDE.md` (§0 table, §7 layout) to point at
+  `docs/deployment.html` instead of the dead `deployment-pi.md` reference.
+
 ---
 
 ## Next

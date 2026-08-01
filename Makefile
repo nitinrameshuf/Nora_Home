@@ -76,6 +76,12 @@ app: ## Install a house app: make app SRC=https://github.com/you/nora-workout
 apps: ## List installed apps
 	$(MANAGE) list_apps
 
+.PHONY: uninstall
+uninstall: ## Unregister a house app (code+data kept): make uninstall NAME=workout
+	@test -n "$(NAME)" || (echo "Set NAME=<app name>"; exit 1)
+	$(MANAGE) uninstall_app "$(NAME)"
+	$(COMPOSE) up -d
+
 # ── people ───────────────────────────────────────────────────────────────────
 .PHONY: member
 member: ## Add a household member: make member NAME=alex

@@ -188,8 +188,8 @@
 <div id="tab-progress" class="tab-pane active">
 
   <div class="summary">
-    <div class="summary-card"><div class="num num-complete">12</div><div class="label">Complete</div></div>
-    <div class="summary-card"><div class="num num-partial">8</div><div class="label">Built, Unproven</div></div>
+    <div class="summary-card"><div class="num num-complete">11</div><div class="label">Complete</div></div>
+    <div class="summary-card"><div class="num num-partial">9</div><div class="label">Built, Unproven</div></div>
     <div class="summary-card"><div class="num num-next">2</div><div class="label">Next Up</div></div>
     <div class="summary-card"><div class="num num-planned">5</div><div class="label">Planned</div></div>
     <div class="summary-card"><div class="num num-total">27</div><div class="label">Total Stories</div></div>
@@ -201,7 +201,7 @@
     <div class="phase-progress"><div class="pname">Phase 2 — The Spine</div><div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div><div class="pct">100%</div></div>
     <div class="phase-progress"><div class="pname">Phase 3 — Surfaces</div><div class="bar-bg"><div class="bar-fill partial" style="width:75%"></div></div><div class="pct">75%</div></div>
     <div class="phase-progress"><div class="pname">Phase 4 — Data &amp; Intelligence</div><div class="bar-bg"><div class="bar-fill partial" style="width:30%"></div></div><div class="pct">30%</div></div>
-    <div class="phase-progress"><div class="pname">Phase 5 — Operations</div><div class="bar-bg"><div class="bar-fill partial" style="width:25%"></div></div><div class="pct">25%</div></div>
+    <div class="phase-progress"><div class="pname">Phase 5 — Operations</div><div class="bar-bg"><div class="bar-fill" style="width:0%"></div></div><div class="pct">0%</div></div>
     <div class="phase-progress"><div class="pname">Phase 6 — Hardening &amp; Real Apps</div><div class="bar-bg"><div class="bar-fill" style="width:0%"></div></div><div class="pct">0%</div></div>
   </div>
 
@@ -258,9 +258,9 @@
 
   <div class="phase-label">Phase 5 — Operations</div>
   <div class="story-grid">
-    <div class="story-card partial" onclick="openModal('17')"><div class="story-header"><div class="story-num">Story 17</div><span class="badge badge-partial">◐ Unproven</span></div><div class="story-title">Docker Stack &amp; One-Command Deploy</div><div class="story-desc">Eight services, health-gated startup, migrations in the entrypoint. <code>make up</code> then <code>make deploy</code> forever.</div><div class="story-tags"><span class="tag tag-warn">⚠ never built</span><span class="tag">compose</span></div><div class="click-hint">click for details</div></div>
-    <div class="story-card partial" onclick="openModal('18')"><div class="story-header"><div class="story-num">Story 18</div><span class="badge badge-partial">◐ Unproven</span></div><div class="story-title">Pi Provisioning &amp; Dual Display</div><div class="story-desc">One script: Docker, systemd, and both HDMI outputs auto-starting Chromium in kiosk mode after a power cut.</div><div class="story-tags"><span class="tag tag-warn">⚠ never run on a Pi</span><span class="tag">install-pi.sh</span></div><div class="click-hint">click for details</div></div>
-    <div class="story-card complete" onclick="openModal('19')"><div class="story-header"><div class="story-num">Story 19</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">App Installer</div><div class="story-desc">One command clones a house app from git, verifies it declares a NoraAppConfig, registers it, migrates, and collects static.</div><div class="story-tags"><span class="tag">install_app</span><span class="tag">make app</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card partial" onclick="openModal('17')"><div class="story-header"><div class="story-num">Story 17</div><span class="badge badge-partial">◐ Unproven</span></div><div class="story-title">Docker Stack &amp; One-Command Deploy</div><div class="story-desc">Eight services, health-gated startup, migrations in the entrypoint. <code>make up</code> then <code>make deploy</code> forever.</div><div class="story-tags"><span class="tag tag-warn">⚠ first real build hit a bug, now fixed</span><span class="tag">compose</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card partial" onclick="openModal('18')"><div class="story-header"><div class="story-num">Story 18</div><span class="badge badge-partial">◐ Unproven</span></div><div class="story-title">Pi Provisioning &amp; Dual Display</div><div class="story-desc">One script: Docker, systemd, and both HDMI outputs auto-starting Chromium in kiosk mode after a power cut.</div><div class="story-tags"><span class="tag tag-warn">⚠ mid first Pi run</span><span class="tag">install-pi.sh</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card partial" onclick="openModal('19')"><div class="story-header"><div class="story-num">Story 19</div><span class="badge badge-partial">◐ Unproven</span></div><div class="story-title">App Installer &amp; Uninstaller</div><div class="story-desc">Clones a house app from git, registers it, migrates it, and commits it into this repo's own history. uninstall_app reverses it, with data kept by default.</div><div class="story-tags"><span class="tag tag-warn">⚠ uninstall_app untested end to end</span><span class="tag">install_app</span><span class="tag">uninstall_app</span></div><div class="click-hint">click for details</div></div>
     <div class="story-card partial" onclick="openModal('20')"><div class="story-header"><div class="story-num">Story 20</div><span class="badge badge-partial">◐ Unproven</span></div><div class="story-title">Integration Framework</div><div class="story-desc">Scheduling, exponential backoff, failure alerting, and env-only credentials. An integration only implements fetch().</div><div class="story-tags"><span class="tag tag-warn">⚠ zero concrete integrations</span></div><div class="click-hint">click for details</div></div>
   </div>
 
@@ -458,9 +458,9 @@ const STORIES = {
   "17": { num:"Story 17", title:"Docker Stack & One-Command Deploy", status:"partial", phase:5, time:"~3 hours", readiness:"partial", deps:["Story 1 ✅"],
     what:"Eight services in one compose file, health-gated startup ordering, and migrations that run in the entrypoint — so deploying is `git pull && docker compose up -d` and nothing else. A Makefile wraps every routine operation in one word.",
     how:"One image, three roles chosen by the command (web/worker/beat). Only the web role migrates, so concurrent workers cannot race each other. Resource limits are tuned for a Pi with four cores and eight other things to feed.",
-    files:["Dockerfile","docker-compose.yml","docker/entrypoint.sh","Makefile"],
-    notes:"`make up` on a fresh machine creates .env with a generated secret key, builds, migrates and bootstraps.",
-    warn:"The image has never been built and the stack has never been started. Expect first-run breakage." },
+    files:["Dockerfile",".dockerignore","docker-compose.yml","docker/entrypoint.sh","Makefile"],
+    notes:"`make up` on a fresh machine creates .env with a generated secret key, builds, migrates and bootstraps. First real build (2026-08-01) failed on `apt-get install mongodb-database-tools` — that package isn't in Debian's own archive, only MongoDB's. Dropped it from the image; nora_backup/nora_restore already skip mongodump/mongorestore gracefully when absent. Also added .dockerignore, which hadn't existed — the build was copying .git, stray db.sqlite3, logs, etc. into the image.",
+    warn:"Build now gets past the apt step; the rest of the stack (MariaDB, Mongo, Redis, RabbitMQ, MinIO all actually coming up together) has not yet been confirmed end to end." },
 
   "18": { num:"Story 18", title:"Pi Provisioning & Dual Display", status:"partial", phase:5, time:"~2.5 hours", readiness:"partial", deps:["Story 17 ◐","Story 10 ◐"],
     what:"One script that takes a bare Raspberry Pi to a running house: Docker, the repo, a generated .env, a systemd unit, and both HDMI outputs auto-starting Chromium in kiosk mode at the right URL.",
@@ -468,11 +468,11 @@ const STORIES = {
     files:["scripts/install-pi.sh"],
     warn:"Never run on a Pi. Display positioning, autostart behaviour and the systemd unit are all unverified." },
 
-  "19": { num:"Story 19", title:"App Installer", status:"complete", phase:5, time:"~2 hours", readiness:"complete", deps:["Story 2 ✅"],
-    what:"`make app SRC=<git url>` clones a house app, verifies it declares a NoraAppConfig, registers it in .env, generates and applies its migrations, and collects its static files.",
-    how:"Deliberately conservative — it refuses rather than guesses when something looks wrong, because a half-installed app that breaks the wall display is worse than a failed install. Accepts a git URL, a local path, or an already-present module.",
-    files:["nora_home/core/management/commands/install_app.py","nora_home/core/management/commands/list_apps.py"],
-    notes:"This is the one-click app deployment path. No editing of settings or urls.py by hand." },
+  "19": { num:"Story 19", title:"App Installer & Uninstaller", status:"partial", phase:5, time:"~2.5 hours", readiness:"partial", deps:["Story 2 ✅"],
+    what:"`make app SRC=<git url>` clones a house app, verifies it declares a NoraAppConfig, registers it in .env, generates and applies its migrations, collects its static files, and commits the app into this platform repo's own git history. `make uninstall NAME=<app>` reverses the registration — code and data are kept by default.",
+    how:"install_app is deliberately conservative — it refuses rather than guesses when something looks wrong, because a half-installed app that breaks the wall display is worse than a failed install. The git commit step exists because houseapps/<name> was otherwise just loose files on one Pi's disk: invisible to git status, absent from a fresh clone, gone if the SD card died, with only orphaned database rows left behind. uninstall_app only removes the app from NORA_HOME_HOUSE_APPS by default; reinstalling via the module-path form brings it back with all data intact. --purge-data (migrate <label> zero) and --remove-files are separate opt-in flags, both requiring --yes, matching nora_restore's confirmation pattern.",
+    files:["nora_home/core/management/commands/install_app.py","nora_home/core/management/commands/uninstall_app.py","nora_home/core/management/commands/list_apps.py","Makefile","DEVELOPMENT.md"],
+    warn:"Added 2026-08-01 during the first real Pi install attempt, prompted by the user asking what happens to an app's data across a redeploy or an uninstall/reinstall. manage.py check is clean; uninstall_app has not yet been run against a live house app on real infrastructure." },
 
   "20": { num:"Story 20", title:"Integration Framework", status:"partial", phase:5, time:"~2 hours", readiness:"partial", deps:["Story 12 ✅","Story 7 ✅"],
     what:"The plumbing for pulling the outside world in on a schedule: Home Assistant, markets, weather, calendars. Scheduling, exponential backoff, failure alerting and credential handling are all provided; an integration only implements fetch().",

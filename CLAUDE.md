@@ -25,6 +25,7 @@ leaves the docs stale is an incomplete commit.
 | Anything at all, in a working session | [`docs/progress.md`](docs/progress.md) — a dated entry, newest at the bottom |
 | A component, boundary, or data flow | [`docs/architecture.md`](docs/architecture.md) — including the Mermaid diagrams |
 | Something the family can now *do* | [`docs/capabilities.html`](docs/capabilities.html) — plain language, no jargon |
+| A deployment, install, or uninstall step | [`docs/deployment.html`](docs/deployment.html) — for people, not agents; keep it in sync with `scripts/install-pi.sh`, the `Makefile`, `install_app`, and `uninstall_app` |
 | The design language | [`docs/design-options.html`](docs/design-options.html) |
 | A decision worth not re-litigating | §4 here, **and** the Decisions tab of the dashboard |
 
@@ -310,7 +311,7 @@ templates/         platform templates
 static/nora_home/       css, js, vendor
 docker/            entrypoint
 scripts/           install-pi.sh
-docs/              capabilities.html, design-options.html, deployment-pi.md
+docs/              capabilities.html, design-options.html, deployment.html
 ```
 
 ---

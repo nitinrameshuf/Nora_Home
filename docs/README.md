@@ -11,7 +11,7 @@ an afterthought — when code changes, they change in the same commit.** See
 | [`architecture.md`](architecture.md) | How the system fits together, with diagrams | A component, boundary, or data flow changes |
 | [`capabilities.html`](capabilities.html) | What the platform can do, in plain language for the family | A capability becomes usable |
 | [`design-options.html`](design-options.html) | Design directions under consideration | The design language changes |
-| [`deployment-pi.md`](deployment-pi.md) | Running it on the Raspberry Pi | Deployment steps change |
+| [`deployment.html`](deployment.html) | Install, update, install/uninstall an app, and what happens to data at each step — for people, not agents | Deployment, install, or uninstall steps change |
 
 ## The dashboard is generated from progress.md
 

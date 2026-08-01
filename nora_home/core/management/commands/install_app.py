@@ -6,8 +6,10 @@ Install a house app in one command.
     python manage.py install_app houseapps.workout        # already on disk
 
 It clones (or copies) the app into houseapps/, verifies it declares a
-NoraAppConfig, registers it in .env, generates and applies its migrations, and
-collects its static files. Restarting the services picks it up.
+NoraAppConfig, registers it in .env, generates and applies its migrations,
+collects its static files, and commits the app into this platform repo's own git
+history. That last step is what makes the app survive a fresh clone or a
+dropped SD card — houseapps/ is otherwise just loose files on one Pi's disk.
 
 Deliberately conservative: it refuses rather than guesses when something looks
 wrong, because a half-installed app that breaks the wall display is worse than a
@@ -56,6 +58,8 @@ class Command(BaseCommand):
 
         if not options["no_migrate"]:
             self._migrate(module)
+
+        self._commit(base, module)
 
         self.stdout.write(self.style.SUCCESS(f"\nInstalled {module}."))
         self.stdout.write("Restart the services to mount it: docker compose up -d")
@@ -186,3 +190,41 @@ class Command(BaseCommand):
             cwd=settings.BASE_DIR, capture_output=True, text=True)
         if result.returncode != 0:
             self.stdout.write(f"  collectstatic: {result.stderr[-500:]}")
+
+    # ── durability ────────────────────────────────────────────────────────────
+    def _commit(self, base: Path, module: str):
+        """Commit the app into this platform repo so it survives a fresh clone.
+
+        Without this, houseapps/<name> is just loose files on one Pi's disk: a
+        re-clone, a dead SD card, or `rm -rf` leaves its data orphaned in the
+        database with no code left to read it. Non-fatal on failure — a family
+        member may not have git configured for commits — but loud, since it is
+        the only thing standing between "installed" and "gone at the next reset."
+        """
+        if shutil.which("git") is None:
+            self.stderr.write("git not available; app was NOT committed. It exists "
+                               "only on this machine's disk until you commit it yourself.")
+            return
+
+        relpath = module.replace(".", "/")
+        try:
+            subprocess.run(["git", "add", relpath], cwd=base, check=True,
+                            capture_output=True, timeout=60)
+            result = subprocess.run(
+                ["git", "commit", "-m", f"Install house app: {module}"],
+                cwd=base, capture_output=True, text=True, timeout=60,
+            )
+        except subprocess.CalledProcessError as exc:
+            self.stderr.write(f"git add failed; app was NOT committed: {exc.stderr}")
+            return
+
+        if result.returncode != 0:
+            # "nothing to commit" (e.g. re-registering an app already on disk) is fine.
+            if "nothing to commit" in (result.stdout + result.stderr):
+                return
+            self.stderr.write(
+                f"git commit failed; app was NOT committed: {result.stderr[-400:]}\n"
+                "It will be lost on a fresh clone until you commit it by hand."
+            )
+            return
+        self.stdout.write(f"  committed {relpath} to the platform repo")
