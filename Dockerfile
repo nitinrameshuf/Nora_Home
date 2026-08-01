@@ -10,9 +10,14 @@ ENV PYTHONUNBUFFERED=1 \
 
 # Runtime libraries only. Build tools live in the builder stage so the final
 # image stays small enough to pull comfortably over a home connection.
+#
+# mongodb-database-tools is deliberately not installed here: it isn't a Debian
+# package (only MongoDB's own apt repo carries it), so it fails on stock
+# Debian/Raspberry Pi OS. nora_backup/nora_restore already treat a missing
+# mongodump/mongorestore as a soft skip, not a failure, so the house just runs
+# without Mongo backup/restore until that repo is added separately.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         default-mysql-client \
-        mongodb-database-tools \
         libmariadb3 \
         curl \
         tini \

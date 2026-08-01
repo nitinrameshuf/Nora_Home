@@ -120,6 +120,31 @@ with a scoped device token.
 
 ---
 
+## 2026-08-01 — first real install attempt on a Pi (Story 27, in progress)
+
+Ran `scripts/install-pi.sh` against an actual Raspberry Pi for the first time. Two
+environment snags (docker-group membership not active in the current shell; the
+script's default clone path not matching a directory the user had already cloned
+into) were operator error, not bugs, and resolved by re-running with
+`NORA_HOME_DIR` set and `newgrp docker`.
+
+One real bug found: **`docker compose up -d --build` failed building the `web`
+image** — `apt-get install -y mongodb-database-tools` exited 100. That package is
+not in Debian's own archive (`deb.debian.org`); it is only published through
+MongoDB's own apt repo, so the Dockerfile could never have built against stock
+Debian or Raspberry Pi OS. This had shipped untested because §2 of `CLAUDE.md`
+already flagged the whole Pi/Docker path as unexercised.
+
+Fixed by dropping `mongodb-database-tools` from `Dockerfile`'s runtime-deps layer
+rather than adding MongoDB's apt repo: `nora_backup.py`/`nora_restore.py` already
+call `shutil.which("mongodump"/"mongorestore")` and skip with a logged status
+instead of failing when the tool is absent, so the house comes up and just runs
+without Mongo backup/restore, which matches the "Mongo is optional" decision in
+`CLAUDE.md` §4. Not yet re-verified end to end on the Pi past this point — the
+build had not been retried at the time of writing.
+
+---
+
 ## Next
 
 1. **Story 23 — design system.** Blocked on a decision between the directions in
