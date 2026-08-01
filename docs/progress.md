@@ -189,6 +189,20 @@ a dangling link, not a missing file someone forgot to open.
 - Updated `docs/README.md` and `CLAUDE.md` (§0 table, §7 layout) to point at
   `docs/deployment.html` instead of the dead `deployment-pi.md` reference.
 
+Second real bug found continuing the same Pi run, past the fixed `mongodb-database-tools`
+build failure: **`web` built and the data containers came up healthy, but `web` itself
+came up unhealthy** — `MySQLdb.OperationalError: (1045, "Access denied for user
+'nora'@'...' (using password: NO)")` on every migrate attempt. `docker-compose.yml`'s
+`mysql` service resolves `MARIADB_PASSWORD` from `${NORA_HOME_DB_PASSWORD:-nora}`, so an
+empty `.env` value (what `install-pi.sh` leaves it at — it never sets this key) falls
+back to `nora` and the database is initialized with that password. But the `web` /
+`worker` / `beat` containers get `NORA_HOME_DB_PASSWORD` via `env_file: .env`, which
+passes the literal empty string through with no `:-default` fallback — so Django tried
+to connect with no password at all against a user that actually has one. Fixed by adding
+the same `${NORA_HOME_DB_PASSWORD:-nora}` default to the `x-app` anchor's `environment:`
+block in `docker-compose.yml`, alongside the existing `NORA_HOME_DB_HOST: mysql`
+override. Not yet re-verified end to end past this point.
+
 ---
 
 ## Next

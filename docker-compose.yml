@@ -18,6 +18,11 @@ x-app: &app
   environment:
     DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-config.settings.pi}
     NORA_HOME_DB_HOST: mysql
+    # Same fallback the mysql service below uses for MARIADB_PASSWORD — env_file
+    # passes an empty .env value through literally, with no ${:-default}, so
+    # without this override the app tries an empty password against a user
+    # MySQL actually created with "nora".
+    NORA_HOME_DB_PASSWORD: ${NORA_HOME_DB_PASSWORD:-nora}
     NORA_HOME_MONGO_URI: mongodb://mongo:27017
     NORA_HOME_REDIS_URL: redis://redis:6379/0
     NORA_HOME_AMQP_URL: amqp://nora:${RABBITMQ_PASSWORD:-nora}@rabbitmq:5672//
