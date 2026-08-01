@@ -218,6 +218,46 @@ end past this point either.
 
 ---
 
+## 2026-08-01 — passwordless everywhere
+
+Removed Django's password login entirely, at the user's explicit direction: no
+password anywhere in the house, on any surface, including `/admin/`. Replaced with
+a topbar switcher (`templates/base.html`) — tap a household member's name to become
+them via `django.contrib.auth.login()` with no password check
+(`nora_home/accounts/views.py`), plus a third "Everyone" tile for a combined view.
+Recorded as a decision in `CLAUDE.md` §4.
+
+- **`HouseMember.save()`** now forces `is_staff`/`is_superuser` from `role ==
+  admin`, so admin access is gated by role alone, the same way everything else in
+  this system already is — no separate password backstop exists to fall back on
+  once one's removed.
+- **Companion fix, not optional**: `make member` used to shell out to Django's
+  `createsuperuser`, which makes *every* house member a Django superuser
+  regardless of intended role. Harmless while a password gated `/admin/`; a real
+  privilege leak once it didn't. Replaced with a new `add_member` management
+  command (`nora_home/accounts/management/commands/add_member.py`) that sets an
+  unusable password and takes an explicit `--role`.
+- **"Everyone" reuses, rather than invents, existing plumbing**:
+  `DashboardLayout.Surface.SHARED` (`dashboard/models.py`) had been modeled with no
+  code path using it — added `for_shared()` alongside the existing `for_wall()`.
+  `WallAgendaPanel` (`tracker/cards.py`) already aggregated all members for the
+  wall display; the new `Occurrence.for_members()` and `scope_members(request)`
+  helper (`nora_home/core/registry.py`) generalize that same pattern to the
+  personal dashboard's widgets (`tracker/widgets.py`, and the reference app
+  `houseapps/example_habit/widgets.py`, updated as the pattern other house apps
+  will copy).
+- `bootstrap_home --demo` no longer sets a password for the three demo members
+  (`set_unusable_password()` instead) — the "password: nora" message in `CLAUDE.md`
+  and the command's own output were stale the moment this landed, both corrected.
+- Not yet run against the live Pi deployment — this landed after the first
+  successful `docker compose up -d --build`, on top of code that had only been
+  exercised via `manage.py check` and local reasoning at the time of writing.
+  Needs a real click-through: switch between members, confirm "Everyone" actually
+  aggregates two people's tracker items on one dashboard, confirm an admin-role
+  member reaches `/admin/` and a member-role one does not.
+
+---
+
 ## Next
 
 1. **Story 23 — design system.** Blocked on a decision between the directions in

@@ -68,5 +68,15 @@ class DashboardLayout(TimeStampedModel):
         )
         return layout
 
+    @classmethod
+    def for_shared(cls) -> "DashboardLayout":
+        """The "Everyone" switcher tile's layout — one arrangement the whole
+        house edits together, distinct from the wall's own."""
+        layout, _ = cls.objects.get_or_create(
+            member=None, surface=cls.Surface.SHARED, name="Everyone",
+            defaults={"items": list(STARTER_LAYOUT)},
+        )
+        return layout
+
     def keys(self) -> list[str]:
         return [item.get("key", "") for item in self.items if item.get("key")]

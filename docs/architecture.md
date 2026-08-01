@@ -350,7 +350,7 @@ docker/ scripts/ docs/  entrypoint, provisioning, this folder
 /home/apps/             app directory
 /home/system/           health and audit
 /home/capabilities/     the capability sheet
-/accounts/              login, profile, household
+/accounts/              switch (passwordless), profile, household
 /api/                   platform API (device-token auth)
 /mcp/                   MCP tools over HTTP
 /admin/                 Django admin

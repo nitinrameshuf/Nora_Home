@@ -302,3 +302,16 @@ def get_widget(key: str, role: str = "member"):
         if widget.key == key:
             return widget
     return None
+
+
+def scope_members(request) -> list:
+    """Who a widget's data should be filtered to.
+
+    Normally just the person looking at the screen. In "Everyone" switcher scope,
+    every active house member — a widget that filters on this instead of
+    `request.user` directly gets the combined view for free.
+    """
+    if request.session.get("nh_view_scope") == "all":
+        from nora_home.accounts.models import HouseMember
+        return list(HouseMember.objects.filter(is_active=True))
+    return [request.user]

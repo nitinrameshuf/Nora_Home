@@ -5,6 +5,7 @@ from __future__ import annotations
 from django.urls import reverse
 from django.utils import timezone
 
+from nora_home.core.registry import scope_members
 from nora_home.dashboard.widgets import ChartWidget, ListWidget, StatWidget
 from nora_home.tracker.models import Occurrence
 
@@ -21,7 +22,7 @@ class TodayWidget(ListWidget):
     def rows(self, request):
         end_of_day = timezone.localtime().replace(hour=23, minute=59, second=59)
         items = (Occurrence.objects.open()
-                 .for_member(request.user)
+                 .for_members(scope_members(request))
                  .filter(due_at__lte=end_of_day)
                  .select_related("trackable")
                  .order_by("due_at")[:12])
@@ -46,7 +47,7 @@ class OverdueWidget(ListWidget):
 
     def rows(self, request):
         items = (Occurrence.objects.overdue()
-                 .for_member(request.user)
+                 .for_members(scope_members(request))
                  .select_related("trackable")
                  .order_by("due_at")[:12])
         return [{
@@ -77,7 +78,7 @@ class ReliabilityWidget(ChartWidget):
             start = today - timezone.timedelta(days=today.weekday() + offset * 7)
             end = start + timezone.timedelta(days=7)
             window = Occurrence.objects.filter(
-                trackable__owner=request.user,
+                trackable__owner__in=scope_members(request),
                 due_at__date__gte=start, due_at__date__lt=end)
 
             weeks.append(start.strftime("%d %b"))

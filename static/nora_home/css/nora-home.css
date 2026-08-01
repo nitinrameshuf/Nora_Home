@@ -190,6 +190,45 @@ pre {
 }
 .topbar h1 { margin: 0; }
 
+/* ── Profile switcher ─────────────────────────────────────────────────────── */
+/* No password anywhere in the house — this is the entire auth UI: a name in the
+   topbar that opens onto the rest of the household plus "Everyone". */
+.switcher { position: relative; }
+.switcher > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.switcher > summary::-webkit-details-marker { display: none; }
+.switcher-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.4rem);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  padding: 0.4rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+}
+.switcher-option {
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0.5rem 0.7rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.switcher-option:hover { background: var(--ink-700); }
+:root[data-theme="light"] .switcher-option:hover { background: var(--bg-sunken); }
+
 /* ── Cards ────────────────────────────────────────────────────────────────── */
 .card-grid {
   display: grid;

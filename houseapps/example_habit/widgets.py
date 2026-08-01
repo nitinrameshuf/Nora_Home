@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from django.utils import timezone
 
+from nora_home.core.registry import scope_members
 from nora_home.dashboard.widgets import ChartWidget, ListWidget
 from nora_home.tracker.models import Occurrence, Trackable
 
@@ -26,7 +27,8 @@ class StreakWidget(ListWidget):
     def is_visible(self, request):
         from houseapps.example_habit.models import Habit
 
-        return Habit.objects.filter(owner=request.user, is_active=True).exists()
+        return Habit.objects.filter(owner__in=scope_members(request),
+                                    is_active=True).exists()
 
     def rows(self, request):
         from houseapps.example_habit.models import Habit
@@ -34,7 +36,8 @@ class StreakWidget(ListWidget):
         today = timezone.localdate()
         rows = []
 
-        for habit in Habit.objects.filter(owner=request.user, is_active=True):
+        for habit in Habit.objects.filter(owner__in=scope_members(request),
+                                          is_active=True):
             trackable = Trackable.objects.filter(app_slug="habits",
                                                  source_ref=str(habit.pk)).first()
             streak = trackable.current_streak() if trackable else 0
@@ -74,7 +77,8 @@ class ConsistencyWidget(ChartWidget):
             start = today - timezone.timedelta(days=today.weekday() + offset * 7)
             end = start + timezone.timedelta(days=7)
             window = Occurrence.objects.filter(
-                trackable__app_slug="habits", trackable__owner=request.user,
+                trackable__app_slug="habits",
+                trackable__owner__in=scope_members(request),
                 due_at__date__gte=start, due_at__date__lt=end)
 
             done = window.filter(status=Occurrence.Status.DONE).count()

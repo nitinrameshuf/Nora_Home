@@ -180,6 +180,9 @@ class OccurrenceQuerySet(models.QuerySet):
     def for_member(self, member):
         return self.filter(trackable__owner=member)
 
+    def for_members(self, members):
+        return self.filter(trackable__owner__in=members)
+
 
 class Occurrence(UUIDModel, TimeStampedModel):
     """One concrete instance of a Trackable falling due."""

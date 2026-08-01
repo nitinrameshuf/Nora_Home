@@ -18,9 +18,13 @@ MAX_ITEMS = 40
 
 @login_required
 def home(request):
-    """The home screen: this person's chosen visualizations, on their own grid."""
+    """The home screen: this person's chosen visualizations, on their own grid —
+    or, in "Everyone" scope, the one grid the whole house shares."""
     role = getattr(request.user, "role", "member")
-    layout = DashboardLayout.for_member(request.user)
+    if request.session.get("nh_view_scope") == "all":
+        layout = DashboardLayout.for_shared()
+    else:
+        layout = DashboardLayout.for_member(request.user)
     available = all_widgets(role)
     by_key = {widget.key: widget for widget in available}
 
@@ -93,7 +97,10 @@ def save_layout(request):
             "h": _clamp(item.get("h"), 1, 12),
         })
 
-    layout = DashboardLayout.for_member(request.user)
+    if request.session.get("nh_view_scope") == "all":
+        layout = DashboardLayout.for_shared()
+    else:
+        layout = DashboardLayout.for_member(request.user)
     layout.items = cleaned
     layout.save(update_fields=["items", "updated_at"])
     return JsonResponse({"ok": True, "count": len(cleaned)})

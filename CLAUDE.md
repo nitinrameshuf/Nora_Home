@@ -165,8 +165,8 @@ python manage.py migrate
 python manage.py bootstrap_home --demo
 python manage.py runserver
 ```
-Then http://localhost:8000/home/ — demo logins are `nitin` / `partner` / `kid`,
-password `nora`.
+Then http://localhost:8000/home/ — no password anywhere; tap `nitin`, `partner`, or
+`kid` in the switcher to sign in as them.
 
 ### On the Pi
 ```bash
@@ -231,6 +231,24 @@ chart without a toolchain, and the Pi should never run a build.
 **Widgets return data, not HTML.** `ChartWidget.option()` returns an ECharts option
 dict; the platform applies the house theme. This is what keeps every chart in the
 house looking like the same system, no matter who wrote the app.
+
+**Passwordless everywhere, including admin.** There is no password anywhere in this
+system, on any surface — phone, laptop, wall, kiosk. A topbar switcher
+(`templates/base.html`) lists the household; tapping a name logs you in as them via
+`django.contrib.auth.login()` with no password check
+(`nora_home/accounts/views.py`). A third tile, "Everyone", shows a combined view —
+`DashboardLayout.Surface.SHARED` (`nora_home/dashboard/models.py`), which had sat
+modeled but unused. `HouseMember.save()` now forces `is_staff`/`is_superuser` from
+`role == admin`, so an admin-role member reaches `/admin/` the same way, no separate
+gate. This was a deliberate choice, not an oversight: the house LAN is already
+treated as the trust boundary everywhere else in this system (Slack tokens, MCP
+device tokens, secrets all live at that boundary, not per-request), and a family
+member — including a kid — shouldn't need to remember a password for an always-on
+ambient display. Chosen explicitly over keeping a password on `/admin/` when asked.
+`make member` now runs `add_member` (which sets an unusable password and an explicit
+`--role`) instead of Django's `createsuperuser`, which used to make every house
+member a superuser regardless of role — harmless while a password gated `/admin/`,
+not once it doesn't.
 
 ---
 

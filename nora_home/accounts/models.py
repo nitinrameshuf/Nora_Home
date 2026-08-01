@@ -64,6 +64,14 @@ class HouseMember(AbstractUser):
     def __str__(self):
         return self.display_name or self.get_username()
 
+    def save(self, *args, **kwargs):
+        # Nothing in this house gates admin access with a password — role is the
+        # only gate, so it has to imply the Django flags admin actually checks.
+        if self.role == self.Role.ADMIN:
+            self.is_staff = True
+            self.is_superuser = True
+        super().save(*args, **kwargs)
+
     @property
     def name(self) -> str:
         return self.display_name or self.get_full_name() or self.get_username()

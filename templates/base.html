@@ -63,6 +63,29 @@ viewport measuring in JavaScript.
       <h1>{% block heading %}{{ page_title|default:"Home" }}{% endblock %}</h1>
       <div class="topbar-actions">
         {% block actions %}{% endblock %}
+        {% if request.user.is_authenticated %}
+          <details class="switcher">
+            <summary class="btn btn-ghost">
+              {% if nh_view_scope == "all" %}Everyone{% else %}{{ request.user.name }}{% endif %}
+            </summary>
+            <div class="switcher-menu">
+              {% for member in active_members %}
+                {% if member.id != request.user.id or nh_view_scope == "all" %}
+                  <form method="post" action="{% url 'accounts:switch_to' member.id %}">
+                    {% csrf_token %}
+                    <button class="switcher-option" type="submit">{{ member.name }}</button>
+                  </form>
+                {% endif %}
+              {% endfor %}
+              {% if nh_view_scope != "all" %}
+                <form method="post" action="{% url 'accounts:switch_to_everyone' %}">
+                  {% csrf_token %}
+                  <button class="switcher-option" type="submit">Everyone</button>
+                </form>
+              {% endif %}
+            </div>
+          </details>
+        {% endif %}
         <button class="btn btn-ghost" data-theme-toggle type="button"
                 aria-label="Switch between light and dark">Theme</button>
       </div>

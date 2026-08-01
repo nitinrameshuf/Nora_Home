@@ -127,16 +127,17 @@ class Command(BaseCommand):
         for username, display_name, role in people:
             member, created = HouseMember.objects.get_or_create(
                 username=username,
-                defaults={"display_name": display_name, "role": role,
-                          "is_staff": role == HouseMember.Role.ADMIN,
-                          "is_superuser": role == HouseMember.Role.ADMIN},
+                defaults={"display_name": display_name, "role": role},
             )
             if created:
-                member.set_password("nora")  # demo only; change it immediately
+                # No password anywhere in this house — HouseMember.save() sets
+                # is_staff/is_superuser from role for admin, and sign-in is the
+                # switcher, not a password form.
+                member.set_unusable_password()
                 member.save()
             members[username] = member
             self.stdout.write(f"  member {username}: "
-                              f"{'created (password: nora)' if created else 'exists'}")
+                              f"{'created' if created else 'exists'}")
 
         EscalationContact.objects.get_or_create(
             member=members["kid"], contact=members["nitin"],

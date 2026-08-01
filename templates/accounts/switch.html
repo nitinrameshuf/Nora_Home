@@ -1,0 +1,47 @@
+{% load static %}<!doctype html>
+<html lang="en" data-surface="{{ surface }}" data-theme="dark" data-nh-bot="off">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Who's this? · {{ house_name }}</title>
+  <link rel="stylesheet" href="{% static 'nora_home/css/nora-home.css' %}">
+</head>
+<body style="display:grid;place-items:center;min-height:100vh;padding:1.5rem">
+  <main style="width:min(560px,100%)">
+    <div class="brand" style="justify-content:center;padding-bottom:1.5rem">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span>{{ house_name }}</span>
+    </div>
+
+    <div class="card-grid">
+      {% for member in members %}
+        <form method="post" action="{% url 'accounts:switch_to' member.id %}">
+          {% csrf_token %}
+          <button class="card" type="submit" style="width:100%;text-align:left;cursor:pointer">
+            <div class="card-head">
+              <h3 class="card-title">{{ member.name }}</h3>
+              <span class="pill">{{ member.get_role_display }}</span>
+            </div>
+          </button>
+        </form>
+      {% empty %}
+        <p class="card-subtitle">
+          No one's set up yet — run <code>make member NAME=you</code> on the Pi.
+        </p>
+      {% endfor %}
+
+      {% if members %}
+        <form method="post" action="{% url 'accounts:switch_to_everyone' %}">
+          {% csrf_token %}
+          <button class="card" type="submit" style="width:100%;text-align:left;cursor:pointer">
+            <div class="card-head">
+              <h3 class="card-title">Everyone</h3>
+              <span class="pill">combined</span>
+            </div>
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </main>
+</body>
+</html>

@@ -84,9 +84,9 @@ uninstall: ## Unregister a house app (code+data kept): make uninstall NAME=worko
 
 # ── people ───────────────────────────────────────────────────────────────────
 .PHONY: member
-member: ## Add a household member: make member NAME=alex
+member: ## Add a household member: make member NAME=alex [ROLE=member|adult|admin]
 	@test -n "$(NAME)" || (echo "Set NAME=<username>"; exit 1)
-	$(MANAGE) createsuperuser --username "$(NAME)"
+	$(MANAGE) add_member "$(NAME)" --role "$(or $(ROLE),member)"
 
 .PHONY: token
 token: ## Issue a device token: make token NAME="Nora robot"

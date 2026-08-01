@@ -321,9 +321,11 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 
 # ── Auth ───────────────────────────────────────────────────────────────────────
-LOGIN_URL = "/accounts/login/"
+# No password gates anything in this house — tap a name in the switcher instead.
+# See docs/progress.md and CLAUDE.md §4 ("Passwordless everywhere").
+LOGIN_URL = "/accounts/switch/"
 LOGIN_REDIRECT_URL = "/home/"
-LOGOUT_REDIRECT_URL = "/accounts/login/"
+LOGOUT_REDIRECT_URL = "/accounts/switch/"
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # a month; this is a house, not a bank
 SESSION_SAVE_EVERY_REQUEST = True
 AUTH_PASSWORD_VALIDATORS = [
