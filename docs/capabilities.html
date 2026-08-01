@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nora Home — what it can do</title>
+<style>
+  /* Standalone on purpose: this file has to open from a USB stick, from the repo,
+     or over the LAN at /home/capabilities/ without needing the rest of the app. */
+  :root {
+    --bg: #0c1015; --raised: #141b24; --line: #26313f;
+    --text: #e6ecf2; --dim: #93a5b8; --faint: #62778c;
+    --acc: #ff9a5c; --ok: #4fd1a5; --warn: #f5c451; --off: #62778c;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f6f8fa; --raised: #fff; --line: #dde4ec;
+      --text: #16202b; --dim: #4c5c6d; --faint: #74849a;
+    }
+  }
+  *,*::before,*::after { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.65 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .page { max-width: 940px; margin: 0 auto; padding: 3.5rem 1.5rem 6rem; }
+
+  header { border-bottom: 1px solid var(--line); padding-bottom: 2rem; margin-bottom: 2.5rem; }
+  .brand { display: flex; align-items: center; gap: .7rem; margin-bottom: 1.2rem; }
+  .mark {
+    width: 34px; height: 34px; border-radius: 44% 56% 52% 48% / 50% 46% 54% 50%;
+    background: radial-gradient(circle at 34% 30%, #ffb381, #e87d3c 72%);
+    box-shadow: 0 0 18px rgba(255,154,92,.4);
+  }
+  h1 { font-size: 2.5rem; margin: 0 0 .5rem; letter-spacing: -.03em; }
+  .lede { color: var(--dim); max-width: 64ch; font-size: 1.05rem; }
+  .stamp { color: var(--faint); font-size: .85rem; margin-top: 1.2rem; }
+
+  h2 {
+    font-size: 1.45rem; margin: 3rem 0 .3rem; letter-spacing: -.02em;
+    padding-top: 1.2rem; border-top: 1px solid var(--line);
+  }
+  h2:first-of-type { border-top: 0; padding-top: 0; }
+  h2 .status { font-size: .68rem; vertical-align: middle; margin-left: .6rem; }
+  .section-lede { color: var(--dim); margin: 0 0 1.2rem; max-width: 68ch; }
+
+  .status {
+    display: inline-block; padding: .12rem .55rem; border-radius: 999px;
+    font-size: .7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; white-space: nowrap;
+  }
+  .status.live { background: rgba(79,209,165,.16); color: var(--ok); }
+  .status.partial { background: rgba(245,196,81,.16); color: var(--warn); }
+  .status.planned { background: rgba(98,119,140,.18); color: var(--off); }
+
+  ul.caps { list-style: none; padding: 0; margin: 0; }
+  ul.caps li {
+    padding: .7rem 0; border-bottom: 1px solid var(--line);
+    display: grid; grid-template-columns: 1fr auto; gap: .5rem 1rem; align-items: start;
+  }
+  ul.caps li:last-child { border-bottom: 0; }
+  ul.caps b { font-weight: 600; }
+  ul.caps p { grid-column: 1 / -1; margin: .15rem 0 0; color: var(--dim); font-size: .92rem; }
+
+  code {
+    background: var(--raised); border: 1px solid var(--line);
+    padding: .08em .38em; border-radius: 4px; font-size: .88em;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  pre {
+    background: var(--raised); border: 1px solid var(--line); border-radius: 10px;
+    padding: 1rem 1.1rem; overflow-x: auto; font-size: .88rem;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  pre code { background: none; border: 0; padding: 0; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; margin: 1.2rem 0; }
+  .box { background: var(--raised); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.15rem; }
+  .box h3 { margin: 0 0 .3rem; font-size: 1rem; }
+  .box p { margin: 0; color: var(--dim); font-size: .9rem; }
+
+  .note {
+    background: var(--raised); border: 1px solid var(--line);
+    border-left: 3px solid var(--acc); border-radius: 10px;
+    padding: 1rem 1.2rem; margin: 1.4rem 0;
+  }
+  .note p { margin: 0 0 .6rem; color: var(--dim); }
+  .note p:last-child { margin: 0; }
+  .note strong { color: var(--text); }
+
+  footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--line); color: var(--faint); font-size: .88rem; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <div class="brand">
+    <span class="mark" aria-hidden="true"></span>
+    <strong style="font-size:1.15rem">Nora Home</strong>
+  </div>
+  <h1>What the house can do</h1>
+  <p class="lede">
+    Nora Home is the operating system for our house. It runs on a Raspberry Pi in the
+    hall, it is on all the time, and it is built so that any of us can add an app to
+    it without rebuilding the plumbing underneath.
+  </p>
+  <p class="stamp">
+    Living document · reflects the code as of <strong>31 July 2026</strong> ·
+    version 0.1.0 · <span class="status live">live</span> works today ·
+    <span class="status partial">partial</span> built but unproven ·
+    <span class="status planned">planned</span> not yet written
+  </p>
+</header>
+
+<div class="note">
+  <p>
+    <strong>Where things stand.</strong> The platform — the part every app plugs into
+    — is written and running. What does not exist yet is the apps themselves: workout,
+    diet, maintenance, robot monitoring. That is the point of building the skeleton
+    first, and it is what comes next.
+  </p>
+</div>
+
+<h2>Running the house <span class="status live">live</span></h2>
+<p class="section-lede">
+  The tracker is the spine. Anything with a deadline — a chore, a habit, a filter
+  change, a medication — is registered once and then the house owns it.
+</p>
+<ul class="caps">
+  <li><b>Recurring anything</b> <span class="status live">live</span>
+    <p>Daily, weekdays, weekly, monthly, quarterly, yearly, every N days, or a cron
+       expression. Due instances are written two weeks ahead, so "what did I miss last
+       March" stays answerable.</p></li>
+  <li><b>Escalation when things slip</b> <span class="status live">live</span>
+    <p>A ladder, not a nag. It nudges the person, warns them, then tells whoever is on
+       their escalation list, then tells the whole house. Each rung has its own delay,
+       and acknowledging it stops the climb. Editable without touching code.</p></li>
+  <li><b>Streaks and reliability</b> <span class="status live">live</span>
+    <p>Completions and misses are both recorded, so consistency is measurable rather
+       than remembered.</p></li>
+  <li><b>Evidence</b> <span class="status live">live</span>
+    <p>A completion can carry a note, a number, or a photo when "I did it" isn't
+       enough.</p></li>
+</ul>
+
+<h2>Telling people <span class="status live">live</span></h2>
+<ul class="caps">
+  <li><b>Slack</b> <span class="status live">live</span>
+    <p>Direct messages to individuals via a bot token, or a single channel via an
+       incoming webhook. Escalations always also land in the house alert channel, so
+       nothing quietly dies in a DM.</p></li>
+  <li><b>The wall display</b> <span class="status live">live</span>
+    <p>Alerts take over the 24" screen for a while, then hand it back. A critical one
+       stays until someone acknowledges it.</p></li>
+  <li><b>In the app</b> <span class="status live">live</span>
+    <p>An inbox, a live badge, and Nora glancing toward it when something arrives.</p></li>
+  <li><b>Quiet hours</b> <span class="status live">live</span>
+    <p>Per person. Ordinary notifications wait; genuine alerts do not.</p></li>
+  <li><b>Delivery receipts</b> <span class="status live">live</span>
+    <p>Every attempt on every channel is recorded, with retries. "Did anyone actually
+       see this?" has an answer.</p></li>
+  <li><b>Phone push</b> <span class="status planned">planned</span>
+    <p>Home-screen install and web push. Slack covers urgent delivery until then.</p></li>
+</ul>
+
+<h2>The two screens <span class="status live">live</span></h2>
+<p class="section-lede">
+  The Pi drives both HDMI outputs. The small screen is the remote control for the big
+  one.
+</p>
+<div class="grid">
+  <div class="box">
+    <h3>24" wall display</h3>
+    <p>Always on. Rotates through panels — the household's day, streaks, whatever apps
+       contribute. Dims at night rather than switching off, and shifts by a few pixels
+       every few minutes so it never burns in.</p>
+  </div>
+  <div class="box">
+    <h3>10.1" kiosk</h3>
+    <p>Touch. Tap a panel and the wall holds it while you look, then resumes on its
+       own. Also: next, back, dim, wake, reload.</p>
+  </div>
+</div>
+<ul class="caps">
+  <li><b>Survives everything</b> <span class="status live">live</span>
+    <p>If the network drops, the wall keeps rotating on a local timer. If an app
+       breaks, its panel is skipped rather than blanking the screen. If a screen goes
+       dark for ten minutes, the house says so.</p></li>
+  <li><b>Any screen can join</b> <span class="status live">live</span>
+    <p>A spare tablet opening the wall URL registers itself and joins the rotation.</p></li>
+</ul>
+
+<h2>The home screen <span class="status live">live</span></h2>
+<ul class="caps">
+  <li><b>Yours, not everyone's</b> <span class="status live">live</span>
+    <p>Each person arranges their own grid, picking visualizations from any app in the
+       house. Drag to move, drag to resize, and it is remembered.</p></li>
+  <li><b>Charts that match</b> <span class="status live">live</span>
+    <p>Apps supply data, not styling. The house supplies colour, type, and dark/light,
+       so a chart written by one of us looks like a chart written by another.</p></li>
+  <li><b>Works offline</b> <span class="status live">live</span>
+    <p>The charting libraries live in the repo. Nothing is fetched from the internet to
+       draw a screen.</p></li>
+</ul>
+
+<h2>Measuring things <span class="status live">live</span></h2>
+<ul class="caps">
+  <li><b>One place for every number</b> <span class="status live">live</span>
+    <p>Weight, sleep, room temperature, the robot's battery, a portfolio value, litres
+       of water. All the same shape: a named number, at a time, optionally about a
+       person.</p></li>
+  <li><b>Thresholds that speak up</b> <span class="status live">live</span>
+    <p>Give a series a warning and an alert bound and crossing it notifies the right
+       person by itself.</p></li>
+  <li><b>Kept without bloating</b> <span class="status live">live</span>
+    <p>Hourly summaries mean a year-long chart doesn't read a million rows on a Pi.</p></li>
+</ul>
+
+<h2>Nora, and AI <span class="status partial">partial</span></h2>
+<ul class="caps">
+  <li><b>Nora herself</b> <span class="status live">live</span>
+    <p>The little bot in the corner. She wanders when idle, zips to whatever you just
+       touched, and speaks when the house has something to say. She stays off the wall
+       display — nobody is standing there to talk to.</p></li>
+  <li><b>Claude, wired to the house's own data</b> <span class="status partial">partial</span>
+    <p>Three model tiers so an app asks for a capability rather than naming a model.
+       Needs an API key to switch on.</p></li>
+  <li><b>A monthly budget</b> <span class="status live">live</span>
+    <p>Every call's cost is recorded. Past the cap the house declines rather than
+       spending. A runaway loop costs one refusal, not a credit card.</p></li>
+  <li><b>Agents can read the house</b> <span class="status live">live</span>
+    <p>An MCP server exposes what the house knows — who lives here, what is open, what
+       is overdue, how reliable someone is, any measurement — to Claude Code, Claude
+       Desktop, or the robot. Apps add their own tools in about ten lines.</p></li>
+</ul>
+
+<h2>Connecting to the outside <span class="status partial">partial</span></h2>
+<ul class="caps">
+  <li><b>Integration framework</b> <span class="status live">live</span>
+    <p>Scheduling, retries with backoff, failure alerting, and credential handling are
+       all provided. An integration only has to say how to fetch.</p></li>
+  <li><b>Home Assistant, markets, weather, calendars</b> <span class="status planned">planned</span>
+    <p>The framework is ready; no concrete integrations are written yet.</p></li>
+  <li><b>Credentials stay out of the database</b> <span class="status live">live</span>
+    <p>Tokens are read from the environment, so a database copied for debugging carries
+       none of them.</p></li>
+</ul>
+
+<h2>Not losing anything <span class="status live">live</span></h2>
+<ul class="caps">
+  <li><b>Nightly backups</b> <span class="status live">live</span>
+    <p>Relational data, documents, uploaded files, and a portable export — every night
+       at half three, with old ones pruned automatically. If a backup fails, the house
+       says so; a backup nobody notices breaking is not a backup.</p></li>
+  <li><b>Restore, and move</b> <span class="status live">live</span>
+    <p>Two paths: an exact restore onto the same setup, and a portable one that moves
+       the whole house onto different database software or a different machine.</p></li>
+  <li><b>Nothing vanishes by accident</b> <span class="status live">live</span>
+    <p>Records that would hurt to lose are hidden rather than destroyed, and can be
+       brought back.</p></li>
+</ul>
+
+<h2>Adding an app <span class="status live">live</span></h2>
+<p class="section-lede">
+  This is what the whole thing is for. An app declares itself, and the platform gives
+  it a URL, a place in the menu, a slot on the home screen and the wall, plus
+  scheduling, reminders, escalation, notifications, AI, charts, and storage.
+</p>
+<pre><code>make app SRC=https://github.com/you/nora-workout</code></pre>
+<p class="section-lede">
+  That clones it, registers it, migrates the database, and restarts. It is then live
+  at <code>/workout/</code>. The instructions an app author (or their AI agent) needs
+  are in <code>DEVELOPMENT.md</code>.
+</p>
+
+<h2>Keeping it running <span class="status live">live</span></h2>
+<ul class="caps">
+  <li><b>One command</b> <span class="status live">live</span>
+    <p><code>make deploy</code> pulls, rebuilds, migrates, and restarts. There is no
+       separate migration step to forget.</p></li>
+  <li><b>Starts with the Pi</b> <span class="status live">live</span>
+    <p>Both screens come up on their own after a power cut, and wait for the app to
+       answer before opening a window.</p></li>
+  <li><b>Health checks</b> <span class="status live">live</span>
+    <p>Every dependency is probed. Losing documents is "degraded"; losing the main
+       database is "down". The house tells the family which.</p></li>
+  <li><b>Traceable</b> <span class="status live">live</span>
+    <p>Every log line carries a request id, who was acting, and which screen they were
+       on, so "why did the wall do that at 6am" is answerable from the logs.</p></li>
+</ul>
+
+<h2>Every screen <span class="status live">live</span></h2>
+<div class="grid">
+  <div class="box"><h3>Phone</h3><p>Thumb-reachable, bottom navigation.</p></div>
+  <div class="box"><h3>iPad</h3><p>Full layout, touch-sized targets.</p></div>
+  <div class="box"><h3>Laptop</h3><p>The dense view, keyboard and pointer.</p></div>
+  <div class="box"><h3>24" wall</h3><p>Three-metre type, no chrome, never sleeps.</p></div>
+  <div class="box"><h3>10.1" kiosk</h3><p>One screen, no scrolling, big buttons.</p></div>
+</div>
+
+<footer>
+  Nora Home 0.1.0 · this file lives at <code>docs/capabilities.html</code> and is
+  served at <code>/home/capabilities/</code>. Update it when a capability lands, not
+  when one is planned.
+</footer>
+
+</div>
+</body>
+</html>

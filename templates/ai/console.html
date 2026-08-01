@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+  {% if not ai_enabled %}
+    <div class="empty">
+      <h3>AI is not switched on</h3>
+      <p>Set <code>ANTHROPIC_API_KEY</code> in <code>.env</code> and restart.</p>
+    </div>
+  {% else %}
+    <div class="card">
+      <div class="card-head">
+        <h3 class="card-title">Ask the house</h3>
+        <span class="pill">${{ spend|floatformat:2 }} this month</span>
+      </div>
+      <form id="ask-form" style="display:grid;gap:0.8rem">
+        {% csrf_token %}
+        <textarea name="prompt" rows="3" required
+                  placeholder="What should the house focus on this week?"></textarea>
+        <button class="btn btn-primary" type="submit">Ask</button>
+      </form>
+      <div id="answer" class="card-subtitle" style="margin-top:1rem;white-space:pre-wrap"></div>
+    </div>
+  {% endif %}
+
+  <h2 style="margin-top:2.5rem">Recent calls</h2>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>When</th><th>App</th><th>Model</th><th>Cost</th><th>Time</th></tr></thead>
+      <tbody>
+        {% for run in recent %}
+          <tr>
+            <td>{{ run.created_at|date:"d M H:i" }}</td>
+            <td><code>{{ run.app_slug }}</code></td>
+            <td>{{ run.model }}</td>
+            <td>${{ run.cost_usd|floatformat:4 }}</td>
+            <td>{{ run.duration_ms }} ms</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="card-subtitle">No AI calls yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById("ask-form")?.addEventListener("submit", function (event) {
+    event.preventDefault();
+    var answer = document.getElementById("answer");
+    var prompt = event.target.prompt.value;
+    answer.textContent = "Thinking…";
+    if (window.NoraHome) window.NoraHome.setMood("thinking");
+
+    window.NoraHome.post("{% url 'ai:ask' %}", { prompt: prompt })
+      .then(function (result) {
+        answer.textContent = result.ok ? result.text : result.error;
+        if (window.NoraHome) window.NoraHome.setMood(result.ok ? "happy" : "concerned");
+      })
+      .catch(function () {
+        answer.textContent = "That didn't go through.";
+        if (window.NoraHome) window.NoraHome.setMood("concerned");
+      });
+  });
+</script>
+{% endblock %}

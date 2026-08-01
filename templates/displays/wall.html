@@ -1,0 +1,58 @@
+{% load static %}<!doctype html>
+{% comment %}
+The always-on 24" display. Deliberately does NOT extend base.html: no nav, no
+bot, no chrome — just the clock, the current panel, and a banner slot for
+alerts. Every panel is rendered here once and switched client-side, so a
+rotation costs nothing and a network blip never blanks the wall.
+{% endcomment %}
+<html lang="en" data-surface="wall" data-theme="dark" data-nh-bot="off">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1920, initial-scale=1">
+  <title>{{ house_name }} — wall</title>
+  <link rel="stylesheet" href="{% static 'nora_home/css/nora-home.css' %}">
+  <link rel="stylesheet" href="{% static 'nora_home/css/displays.css' %}">
+</head>
+<body class="wall{% if night_mode %} night-dim{% endif %}"
+      data-display-slug="{{ display.slug }}"
+      data-rotation="{{ rotation_seconds }}">
+
+  <header class="wall-header">
+    <div class="wall-clock">
+      <div class="wall-time" data-wall-clock>--:--</div>
+      <div class="wall-date" data-wall-date></div>
+    </div>
+    <div class="wall-brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span>{{ house_name }}</span>
+      <span class="wall-status" data-wall-status title="Link to the house"></span>
+    </div>
+  </header>
+
+  <main class="wall-stage">
+    {% for panel in panels %}
+      <section class="wall-panel" data-panel-key="{{ panel.key }}"
+               {% if not forloop.first %}hidden{% endif %}>
+        {{ panel.html|safe }}
+      </section>
+    {% empty %}
+      <section class="wall-panel">
+        <div class="wall-empty">
+          <h1>{{ house_name }}</h1>
+          <p>No wall panels yet. Apps add them with <code>nora_wall_panels</code>.</p>
+        </div>
+      </section>
+    {% endfor %}
+  </main>
+
+  <footer class="wall-footer">
+    {% for panel in panels %}
+      <span class="wall-dot{% if forloop.first %} is-active{% endif %}" data-panel-dot></span>
+    {% endfor %}
+  </footer>
+
+  <div class="wall-banner" data-wall-banner role="alert" aria-live="assertive"></div>
+
+  <script src="{% static 'nora_home/js/wall.js' %}" defer></script>
+</body>
+</html>

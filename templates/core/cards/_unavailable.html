@@ -1,0 +1,12 @@
+{% comment %}
+Shown instead of a card whose app raised. One broken app must not blank the
+dashboard or the wall display.
+{% endcomment %}
+<div class="card-head">
+  <h3 class="card-title">{{ card.title|default:"Card" }}</h3>
+  <span class="pill warn">Unavailable</span>
+</div>
+<p class="card-subtitle">
+  This card could not load. The error is in <code>logs/errors.log</code> under
+  <code>{{ card.key }}</code>.
+</p>

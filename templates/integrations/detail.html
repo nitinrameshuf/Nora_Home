@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="card">
+    <div class="card-head">
+      <h3 class="card-title">{{ integration.name }}</h3>
+      {% if integration.is_healthy %}<span class="pill ok">healthy</span>
+      {% else %}<span class="pill alert">failing</span>{% endif %}
+    </div>
+    <ul class="item-list">
+      <li class="item"><div class="item-body">Slug</div><code>{{ integration.slug }}</code></li>
+      <li class="item"><div class="item-body">Interval</div>{{ integration.interval_minutes }} min</li>
+      <li class="item"><div class="item-body">Last run</div>{{ integration.last_run_at|default:"never" }}</li>
+      <li class="item"><div class="item-body">Last success</div>{{ integration.last_success_at|default:"never" }}</li>
+    </ul>
+    {% if integration.last_error %}<pre>{{ integration.last_error }}</pre>{% endif %}
+  </div>
+
+  <h2 style="margin-top:2rem">Runs</h2>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>When</th><th>Result</th><th>Duration</th><th>Summary</th></tr></thead>
+      <tbody>
+        {% for run in runs %}
+          <tr>
+            <td>{{ run.created_at|date:"d M H:i" }}</td>
+            <td>{% if run.succeeded %}<span class="pill ok">ok</span>
+                {% else %}<span class="pill alert">failed</span>{% endif %}</td>
+            <td>{{ run.duration_ms }} ms</td>
+            <td><code>{{ run.summary|default:run.error|truncatechars:80 }}</code></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

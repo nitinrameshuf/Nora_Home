@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block heading %}Good to see you, {{ user.name }}{% endblock %}
+
+{% block actions %}
+  <button class="btn" type="button" data-dash-add>Add a widget</button>
+  <button class="btn btn-ghost" type="button" data-dash-edit>Rearrange</button>
+{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{% static 'nora_home/vendor/gridstack.min.css' %}">
+  <link rel="stylesheet" href="{% static 'nora_home/css/dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+  <div class="dash" data-dash
+       data-placed="{{ placed_json }}"
+       data-catalog="{{ catalog_json }}"
+       data-save-url="{% url 'dashboard:save_layout' %}"
+       data-widget-url="{% url 'dashboard:widget_data' 'KEY' %}">
+
+    <div class="dash__empty" data-dash-empty hidden>
+      <h3>Your home screen is empty</h3>
+      <p>
+        Pick visualizations from any app in the house and arrange them however you
+        like. This layout is yours — nobody else sees it.
+      </p>
+      <button class="btn btn-primary" type="button" data-dash-add>Add your first widget</button>
+    </div>
+
+    <div class="dash__grid" data-dash-grid></div>
+  </div>
+
+  <dialog class="dash-picker" data-dash-picker>
+    <div class="dash-picker__head">
+      <h2>Add a widget</h2>
+      <button class="btn btn-ghost" type="button" data-dash-close>Done</button>
+    </div>
+    <div class="dash-picker__body" data-dash-picker-body></div>
+  </dialog>
+{% endblock %}
+
+{% block scripts %}
+  {% comment %}
+  ECharts and Gridstack are vendored rather than pulled from a CDN — the house has
+  to work with the internet down. `make vendor` fetches them. Until then the
+  dashboard still renders stats and lists; only charts wait.
+  {% endcomment %}
+  <script src="{% static 'nora_home/vendor/echarts.min.js' %}" defer onerror="window.__nhNoECharts=true"></script>
+  <script src="{% static 'nora_home/vendor/gridstack-all.js' %}" defer onerror="window.__nhNoGridstack=true"></script>
+  <script src="{% static 'nora_home/js/nh-charts.js' %}" defer></script>
+  <script src="{% static 'nora_home/js/dashboard.js' %}" defer></script>
+{% endblock %}

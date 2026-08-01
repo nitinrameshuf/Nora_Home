@@ -1,0 +1,162 @@
+/*
+ * Nora — the bot that lives in the corner of the screen and refuses to sit still.
+ *
+ * She is one absolutely-positioned element with a small SVG face inside. All the
+ * personality is in the transforms; nothing here blocks layout or scrolling, and
+ * the whole thing collapses to a static, silent avatar under
+ * prefers-reduced-motion.
+ */
+
+.nh-bot {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 62px;
+  height: 62px;
+  z-index: 900;
+  pointer-events: auto;
+  cursor: pointer;
+  will-change: transform;
+  transition: transform 0.9s cubic-bezier(0.34, 1.32, 0.5, 1);
+  touch-action: manipulation;
+}
+
+.nh-bot__body {
+  width: 100%;
+  height: 100%;
+  border-radius: 44% 56% 52% 48% / 50% 46% 54% 50%;
+  background: radial-gradient(circle at 34% 30%, var(--nh-400), var(--nh-600) 72%);
+  box-shadow: 0 0 26px var(--nh-glow), inset 0 -5px 12px rgba(0, 0, 0, 0.22);
+  position: relative;
+  animation: nh-breathe 4.2s ease-in-out infinite;
+}
+
+/* The trail that makes a fast move read as a zip rather than a teleport. */
+.nh-bot::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: inherit;
+  background: var(--nh-500);
+  opacity: 0;
+  filter: blur(11px);
+  transition: opacity 0.25s ease;
+  z-index: -1;
+}
+.nh-bot.is-zipping::after { opacity: 0.65; }
+.nh-bot.is-zipping { transition-duration: 0.42s; transition-timing-function: cubic-bezier(0.2, 0.9, 0.25, 1); }
+
+.nh-bot__eyes {
+  position: absolute;
+  inset: 32% 24% auto;
+  display: flex;
+  justify-content: space-between;
+}
+.nh-bot__eye {
+  width: 9px;
+  height: 11px;
+  border-radius: 50%;
+  background: #17100a;
+  animation: nh-blink 5.6s infinite;
+  transition: height 0.18s ease, transform 0.18s ease;
+}
+.nh-bot__mouth {
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  width: 17px;
+  height: 9px;
+  margin-left: -8.5px;
+  border-radius: 0 0 20px 20px;
+  background: #17100a;
+  transition: all 0.22s ease;
+}
+
+/* ── Moods ────────────────────────────────────────────────────────────────── */
+.nh-bot[data-mood="thinking"] .nh-bot__eye { height: 4px; transform: translateY(3px); }
+.nh-bot[data-mood="thinking"] .nh-bot__body { animation: nh-tilt 2.2s ease-in-out infinite; }
+
+.nh-bot[data-mood="proud"] .nh-bot__mouth { height: 12px; width: 22px; margin-left: -11px; }
+.nh-bot[data-mood="proud"] .nh-bot__body { animation: nh-bounce 0.8s ease-in-out 3; }
+
+.nh-bot[data-mood="curious"] .nh-bot__body { animation: nh-tilt 1.6s ease-in-out infinite; }
+
+.nh-bot[data-mood="concerned"] .nh-bot__mouth {
+  height: 5px; width: 15px; margin-left: -7.5px;
+  border-radius: 20px 20px 0 0;
+}
+.nh-bot[data-mood="concerned"] .nh-bot__body {
+  background: radial-gradient(circle at 34% 30%, #ffc9a0, var(--coral-500) 78%);
+}
+
+.nh-bot[data-mood="sleepy"] .nh-bot__eye { height: 2px; }
+.nh-bot[data-mood="sleepy"] .nh-bot__body { animation: nh-breathe 7s ease-in-out infinite; opacity: 0.62; }
+
+.nh-bot[data-mood="celebrate"] .nh-bot__body { animation: nh-spin 0.7s ease-in-out 2; }
+
+/* ── Speech bubble ────────────────────────────────────────────────────────── */
+.nh-bubble {
+  position: fixed;
+  z-index: 901;
+  max-width: min(300px, 72vw);
+  padding: 0.7rem 0.95rem;
+  border-radius: 16px 16px 16px 5px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.94rem;
+  line-height: 1.45;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  transform: translateY(8px) scale(0.94);
+  transform-origin: bottom left;
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.34, 1.4, 0.5, 1);
+  pointer-events: none;
+}
+.nh-bubble.is-visible { opacity: 1; transform: translateY(0) scale(1); }
+
+.nh-bubble__badge {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  margin-bottom: 0.2rem;
+}
+
+/* ── Keyframes ────────────────────────────────────────────────────────────── */
+@keyframes nh-breathe {
+  0%, 100% { transform: scale(1) translateY(0); }
+  50% { transform: scale(1.045) translateY(-3px); }
+}
+@keyframes nh-blink {
+  0%, 92%, 100% { height: 11px; }
+  95%, 97% { height: 1.5px; }
+}
+@keyframes nh-bounce {
+  0%, 100% { transform: translateY(0); }
+  35% { transform: translateY(-16px); }
+  70% { transform: translateY(-5px); }
+}
+@keyframes nh-tilt {
+  0%, 100% { transform: rotate(-8deg); }
+  50% { transform: rotate(8deg); }
+}
+@keyframes nh-spin {
+  from { transform: rotate(0); }
+  to { transform: rotate(360deg); }
+}
+
+/* On a small screen she parks out of the way and stops wandering; a sprite over
+   a thumb-sized layout is in the way, not charming. */
+@media (max-width: 860px) {
+  .nh-bot { width: 46px; height: 46px; }
+  .nh-bubble { max-width: 78vw; font-size: 0.88rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nh-bot { transition: none; }
+  .nh-bot__body,
+  .nh-bot__eye { animation: none !important; }
+  .nh-bubble { transition: opacity 0.01ms; transform: none; }
+}

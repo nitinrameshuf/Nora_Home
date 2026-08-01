@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="card">
+    <div class="card-head"><h3 class="card-title">{{ habit.title }}</h3></div>
+    {% if habit.why %}<p>{{ habit.why }}</p>{% endif %}
+    <p class="card-subtitle">{{ habit.get_cadence_display }}</p>
+  </div>
+
+  <h2 style="margin-top:2rem">History</h2>
+  <ul class="item-list">
+    {% for occurrence in occurrences %}
+      <li class="item{% if occurrence.status == 'missed' %} is-overdue{% endif %}">
+        <div class="item-body">
+          <div class="item-title">{{ occurrence.due_at|date:"D d M" }}</div>
+        </div>
+        <span class="pill {% if occurrence.status == 'done' %}ok{% elif occurrence.status == 'missed' %}alert{% endif %}">
+          {{ occurrence.get_status_display }}
+        </span>
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}

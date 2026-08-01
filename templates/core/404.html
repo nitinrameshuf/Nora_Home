@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Not here · {{ house_name }}{% endblock %}
+{% block heading %}That page isn't in this house{% endblock %}
+{% block content %}
+  <div class="empty">
+    <p>Nothing lives at <code>{{ request.path }}</code>.</p>
+    <p><a class="btn" href="/">Back to the dashboard</a></p>
+  </div>
+{% endblock %}

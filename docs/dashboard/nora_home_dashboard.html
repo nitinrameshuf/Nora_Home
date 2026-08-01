@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nora Home — Dashboard</title>
+<style>
+  :root {
+    /* Warm apricot-on-near-black — Nora Home's own palette, deliberately not the
+       cool slate-blue/indigo scheme the robot's dashboard uses, so the two are
+       never mistaken for each other at a glance. */
+    --complete: #3ddc97;
+    --partial:  #f2a33d;
+    --next:     #ff9a5c;
+    --planned:  #8a7c68;
+    --retired:  #b3577d;
+    --bg:       #14100c;
+    --card:     #221b15;
+    --card2:    #2c2219;
+    --border:   #3d3226;
+    --text:     #f2ece2;
+    --muted:    #ab9a86;
+    --accent:   #ff9a5c;
+    --warn:     #f2a33d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; padding: 28px 32px; }
+
+  /* ── Header ── */
+  .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 24px; flex-wrap: wrap; }
+  .header h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+  .header h1 span { color: var(--accent); }
+  .header-meta { color: var(--muted); font-size: 12px; margin-top: 6px; line-height: 1.8; }
+  .status-pill { background: var(--next); color: #2a1608; padding: 6px 16px; border-radius: 99px; font-size: 12px; font-weight: 700; white-space: nowrap; align-self: flex-start; margin-top: 4px; }
+
+  /* ── Tabs ── */
+  .tab-nav { display: flex; gap: 4px; margin-bottom: 28px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .tab-btn { background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--muted); font-size: 13px; font-weight: 600; padding: 10px 20px; cursor: pointer; margin-bottom: -1px; transition: color 0.15s, border-color 0.15s; }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* ── Summary ── */
+  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 32px; }
+  .summary-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; text-align: center; }
+  .summary-card .num { font-size: 34px; font-weight: 700; line-height: 1; }
+  .summary-card .label { color: var(--muted); font-size: 11px; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .num-complete { color: var(--complete); }
+  .num-partial  { color: var(--partial); }
+  .num-next     { color: var(--next); }
+  .num-planned  { color: var(--muted); }
+  .num-total    { color: var(--text); }
+
+  /* ── Phase progress ── */
+  .progress-section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin-bottom: 32px; }
+  .progress-section h3 { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; }
+  .phase-progress { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+  .phase-progress .pname { font-size: 11px; color: var(--muted); width: 200px; flex-shrink: 0; }
+  .bar-bg { flex: 1; background: var(--card2); border-radius: 99px; height: 6px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 99px; background: var(--complete); }
+  .bar-fill.partial { background: linear-gradient(90deg, var(--complete) 60%, var(--partial)); }
+  .pct { font-size: 11px; color: var(--muted); width: 34px; text-align: right; }
+
+  /* ── Next steps ── */
+  .next-box { background: #3a2410; border: 1px solid #b06a2e; border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; }
+  .next-box h3 { font-size: 14px; font-weight: 700; color: #f5c99a; margin-bottom: 14px; }
+  .next-step { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 10px; font-size: 13px; }
+  .step-num { background: #d97a3f; color: #1c0f05; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+  .step-text { color: var(--text); line-height: 1.45; }
+  .blocked-box { background: #451a0322; border: 1px solid #92400e; border-radius: 12px; padding: 16px 22px; margin-bottom: 32px; font-size: 13px; color: #fbbf24; line-height: 1.6; }
+  .blocked-box strong { color: #fde68a; }
+
+  /* ── Phase labels ── */
+  .phase-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+  .phase-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .milestone-banner { background: linear-gradient(90deg, #4a2f14, #2c1a0c); border: 1px solid #b06a2e; border-radius: 10px; padding: 12px 18px; font-size: 12px; color: #f0c398; margin-bottom: 28px; display: flex; align-items: center; gap: 10px; }
+  .milestone-banner::before { content: '🏁'; font-size: 16px; }
+
+  /* ── Story grid ── */
+  .story-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; margin-bottom: 30px; }
+  .story-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px 26px; cursor: pointer; transition: border-color 0.15s, transform 0.1s, box-shadow 0.15s; position: relative; }
+  .story-card:hover { border-color: #5a4a38; transform: translateY(-2px); box-shadow: 0 8px 24px #00000040; }
+  .story-card.complete { border-left: 3px solid var(--complete); }
+  .story-card.partial  { border-left: 3px solid var(--partial); }
+  .story-card.next     { border-left: 3px solid var(--next); box-shadow: 0 0 0 1px #ff9a5c22; }
+  .story-card.planned  { border-left: 3px solid var(--border); }
+  .story-card.retired  { border-left: 3px solid var(--retired); opacity: 0.8; }
+  .story-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 8px; }
+  .story-num { font-size: 11px; font-weight: 700; color: var(--muted); white-space: nowrap; margin-top: 2px; }
+  .story-title { font-size: 14px; font-weight: 600; line-height: 1.3; flex: 1; }
+  .story-desc { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 10px; }
+  .badge { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 99px; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.3px; }
+  .badge-complete { background: #1c4b35; color: #7de8bb; }
+  .badge-partial  { background: #4a2c0c; color: #ffcf7a; }
+  .badge-next     { background: #7a3a12; color: #ffb37a; }
+  .badge-planned  { background: #241d17; color: #9c8b76; border: 1px solid #3d3226; }
+  .badge-retired  { background: #4a1830; color: #e8a8c4; }
+  .story-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .tag         { background: var(--card2); border: 1px solid var(--border); color: var(--muted); font-size: 10px; padding: 2px 7px; border-radius: 4px; }
+  .tag-warn    { background: #451a0322; border-color: #92400e; color: #fbbf24; }
+  .tag-ready   { background: #14532d22; border-color: #1f9d5c; color: #7de8bb; }
+  .tag-blocked { background: #44230522; border-color: #92400e; color: #fdba74; }
+  .tag-indep   { background: #3a241022; border-color: #b06a2e; color: #f0c398; }
+  .click-hint { position: absolute; bottom: 9px; right: 12px; font-size: 10px; color: #5a4a38; }
+
+  /* ── Simple info cards (stack / decisions tabs) ── */
+  .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; margin-bottom: 30px; }
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; border-left: 3px solid var(--accent); }
+  .info-card.ok      { border-left-color: var(--complete); }
+  .info-card.pending { border-left-color: var(--warn); }
+  .info-card.planned { border-left-color: var(--planned); }
+  .info-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  .info-desc { font-size: 11px; color: var(--muted); margin-bottom: 8px; line-height: 1.5; }
+  .info-specs { list-style: none; }
+  .info-specs li { font-size: 11px; color: var(--text); line-height: 1.7; padding-left: 12px; position: relative; }
+  .info-specs li::before { content: '·'; position: absolute; left: 3px; color: var(--muted); }
+  .info-status { display: inline-block; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .info-status.ok      { background: var(--complete); box-shadow: 0 0 6px var(--complete); }
+  .info-status.pending { background: var(--warn); }
+  .info-status.planned { background: var(--planned); }
+  .info-badge { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 99px; text-transform: uppercase; letter-spacing: 0.3px; margin-left: auto; }
+  .info-badge.ok      { background: #1c4b35; color: #7de8bb; }
+  .info-badge.pending { background: #451a03; color: #fbbf24; }
+  .info-badge.planned { background: #241d17; color: #9c8b76; border: 1px solid #3d3226; }
+
+  .decision { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin-bottom: 12px; }
+  .decision h4 { font-size: 14px; font-weight: 650; margin-bottom: 6px; }
+  .decision p { font-size: 12.5px; color: var(--muted); line-height: 1.65; }
+  .decision .verdict { color: #7de8bb; font-weight: 600; }
+
+  /* ── Modal ── */
+  .modal-backdrop { display: none; position: fixed; inset: 0; background: #00000099; z-index: 1000; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
+  .modal-backdrop.open { display: flex; }
+  .modal { background: #221b15; border: 1px solid #3d3226; border-radius: 16px; width: 100%; max-width: 700px; max-height: 88vh; overflow-y: auto; position: relative; box-shadow: 0 24px 64px #000000cc; animation: modalIn 0.18s ease; }
+  @keyframes modalIn { from { opacity: 0; transform: scale(0.96) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  .modal-header { padding: 24px 24px 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .modal-story-num { font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+  .modal-title { font-size: 20px; font-weight: 700; line-height: 1.2; }
+  .modal-close { background: #3d3226; border: none; color: var(--text); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.1s; }
+  .modal-close:hover { background: #5a4a38; }
+  .modal-badges { padding: 12px 24px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+  .modal-body { padding: 20px 24px 28px; }
+  .modal-section { margin-bottom: 20px; }
+  .modal-section h4 { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
+  .modal-section p { font-size: 13px; line-height: 1.7; color: var(--text); }
+  .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .modal-stat { background: #2c2219; border-radius: 10px; padding: 14px 16px; }
+  .modal-stat .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 6px; }
+  .modal-stat .stat-value { font-size: 14px; font-weight: 600; }
+  .readiness-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 99px; font-size: 12px; font-weight: 600; }
+  .readiness-ready    { background: #14532d; color: #7de8bb; }
+  .readiness-blocked  { background: #451a03; color: #fdba74; }
+  .readiness-indep    { background: #3a2410; color: #f0c398; }
+  .readiness-complete { background: #1c4b35; color: #7de8bb; }
+  .readiness-partial  { background: #451a03; color: #fbbf24; }
+  .dep-list { display: flex; flex-direction: column; gap: 6px; }
+  .dep-item { display: flex; align-items: center; gap: 8px; font-size: 12px; background: #2c2219; padding: 7px 12px; border-radius: 8px; }
+  .file-list { display: flex; flex-direction: column; gap: 5px; }
+  .file-item { font-size: 11px; font-family: monospace; background: #14100c; border: 1px solid #3d3226; padding: 5px 10px; border-radius: 6px; color: #e8c896; }
+  .warn-box { background: #451a0322; border: 1px solid #92400e; border-radius: 10px; padding: 12px 16px; font-size: 12px; color: #fbbf24; line-height: 1.6; margin-top: 16px; }
+  .warn-box::before { content: '⚠️  '; }
+  .retired-box { background: #4a183022; border: 1px solid #b3577d; border-radius: 10px; padding: 12px 16px; font-size: 12px; color: #e8a8c4; line-height: 1.6; margin-top: 8px; }
+
+  footer { color: var(--muted); font-size: 11px; text-align: center; margin-top: 12px; padding-top: 20px; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Nora <span>Home</span></h1>
+    <div class="header-meta">
+      Raspberry Pi 5 (8GB) · Django 5.2 · Celery + RabbitMQ · MySQL + MongoDB · ECharts<br/>
+      Last updated: 2026-07-31 &nbsp;·&nbsp; Click any card for full details &nbsp;·&nbsp;
+      <em>Nora Home is the house system. Nora is the robot — a separate project.</em>
+    </div>
+  </div>
+  <div class="status-pill">▶ Blocked on a design decision — Story 23</div>
+</div>
+
+<div class="tab-nav">
+  <button class="tab-btn active" data-tab="progress" onclick="switchTab('progress')">Progress</button>
+  <button class="tab-btn" data-tab="stack" onclick="switchTab('stack')">Stack</button>
+  <button class="tab-btn" data-tab="decisions" onclick="switchTab('decisions')">Decisions</button>
+</div>
+
+<div id="tab-progress" class="tab-pane active">
+
+  <div class="summary">
+    <div class="summary-card"><div class="num num-complete">12</div><div class="label">Complete</div></div>
+    <div class="summary-card"><div class="num num-partial">8</div><div class="label">Built, Unproven</div></div>
+    <div class="summary-card"><div class="num num-next">2</div><div class="label">Next Up</div></div>
+    <div class="summary-card"><div class="num num-planned">5</div><div class="label">Planned</div></div>
+    <div class="summary-card"><div class="num num-total">27</div><div class="label">Total Stories</div></div>
+  </div>
+
+  <div class="progress-section">
+    <h3>Phase Progress</h3>
+    <div class="phase-progress"><div class="pname">Phase 1 — Foundation</div><div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div><div class="pct">100%</div></div>
+    <div class="phase-progress"><div class="pname">Phase 2 — The Spine</div><div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div><div class="pct">100%</div></div>
+    <div class="phase-progress"><div class="pname">Phase 3 — Surfaces</div><div class="bar-bg"><div class="bar-fill partial" style="width:75%"></div></div><div class="pct">75%</div></div>
+    <div class="phase-progress"><div class="pname">Phase 4 — Data &amp; Intelligence</div><div class="bar-bg"><div class="bar-fill partial" style="width:30%"></div></div><div class="pct">30%</div></div>
+    <div class="phase-progress"><div class="pname">Phase 5 — Operations</div><div class="bar-bg"><div class="bar-fill partial" style="width:25%"></div></div><div class="pct">25%</div></div>
+    <div class="phase-progress"><div class="pname">Phase 6 — Hardening &amp; Real Apps</div><div class="bar-bg"><div class="bar-fill" style="width:0%"></div></div><div class="pct">0%</div></div>
+  </div>
+
+  <div class="next-box">
+    <h3>🎯 Story 23 — Design system build-out (immediate next, needs a decision)</h3>
+    <div class="next-step"><div class="step-num">1</div><div class="step-text">Open <code>docs/design-options.html</code> and pick a direction (or mix two)</div></div>
+    <div class="next-step"><div class="step-num">2</div><div class="step-text">Build the choice out properly in <code>static/nora_home/css/nora-home.css</code> — full type scale, spacing, components</div></div>
+    <div class="next-step"><div class="step-num">3</div><div class="step-text">Match the ECharts theme in <code>nh-charts.js</code> to the chosen palette</div></div>
+    <div class="next-step"><div class="step-num">4</div><div class="step-text">Verify at 375px, 1080p wall, and the 1280×800 kiosk</div></div>
+    <div class="next-step"><div class="step-num">5</div><div class="step-text">Then Story 27 — first real run on the Pi against MySQL, Mongo, RabbitMQ, MinIO</div></div>
+  </div>
+
+  <div class="blocked-box">
+    <strong>Nothing has run against production infrastructure yet.</strong>
+    Everything verified so far ran on Windows against SQLite with an in-memory broker.
+    Celery has never executed a task; Slack, Claude, and MCP have never seen live
+    credentials. Eight stories are marked <em>built, unproven</em> for exactly this
+    reason — the code is written and reviewed but has not been observed working.
+  </div>
+
+  <div class="phase-label">Phase 1 — Foundation</div>
+  <div class="story-grid">
+    <div class="story-card complete" onclick="openModal('1')"><div class="story-header"><div class="story-num">Story 1</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">Project Skeleton &amp; Settings</div><div class="story-desc">Django project, layered dev/prod/pi settings, env-driven configuration, structured logging with request context.</div><div class="story-tags"><span class="tag">Django 5.2</span><span class="tag">config/</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card complete" onclick="openModal('2')"><div class="story-header"><div class="story-num">Story 2</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">App Registry</div><div class="story-desc">NoraAppConfig — one class gives an app its URL, nav entry, widgets, wall panels, and MCP presence. The whole platform contract.</div><div class="story-tags"><span class="tag">registry.py</span><span class="tag tag-warn">⚠ bug found + fixed</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card complete" onclick="openModal('3')"><div class="story-header"><div class="story-num">Story 3</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">Base Models, Audit &amp; Health</div><div class="story-desc">TimeStamped/Owned/SoftDelete/UUID bases, audit trail, health probes for every dependency.</div><div class="story-tags"><span class="tag">core/models.py</span><span class="tag">health.py</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card complete" onclick="openModal('4')"><div class="story-header"><div class="story-num">Story 4</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">Household &amp; Roles</div><div class="story-desc">HouseMember as AUTH_USER_MODEL. Roles, quiet hours, Slack IDs, and per-person escalation chains.</div><div class="story-tags"><span class="tag">accounts</span><span class="tag">AUTH_USER_MODEL</span></div><div class="click-hint">click for details</div></div>
+  </div>
+
+  <div class="phase-label">Phase 2 — The Spine</div>
+  <div class="story-grid">
+    <div class="story-card complete" onclick="openModal('5')"><div class="story-header"><div class="story-num">Story 5</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">Tracker — Trackables &amp; Occurrences</div><div class="story-desc">Nine cadences including cron. Occurrences materialized two weeks ahead so history stays answerable.</div><div class="story-tags"><span class="tag">tracker</span><span class="tag">scheduling.py</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card complete" onclick="openModal('6')"><div class="story-header"><div class="story-num">Story 6</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">Escalation Engine</div><div class="story-desc">owner → their chain → all adults → whole house. Policies are editable JSON, not code. The reason this is not a todo list.</div><div class="story-tags"><span class="tag">escalation.py</span><span class="tag">3 policies</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card complete" onclick="openModal('7')"><div class="story-header"><div class="story-num">Story 7</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">Notifications &amp; Channels</div><div class="story-desc">Slack, in-app, wall display, console. Intent and delivery are separate records, so "did anyone see it?" has an answer.</div><div class="story-tags"><span class="tag">4 channels</span><span class="tag">receipts</span></div><div class="click-hint">click for details</div></div>
+  </div>
+
+  <div class="milestone-banner">Milestone reached: the house can track anything, notice when it slips, and escalate to real people through real channels.</div>
+
+  <div class="phase-label">Phase 3 — Surfaces</div>
+  <div class="story-grid">
+    <div class="story-card complete" onclick="openModal('8')"><div class="story-header"><div class="story-num">Story 8</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">Responsive Shell &amp; Surfaces</div><div class="story-desc">Five surfaces named server-side — wall, kiosk, phone, tablet, desktop — so CSS responds without measuring viewports in JS.</div><div class="story-tags"><span class="tag">SurfaceMiddleware</span><span class="tag">nora-home.css</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card complete" onclick="openModal('9')"><div class="story-header"><div class="story-num">Story 9</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">The Home Bot</div><div class="story-desc">The face in the corner. Wanders when idle, zips to what you touched, speaks when the house has something to say.</div><div class="story-tags"><span class="tag">nh-bot.js</span><span class="tag">8 moods</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card partial" onclick="openModal('10')"><div class="story-header"><div class="story-num">Story 10</div><span class="badge badge-partial">◐ Unproven</span></div><div class="story-title">Wall Display + Kiosk Bus</div><div class="story-desc">24" always-on screen driven by the 10.1" touchscreen over Channels. Rotation, pinning, night mode, burn-in shift.</div><div class="story-tags"><span class="tag tag-warn">⚠ never opened in a browser</span><span class="tag">Channels</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card complete" onclick="openModal('11')"><div class="story-header"><div class="story-num">Story 11</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">Home Dashboard — Widgets</div><div class="story-desc">Per-person draggable grid of visualizations from any app. Four widget kinds. ECharts + Gridstack vendored for offline.</div><div class="story-tags"><span class="tag tag-ready">🟢 verified in browser</span><span class="tag">ECharts</span></div><div class="click-hint">click for details</div></div>
+  </div>
+
+  <div class="phase-label">Phase 4 — Data &amp; Intelligence</div>
+  <div class="story-grid">
+    <div class="story-card complete" onclick="openModal('12')"><div class="story-header"><div class="story-num">Story 12</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">Telemetry</div><div class="story-desc">One time-series store for every number in the house. Thresholds fire notifications by themselves; hourly rollups keep charts cheap.</div><div class="story-tags"><span class="tag">Series/Reading</span><span class="tag">thresholds</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card partial" onclick="openModal('13')"><div class="story-header"><div class="story-num">Story 13</div><span class="badge badge-partial">◐ Unproven</span></div><div class="story-title">AI — Claude Integration</div><div class="story-desc">Three model tiers, prompt-cached house prefix, per-call cost accounting, monthly budget cap that refuses rather than spends.</div><div class="story-tags"><span class="tag tag-warn">⚠ no API key tested</span><span class="tag">Opus 5 / Sonnet 5 / Haiku</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card partial" onclick="openModal('14')"><div class="story-header"><div class="story-num">Story 14</div><span class="badge badge-partial">◐ Unproven</span></div><div class="story-title">MCP Server</div><div class="story-desc">House data as agent tools over stdio and HTTP. Six platform tools; apps add their own in ten lines.</div><div class="story-tags"><span class="tag tag-warn">⚠ never connected to a client</span><span class="tag">mcp_stdio</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card partial" onclick="openModal('15')"><div class="story-header"><div class="story-num">Story 15</div><span class="badge badge-partial">◐ Unproven</span></div><div class="story-title">Mongo &amp; Object Storage</div><div class="story-desc">Namespaced Mongo collections and S3/MinIO helpers, both degrading to local alternatives when switched off.</div><div class="story-tags"><span class="tag tag-warn">⚠ never run against a server</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card partial" onclick="openModal('16')"><div class="story-header"><div class="story-num">Story 16</div><span class="badge badge-partial">◐ Unproven</span></div><div class="story-title">Backup, Restore &amp; Migration</div><div class="story-desc">Nightly backups of SQL, Mongo, media and a portable fixture. Cross-engine restore is the escape hatch off this Pi.</div><div class="story-tags"><span class="tag tag-warn">⚠ never executed</span><span class="tag">nora_backup</span></div><div class="click-hint">click for details</div></div>
+  </div>
+
+  <div class="phase-label">Phase 5 — Operations</div>
+  <div class="story-grid">
+    <div class="story-card partial" onclick="openModal('17')"><div class="story-header"><div class="story-num">Story 17</div><span class="badge badge-partial">◐ Unproven</span></div><div class="story-title">Docker Stack &amp; One-Command Deploy</div><div class="story-desc">Eight services, health-gated startup, migrations in the entrypoint. <code>make up</code> then <code>make deploy</code> forever.</div><div class="story-tags"><span class="tag tag-warn">⚠ never built</span><span class="tag">compose</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card partial" onclick="openModal('18')"><div class="story-header"><div class="story-num">Story 18</div><span class="badge badge-partial">◐ Unproven</span></div><div class="story-title">Pi Provisioning &amp; Dual Display</div><div class="story-desc">One script: Docker, systemd, and both HDMI outputs auto-starting Chromium in kiosk mode after a power cut.</div><div class="story-tags"><span class="tag tag-warn">⚠ never run on a Pi</span><span class="tag">install-pi.sh</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card complete" onclick="openModal('19')"><div class="story-header"><div class="story-num">Story 19</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">App Installer</div><div class="story-desc">One command clones a house app from git, verifies it declares a NoraAppConfig, registers it, migrates, and collects static.</div><div class="story-tags"><span class="tag">install_app</span><span class="tag">make app</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card partial" onclick="openModal('20')"><div class="story-header"><div class="story-num">Story 20</div><span class="badge badge-partial">◐ Unproven</span></div><div class="story-title">Integration Framework</div><div class="story-desc">Scheduling, exponential backoff, failure alerting, and env-only credentials. An integration only implements fetch().</div><div class="story-tags"><span class="tag tag-warn">⚠ zero concrete integrations</span></div><div class="click-hint">click for details</div></div>
+  </div>
+
+  <div class="phase-label">Phase 6 — Hardening &amp; Real Apps</div>
+  <div class="story-grid">
+    <div class="story-card next" onclick="openModal('23')"><div class="story-header"><div class="story-num">Story 23</div><span class="badge badge-next">▶ Next</span></div><div class="story-title">Design System Build-Out</div><div class="story-desc">Pick a direction from design-options.html and build it properly — type scale, components, chart theme, all five surfaces.</div><div class="story-tags"><span class="tag tag-blocked">⏳ needs a decision from you</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card next" onclick="openModal('27')"><div class="story-header"><div class="story-num">Story 27</div><span class="badge badge-next">▶ Next</span></div><div class="story-title">First Real Run on the Pi</div><div class="story-desc">Bring up the Docker stack against MySQL, Mongo, RabbitMQ and MinIO. Prove Celery, escalation, and backups actually execute.</div><div class="story-tags"><span class="tag tag-ready">🟢 ready to start</span><span class="tag">unblocks 8 stories</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('21')"><div class="story-header"><div class="story-num">Story 21</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Test Suite</div><div class="story-desc">pytest is configured and nothing is written. Escalation and scheduling are the parts that most need it.</div><div class="story-tags"><span class="tag tag-indep">🔵 can start anytime</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('22')"><div class="story-header"><div class="story-num">Story 22</div><span class="badge badge-planned">Planned</span></div><div class="story-title">PWA — Install &amp; Offline</div><div class="story-desc">Manifest and service worker so phones get a home-screen icon, full-screen chrome, and offline-tolerant reads.</div><div class="story-tags"><span class="tag tag-blocked">⏳ needs Story 23</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('24')"><div class="story-header"><div class="story-num">Story 24</div><span class="badge badge-planned">Planned</span></div><div class="story-title">First Real App — House Maintenance</div><div class="story-desc">The app that proves the skeleton. Long cadences, real escalation, and a wall panel — without needing anyone's health data.</div><div class="story-tags"><span class="tag tag-blocked">⏳ needs Story 27</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('25')"><div class="story-header"><div class="story-num">Story 25</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Home Assistant Integration</div><div class="story-desc">First concrete integration. Entity states into telemetry, which puts them on the wall and in front of the AI for free.</div><div class="story-tags"><span class="tag tag-blocked">⏳ needs Story 20 proven</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('26')"><div class="story-header"><div class="story-num">Story 26</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Nora Robot Bridge</div><div class="story-desc">The two touchpoints between the house and the robot: telemetry in, and a line on the house screens out.</div><div class="story-tags"><span class="tag tag-blocked">⏳ needs the robot's Story 10</span><span class="tag">cross-project</span></div><div class="click-hint">click for details</div></div>
+  </div>
+
+  <div class="phase-label">Retired Ideas</div>
+  <p style="color:var(--muted);font-size:12px;margin-bottom:16px;">Approaches taken and then superseded during the build. Click to see why.</p>
+  <div class="story-grid">
+    <div class="story-card retired" onclick="openModal('r1')"><div class="story-header"><div class="story-num">Superseded</div><span class="badge badge-retired">Retired</span></div><div class="story-title">Cards on the Home Screen</div><div class="story-desc">Server-rendered HTML cards as the home screen's unit.</div><div class="story-tags"><span class="tag">replaced by widgets</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card retired" onclick="openModal('r2')"><div class="story-header"><div class="story-num">Superseded</div><span class="badge badge-retired">Retired</span></div><div class="story-title">Apps under /app/&lt;slug&gt;/</div><div class="story-desc">Every house app nested beneath a shared /app/ prefix.</div><div class="story-tags"><span class="tag">now root-level</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card retired" onclick="openModal('r3')"><div class="story-header"><div class="story-num">Considered</div><span class="badge badge-retired">Retired</span></div><div class="story-title">Native Kiosk Application</div><div class="story-desc">A packaged desktop/mobile app instead of a browser.</div><div class="story-tags"><span class="tag">4 builds, 1 house</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card retired" onclick="openModal('r4')"><div class="story-header"><div class="story-num">Considered</div><span class="badge badge-retired">Retired</span></div><div class="story-title">CDN-Loaded Chart Libraries</div><div class="story-desc">Pull ECharts and Gridstack from jsDelivr at page load.</div><div class="story-tags"><span class="tag">offline requirement</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card retired" onclick="openModal('r5')"><div class="story-header"><div class="story-num">Considered</div><span class="badge badge-retired">Retired</span></div><div class="story-title">React / Vue + Build Step</div><div class="story-desc">A modern frontend framework with npm and a bundler.</div><div class="story-tags"><span class="tag">Pi must not build</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card retired" onclick="openModal('r6')"><div class="story-header"><div class="story-num">Renamed</div><span class="badge badge-retired">Retired</span></div><div class="story-title">The <code>nora</code> Package Name</div><div class="story-desc">Platform code lived in <code>nora/</code> with <code>NORA_*</code> settings.</div><div class="story-tags"><span class="tag">clashed with the robot</span></div><div class="click-hint">click for details</div></div>
+  </div>
+</div>
+
+<div id="tab-stack" class="tab-pane">
+  <div class="phase-label">Compute &amp; Displays</div>
+  <div class="info-grid">
+    <div class="info-card pending"><div class="info-name"><span class="info-status pending"></span>Raspberry Pi 5 (8GB)<span class="info-badge pending">Not yet deployed</span></div><div class="info-desc">The whole house runs here in Docker. Four cores feeding eight services.</div><ul class="info-specs"><li>8GB RAM · Docker Compose</li><li>Celery concurrency 3 (leaves a core for the display)</li><li>MySQL buffer pool capped at 512MB</li></ul></div>
+    <div class="info-card pending"><div class="info-name"><span class="info-status pending"></span>24" 1080p Wall Display<span class="info-badge pending">Untested</span></div><div class="info-desc">HDMI-0. Always on, read from ~3 metres, never touched.</div><ul class="info-specs"><li>Chromium --kiosk, autostart on boot</li><li>Server-driven rotation every 45s</li><li>Night dimming + anti-burn-in pixel shift</li></ul></div>
+    <div class="info-card pending"><div class="info-name"><span class="info-status pending"></span>10.1" Touchscreen Kiosk<span class="info-badge pending">Untested</span></div><div class="info-desc">HDMI-1. The remote control for the wall display.</div><ul class="info-specs"><li>1280×800 · separate Chromium profile</li><li>64px minimum tap targets</li><li>HTTP fallback when the websocket drops</li></ul></div>
+  </div>
+
+  <div class="phase-label">Data Stores</div>
+  <div class="info-grid">
+    <div class="info-card ok"><div class="info-name"><span class="info-status ok"></span>MySQL / MariaDB 11<span class="info-badge ok">Schema ready</span></div><div class="info-desc">The relational core — anything the tracker joins across.</div><ul class="info-specs"><li>utf8mb4 · STRICT_TRANS_TABLES</li><li>Migrations generated for all 10 apps</li><li>SQLite stands in for laptop work</li></ul></div>
+    <div class="info-card pending"><div class="info-name"><span class="info-status pending"></span>MongoDB 7<span class="info-badge pending">Untested</span></div><div class="info-desc">Journals, AI transcripts, raw integration payloads. Optional by design.</div><ul class="info-specs"><li>Collections namespaced per app</li><li>Lazy pymongo import — absence is degraded, not broken</li><li>0.5GB WiredTiger cache on the Pi</li></ul></div>
+    <div class="info-card pending"><div class="info-name"><span class="info-status pending"></span>Redis 7<span class="info-badge pending">Untested</span></div><div class="info-desc">Cache, Channels layer, and rate limits.</div><ul class="info-specs"><li>256MB cap · allkeys-lru</li><li>Backs every websocket group</li></ul></div>
+    <div class="info-card pending"><div class="info-name"><span class="info-status pending"></span>RabbitMQ 3<span class="info-badge pending">Untested</span></div><div class="info-desc">Celery broker. Five queues so one app cannot delay an escalation.</div><ul class="info-specs"><li>platform · alerts · apps · ai · integrations</li><li>Collapsible to Redis for laptop work</li></ul></div>
+    <div class="info-card pending"><div class="info-name"><span class="info-status pending"></span>MinIO<span class="info-badge pending">Untested</span></div><div class="info-desc">S3-compatible object storage for photos, exports and backups.</div><ul class="info-specs"><li>Presigned URLs for phone browsers</li><li>Falls back to MEDIA_ROOT when disabled</li></ul></div>
+  </div>
+
+  <div class="phase-label">Front End — deliberately no build step</div>
+  <div class="info-grid">
+    <div class="info-card ok"><div class="info-name"><span class="info-status ok"></span>Apache ECharts 5.5<span class="info-badge ok">Vendored</span></div><div class="info-desc">Every chart in the house. Apps return an option dict; the platform themes it.</div><ul class="info-specs"><li>Committed to the repo — works offline</li><li>useDirtyRect for Pi performance</li><li>Theme derived from live CSS variables</li></ul></div>
+    <div class="info-card ok"><div class="info-name"><span class="info-status ok"></span>Gridstack 10.3<span class="info-badge ok">Vendored</span></div><div class="info-desc">Drag-and-resize for the per-person home grid.</div><ul class="info-specs"><li>12 columns · 80px rows</li><li>Degrades to a static CSS grid if absent</li></ul></div>
+    <div class="info-card ok"><div class="info-name"><span class="info-status ok"></span>Vanilla JS + Django templates<span class="info-badge ok">By choice</span></div><div class="info-desc">No npm, no bundler, no framework. A family member's agent can add a chart without a toolchain.</div><ul class="info-specs"><li>Served straight off the Pi</li><li>System font stack — no web fonts to fetch</li></ul></div>
+  </div>
+
+  <div class="phase-label">External Services</div>
+  <div class="info-grid">
+    <div class="info-card pending"><div class="info-name"><span class="info-status pending"></span>Claude API<span class="info-badge pending">No key yet</span></div><div class="info-desc">Three tiers so apps ask for a capability, not a model.</div><ul class="info-specs"><li>fast → claude-haiku-4-5</li><li>house → claude-sonnet-5</li><li>deep → claude-opus-5</li><li>Monthly budget cap refuses rather than spends</li></ul></div>
+    <div class="info-card pending"><div class="info-name"><span class="info-status pending"></span>Slack<span class="info-badge pending">No token yet</span></div><div class="info-desc">Bot token for DMs, or a webhook for one channel. Both supported.</div><ul class="info-specs"><li>Escalations also hit the house alert channel</li><li>Delivery receipts with retries</li></ul></div>
+    <div class="info-card planned"><div class="info-name"><span class="info-status planned"></span>Home Assistant<span class="info-badge planned">Story 25</span></div><div class="info-desc">First concrete integration. Framework is ready.</div><ul class="info-specs"><li>Entity states → telemetry series</li></ul></div>
+  </div>
+</div>
+
+<div id="tab-decisions" class="tab-pane">
+  <div class="phase-label">Decisions taken, and why</div>
+  <div class="decision"><h4>Django, not FastAPI or Node</h4><p>The admin alone justifies it: a family member can retime a job or edit an escalation ladder without a deploy. Batteries-included matters more than raw throughput on a home LAN. <span class="verdict">Settled.</span></p></div>
+  <div class="decision"><h4>Web app in kiosk mode, not a native app</h4><p>One codebase covers the 24" wall, the 10.1" kiosk, phones, iPads and laptops. Chromium <code>--kiosk</code> <em>is</em> the full-screen app experience, and updates are <code>make deploy</code> with no app store or version skew. The one real gap is iOS background push — which is precisely why notifications were built channel-agnostic, with Slack covering urgency. <span class="verdict">Settled.</span></p></div>
+  <div class="decision"><h4>MySQL and MongoDB, both</h4><p>Anything the tracker joins across is relational and belongs in MySQL. Journals, AI transcripts and raw integration payloads change shape as ideas change, and belong in Mongo. Mongo is optional — its absence is degraded, not broken. <span class="verdict">Settled.</span></p></div>
+  <div class="decision"><h4>RabbitMQ for work, Redis for everything else</h4><p>Durable queues and real routing mean a runaway house-app task can never delay an escalation. Redis is cache, Channels layer and rate limits. One env flag collapses both to Redis for laptop work. <span class="verdict">Settled.</span></p></div>
+  <div class="decision"><h4>Occurrences materialized, not computed</h4><p>The tracker writes concrete rows two weeks ahead. That is what makes "what did I miss last March" answerable and gives escalation state somewhere to live. <span class="verdict">Settled.</span></p></div>
+  <div class="decision"><h4>Escalation policies are data, not code</h4><p><code>EscalationPolicy.levels</code> is JSON edited in the admin. The house can change how hard it pushes without a developer. <span class="verdict">Settled.</span></p></div>
+  <div class="decision"><h4>Apps mount at the URL root</h4><p><code>/workout</code>, <code>/family</code>, <code>/maintenance</code> — each reads like its own site. The platform lives under <code>/home</code>, and a reserved-slug guard stops an app claiming a platform prefix. <span class="verdict">Settled (changed from /app/&lt;slug&gt;/).</span></p></div>
+  <div class="decision"><h4>Widgets return data, not HTML</h4><p><code>ChartWidget.option()</code> returns an ECharts option dict and the platform applies colour, type and dark/light. This is the single reason a chart written by one family member looks like one written by another. <span class="verdict">Settled.</span></p></div>
+  <div class="decision"><h4>Vendored libraries, no build step</h4><p>ECharts and Gridstack are committed to the repo. The house must render with the internet down, the Pi must never run a bundler, and a CDN outage must not blank the wall display. <span class="verdict">Settled.</span></p></div>
+  <div class="decision"><h4>Secrets never enter the database</h4><p>Integration credentials are read from the environment via <code>Integration.secret()</code>. A database dump shared for debugging carries no tokens. <span class="verdict">Settled.</span></p></div>
+  <div class="decision"><h4>Nora Home is not Nora</h4><p>The robot is a separate machine with its own repository. Package, settings prefix, CSS classes and JS globals were all renamed to <code>nora_home</code> / <code>NORA_HOME_*</code> / <code>nh-</code> so the two can never be confused in an import or a system prompt. They meet at exactly two places. <span class="verdict">Settled 2026-07-31.</span></p></div>
+  <div class="decision"><h4>Design language</h4><p>Four directions were rendered and rejected as too task-list-focused. A second, more visualization-led set is under review. <span style="color:#fbbf24;font-weight:600">Open — blocking Story 23.</span></p></div>
+</div>
+
+<footer>Nora Home &nbsp;·&nbsp; v0.1.0 &nbsp;·&nbsp; Generated 2026-07-31 &nbsp;·&nbsp; Source: docs/progress.md + CLAUDE.md &nbsp;·&nbsp; Update this file in the same commit as the code</footer>
+
+<div class="modal-backdrop" id="backdrop" onclick="closeOnBackdrop(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-story-num" id="m-num"></div>
+        <div class="modal-title" id="m-title"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-badges" id="m-badges"></div>
+    <div class="modal-body" id="m-body"></div>
+  </div>
+</div>
+
+<script>
+const STORIES = {
+  "1": { num:"Story 1", title:"Project Skeleton & Settings", status:"complete", phase:1, time:"~2 hours", readiness:"complete", deps:[],
+    what:"The Django project itself: a config/ package with settings layered dev → prod → pi on a shared base, every knob driven by the environment, and structured logging that attaches a request id, the acting member, and the surface to every line.",
+    how:"Settings read through small env()/env_bool()/env_int() helpers so no app ever touches os.environ. Logging uses a contextvar-based filter plus a JSON formatter, so logs/nora.log is greppable by hand and parseable by a script. Three settings modules layer rather than duplicate.",
+    files:["config/settings/base.py","config/settings/dev.py","config/settings/pi.py","config/settings/prod.py","nora_home/core/logging.py","nora_home/core/middleware.py"],
+    notes:"Dev settings fall back to in-memory cache, channel layer and broker, so `runserver` alone is a working system with no infrastructure at all." },
+
+  "2": { num:"Story 2", title:"App Registry", status:"complete", phase:1, time:"~3 hours", readiness:"complete", deps:["Story 1 ✅"],
+    what:"The single contract between a house app and the platform. Subclass NoraAppConfig, declare a slug and category, and the platform derives the URL mount, the nav entry, dashboard widgets, wall panels, role gating, and MCP presence. config/urls.py is never edited to add an app.",
+    how:"registered_apps() walks Django's app configs for NoraAppConfig instances and returns frozen AppMetadata. house_app_urlpatterns() mounts each app's urls.py at its own root-level slug, guarded by RESERVED_SLUGS, skipping anything broken with a logged error rather than failing the boot.",
+    files:["nora_home/core/registry.py","nora_home/core/cards.py","nora_home/dashboard/widgets.py"],
+    notes:"A bug worth remembering: Django picks an app's config by inspecting AppConfig subclasses in apps.py. Because that file also imports NoraAppConfig there were always two candidates, and with no tie-breaker Django silently fell back to a plain AppConfig — leaving the entire registry empty, with no error. Fixed with `default = False` on the base plus __init_subclass__ marking real configs. If the nav ever goes blank again, look there first." },
+
+  "3": { num:"Story 3", title:"Base Models, Audit & Health", status:"complete", phase:1, time:"~2 hours", readiness:"complete", deps:["Story 1 ✅"],
+    what:"The model bases every app inherits — TimeStamped, Owned, SoftDelete, UUID — plus a durable audit trail and health probes for every dependency the house relies on.",
+    how:"Each health probe is isolated and time-bounded, so a dead Mongo reports 'down' rather than hanging the endpoint systemd is watching. Critical services (database, disk) make the house unhealthy; everything else makes it degraded. audit.record() never raises — auditing must not break its caller.",
+    files:["nora_home/core/models.py","nora_home/core/health.py","nora_home/core/audit.py","nora_home/core/settings_store.py"],
+    notes:"/home/health/ is deliberately unauthenticated: it exposes up/down and percentages only, and something has to be able to check the house while nobody is logged in." },
+
+  "4": { num:"Story 4", title:"Household & Roles", status:"complete", phase:1, time:"~1.5 hours", readiness:"complete", deps:["Story 1 ✅"],
+    what:"HouseMember as AUTH_USER_MODEL: three roles (member, adult, admin), quiet hours, Slack IDs, accent colours, and an ordered escalation chain per person.",
+    how:"escalation_chain() returns the member's explicit contacts in order, falling back to every other adult when none are set — so escalation works before anyone configures it.",
+    files:["nora_home/accounts/models.py","nora_home/accounts/admin.py","nora_home/accounts/views.py"],
+    notes:"Apps reference people as settings.AUTH_USER_MODEL, never by importing HouseMember." },
+
+  "5": { num:"Story 5", title:"Tracker — Trackables & Occurrences", status:"complete", phase:2, time:"~4 hours", readiness:"complete", deps:["Story 3 ✅","Story 4 ✅"],
+    what:"Three layers kept deliberately separate: Trackable (the standing intent), Occurrence (one concrete due instance), Completion (evidence). Nine cadences from daily to cron.",
+    how:"Occurrences are materialized two weeks ahead rather than computed on read. Monthly cadences clamp to the last valid day, so a chore set for the 31st does not silently skip February. register_trackable() is idempotent on (app_slug, source_ref), which is why a house app can safely call it from a model's save().",
+    files:["nora_home/tracker/models.py","nora_home/tracker/scheduling.py","nora_home/tracker/api.py","nora_home/tracker/tasks.py"],
+    notes:"This is the API every house app should use instead of writing its own reminders. See DEVELOPMENT.md." },
+
+  "6": { num:"Story 6", title:"Escalation Engine", status:"complete", phase:2, time:"~3 hours", readiness:"complete", deps:["Story 5 ✅","Story 7 ✅"],
+    what:"The part that makes this more than a todo list. Overdue items climb a ladder: the owner, then their escalation chain one rung at a time, then all adults, then the whole house on Slack and the wall display.",
+    how:"EscalationPolicy.levels is JSON — each rung has a delay past due, an audience and a severity — so the ladder is editable in the admin without a deploy. A sweep runs every five minutes; escalation_level ensures each rung fires exactly once. Completing or acknowledging stops the climb.",
+    files:["nora_home/tracker/escalation.py","nora_home/tracker/models.py"],
+    notes:"Three policies ship by default: House default (nudge → warn → chain → house), Gentle (habits — two touches then let it go), Safety critical (all adults at 15 minutes).",
+    warn:"Written and reviewed but never actually executed — Celery has not run. Story 27 proves it." },
+
+  "7": { num:"Story 7", title:"Notifications & Channels", status:"complete", phase:2, time:"~3 hours", readiness:"complete", deps:["Story 4 ✅"],
+    what:"Four channels — Slack, in-app, wall display, console — behind one notify() call. Intent (Notification) and delivery (Delivery) are separate records, so retries, escalation proof, and 'did anyone see this?' are all answerable.",
+    how:"Slack supports a bot token (DMs, blocks, threading) or a webhook (one channel, zero setup), chosen automatically. Quiet hours drop push channels unless severity is alert or critical. Deduplication collapses identical reminders inside a window.",
+    files:["nora_home/notifications/api.py","nora_home/notifications/models.py","nora_home/notifications/channels/slack.py","nora_home/notifications/tasks.py"],
+    notes:"Escalations always also land in the house alert channel, so nothing dies quietly in a DM." },
+
+  "8": { num:"Story 8", title:"Responsive Shell & Surfaces", status:"complete", phase:3, time:"~3 hours", readiness:"complete", deps:["Story 1 ✅"],
+    what:"One stylesheet serving five surfaces. SurfaceMiddleware names the surface server-side and stamps it on <html>, so the wall gets three-metre type and the kiosk gets 64px tap targets without any viewport measuring in JavaScript.",
+    how:"URL decides for wall and kiosk (fixed-purpose pages), User-Agent for the rest, and a cookie overrides everything. Sizing is driven by CSS custom properties scoped to [data-surface].",
+    files:["nora_home/ui/middleware.py","nora_home/ui/context_processors.py","static/nora_home/css/nora-home.css","templates/base.html"],
+    notes:"No web fonts — the Pi has to render with the internet down. System font stack throughout.",
+    warn:"The visual design is a placeholder pending Story 23. Structure is sound; the look is not final." },
+
+  "9": { num:"Story 9", title:"The Home Bot", status:"complete", phase:3, time:"~2.5 hours", readiness:"complete", deps:["Story 8 ✅"],
+    what:"The little face in the corner. It wanders when idle, zips toward whatever was just touched, and speaks when the house has something to say. Eight moods, a speech bubble, and a websocket for live pushes.",
+    how:"One absolutely-positioned element with a small SVG face; all the personality is in CSS transforms, so nothing blocks layout or scrolling. Collapses to a static, silent avatar under prefers-reduced-motion. Stays off the wall display entirely — nobody is standing there to talk to.",
+    files:["static/nora_home/js/nh-bot.js","static/nora_home/css/nh-bot.css","nora_home/ui/bot.py","nora_home/ui/consumers.py"],
+    notes:"This is Nora Home's own avatar, not Nora the robot. The module docstring says so explicitly, and the AI system prompt draws the same distinction, because that confusion is the single most likely thing to leak into user-facing copy." },
+
+  "10": { num:"Story 10", title:"Wall Display + Kiosk Bus", status:"partial", phase:3, time:"~4 hours", readiness:"partial", deps:["Story 8 ✅","Story 7 ✅"],
+    what:"The 24\" always-on screen and the 10.1\" touchscreen that drives it. Rotation, pinning, night dimming, alert banners, anti-burn-in pixel shift, and offline detection.",
+    how:"Commands travel kiosk → server → wall over Channels, never directly, so the state is recorded and any screen can join. Every panel is rendered into the wall page once and switched client-side, so a rotation costs nothing and a network blip never blanks the screen. If the socket dies a local timer takes over.",
+    files:["nora_home/displays/models.py","nora_home/displays/bus.py","nora_home/displays/consumers.py","static/nora_home/js/wall.js","static/nora_home/js/kiosk.js","templates/displays/wall.html","templates/displays/kiosk.html"],
+    notes:"Rotation is server-driven rather than a browser timer, which is what lets the kiosk pin a panel and have every screen agree.",
+    warn:"Neither page has ever been opened in a browser. The code is written; the behaviour is unobserved." },
+
+  "11": { num:"Story 11", title:"Home Dashboard — Widgets", status:"complete", phase:3, time:"~5 hours", readiness:"complete", deps:["Story 2 ✅","Story 8 ✅"],
+    what:"The home screen: a per-person 12-column grid of visualizations picked from any installed app. Four widget kinds — Chart, Stat, List, Template — plus an 'add a widget' picker grouped by app.",
+    how:"Widgets return data, not markup. ChartWidget.option() returns an ECharts option dict and the platform applies palette, type, grid and tooltip styling from live CSS variables. Layouts are stored per member and validated server-side, so a stale tab cannot write nonsense. Unknown widget keys are skipped rather than deleted, so uninstalling and reinstalling an app restores the layout.",
+    files:["nora_home/dashboard/widgets.py","nora_home/dashboard/models.py","nora_home/dashboard/views.py","static/nora_home/js/dashboard.js","static/nora_home/js/nh-charts.js","templates/dashboard/home.html"],
+    notes:"Verified working in a browser: list, stat and chart widgets render, the picker adds and removes tiles, and layouts persist. Degrades usefully — without the vendored libraries stats and lists still render and only charts wait." },
+
+  "12": { num:"Story 12", title:"Telemetry", status:"complete", phase:4, time:"~2.5 hours", readiness:"complete", deps:["Story 3 ✅","Story 7 ✅"],
+    what:"One time-series store for every number the house tracks: weight, sleep, room temperature, robot battery, portfolio value, litres of water. All the same shape — a named number, at a time, optionally about a person.",
+    how:"Series holds the definition (unit, thresholds, owner app) and Reading holds the data, keeping the hot table narrow — which matters on a Pi. Crossing a warn or alert bound fires a notification and a signal automatically. Hourly rollups mean a year-long chart never reads a million rows.",
+    files:["nora_home/telemetry/models.py","nora_home/telemetry/api.py","nora_home/telemetry/tasks.py"],
+    notes:"Recording here rather than in a private table is what makes a number visible to the wall display, the MCP tools and the AI without the app doing anything else." },
+
+  "13": { num:"Story 13", title:"AI — Claude Integration", status:"partial", phase:4, time:"~3 hours", readiness:"partial", deps:["Story 3 ✅"],
+    what:"A house-wide Claude client. Three tiers (fast/house/deep) so apps ask for a capability rather than naming a model, a shared prompt-cached system prefix, per-call cost accounting, and a monthly budget that refuses rather than spends.",
+    how:"The stable house prompt sits behind a cache_control breakpoint, so it is nearly free after the first call of the window; per-app instructions go after the breakpoint so they never bust the shared cache. Adaptive thinking and effort are only sent to models that accept them. stop_reason is checked before reading content, so a refusal cannot crash a caller.",
+    files:["nora_home/ai/client.py","nora_home/ai/catalog.py","nora_home/ai/models.py","nora_home/ai/tasks.py"],
+    notes:"The system prompt states explicitly that Nora Home is not Nora the robot, so the assistant never answers as though it were the robot.",
+    warn:"No API key has been available. Not one request has been made — model IDs, caching and cost maths are all unverified against the live API." },
+
+  "14": { num:"Story 14", title:"MCP Server", status:"partial", phase:4, time:"~2.5 hours", readiness:"partial", deps:["Story 5 ✅","Story 12 ✅"],
+    what:"House data exposed to AI agents as MCP tools, over stdio (for Claude Code and Claude Desktop) and over HTTP (for the robot and phone shortcuts). Six platform tools; apps add their own with a decorator.",
+    how:"A registry maps tool name → handler, schema and required scopes. HTTP auth prefers a revocable device token over the shared secret, and write-scoped tools are refused unless the token carries the scope. Every call is audited.",
+    files:["nora_home/mcpserver/registry.py","nora_home/mcpserver/tools.py","nora_home/mcpserver/views.py","nora_home/mcpserver/management/commands/mcp_stdio.py"],
+    notes:"Tool descriptions are written to say when to call them, not just what they return — that is what makes an agent reach for them at the right moment.",
+    warn:"Never connected to an actual MCP client. The stdio command needs the `mcp` package and has not been exercised." },
+
+  "15": { num:"Story 15", title:"Mongo & Object Storage", status:"partial", phase:4, time:"~2 hours", readiness:"partial", deps:["Story 1 ✅"],
+    what:"Helpers for the two non-relational stores: namespaced Mongo collections for documents, and S3/MinIO for photos, exports and backups with presigned URLs.",
+    how:"Both import their driver lazily, so the platform runs without either installed. Collections are namespaced per app so two apps cannot collide on a name. Object storage falls back to MEDIA_ROOT when disabled, which is why laptop development needs no infrastructure.",
+    files:["nora_home/datastores/mongo.py","nora_home/datastores/objects.py"],
+    warn:"Never run against a real Mongo or MinIO server. Connection handling, presigning and bucket creation are all unverified." },
+
+  "16": { num:"Story 16", title:"Backup, Restore & Migration", status:"partial", phase:4, time:"~3 hours", readiness:"partial", deps:["Story 15 ◐"],
+    what:"Nightly backups of the SQL database, Mongo, media files, and a portable ORM fixture, with retention pruning and optional upload to object storage. Restore has two modes: exact, and cross-engine.",
+    how:"The fixture dump is the migration path — it restores into a different database engine, which is what makes moving off this Pi possible without a MySQL server on the other end. The SQL dump is the fast exact path. Restore refuses to run without --yes and prints the manifest first.",
+    files:["nora_home/datastores/management/commands/nora_backup.py","nora_home/datastores/management/commands/nora_restore.py","nora_home/datastores/tasks.py"],
+    notes:"A failed nightly backup notifies the house. A backup nobody notices breaking is not a backup.",
+    warn:"Never executed. mysqldump/mongodump paths, archive layout and the restore flow are all unverified." },
+
+  "17": { num:"Story 17", title:"Docker Stack & One-Command Deploy", status:"partial", phase:5, time:"~3 hours", readiness:"partial", deps:["Story 1 ✅"],
+    what:"Eight services in one compose file, health-gated startup ordering, and migrations that run in the entrypoint — so deploying is `git pull && docker compose up -d` and nothing else. A Makefile wraps every routine operation in one word.",
+    how:"One image, three roles chosen by the command (web/worker/beat). Only the web role migrates, so concurrent workers cannot race each other. Resource limits are tuned for a Pi with four cores and eight other things to feed.",
+    files:["Dockerfile","docker-compose.yml","docker/entrypoint.sh","Makefile"],
+    notes:"`make up` on a fresh machine creates .env with a generated secret key, builds, migrates and bootstraps.",
+    warn:"The image has never been built and the stack has never been started. Expect first-run breakage." },
+
+  "18": { num:"Story 18", title:"Pi Provisioning & Dual Display", status:"partial", phase:5, time:"~2.5 hours", readiness:"partial", deps:["Story 17 ◐","Story 10 ◐"],
+    what:"One script that takes a bare Raspberry Pi to a running house: Docker, the repo, a generated .env, a systemd unit, and both HDMI outputs auto-starting Chromium in kiosk mode at the right URL.",
+    how:"Each display gets its own Chromium profile so sessions and zoom stay independent. The launcher waits for /home/health/ to answer before opening a window — a kiosk showing a connection error is worse than a black screen for thirty more seconds. Screen blanking and DPMS are disabled.",
+    files:["scripts/install-pi.sh"],
+    warn:"Never run on a Pi. Display positioning, autostart behaviour and the systemd unit are all unverified." },
+
+  "19": { num:"Story 19", title:"App Installer", status:"complete", phase:5, time:"~2 hours", readiness:"complete", deps:["Story 2 ✅"],
+    what:"`make app SRC=<git url>` clones a house app, verifies it declares a NoraAppConfig, registers it in .env, generates and applies its migrations, and collects its static files.",
+    how:"Deliberately conservative — it refuses rather than guesses when something looks wrong, because a half-installed app that breaks the wall display is worse than a failed install. Accepts a git URL, a local path, or an already-present module.",
+    files:["nora_home/core/management/commands/install_app.py","nora_home/core/management/commands/list_apps.py"],
+    notes:"This is the one-click app deployment path. No editing of settings or urls.py by hand." },
+
+  "20": { num:"Story 20", title:"Integration Framework", status:"partial", phase:5, time:"~2 hours", readiness:"partial", deps:["Story 12 ✅","Story 7 ✅"],
+    what:"The plumbing for pulling the outside world in on a schedule: Home Assistant, markets, weather, calendars. Scheduling, exponential backoff, failure alerting and credential handling are all provided; an integration only implements fetch().",
+    how:"Failures back off exponentially, so a dead service is polled every few hours rather than every few minutes. The house is told after three consecutive failures — once, not every cycle. Credentials are read from the environment, never the database, so a shared database dump carries no tokens.",
+    files:["nora_home/integrations/base.py","nora_home/integrations/models.py","nora_home/integrations/tasks.py"],
+    warn:"Zero concrete integrations exist. The framework has never polled anything." },
+
+  "21": { num:"Story 21", title:"Test Suite", status:"planned", phase:6, time:"~6 hours", readiness:"indep", deps:[],
+    what:"pytest with pytest-django is configured and not one test is written. The escalation ladder and the cadence scheduler are the parts that most need coverage — they run unattended and their failures are silent.",
+    how:"Planned: factory-boy fixtures for members and trackables, freezegun for time travel through cadences and escalation rungs, and a smoke test per management command.",
+    files:["pyproject.toml (already configured)"],
+    notes:"Can start at any time — no dependency on the design decision or the Pi." },
+
+  "22": { num:"Story 22", title:"PWA — Install & Offline", status:"planned", phase:6, time:"~3 hours", readiness:"blocked", deps:["Story 23 ▶"],
+    what:"A web app manifest and a service worker, so phones get a home-screen icon, full-screen chrome without browser UI, and offline-tolerant reads of the last known state.",
+    how:"Planned: cache the shell and the last dashboard payload, fall back to it when the LAN is unreachable. This is what closes most of the gap between 'a website' and 'a real app' without a native build.",
+    files:["(not yet written)"],
+    notes:"Waits on Story 23 because the manifest needs final icons and theme colours." },
+
+  "23": { num:"Story 23", title:"Design System Build-Out", status:"next", phase:6, time:"~6 hours", readiness:"blocked", deps:["a decision from you"],
+    what:"Take the chosen design direction and build it properly: full type scale, spacing system, every component, the ECharts theme, light and dark, and verification across all five surfaces.",
+    how:"docs/design-options.html renders complete directions side by side against the same data. Whichever is chosen becomes static/nora_home/css/nora-home.css, and nh-charts.js derives the chart palette from the same variables so charts and chrome can never drift apart.",
+    files:["static/nora_home/css/nora-home.css","static/nora_home/js/nh-charts.js","docs/design-options.html"],
+    notes:"The current stylesheet is a working placeholder. Structure is right; the look is explicitly not final.",
+    warn:"Blocked on a decision. The first set of directions was rejected as too task-list-focused; a second, visualization-led set is under review." },
+
+  "24": { num:"Story 24", title:"First Real App — House Maintenance", status:"planned", phase:6, time:"~5 hours", readiness:"blocked", deps:["Story 27 ▶"],
+    what:"The app that proves the skeleton was worth building. Filters, appliances, seasonal jobs, consumables — long cadences, real escalation, a wall panel and a couple of widgets.",
+    how:"Chosen deliberately as the first app because it exercises quarterly and yearly cadences, the escalation ladder, and the wall display, without needing anybody's health data to be modelled first.",
+    files:["houseapps/maintenance/ (not yet written)"],
+    notes:"If this app needs more than models, views and widgets, the platform has a gap worth fixing before anyone writes a second app." },
+
+  "25": { num:"Story 25", title:"Home Assistant Integration", status:"planned", phase:6, time:"~3 hours", readiness:"blocked", deps:["Story 20 ◐","Story 27 ▶"],
+    what:"The first concrete integration. Pull entity states from Home Assistant into telemetry series, which puts them on the wall display, in the MCP tools, and in front of the AI without any further work.",
+    how:"Planned: poll /api/states on an interval, map configured entity IDs to telemetry series, store raw payloads in Mongo while the useful shape is still being worked out.",
+    files:["nora_home/integrations/providers/home_assistant.py (not yet written)"],
+    notes:"Token goes in .env as NORA_HOME_INTEGRATION_HOME_ASSISTANT_TOKEN, never in the database." },
+
+  "26": { num:"Story 26", title:"Nora Robot Bridge", status:"planned", phase:6, time:"~4 hours", readiness:"blocked", deps:["the robot's Story 10"],
+    what:"The deliberate, narrow seam between the house and the robot. Two touchpoints only: robot telemetry flowing into the house's time-series store, and the robot able to put a line on the house's screens.",
+    how:"Planned: a scoped device token for the robot, telemetry posted to the platform API, and POST /api/homebot/say/ for the outbound direction. The robot reads house context through the existing MCP tools. Nothing else is shared — no shared database, no shared models.",
+    files:["nora_home/core/api/ (endpoints exist)","houseapps/robot_monitor/ (not yet written)"],
+    notes:"Waits on the robot project reaching its own MongoDB/context story. Deliberately the last integration, so the boundary is designed rather than accreted." },
+
+  "27": { num:"Story 27", title:"First Real Run on the Pi", status:"next", phase:6, time:"~4 hours", readiness:"ready", deps:["Story 17 ◐","Story 18 ◐"],
+    what:"Bring the whole stack up against real MySQL, MongoDB, RabbitMQ and MinIO, and observe it working. This single story converts eight 'built, unproven' stories into either 'complete' or a bug list.",
+    how:"Plan: docker compose up on the laptop first (same images, faster iteration), verify migrations, Celery beat firing, an escalation actually reaching Slack, a backup actually producing an archive, and the wall and kiosk pages in a browser. Then repeat on the Pi with both displays attached.",
+    files:["docker-compose.yml","docker/entrypoint.sh","scripts/install-pi.sh"],
+    notes:"Highest-value story on the board. Everything downstream is guesswork until this runs.",
+    warn:"Expect first-run breakage. Nothing in the container path has ever executed." },
+
+  "r1": { num:"Superseded", title:"Cards on the Home Screen", status:"retired", phase:3, time:"—", readiness:"complete", deps:[],
+    what:"The home screen was originally a grid of server-rendered HTML cards, each app contributing templates rendered on the request.",
+    how:"Replaced by widgets, which return data rather than markup. That single change is what lets the platform theme every chart consistently and lets each person rearrange their own screen.",
+    files:["nora_home/core/cards.py (still used — for wall panels)"],
+    retired_reason:"Cards could not be rearranged per person, and every app styling its own HTML meant charts drifted apart visually. Cards survive as the wall display's unit, where full-screen HTML on a timer is exactly right." },
+
+  "r2": { num:"Superseded", title:"Apps under /app/<slug>/", status:"retired", phase:1, time:"—", readiness:"complete", deps:[],
+    what:"House apps were originally mounted beneath a shared /app/ prefix — /app/workout/, /app/family/.",
+    how:"Changed to root-level mounts so each app reads like its own site, with the platform moved under /home and a reserved-slug guard added to stop collisions.",
+    files:["config/urls.py","nora_home/core/registry.py"],
+    retired_reason:"Requested directly: the base app belongs at /home and each app at its own top-level URL. Root-level slugs are shorter to type on a phone and read better on the wall display." },
+
+  "r3": { num:"Considered", title:"Native Kiosk Application", status:"retired", phase:3, time:"—", readiness:"complete", deps:[],
+    what:"Package the house system as a native application — Electron on the Pi, native builds for phones and tablets.",
+    how:"Rejected in favour of a web app served locally, displayed by Chromium in --kiosk mode, and installable as a PWA on phones.",
+    files:["scripts/install-pi.sh"],
+    retired_reason:"One codebase covers five surfaces; a native path means four builds and four release processes for a house of four people. Chromium --kiosk already is the full-screen app experience, and updates become `make deploy` with no app store and no version skew between the wall display and someone's phone. The only genuine loss is iOS background push — which Slack already covers, and which is why notifications were built channel-agnostic from the start." },
+
+  "r4": { num:"Considered", title:"CDN-Loaded Chart Libraries", status:"retired", phase:3, time:"—", readiness:"complete", deps:[],
+    what:"Load ECharts and Gridstack from jsDelivr at page load, as almost every project does.",
+    how:"Replaced by vendoring both into static/nora_home/vendor/, committed to the repo, fetched once by scripts/vendor.sh.",
+    files:["scripts/vendor.sh","static/nora_home/vendor/"],
+    retired_reason:"The house has to work with the internet down, and a CDN outage must never blank an always-on wall display. Two files and about 1.2MB buys permanent independence." },
+
+  "r5": { num:"Considered", title:"React / Vue + Build Step", status:"retired", phase:3, time:"—", readiness:"complete", deps:[],
+    what:"A modern frontend framework with npm, a bundler, and a compiled asset pipeline.",
+    how:"Rejected in favour of Django templates and vanilla JavaScript with no build step at all.",
+    files:["static/nora_home/js/"],
+    retired_reason:"Two reasons, both decisive. The Pi should never run a bundler — build times and memory on a 4-core ARM board are a permanent tax. And a family member's AI agent should be able to add a chart to their app without installing a toolchain first; that is the entire premise of DEVELOPMENT.md." },
+
+  "r6": { num:"Renamed", title:"The nora package name", status:"retired", phase:1, time:"~1 hour", readiness:"complete", deps:[],
+    what:"All platform code lived in nora/, settings were prefixed NORA_, CSS classes were .nora-*, the JS global was window.Nora, and the on-screen bot was called Nora.",
+    how:"Renamed wholesale: nora/ → nora_home/, NORA_* → NORA_HOME_*, .nora-bot → .nh-bot, window.Nora → window.NoraHome, and the bot became the home bot. The AI system prompt now states the distinction explicitly.",
+    files:["nora_home/","static/nora_home/","config/settings/base.py",".env.example"],
+    retired_reason:"Nora is the family's robot — a separate machine with its own repository. Sharing a name across an import path, an env var and a system prompt was a guaranteed source of confusion, most dangerously in the AI prompt where the assistant could answer as though it were the robot. The two systems now meet at exactly two documented touchpoints." }
+};
+
+function badgeFor(status) {
+  const map = { complete:["badge-complete","✓ Complete"], partial:["badge-partial","◐ Built, Unproven"],
+                next:["badge-next","▶ Next"], planned:["badge-planned","Planned"], retired:["badge-retired","Retired"] };
+  const [cls, label] = map[status] || map.planned;
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function readinessFor(r) {
+  const map = { ready:["readiness-ready","🟢 Ready to start"], blocked:["readiness-blocked","⏳ Blocked"],
+                indep:["readiness-indep","🔵 Can start anytime"], complete:["readiness-complete","✓ Done"],
+                partial:["readiness-partial","◐ Written, not proven"] };
+  const [cls, label] = map[r] || map.blocked;
+  return `<span class="readiness-pill ${cls}">${label}</span>`;
+}
+
+function openModal(id) {
+  const s = STORIES[id];
+  if (!s) return;
+  document.getElementById('m-num').textContent = s.num;
+  document.getElementById('m-title').textContent = s.title;
+  document.getElementById('m-badges').innerHTML = badgeFor(s.status) + ' ' + readinessFor(s.readiness);
+
+  let html = '';
+  html += `<div class="modal-grid">
+    <div class="modal-stat"><div class="stat-label">Phase</div><div class="stat-value">Phase ${s.phase}</div></div>
+    <div class="modal-stat"><div class="stat-label">Effort</div><div class="stat-value">${s.time}</div></div>
+  </div>`;
+
+  if (s.deps && s.deps.length) {
+    html += `<div class="modal-section"><h4>Depends on</h4><div class="dep-list">` +
+      s.deps.map(d => `<div class="dep-item">${d}</div>`).join('') + `</div></div>`;
+  }
+  html += `<div class="modal-section"><h4>What it is</h4><p>${s.what}</p></div>`;
+  html += `<div class="modal-section"><h4>How it works</h4><p>${s.how}</p></div>`;
+  if (s.files && s.files.length) {
+    html += `<div class="modal-section"><h4>Files</h4><div class="file-list">` +
+      s.files.map(f => `<div class="file-item">${f}</div>`).join('') + `</div></div>`;
+  }
+  if (s.notes) html += `<div class="modal-section"><h4>Notes</h4><p>${s.notes}</p></div>`;
+  if (s.warn) html += `<div class="warn-box">${s.warn}</div>`;
+  if (s.retired_reason) html += `<div class="retired-box"><strong>Why it was dropped:</strong> ${s.retired_reason}</div>`;
+
+  document.getElementById('m-body').innerHTML = html;
+  document.getElementById('backdrop').classList.add('open');
+}
+
+function closeModal() { document.getElementById('backdrop').classList.remove('open'); }
+function closeOnBackdrop(e) { if (e.target.id === 'backdrop') closeModal(); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+}
+</script>
+</body>
+</html>

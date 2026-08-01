@@ -1,0 +1,122 @@
+"""
+Slack delivery.
+
+Two modes, chosen automatically:
+  * bot token (NORA_HOME_SLACK_BOT_TOKEN) — DMs individuals, threads, adds reactions;
+  * incoming webhook (NORA_HOME_SLACK_WEBHOOK_URL) — one channel, no DMs, zero setup.
+
+Escalations always go to NORA_HOME_SLACK_ESCALATION_CHANNEL so the whole house sees
+them, in addition to the DM to the person responsible.
+"""
+
+from __future__ import annotations
+
+import logging
+
+import requests
+from django.conf import settings
+
+from nora_home.notifications.channels import BaseChannel, ChannelError
+
+logger = logging.getLogger(__name__)
+
+SLACK_API = "https://slack.com/api/chat.postMessage"
+TIMEOUT = 10
+
+SEVERITY_STYLE = {
+    "info": (":information_source:", "#60a5fa"),
+    "nudge": (":wave:", "#a78bfa"),
+    "warning": (":warning:", "#fbbf24"),
+    "alert": (":rotating_light:", "#fb7185"),
+    "critical": (":rotating_light:", "#ef4444"),
+}
+
+
+class SlackChannel(BaseChannel):
+    name = "slack"
+
+    def is_configured(self) -> bool:
+        return bool(settings.NORA_HOME_SLACK_BOT_TOKEN or settings.NORA_HOME_SLACK_WEBHOOK_URL)
+
+    def send(self, notification, delivery) -> dict:
+        if not self.is_configured():
+            raise ChannelError("Slack is not configured (no bot token or webhook URL).")
+
+        target = self._target(notification)
+        blocks = self._blocks(notification)
+        text = f"{notification.title} — {notification.body}".strip(" —")
+
+        if settings.NORA_HOME_SLACK_BOT_TOKEN:
+            return self._send_via_api(target, text, blocks)
+        return self._send_via_webhook(text, blocks)
+
+    # ── targeting ──────────────────────────────────────────────────────────────
+    def _target(self, notification) -> str:
+        if notification.severity in {"alert", "critical"}:
+            return settings.NORA_HOME_SLACK_ESCALATION_CHANNEL
+        recipient = notification.recipient
+        if recipient is not None:
+            dm = recipient.slack_dm_channel or recipient.slack_user_id
+            if dm:
+                return dm
+        return settings.NORA_HOME_SLACK_DEFAULT_CHANNEL
+
+    # ── rendering ──────────────────────────────────────────────────────────────
+    def _blocks(self, notification) -> list[dict]:
+        emoji, _ = SEVERITY_STYLE.get(notification.severity, SEVERITY_STYLE["info"])
+        blocks: list[dict] = [{
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": f"{emoji} *{notification.title}*"},
+        }]
+        if notification.body:
+            blocks.append({"type": "section",
+                           "text": {"type": "mrkdwn", "text": notification.body[:2900]}})
+
+        context_bits = [f"_{notification.app_slug}_"]
+        if notification.recipient:
+            context_bits.append(str(notification.recipient.name))
+        blocks.append({"type": "context",
+                       "elements": [{"type": "mrkdwn", "text": " · ".join(context_bits)}]})
+
+        if notification.url:
+            base = (settings.ALLOWED_HOSTS[0] if settings.ALLOWED_HOSTS else "nora_home.home")
+            href = notification.url if notification.url.startswith("http") \
+                else f"http://{base}{notification.url}"
+            blocks.append({
+                "type": "actions",
+                "elements": [{
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "Open in Nora Home"},
+                    "url": href,
+                }],
+            })
+        return blocks
+
+    # ── transports ─────────────────────────────────────────────────────────────
+    def _send_via_api(self, target: str, text: str, blocks: list[dict]) -> dict:
+        try:
+            response = requests.post(
+                SLACK_API,
+                headers={"Authorization": f"Bearer {settings.NORA_HOME_SLACK_BOT_TOKEN}",
+                         "Content-Type": "application/json; charset=utf-8"},
+                json={"channel": target, "text": text, "blocks": blocks},
+                timeout=TIMEOUT,
+            )
+        except requests.RequestException as exc:
+            raise ChannelError(f"Slack request failed: {exc}") from exc
+
+        payload = response.json() if response.content else {}
+        if not payload.get("ok"):
+            raise ChannelError(f"Slack rejected the message: {payload.get('error', '?')}")
+        return {"target": target, "ref": payload.get("ts", "")}
+
+    def _send_via_webhook(self, text: str, blocks: list[dict]) -> dict:
+        try:
+            response = requests.post(settings.NORA_HOME_SLACK_WEBHOOK_URL,
+                                     json={"text": text, "blocks": blocks},
+                                     timeout=TIMEOUT)
+        except requests.RequestException as exc:
+            raise ChannelError(f"Slack webhook failed: {exc}") from exc
+        if response.status_code >= 300:
+            raise ChannelError(f"Slack webhook returned {response.status_code}")
+        return {"target": "webhook", "ref": ""}

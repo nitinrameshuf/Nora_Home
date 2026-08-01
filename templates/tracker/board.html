@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block actions %}
+  <a class="btn" href="{% url 'tracker:house_board' %}">The whole house</a>
+{% endblock %}
+
+{% block content %}
+  {% if overdue %}
+    <h2>Overdue</h2>
+    <ul class="item-list">
+      {% for item in overdue %}
+        <li class="item is-overdue">
+          <button class="tick" type="button" data-complete-url="{% url 'tracker:complete' item.uuid %}"
+                  aria-label="Mark {{ item.trackable.title }} done"></button>
+          <div class="item-body">
+            <div class="item-title">
+              <a href="{% url 'tracker:detail' item.trackable.uuid %}">{{ item.trackable.title }}</a>
+            </div>
+            <div class="item-meta">
+              {{ item.due_at|timesince }} late
+              {% if item.escalation_level %}
+                · <span class="pill alert">L{{ item.escalation_level }}</span>
+              {% endif %}
+            </div>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <h2>Today</h2>
+  <ul class="item-list">
+    {% for item in today %}
+      <li class="item">
+        <button class="tick" type="button" data-complete-url="{% url 'tracker:complete' item.uuid %}"
+                aria-label="Mark {{ item.trackable.title }} done"></button>
+        <div class="item-body">
+          <div class="item-title">
+            <a href="{% url 'tracker:detail' item.trackable.uuid %}">{{ item.trackable.title }}</a>
+          </div>
+          <div class="item-meta">{{ item.due_at|time:"H:i" }} · {{ item.trackable.app_slug }}</div>
+        </div>
+      </li>
+    {% empty %}
+      <li class="item"><div class="item-body card-subtitle">Clear for today.</div></li>
+    {% endfor %}
+  </ul>
+
+  {% if ahead %}
+    <h2 style="margin-top:2rem">Coming up</h2>
+    <ul class="item-list">
+      {% for item in ahead %}
+        <li class="item">
+          <div class="item-body">
+            <div class="item-title">{{ item.trackable.title }}</div>
+            <div class="item-meta">{{ item.due_at|date:"D d M, H:i" }}</div>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endblock %}

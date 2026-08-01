@@ -1,0 +1,11 @@
+-r base.txt
+
+# Local development. SQLite is the default DB here so you can work without
+# MySQL running; set NORA_HOME_DB_ENGINE=mysql in .env to match production.
+django-extensions>=3.2
+pytest>=8.3
+pytest-django>=4.9
+pytest-cov>=5.0
+factory-boy>=3.3
+ruff>=0.7
+django-debug-toolbar>=4.4

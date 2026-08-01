@@ -1,0 +1,28 @@
+# The repo is authored on Windows and runs on Linux. Without this, shell scripts
+# get CRLF line endings on checkout and the Pi fails them with "bad interpreter" —
+# which is a confusing way to discover a line-ending problem at 1am.
+
+* text=auto eol=lf
+
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+Makefile    text eol=lf
+*.py        text eol=lf
+*.html      text eol=lf
+*.css       text eol=lf
+*.js        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.md        text eol=lf
+*.toml      text eol=lf
+*.txt       text eol=lf
+
+# Vendored libraries: keep them byte-for-byte as downloaded, and out of diffs.
+static/nora_home/vendor/** linguist-vendored -text
+*.min.js    binary
+*.min.css   binary
+
+*.png       binary
+*.jpg       binary
+*.ico       binary
+*.woff2     binary

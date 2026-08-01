@@ -1,0 +1,152 @@
+# The whole house, in one file.
+#
+#     docker compose up -d
+#
+# brings up MySQL, MongoDB, Redis, RabbitMQ, MinIO, the web app, a Celery worker,
+# and beat — and applies migrations on the way. There is no separate deploy step.
+#
+# Everything binds to the LAN only where it can; the app itself is on :8000.
+
+name: nora-home
+
+x-app: &app
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: nora-home:latest
+  env_file: .env
+  environment:
+    DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-config.settings.pi}
+    NORA_HOME_DB_HOST: mysql
+    NORA_HOME_MONGO_URI: mongodb://mongo:27017
+    NORA_HOME_REDIS_URL: redis://redis:6379/0
+    NORA_HOME_AMQP_URL: amqp://nora:${RABBITMQ_PASSWORD:-nora}@rabbitmq:5672//
+    NORA_HOME_S3_ENDPOINT_URL: http://minio:9000
+    NORA_HOME_WEB_HOST: web
+  volumes:
+    - media:/srv/nora/media
+    - logs:/srv/nora/logs
+    - backups:/var/backups/nora
+  restart: unless-stopped
+  depends_on:
+    mysql: { condition: service_healthy }
+    redis: { condition: service_healthy }
+    rabbitmq: { condition: service_healthy }
+
+services:
+  # ── the app ────────────────────────────────────────────────────────────────
+  web:
+    <<: *app
+    command: ["web"]
+    ports:
+      - "${NORA_HOME_PORT:-8000}:8000"
+    volumes:
+      - media:/srv/nora/media
+      - logs:/srv/nora/logs
+      - backups:/var/backups/nora
+      - static:/srv/nora/staticfiles
+
+  worker:
+    <<: *app
+    command: ["worker"]
+    depends_on:
+      web: { condition: service_healthy }
+
+  beat:
+    <<: *app
+    command: ["beat"]
+    depends_on:
+      web: { condition: service_healthy }
+
+  # ── data ───────────────────────────────────────────────────────────────────
+  mysql:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${NORA_HOME_DB_NAME:-nora_home}
+      MARIADB_USER: ${NORA_HOME_DB_USER:-nora}
+      MARIADB_PASSWORD: ${NORA_HOME_DB_PASSWORD:-nora}
+      MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-nora-root}
+    command:
+      # A Pi has 8GB and four other services to feed. These are deliberate.
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-buffer-pool-size=512M
+      - --max-connections=80
+    volumes:
+      - mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    command: ["--wiredTigerCacheSizeGB", "0.5"]
+    volumes:
+      - mongo:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru", "--save", "300", "1"]
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: nora
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-nora}
+    ports:
+      - "127.0.0.1:15672:15672"   # management UI, localhost only
+    volumes:
+      - rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 6
+      start_period: 30s
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${NORA_HOME_S3_ACCESS_KEY:-nora}
+      MINIO_ROOT_PASSWORD: ${NORA_HOME_S3_SECRET_KEY:-nora-secret}
+    ports:
+      - "127.0.0.1:9001:9001"     # console, localhost only
+    volumes:
+      - minio:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 20s
+      timeout: 5s
+      retries: 6
+
+volumes:
+  mysql:
+  mongo:
+  redis:
+  rabbitmq:
+  minio:
+  media:
+  static:
+  logs:
+  backups:

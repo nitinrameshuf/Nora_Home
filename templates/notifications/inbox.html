@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <ul class="item-list">
+    {% for notification in notifications %}
+      <li class="item">
+        <div class="item-body">
+          <div class="item-title">
+            {% if notification.url %}
+              <a href="{{ notification.url }}">{{ notification.title }}</a>
+            {% else %}{{ notification.title }}{% endif %}
+          </div>
+          {% if notification.body %}
+            <div class="item-meta">{{ notification.body|truncatechars:160 }}</div>
+          {% endif %}
+          <div class="item-meta">
+            {{ notification.created_at|timesince }} ago · {{ notification.app_slug }}
+            {% if not notification.recipient %} · whole house{% endif %}
+          </div>
+        </div>
+        <span class="pill {% if notification.severity == 'alert' or notification.severity == 'critical' %}alert{% elif notification.severity == 'warning' %}warn{% else %}info{% endif %}">
+          {{ notification.severity }}
+        </span>
+      </li>
+    {% empty %}
+      <li class="empty">Nothing to report. The house is quiet.</li>
+    {% endfor %}
+  </ul>
+{% endblock %}

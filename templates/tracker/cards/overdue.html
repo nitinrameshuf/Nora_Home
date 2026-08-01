@@ -1,0 +1,19 @@
+<div class="card-head">
+  <h3 class="card-title">{{ card.title }}</h3>
+  <span class="pill alert">late</span>
+</div>
+<ul class="item-list">
+  {% for item in items %}
+    <li class="item is-overdue">
+      <button class="tick" type="button" aria-label="Mark {{ item.trackable.title }} done"
+              data-complete-url="{% url 'tracker:complete' item.uuid %}"></button>
+      <div class="item-body">
+        <div class="item-title">{{ item.trackable.title }}</div>
+        <div class="item-meta">
+          {{ item.due_at|timesince }} late
+          {% if item.escalation_level %} · escalation L{{ item.escalation_level }}{% endif %}
+        </div>
+      </div>
+    </li>
+  {% endfor %}
+</ul>

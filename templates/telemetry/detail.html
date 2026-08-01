@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="card">
+    <div class="card-head">
+      <h3 class="card-title">{{ series.label }}</h3>
+      <span class="pill">{{ series.unit }}</span>
+    </div>
+    <div style="font-size:var(--step-4);font-weight:650">
+      {{ latest.value|default:"—" }}
+    </div>
+    <div class="card-subtitle">
+      {% if latest %}recorded {{ latest.recorded_at|timesince }} ago{% endif %}
+    </div>
+
+    <form method="post" action="{% url 'telemetry:record' series.key %}"
+          style="display:flex;gap:0.6rem;margin-top:1.2rem">
+      {% csrf_token %}
+      <input type="number" step="any" name="value" placeholder="New reading" required>
+      <button class="btn btn-primary" type="submit">Record</button>
+    </form>
+  </div>
+
+  <h2 style="margin-top:2rem">Readings</h2>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>When</th><th>Value</th><th>Who</th><th>Source</th></tr></thead>
+      <tbody>
+        {% for reading in readings %}
+          <tr>
+            <td>{{ reading.recorded_at|date:"d M H:i" }}</td>
+            <td>{{ reading.value }} {{ series.unit }}</td>
+            <td>{{ reading.member|default:"—" }}</td>
+            <td>{{ reading.source }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

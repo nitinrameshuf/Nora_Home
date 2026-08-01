@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <p class="card-subtitle">
+    Every number the house tracks over time. Apps record here with
+    <code>record_reading()</code> rather than building their own charts table.
+  </p>
+  <div class="card-grid">
+    {% for s in series %}
+      <a class="card" href="{% url 'telemetry:detail' s.key %}">
+        <div class="card-head">
+          <h3 class="card-title">{{ s.label }}</h3>
+          <span class="pill">{{ s.app_slug }}</span>
+        </div>
+        <div style="font-size:var(--step-3);font-weight:650">
+          {{ s.latest_value|default:"—" }}<span class="card-subtitle"> {{ s.unit }}</span>
+        </div>
+        <div class="card-subtitle"><code>{{ s.key }}</code></div>
+      </a>
+    {% empty %}
+      <div class="empty">Nothing measured yet.</div>
+    {% endfor %}
+  </div>
+{% endblock %}

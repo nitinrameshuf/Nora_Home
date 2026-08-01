@@ -1,0 +1,51 @@
+{% load static %}<!doctype html>
+{% comment %}
+The 10.1" touchscreen on the Pi's second HDMI output. It drives the wall
+display. Everything is one screen, no scrolling, thumb-sized targets.
+{% endcomment %}
+<html lang="en" data-surface="kiosk" data-theme="dark" data-nh-bot="off">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>{{ house_name }} — kiosk</title>
+  <link rel="stylesheet" href="{% static 'nora_home/css/nora-home.css' %}">
+  <link rel="stylesheet" href="{% static 'nora_home/css/displays.css' %}">
+</head>
+<body class="kiosk" data-target-display="{{ target }}">
+  {% csrf_token %}
+
+  <header class="kiosk-header">
+    <div>
+      <strong>{{ house_name }}</strong>
+      <span class="card-subtitle">driving <code>{{ target }}</code></span>
+    </div>
+    <span class="kiosk-status" data-kiosk-status></span>
+  </header>
+
+  <main class="kiosk-grid">
+    {% for panel in panels %}
+      <button class="kiosk-tile" data-kiosk-action="show"
+              data-panel="{{ panel.key }}" data-pin-seconds="180" type="button">
+        <span class="kiosk-tile__title">{{ panel.title }}</span>
+        <span class="kiosk-tile__hint">Hold on the wall for 3 min</span>
+      </button>
+    {% empty %}
+      <div class="empty">No wall panels are installed yet.</div>
+    {% endfor %}
+  </main>
+
+  <footer class="kiosk-controls">
+    <button class="btn kiosk-control" data-kiosk-action="previous" type="button">Back</button>
+    <button class="btn kiosk-control" data-kiosk-action="unpin" type="button">Resume rotation</button>
+    <button class="btn kiosk-control" data-kiosk-action="next" type="button">Next</button>
+    <button class="btn kiosk-control" data-kiosk-action="sleep" type="button">Dim</button>
+    <button class="btn kiosk-control" data-kiosk-action="wake" type="button">Wake</button>
+    <button class="btn kiosk-control" data-kiosk-action="refresh" type="button">Reload</button>
+  </footer>
+
+  <div class="kiosk-toast" data-kiosk-toast role="status"></div>
+
+  <script src="{% static 'nora_home/js/nh-app.js' %}" defer></script>
+  <script src="{% static 'nora_home/js/kiosk.js' %}" defer></script>
+</body>
+</html>

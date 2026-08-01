@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Something broke · {{ house_name }}{% endblock %}
+{% block heading %}Something broke{% endblock %}
+{% block content %}
+  <div class="empty">
+    <p>
+      The house is still running; this one page failed. The details are in
+      <code>logs/errors.log</code>{% if request_id %} under request
+      <code>{{ request_id }}</code>{% endif %}.
+    </p>
+    <p><a class="btn" href="/">Back to the dashboard</a></p>
+  </div>
+{% endblock %}

@@ -1,0 +1,8 @@
+-r base.txt
+
+# Runs on the Pi. mysqlclient needs `sudo apt install default-libmysqlclient-dev
+# build-essential pkg-config` first.
+mysqlclient>=2.2
+gunicorn>=23.0
+uvicorn[standard]>=0.30
+sentry-sdk>=2.14          # optional; only active when SENTRY_DSN is set

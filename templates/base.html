@@ -1,0 +1,86 @@
+{% load static %}<!doctype html>
+{% comment %}
+The shell every page in the house sits inside. Surfaces (wall, kiosk, phone,
+tablet, desktop) are set server-side on <html> so CSS can respond without any
+viewport measuring in JavaScript.
+{% endcomment %}
+<html lang="en" data-surface="{{ surface }}" data-theme="dark"
+      {% if not nh_bot_enabled %}data-nh-bot="off"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0c1015">
+  <title>{% block title %}{% if page_title %}{{ page_title }} · {% endif %}{{ house_name }}{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'nora_home/css/nora-home.css' %}">
+  {% if nh_bot_enabled %}<link rel="stylesheet" href="{% static 'nora_home/css/nh-bot.css' %}">{% endif %}
+  {% block head %}{% endblock %}
+</head>
+<body>
+{% block body %}
+<div class="shell">
+  <nav class="sidebar" aria-label="House navigation">
+    <a class="brand" href="/">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span>{{ house_name }}</span>
+    </a>
+
+    {% comment %}
+    Everything below the Home link comes from the app registry, so installing an
+    app is the only thing needed to make it appear here. Nothing is hardcoded that
+    an app could provide for itself.
+    {% endcomment %}
+    <div class="nav-group">
+      <a class="nav-link" href="{% url 'core:dashboard' %}"
+         {% if request.path == '/home/' %}aria-current="page"{% endif %}>Home</a>
+      <a class="nav-link" href="{% url 'notifications:inbox' %}">
+        Alerts <span class="pill" data-nh-bell data-count="0" hidden></span>
+      </a>
+    </div>
+
+    {% for group in nav %}
+      <div class="nav-group">
+        <div class="nav-group-label">{{ group.label }}</div>
+        {% for app in group.apps %}
+          {% if app.slug != 'notifications' %}
+            <a class="nav-link" href="{{ app.url }}"
+               {% if request.path == app.url %}aria-current="page"{% endif %}>{{ app.title }}</a>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endfor %}
+
+    <div class="nav-group">
+      <div class="nav-group-label">This house</div>
+      <a class="nav-link" href="{% url 'core:app_directory' %}">Apps</a>
+      <a class="nav-link" href="{% url 'core:system_status' %}">Status</a>
+      <a class="nav-link" href="{% url 'accounts:profile' %}">You</a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="topbar">
+      <h1>{% block heading %}{{ page_title|default:"Home" }}{% endblock %}</h1>
+      <div class="topbar-actions">
+        {% block actions %}{% endblock %}
+        <button class="btn btn-ghost" data-theme-toggle type="button"
+                aria-label="Switch between light and dark">Theme</button>
+      </div>
+    </div>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="pill {{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+</div>
+{% endblock %}
+
+<script src="{% static 'nora_home/js/nh-app.js' %}" defer></script>
+{% if nh_bot_enabled %}<script src="{% static 'nora_home/js/nh-bot.js' %}" defer></script>{% endif %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

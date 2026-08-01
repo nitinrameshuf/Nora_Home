@@ -1,0 +1,109 @@
+/*
+ * Shared front-end behaviour: CSRF-aware fetch, optimistic completion ticks,
+ * card auto-refresh, and the theme toggle. Vanilla, no build step.
+ *
+ * House apps get `NoraHome.post(url, data)` for free — it handles the CSRF token so
+ * nobody has to remember to.
+ */
+(function (window, document) {
+  "use strict";
+
+  function csrfToken() {
+    var match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    if (match) return decodeURIComponent(match[1]);
+    var input = document.querySelector("input[name=csrfmiddlewaretoken]");
+    return input ? input.value : "";
+  }
+
+  function post(url, data) {
+    var body = new FormData();
+    Object.keys(data || {}).forEach(function (key) {
+      body.append(key, data[key]);
+    });
+    return fetch(url, {
+      method: "POST",
+      body: body,
+      credentials: "same-origin",
+      headers: { "X-CSRFToken": csrfToken(), "X-Requested-With": "fetch" }
+    }).then(function (response) {
+      if (!response.ok) throw new Error("Request failed: " + response.status);
+      return response.json();
+    });
+  }
+
+  /* Completion ticks. The tick flips immediately and rolls back if the server
+     disagrees — on a phone in a garage, waiting for a round trip feels broken. */
+  function wireTicks() {
+    document.addEventListener("click", function (event) {
+      var tick = event.target.closest(".tick");
+      if (!tick || tick.disabled) return;
+
+      var url = tick.getAttribute("data-complete-url");
+      if (!url) return;
+
+      tick.classList.add("is-done");
+      tick.disabled = true;
+
+      post(url, {})
+        .then(function (result) {
+          var row = tick.closest(".item");
+          if (row) {
+            row.style.transition = "opacity .4s ease, transform .4s ease";
+            row.style.opacity = "0";
+            row.style.transform = "translateX(18px)";
+            window.setTimeout(function () { row.remove(); }, 400);
+          }
+          if (window.NoraHome && result.streak > 1) {
+            window.NoraHome.say(result.streak + " in a row.", { mood: "proud" });
+          }
+        })
+        .catch(function () {
+          tick.classList.remove("is-done");
+          tick.disabled = false;
+          if (window.NoraHome) {
+            window.NoraHome.say("That didn't save. Try again?", { mood: "concerned" });
+          }
+        });
+    });
+  }
+
+  /* Cards that declare data-refresh-seconds reload themselves in place. */
+  function wireCardRefresh() {
+    document.querySelectorAll("[data-refresh-seconds]").forEach(function (card) {
+      var seconds = parseInt(card.getAttribute("data-refresh-seconds"), 10);
+      var url = card.getAttribute("data-refresh-url");
+      if (!seconds || !url) return;
+
+      window.setInterval(function () {
+        if (document.hidden) return;
+        fetch(url, { credentials: "same-origin" })
+          .then(function (response) { return response.text(); })
+          .then(function (html) { card.innerHTML = html; })
+          .catch(function () { /* a failed refresh keeps the stale card */ });
+      }, seconds * 1000);
+    });
+  }
+
+  function wireTheme() {
+    var stored = window.localStorage.getItem("nora-home-theme");
+    if (stored) document.documentElement.setAttribute("data-theme", stored);
+
+    document.addEventListener("click", function (event) {
+      if (!event.target.closest("[data-theme-toggle]")) return;
+      var root = document.documentElement;
+      var next = root.getAttribute("data-theme") === "light" ? "dark" : "light";
+      root.setAttribute("data-theme", next);
+      window.localStorage.setItem("nora-home-theme", next);
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    wireTicks();
+    wireCardRefresh();
+    wireTheme();
+  });
+
+  window.NoraHome = window.NoraHome || {};
+  window.NoraHome.post = post;
+  window.NoraHome.csrfToken = csrfToken;
+})(window, document);

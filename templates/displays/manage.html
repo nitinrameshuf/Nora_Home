@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <p class="card-subtitle">
+    The Pi 5 drives two screens: the 24" wall display on HDMI-0 and the 10.1" kiosk on
+    HDMI-1. Any browser that opens a wall URL registers itself here, so a spare tablet
+    can join the rotation.
+  </p>
+
+  <div class="card-grid">
+    {% for display in displays %}
+      <div class="card">
+        <div class="card-head">
+          <h3 class="card-title">{{ display.name }}</h3>
+          {% if display.is_online %}<span class="pill ok">online</span>
+          {% else %}<span class="pill alert">offline</span>{% endif %}
+        </div>
+        <ul class="item-list">
+          <li class="item"><div class="item-body">Slug</div><code>{{ display.slug }}</code></li>
+          <li class="item"><div class="item-body">Kind</div>{{ display.get_kind_display }}</li>
+          <li class="item"><div class="item-body">Showing</div>
+            <code>{{ display.current_panel|default:"—" }}</code></li>
+          <li class="item"><div class="item-body">Rotation</div>
+            {% if display.is_pinned %}<span class="pill warn">pinned</span>
+            {% elif display.rotation_enabled %}every {{ display.rotation_seconds }}s
+            {% else %}off{% endif %}</li>
+          <li class="item"><div class="item-body">Last heartbeat</div>
+            {{ display.last_seen_at|default:"never" }}</li>
+        </ul>
+        <p style="margin-top:1rem">
+          <a class="btn" href="{% url 'displays:wall_named' display.slug %}">Open</a>
+        </p>
+      </div>
+    {% empty %}
+      <div class="empty">
+        No displays registered yet. Open
+        <a href="{% url 'displays:wall' %}">the wall page</a> on the 24" screen and it
+        will register itself.
+      </div>
+    {% endfor %}
+  </div>
+
+  <h2 style="margin-top:2.5rem">Kiosk</h2>
+  <p><a class="btn btn-primary" href="{% url 'displays:kiosk' %}">Open the kiosk controller</a></p>
+{% endblock %}

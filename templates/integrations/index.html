@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h2>Connected</h2>
+  <div class="card-grid">
+    {% for integration in integrations %}
+      <a class="card" href="{% url 'integrations:detail' integration.pk %}">
+        <div class="card-head">
+          <h3 class="card-title">{{ integration.name }}</h3>
+          {% if not integration.is_enabled %}<span class="pill">off</span>
+          {% elif integration.is_healthy %}<span class="pill ok">ok</span>
+          {% else %}<span class="pill alert">{{ integration.consecutive_failures }} fails</span>{% endif %}
+        </div>
+        <p class="card-subtitle">
+          Every {{ integration.interval_minutes }} min ·
+          last ok {{ integration.last_success_at|default:"never" }}
+        </p>
+      </a>
+    {% empty %}
+      <div class="empty">Nothing connected yet.</div>
+    {% endfor %}
+  </div>
+
+  <h2 style="margin-top:2.5rem">Available</h2>
+  <p class="card-subtitle">
+    Integration classes registered in code. Add a row in the admin to switch one on;
+    credentials go in <code>.env</code>, never the database.
+  </p>
+  <div class="card-grid">
+    {% for item in catalog %}
+      <div class="card">
+        <div class="card-head"><h3 class="card-title">{{ item.name }}</h3></div>
+        <p class="card-subtitle">{{ item.description }}</p>
+        <code>{{ item.slug }}</code>
+      </div>
+    {% empty %}
+      <div class="empty">
+        No integration classes registered. See <code>nora/integrations/base.py</code>.
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}
