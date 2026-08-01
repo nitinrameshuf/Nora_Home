@@ -39,6 +39,12 @@ fetch "https://cdn.jsdelivr.net/npm/echarts@${ECHARTS_VERSION}/dist/echarts.min.
 fetch "https://cdn.jsdelivr.net/npm/gridstack@${GRIDSTACK_VERSION}/dist/gridstack-all.js" \
       "$VENDOR/gridstack-all.js"
 
+# gridstack-all.js ends in a `//# sourceMappingURL=gridstack-all.js.map` comment;
+# without the map alongside it, Django's collectstatic post-processing treats that
+# as a broken reference and fails the whole build.
+fetch "https://cdn.jsdelivr.net/npm/gridstack@${GRIDSTACK_VERSION}/dist/gridstack-all.js.map" \
+      "$VENDOR/gridstack-all.js.map"
+
 fetch "https://cdn.jsdelivr.net/npm/gridstack@${GRIDSTACK_VERSION}/dist/gridstack.min.css" \
       "$VENDOR/gridstack.min.css"
 
@@ -51,6 +57,7 @@ Committed deliberately — see scripts/vendor.sh.
 |---|---|---|
 | echarts.min.js | ${ECHARTS_VERSION} | Apache-2.0 |
 | gridstack-all.js | ${GRIDSTACK_VERSION} | MIT |
+| gridstack-all.js.map | ${GRIDSTACK_VERSION} | MIT |
 | gridstack.min.css | ${GRIDSTACK_VERSION} | MIT |
 
 Re-run \`make vendor\` after bumping a version in scripts/vendor.sh.

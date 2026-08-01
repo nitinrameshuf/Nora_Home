@@ -203,6 +203,19 @@ the same `${NORA_HOME_DB_PASSWORD:-nora}` default to the `x-app` anchor's `envir
 block in `docker-compose.yml`, alongside the existing `NORA_HOME_DB_HOST: mysql`
 override. Not yet re-verified end to end past this point.
 
+Third bug, same run, one step further: with MySQL fixed, migrations applied cleanly,
+but `collectstatic` then failed the whole `web` container —
+`whitenoise.storage.MissingFileError: nora_home/vendor/gridstack-all.js.map could not
+be found`. `gridstack-all.js` (vendored via `scripts/vendor.sh`) ends in a `//#
+sourceMappingURL=gridstack-all.js.map` comment; Django's hashed-storage
+post-processing follows that reference during `collectstatic` and fails hard if the
+target isn't also present, and `vendor.sh` had only ever fetched the three files
+listed in its own README table — never the map the first of them points to. Fixed by
+fetching `gridstack-all.js.map` (10.3.1, matching the already-vendored bundle) into
+`static/nora_home/vendor/`, adding it to `vendor.sh`'s fetch list and generated
+README table so a future re-vendor doesn't drop it again. Not yet re-verified end to
+end past this point either.
+
 ---
 
 ## Next
