@@ -119,7 +119,7 @@ if [[ -z "\$CHROMIUM" ]]; then
     exit 1
 fi
 
-exec "\$CHROMIUM" \\
+"\$CHROMIUM" \\
     --kiosk "$url" \\
     --user-data-dir="$profile" \\
     --window-position=$position \\
@@ -131,7 +131,33 @@ exec "\$CHROMIUM" \\
     --disable-features=TranslateUI \\
     --check-for-update-interval=31536000 \\
     --autoplay-policy=no-user-gesture-required \\
-    --enable-features=OverlayScrollbar
+    --enable-features=OverlayScrollbar &
+CHROMIUM_PID=\$!
+
+# labwc applies its own window-placement policy when the window is mapped and
+# ignores the --window-position/--window-size hints above, landing every kiosk
+# window on whichever output is currently primary regardless of what Chromium
+# asked for. Chromium flags can't out-argue the compositor; force it onto the
+# right output after the fact with xdotool instead.
+WIN=""
+for _ in \$(seq 1 10); do
+    WIN="\$(xdotool search --pid "\$CHROMIUM_PID" --onlyvisible 2>/dev/null | head -1)"
+    [[ -n "\$WIN" ]] && break
+    sleep 1
+done
+if [[ -n "\$WIN" ]]; then
+    xdotool windowmove "\$WIN" ${position/,/ }
+    xdotool windowsize "\$WIN" ${size/,/ }
+    # --kiosk's own fullscreen transition happens a moment after launch and can
+    # retrigger labwc's placement policy a second time; reassert once it's settled.
+    sleep 2
+    xdotool windowmove "\$WIN" ${position/,/ }
+    xdotool windowsize "\$WIN" ${size/,/ }
+else
+    echo "Could not find the chromium window to reposition" >&2
+fi
+
+wait "\$CHROMIUM_PID"
 SCRIPT
     chmod +x "$HOME/.nora/start-$name.sh"
 

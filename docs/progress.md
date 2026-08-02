@@ -316,11 +316,29 @@ the wrong panel entirely. Fixed by giving each launch script an explicit
 `--window-size` matching its real target output (values taken directly from the
 `wlr-randr` output above, not guessed): 1920x1080 for wall, 1024x600 for kiosk.
 
+Still landed both windows on the 24" after that fix, confirmed by photo — one
+showing the wall content correctly, the other showing the kiosk control UI, both
+on the same physical ViewSonic monitor. So `--window-position`/`--window-size`
+were never the missing piece: `labwc` (the compositor) applies its own
+window-placement policy when a window is mapped and simply overrides whatever
+position/size an X11 client (Chromium via XWayland) asks for at creation time —
+a compositor-level decision no Chromium flag can out-argue. Fixed by no longer
+relying on creation-time hints at all: each launch script now backgrounds
+Chromium, finds its window with `xdotool search --pid`, and force-moves/resizes
+it with `xdotool windowmove`/`windowsize` after the fact — twice, once
+immediately and once more after `--kiosk`'s own fullscreen transition settles,
+since that transition can retrigger labwc's placement a second time.
+`install-pi.sh` already `apt install`s `xdotool` and never used it anywhere —
+apparently anticipated needing exactly this, never wired up until now.
+
 Not yet re-verified: needs `install-pi.sh` re-run (regenerates the two launch
-scripts unconditionally every run) followed by another reboot to confirm the
-kiosk now actually lands on the 10" screen, correctly sized and touch-responsive.
-The passwordless switcher itself (added this session) has been verified with
-Django's test client but never yet seen rendered on an actual screen.
+scripts unconditionally every run) followed by another reboot. The heredoc
+variable substitution generating the `xdotool` calls was checked locally by
+simulating the same generation logic outside the Pi — confirmed it emits the
+right literal coordinates — but the actual placement-override behavior has not
+been observed working on real hardware yet. The passwordless switcher itself
+(added this session) has been verified with Django's test client but never yet
+seen rendered on an actual screen either.
 
 ---
 
