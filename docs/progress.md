@@ -401,6 +401,19 @@ now threads `next` through both forms as a hidden field. Verified live: after
 deploying the fix and re-authenticating the wall's Chromium profile, it
 correctly returned to `/home/displays/wall/` instead of `/home/`.
 
+**End of story state**: wall is running correctly on the 24" (`0,0`,
+`1920x1080`, confirmed via `xdotool` after the output-toggle recovery above),
+authenticated, showing real content. Kiosk is deliberately left **not
+running** — getting it onto the 10" reliably needs the same output-disable
+sequence that proved too flaky to trust unattended, and leaving it off is
+better than leaving it wrong. Story 27 (first real Pi run) converted five real
+infrastructure bugs into fixes tonight (DB password fallback, missing vendored
+sourcemap, wrong Chromium binary name, `ALLOWED_HOSTS` never matching a LAN IP
+on any Pi deployment ever, switcher losing its redirect target) — all
+verified working. The dual-monitor kiosk placement problem remains open;
+`cage` is the recommended next attempt, in a dedicated session with a fresh
+`sudo` budget rather than continued live experimentation.
+
 A fourth, unrelated bug surfaced while trying to check the passwordless switcher
 from a phone instead: every request from anywhere but `localhost` — any phone or
 laptop on the house LAN, the platform's actual intended access pattern — got an
