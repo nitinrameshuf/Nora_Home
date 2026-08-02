@@ -116,6 +116,7 @@ exec "\$CHROMIUM" \\
     --kiosk "$url" \\
     --user-data-dir="$profile" \\
     --window-position=$position \\
+    --ozone-platform=x11 \\
     --noerrdialogs \\
     --disable-infobars \\
     --disable-session-crashed-bubble \\

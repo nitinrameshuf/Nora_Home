@@ -279,11 +279,33 @@ script. Fixed by resolving the binary at launch time instead of install time —
 generated `start-wall.sh`/`start-kiosk.sh` — so it self-adapts if the naming
 changes again on a future OS image rather than needing another manual fix.
 
-Not yet re-verified: `install-pi.sh` needs to be re-run to regenerate the two
-launch scripts with the fix (it overwrites them unconditionally every run), then
-another reboot to confirm both screens actually come up in kiosk mode. The
-passwordless switcher itself (added this session) has been verified with Django's
-test client but never yet seen rendered on an actual screen.
+After that fix, a reboot did bring up Chromium on both — but only the 24" wall
+was visibly correct; the kiosk process was confirmed running (`ps aux` showed both
+`--user-data-dir=chromium-wall --window-position=0,0` and
+`--user-data-dir=chromium-kiosk --window-position=1920,0`) but nothing appeared on
+the 10" touchscreen — everything rendered on the 24" instead. Root cause: this
+Pi's desktop session runs Wayland (`labwc`), not X11 — visible directly in the
+process list (`--ozone-platform=wayland` on the GPU process). `--window-position`
+is an X11-only concept; Wayland's security model deliberately forbids a client
+from placing its own window at an absolute screen position, so the flag the whole
+wall/kiosk split depends on was silently doing nothing — both windows landed
+wherever the compositor's own default placement put them. `install-pi.sh` was
+written assuming X11 (as most kiosk-mode guides do) without that ever being
+checked against what Raspberry Pi OS actually ships now. Fixed by adding
+`--ozone-platform=x11` to the generated launch scripts, forcing Chromium onto
+XWayland (the X11-compatibility layer `labwc` ships) instead of native Wayland, so
+`--window-position` is honored again.
+
+Separately noted, not yet fixed: auto-login shows a "please enter your password to
+unlock the login keyring" prompt on first graphical start, which blocks unattended
+boot even once the display-positioning bug is fixed. Needs its own fix later
+(likely: set the login keyring to auto-unlock or not require a password at all).
+
+Not yet re-verified: needs `install-pi.sh` re-run (regenerates the two launch
+scripts unconditionally every run) followed by another reboot to confirm the
+kiosk now actually lands on the 10" screen. The passwordless switcher itself
+(added this session) has been verified with Django's test client but never yet
+seen rendered on an actual screen.
 
 ---
 
