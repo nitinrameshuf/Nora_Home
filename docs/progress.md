@@ -301,11 +301,26 @@ unlock the login keyring" prompt on first graphical start, which blocks unattend
 boot even once the display-positioning bug is fixed. Needs its own fix later
 (likely: set the login keyring to auto-unlock or not require a password at all).
 
+After the `--ozone-platform=x11` fix, a reboot still put the kiosk on the 24"
+screen instead of the 10" — but this time stretched and unresponsive to touch,
+not simply absent. Checked the actual layout to rule out another guess:
+`wlr-randr` (compositor) and `DISPLAY=:0 xrandr` (XWayland, the coordinate space
+`--window-position` actually operates in) both agreed the arrangement was already
+correct — 24" (`HDMI-A-1`) at `0,0` sized 1920x1080, 10" (`HDMI-A-2`) at `1920,0`
+sized 1024x600. So position wasn't the bug this time. Root cause: `--kiosk`
+fullscreens whichever monitor the window's *initial* bounds overlap most, and
+without an explicit `--window-size`, Chromium's default window dimensions can
+overlap the wrong output on a mixed-resolution layout — landing kiosk mode on the
+24" at the 10"'s content stretched to fill it, with touch coordinates mapped to
+the wrong panel entirely. Fixed by giving each launch script an explicit
+`--window-size` matching its real target output (values taken directly from the
+`wlr-randr` output above, not guessed): 1920x1080 for wall, 1024x600 for kiosk.
+
 Not yet re-verified: needs `install-pi.sh` re-run (regenerates the two launch
 scripts unconditionally every run) followed by another reboot to confirm the
-kiosk now actually lands on the 10" screen. The passwordless switcher itself
-(added this session) has been verified with Django's test client but never yet
-seen rendered on an actual screen.
+kiosk now actually lands on the 10" screen, correctly sized and touch-responsive.
+The passwordless switcher itself (added this session) has been verified with
+Django's test client but never yet seen rendered on an actual screen.
 
 ---
 

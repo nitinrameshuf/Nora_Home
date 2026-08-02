@@ -84,13 +84,15 @@ sudo systemctl daemon-reload
 sudo systemctl enable nora-home.service
 
 # ── 6. The two displays ───────────────────────────────────────────────────────
-# HDMI-0 is the 24" wall screen, HDMI-1 the 10.1" kiosk. Each gets its own
+# The first HDMI output is the 24" wall screen (1920x1080), the second the
+# touchscreen kiosk (1024x600 on the hardware this was verified against — check
+# `wlr-randr` if it's ever swapped for a different panel). Each gets its own
 # Chromium profile so their sessions and zoom levels stay independent.
 info "Configuring both displays for kiosk mode"
 mkdir -p "$HOME/.config/autostart" "$HOME/.nora"
 
 launch_script() {
-    local name="$1" url="$2" position="$3" profile="$HOME/.nora/chromium-$1"
+    local name="$1" url="$2" position="$3" size="$4" profile="$HOME/.nora/chromium-$1"
     cat > "$HOME/.nora/start-$name.sh" <<SCRIPT
 #!/usr/bin/env bash
 # Wait for the app to answer before opening a window; a kiosk showing a
@@ -102,6 +104,11 @@ done
 
 unclutter -idle 3 &
 
+# --window-position alone only says where the window starts before going
+# fullscreen; --kiosk then fullscreens whichever monitor that starting window
+# overlaps most, and Chromium's default window size can overlap the wrong one
+# on a mixed-resolution multi-monitor layout like this. --window-size pins it
+# to the real target output so it fullscreens there, not the other screen.
 # The apt package is called chromium-browser, but the binary it installs is
 # named differently across Debian releases — "chromium-browser" on some,
 # plain "chromium" on others (confirmed: Raspberry Pi OS on Trixie only ships
@@ -116,6 +123,7 @@ exec "\$CHROMIUM" \\
     --kiosk "$url" \\
     --user-data-dir="$profile" \\
     --window-position=$position \\
+    --window-size=$size \\
     --ozone-platform=x11 \\
     --noerrdialogs \\
     --disable-infobars \\
@@ -136,8 +144,8 @@ X-GNOME-Autostart-enabled=true
 DESKTOP
 }
 
-launch_script "wall"  "$WALL_URL"  "0,0"
-launch_script "kiosk" "$KIOSK_URL" "1920,0"
+launch_script "wall"  "$WALL_URL"  "0,0"    "1920,1080"
+launch_script "kiosk" "$KIOSK_URL" "1920,0" "1024,600"
 
 # Never blank the wall display.
 cat > "$HOME/.config/autostart/nora-no-blank.desktop" <<'DESKTOP'
