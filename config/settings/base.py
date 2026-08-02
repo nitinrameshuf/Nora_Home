@@ -56,9 +56,12 @@ NORA_HOME_VERSION = "0.1.0"
 SECRET_KEY = env("DJANGO_SECRET_KEY", "insecure-dev-key-replace-me")
 DEBUG = env_bool("DJANGO_DEBUG", False)
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", ["localhost", "127.0.0.1"])
+# "*" means every host is trusted (the Pi's own LAN-is-the-boundary model — see
+# CLAUDE.md §4, "Passwordless everywhere"); Django has no origin syntax for that,
+# so skip it here rather than emit "http://*", which Django's CSRF check rejects.
 CSRF_TRUSTED_ORIGINS = [
-    f"http://{host}" for host in ALLOWED_HOSTS if not host.startswith(".")
-] + [f"https://{host}" for host in ALLOWED_HOSTS if not host.startswith(".")]
+    f"http://{host}" for host in ALLOWED_HOSTS if host != "*" and not host.startswith(".")
+] + [f"https://{host}" for host in ALLOWED_HOSTS if host != "*" and not host.startswith(".")]
 
 
 # ── Applications ───────────────────────────────────────────────────────────────

@@ -54,6 +54,11 @@ if [[ ! -f .env ]]; then
     sed -i 's/^NORA_HOME_DB_ENGINE=.*/NORA_HOME_DB_ENGINE=mysql/' .env
     sed -i 's/^DJANGO_DEBUG=.*/DJANGO_DEBUG=0/' .env
     sed -i 's/^NORA_HOME_S3_ENABLED=.*/NORA_HOME_S3_ENABLED=1/' .env
+    # The .env.example default (localhost/127.0.0.1/nora.home/nora.local) 400s
+    # every request from a phone or laptop hitting the Pi by its LAN IP, which is
+    # how everyone actually reaches it. The LAN is already the trust boundary
+    # everywhere else in this house — see CLAUDE.md §4 — so allow all of it.
+    sed -i 's/^DJANGO_ALLOWED_HOSTS=.*/DJANGO_ALLOWED_HOSTS=*/' .env
     warn "Add your Slack and Anthropic keys to $REPO_DIR/.env when you have them."
 fi
 

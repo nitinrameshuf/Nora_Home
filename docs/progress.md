@@ -336,9 +336,29 @@ scripts unconditionally every run) followed by another reboot. The heredoc
 variable substitution generating the `xdotool` calls was checked locally by
 simulating the same generation logic outside the Pi — confirmed it emits the
 right literal coordinates — but the actual placement-override behavior has not
-been observed working on real hardware yet. The passwordless switcher itself
-(added this session) has been verified with Django's test client but never yet
-seen rendered on an actual screen either.
+been observed working on real hardware yet.
+
+A fourth, unrelated bug surfaced while trying to check the passwordless switcher
+from a phone instead: every request from anywhere but `localhost` — any phone or
+laptop on the house LAN, the platform's actual intended access pattern — got an
+HTTP 400. Root cause: `config/settings/pi.py`'s `ALLOWED_HOSTS` default included
+`"192.168.1.0/24"`, but Django's `ALLOWED_HOSTS` has no CIDR/subnet syntax at all
+— that entry never matched anything, silently, since whatever wrote it. And
+`.env.example`'s `DJANGO_ALLOWED_HOSTS` default (`localhost,127.0.0.1,nora.home,
+nora.local`) — which `install-pi.sh` never overrides for the Pi, unlike every
+other pi-specific `.env` value it sets — takes precedence over that default
+anyway, and doesn't include a LAN IP either. So this wasn't a today-only bug: no
+Pi deployment of this platform, ever, was reachable from a phone or laptop by IP.
+Fixed three places: `pi.py`'s fallback is now `["*"]` (matching the
+already-established "LAN is the trust boundary" model from the passwordless
+decision above); `install-pi.sh` now `sed`s `DJANGO_ALLOWED_HOSTS=*` into `.env`
+like it does the other pi-specific overrides; and `base.py`'s
+`CSRF_TRUSTED_ORIGINS` derivation now skips `"*"` rather than emitting the
+invalid `"http://*"` Django would reject. Verified the derivation logic directly
+(`ALLOWED_HOSTS=["*"]` → `CSRF_TRUSTED_ORIGINS=[]`, no exception) but not yet
+re-verified against a live request on the Pi — `.env` is gitignored, so the
+existing Pi deployment needs its `DJANGO_ALLOWED_HOSTS` line hand-edited, this
+fix alone won't reach it via `git pull`.
 
 ---
 
