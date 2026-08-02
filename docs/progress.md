@@ -331,12 +331,75 @@ since that transition can retrigger labwc's placement a second time.
 `install-pi.sh` already `apt install`s `xdotool` and never used it anywhere —
 apparently anticipated needing exactly this, never wired up until now.
 
-Not yet re-verified: needs `install-pi.sh` re-run (regenerates the two launch
-scripts unconditionally every run) followed by another reboot. The heredoc
-variable substitution generating the `xdotool` calls was checked locally by
-simulating the same generation logic outside the Pi — confirmed it emits the
-right literal coordinates — but the actual placement-override behavior has not
-been observed working on real hardware yet.
+Re-verified directly via SSH (see below — direct Pi access was set up mid-story):
+the `xdotool` fix does not work. Confirmed empirically and against `labwc`'s own
+documentation (`man labwc-actions`): `MoveToOutput`, `labwc`'s *native* mechanism
+for exactly this, explicitly "moves active window to other output, **unless the
+window state is fullscreen**." Chromium's `--kiosk` flag requests true OS-level
+fullscreen, which `labwc` then pins to whatever output it chose at that moment —
+permanently, immune to `xdotool windowmove`/`windowsize`, `labwc`'s own actions,
+anything. This is a harder constraint than originally diagnosed: it's not "wrong
+output picked once," it's "fullscreen geometry is compositor-owned, full stop."
+
+Tried the obvious workaround — position the window correctly while it's still a
+normal (non-fullscreen) window, then trigger fullscreen via `F11` once it's on
+the right output, since `MoveToOutput`'s exclusion implies non-fullscreen windows
+*are* movable. Blocked by a second, separate, unexplained bug: every
+non-fullscreen Chromium window tested (plain, and `--app=` mode) got stuck at a
+`10x10` placeholder geometry and never grew to its real content size, regardless
+of `--window-size` or subsequent `xdotool windowsize` calls. Only `--kiosk`
+(fullscreen) windows render as properly-sized, discoverable windows in this
+environment. Couldn't dig further — `wmctrl` and `xwininfo` aren't installed and
+installing anything needs `sudo`, which wasn't available non-interactively over
+the SSH session used for this investigation.
+
+Direct Pi access via SSH was set up mid-story (see below) specifically to stop
+relaying every diagnostic command through the user, which unlocked much faster
+iteration on this problem — and also let a fix get found. Confirmed empirically
+that disabling the *other* output entirely (`wlr-randr --output HDMI-A-2 --off`)
+before launching a `--kiosk` instance forces it onto the one remaining output,
+with no ambiguity for the compositor to get wrong — and that the placement
+survives re-enabling the other output afterward, as long as both outputs'
+positions are explicitly re-pinned (`--pos`) afterward, since re-enabling an
+output does not restore its previous position on its own.
+
+However: repeated live testing of this toggle sequence proved genuinely
+unreliable in practice, not just risky in theory — `wlr-randr` intermittently
+reported "failed to apply configuration" for both `--off` and `--pos` commands
+while other, seemingly identical invocations succeeded, and one sequence left
+`HDMI-A-1` in a broken state (`Enabled: yes` but current mode `0x0`) that needed
+an explicit `--mode` to recover. Given that fragility, decided against wiring
+this into the unattended boot sequence tonight — a boot-time script that
+sometimes silently fails to reconfigure a display, with nobody present to
+notice or recover it, is worse than the current known state. Restored a clean
+baseline (both outputs healthy, correct positions, wall running normally) and
+stopped rather than keep experimenting live against a real display.
+
+`cage` (a minimal Wayland compositor built for exactly "one app, pinned to one
+output," which would sidestep `labwc`'s placement policy entirely rather than
+fight it) remains the more promising longer-term fix, not yet attempted —
+`sudo` access was set up (`/etc/sudoers.d/claude-apt`, passwordless for
+`apt`/`apt-get` only) specifically to enable installing it, but the wlr-randr
+approach was tried first since it needed no new packages. Worth trying `cage`
+in a dedicated session rather than continuing to experiment against the live
+display.
+
+Separately, found and fixed a real bug in this session's passwordless-switcher
+work while testing this: `switch_to`/`switch_to_everyone`
+(`nora_home/accounts/views.py`) hardcoded a redirect to the dashboard
+(`core:dashboard`) after switching, ignoring Django's `?next=` parameter that
+`login_required` attaches when it redirects an unauthenticated request to the
+switcher. Concretely: the wall display's Chromium profile lost its session
+during testing (a test wiped its profile directory), and logging back in
+through the switcher landed it on the personal dashboard instead of back on
+`/home/displays/wall/` — meaning *any* page redirecting to the switcher, not
+just the wall, would have had this bug. Fixed with a `_safe_next()` helper
+mirroring Django's own `LoginView.get_success_url()` — validates `next` via
+`url_has_allowed_host_and_scheme()` before trusting it, so a crafted link can't
+use this to bounce someone off-site after they tap their name. `switch.html`
+now threads `next` through both forms as a hidden field. Verified live: after
+deploying the fix and re-authenticating the wall's Chromium profile, it
+correctly returned to `/home/displays/wall/` instead of `/home/`.
 
 A fourth, unrelated bug surfaced while trying to check the passwordless switcher
 from a phone instead: every request from anywhere but `localhost` — any phone or

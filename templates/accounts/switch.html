@@ -17,6 +17,7 @@
       {% for member in members %}
         <form method="post" action="{% url 'accounts:switch_to' member.id %}">
           {% csrf_token %}
+          {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
           <button class="card" type="submit" style="width:100%;text-align:left;cursor:pointer">
             <div class="card-head">
               <h3 class="card-title">{{ member.name }}</h3>
@@ -33,6 +34,7 @@
       {% if members %}
         <form method="post" action="{% url 'accounts:switch_to_everyone' %}">
           {% csrf_token %}
+          {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
           <button class="card" type="submit" style="width:100%;text-align:left;cursor:pointer">
             <div class="card-head">
               <h3 class="card-title">Everyone</h3>
