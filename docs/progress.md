@@ -258,6 +258,35 @@ Recorded as a decision in `CLAUDE.md` §4.
 
 ---
 
+## 2026-08-02 — Story 27 continued: systemd unit, kiosk autostart, first real bug in it
+
+`install-pi.sh` had never gotten past the `docker compose up` step in any earlier
+attempt this story, so its systemd-unit and kiosk/wall-autostart steps (step 5-6)
+were unverified. Ran it again now that `docker compose up -d --build` works
+cleanly (see the two bugs logged 2026-08-01): it completed end to end —
+`nora-home.service` enabled, `~/.config/autostart/nora-wall.desktop` and
+`nora-kiosk.desktop` written.
+
+`sudo reboot` did not bring up either screen in kiosk mode — both came up showing
+the plain desktop, no Chromium. Manually running the generated
+`~/.nora/start-wall.sh` surfaced the actual bug immediately: `exec: chromium-browser:
+not found`. Confirmed via `which chromium chromium-browser` — this Pi (Raspberry Pi
+OS on Debian 13/"trixie", not "bookworm") installs the `chromium-browser` apt
+package but the binary it ships is named `/usr/bin/chromium`; no `chromium-browser`
+binary exists. `install-pi.sh` hardcoded the old name in the generated launch
+script. Fixed by resolving the binary at launch time instead of install time —
+`CHROMIUM="$(command -v chromium-browser || command -v chromium)"` inside the
+generated `start-wall.sh`/`start-kiosk.sh` — so it self-adapts if the naming
+changes again on a future OS image rather than needing another manual fix.
+
+Not yet re-verified: `install-pi.sh` needs to be re-run to regenerate the two
+launch scripts with the fix (it overwrites them unconditionally every run), then
+another reboot to confirm both screens actually come up in kiosk mode. The
+passwordless switcher itself (added this session) has been verified with Django's
+test client but never yet seen rendered on an actual screen.
+
+---
+
 ## Next
 
 1. **Story 23 — design system.** Blocked on a decision between the directions in

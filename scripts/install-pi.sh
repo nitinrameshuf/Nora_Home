@@ -102,7 +102,17 @@ done
 
 unclutter -idle 3 &
 
-exec chromium-browser \\
+# The apt package is called chromium-browser, but the binary it installs is
+# named differently across Debian releases — "chromium-browser" on some,
+# plain "chromium" on others (confirmed: Raspberry Pi OS on Trixie only ships
+# /usr/bin/chromium). Resolve it at launch time instead of hardcoding either.
+CHROMIUM="\$(command -v chromium-browser || command -v chromium)"
+if [[ -z "\$CHROMIUM" ]]; then
+    echo "No chromium/chromium-browser binary found" >&2
+    exit 1
+fi
+
+exec "\$CHROMIUM" \\
     --kiosk "$url" \\
     --user-data-dir="$profile" \\
     --window-position=$position \\
