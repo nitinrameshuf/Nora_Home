@@ -257,6 +257,46 @@ body { background: transparent; }
   border-top-color: rgba(255, 255, 255, 0.08);
 }
 
+/* ── Text that isn't inside a card at all ────────────────────────────────── */
+/* .card/.sidebar/.kiosk-tile solved legibility for anything sitting on their
+   own glass — but plenty of real pages (Tracker, Alerts, the 404/500 pages,
+   App Directory's table, every empty-state) put text directly on the scene,
+   with no card behind it at all. That text used --text/--text-faint colours
+   picked for contrast against a flat --bg, not against a sky that ranges
+   from near-black at night to near-white at noon — on the wrong daypart it
+   goes fully invisible rather than just low-contrast, in *either* theme:
+   light text vanishes into a bright noon sky, dark text vanishes into a
+   night sky, since the theme toggle and the sky's own brightness are
+   completely independent axes. A theme-aware halo guarantees a baseline of
+   contrast against any sky at all, the same trick used for text over a
+   photo, without needing a card behind every paragraph on every page —
+   harmless where a card's own glass already provides contrast, since a dark
+   halo on dark text (light theme, .card's near-white background) or a light
+   halo on light text (dark theme, .card's near-black background) is
+   imperceptible there. */
+.main {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55), 0 0 14px rgba(0, 0, 0, 0.35);
+}
+:root[data-theme="light"] .main {
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.65), 0 0 14px rgba(255, 255, 255, 0.45);
+}
+
+/* The dashed-border empty-state boxes (an empty list, a 404, "nothing here
+   yet") read as UI chrome, not as loose text on the scene — they should look
+   filled, like a card, not like a shadow floating in an outline. */
+.empty,
+.dash__empty {
+  background: rgba(8, 10, 16, 0.4);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+:root[data-theme="light"] .empty,
+:root[data-theme="light"] .dash__empty {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .nh-scene__stars i,
   .nh-scene__precip i,

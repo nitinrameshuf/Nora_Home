@@ -13,7 +13,7 @@
           <li class="item">
             <div class="item-body">
               <div class="item-title">{{ name }}</div>
-              <div class="item-meta">{{ probe.host|default:probe.reason|default:"" }}</div>
+              <div class="item-meta">{% if probe.host %}{{ probe.host }}{% elif probe.reason %}{{ probe.reason }}{% endif %}</div>
             </div>
             <span class="pill {% if probe.status == 'ok' %}ok{% elif probe.status == 'down' or probe.status == 'critical' %}alert{% elif probe.status == 'warning' %}warn{% endif %}">
               {{ probe.status }}
