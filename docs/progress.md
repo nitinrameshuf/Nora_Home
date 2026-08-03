@@ -449,6 +449,45 @@ authenticated, on real hardware. Every bug found tonight was fixed and is
 recorded above for exactly this reason — so none of it has to be
 rediscovered.
 
+### 2026-08-02 — re-verified on a second, fresh Pi
+The original Pi's reliability became suspect enough (SSH/screen-share dropping
+unpredictably, one real hang requiring a Pi Connect reboot) that a second Pi
+was provisioned from scratch instead of continuing to debug the first one.
+Set up direct SSH access from the start this time (key-based, plus a scoped
+sudo grant) specifically so the run could be driven directly rather than
+relayed command-by-command.
+
+`install-pi.sh` ran twice as designed — first pass installs Docker and exits
+asking for a fresh login (group membership), second pass does everything
+else — and **hit zero bugs**, on the first try, on a completely fresh Trixie
+image. Every fix from the first Pi's bring-up (DB password, vendored
+sourcemap, Chromium binary name, `ALLOWED_HOSTS`, the switcher redirect, and
+now the automated X11 switch) held up exactly as intended. `docker compose
+up` clean, member created, reboot, and the X11 session came up correctly on
+the first try — `xdotool` confirmed wall at `0,0`/`1920x1080` and kiosk at
+`1920,0`/`1024x600` simultaneously, no manual correction needed this time.
+
+One new wrinkle, not seen on the first Pi: on this fresh image, auto-login's
+"Unlock Login Keyring" dialog didn't just appear once — a *second* instance
+(a separate `gcr-prompter` process, apparently triggered independently by the
+kiosk's Chromium instance) appeared on the kiosk's screen too, each blocking
+that screen's Chromium window from becoming visible until dismissed. Screen
+share still doesn't work (X11, same tradeoff as before), so diagnosing this
+took actual screenshots (`scrot`, pulled over `scp`) rather than eyes-on
+access — confirmed the blocking dialog, dismissed both (click failed once on
+a coordinate-estimation miss; `xdotool key Escape` after `windowactivate`
+worked reliably) and confirmed real content on both screens afterward,
+authenticated, by screenshot: the wall's actual empty-state agenda and the
+kiosk's actual tap-tile controller, both correctly positioned and sized.
+
+**Not yet fixed**: the keyring dialog(s) still have to be dismissed by hand
+on first boot — genuinely blocks unattended kiosk startup until someone
+does. Next real fix needed: either make the login keyring auto-unlock (sync
+its password with the account's, since PAM would normally do this on a
+real password login) or disable the keyring's password requirement entirely,
+since nothing in this house's threat model needs it — same "LAN is the trust
+boundary" reasoning as the passwordless switcher itself.
+
 A fourth, unrelated bug surfaced while trying to check the passwordless switcher
 from a phone instead: every request from anywhere but `localhost` — any phone or
 laptop on the house LAN, the platform's actual intended access pattern — got an

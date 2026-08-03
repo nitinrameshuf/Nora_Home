@@ -157,6 +157,15 @@ plain SSH are unaffected and are the way to manage the Pi from here on.
 Celery `worker`/`beat` came up but showed `unhealthy` in the one snapshot
 taken — not dug into further, worth checking next time someone's on the Pi.
 
+Re-verified the same day on a second, freshly-imaged Pi (the first one's
+reliability had become suspect) — `install-pi.sh` hit **zero bugs** end to
+end, confirming the fixes above actually held. One new thing found:
+auto-login's "Unlock Login Keyring" dialog can appear more than once — a
+second `gcr-prompter` instance blocked the kiosk's Chromium independently of
+the one blocking the wall's — and genuinely blocks unattended boot until
+dismissed by hand (`xdotool key Escape` after `windowactivate` worked;
+clicking the Cancel button did not, twice). See item 7 below.
+
 ### Not done — pick up here
 1. **Design system is unchosen.** `docs/design-options.html` has four directions
    rendered. The user is particular about UI and wants to approve one before it is
@@ -169,6 +178,15 @@ taken — not dug into further, worth checking next time someone's on the Pi.
 4. **No tests.** `pytest` is configured; nothing is written.
 5. **PWA manifest and service worker** — decided (§5) but not written.
 6. **No favicon** — the logs show steady `/favicon.ico` 404s.
+7. **Login keyring blocks unattended kiosk boot.** Auto-login leaves the
+   desktop's login keyring locked, so an "Unlock Login Keyring" dialog pops up
+   over the wall and/or kiosk Chromium on first boot — sometimes once per
+   screen — and sits there blocking that screen until someone dismisses it by
+   hand. Fix: either make the keyring auto-unlock (sync its password with the
+   account's) or disable its password requirement entirely — this house's
+   threat model already treats the LAN as the trust boundary everywhere else
+   (see the passwordless-everywhere decision in §4), so a locked keyring isn't
+   protecting anything real here.
 
 ---
 
