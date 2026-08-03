@@ -116,6 +116,14 @@ class Command(BaseCommand):
         except StorageUnavailable as exc:
             self.stdout.write(f"  object storage: skipped ({exc})")
             return
+        except Exception as exc:
+            # A misconfigured bucket/credentials must not crash the rest of
+            # bootstrap — object storage is optional (CLAUDE.md §4), and a
+            # real MinIO signature mismatch on the Pi was previously taking
+            # down every step after this one, including seeding integrations.
+            self.stdout.write(self.style.WARNING(
+                f"  object storage: skipped ({type(exc).__name__}: {exc})"))
+            return
 
         if created is None:
             self.stdout.write("  object storage: off -- uploads go to MEDIA_ROOT")
