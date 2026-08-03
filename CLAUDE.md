@@ -166,6 +166,16 @@ the one blocking the wall's — and genuinely blocks unattended boot until
 dismissed by hand (`xdotool key Escape` after `windowactivate` worked;
 clicking the Cancel button did not, twice). See item 7 below.
 
+The kiosk's touchscreen also needed two fixes, both now resolved: the panel's
+touch USB cable wasn't making a working connection to this Pi (swapping the
+cable fixed it — confirmed by `lsusb`/`/proc/bus/input/devices` showing
+nothing at all beforehand), and once detected, X11 needed an explicit
+`TransformationMatrix` to map its touch coordinates onto just the kiosk's own
+output — otherwise touch scales across the whole combined multi-monitor
+desktop, since (unlike Wayland) X11 has no automatic per-output touch
+mapping. Both are now permanent: `install-pi.sh` §8 writes
+`/etc/X11/xorg.conf.d/40-touchscreen.conf` itself.
+
 ### Not done — pick up here
 1. **Design system is unchosen.** `docs/design-options.html` has four directions
    rendered. The user is particular about UI and wants to approve one before it is

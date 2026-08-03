@@ -488,6 +488,38 @@ real password login) or disable the keyring's password requirement entirely,
 since nothing in this house's threat model needs it — same "LAN is the trust
 boundary" reasoning as the passwordless switcher itself.
 
+### 2026-08-02 — kiosk touchscreen: two separate bugs, both fixed
+Once both screens were rendering correctly, the touchscreen didn't respond
+to touch at all (keyboard/mouse worked fine). Diagnosed in two stages rather
+than guessed:
+
+1. `lsusb` and `/proc/bus/input/devices` showed **no touch device at all** —
+   not an X11/software problem, the Pi had never received a single touch
+   event from the panel at the kernel level. Root cause: these budget HDMI
+   touchscreens need a separate USB cable for touch, independent of the HDMI
+   video cable, and that cable wasn't making a working connection to this
+   specific Pi (it had been tested against a laptop separately, where it
+   worked fine — confirming the panel and cable were both good). Swapping in
+   a known-good micro-USB data cable fixed this immediately — the device
+   showed up in `lsusb` (`Cadwell Laboratories, Inc. Paperlike HD-FT`,
+   27c0:0818, a generic touch-controller chip ID reused across many
+   whitelabel panels) and in the kernel's input device list.
+2. With the device now present, X11 saw it too (`xinput list`) but its
+   Coordinate Transformation Matrix was still the identity matrix — X11 has
+   no automatic notion of which physical output a touch panel belongs to in
+   a multi-monitor setup (unlike Wayland, which handled this automatically
+   before tonight's switch), so touch coordinates were scaling across the
+   *entire* combined 2944x1080 virtual screen instead of just the kiosk's
+   own 1024x600 corner. Fixed live with `xinput map-to-output`, confirmed by
+   the resulting matrix matching `kiosk_size/total_size` exactly
+   (`0.347826 = 1024/2944`, `0.555556 = 600/1080`, `0.652174 = 1920/2944`),
+   then made permanent via `/etc/X11/xorg.conf.d/40-touchscreen.conf`
+   (`MatchIsTouchscreen "on"` + the same `TransformationMatrix`) so it
+   survives reboots without needing `xinput` re-run by hand. Added to
+   `install-pi.sh` (§8) so a future reinstall gets it automatically — the
+   cable issue is hardware and out of scope for the script, but the mapping
+   fix isn't. Confirmed working by the user tapping the physical screen.
+
 A fourth, unrelated bug surfaced while trying to check the passwordless switcher
 from a phone instead: every request from anywhere but `localhost` — any phone or
 laptop on the house LAN, the platform's actual intended access pattern — got an

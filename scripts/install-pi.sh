@@ -209,6 +209,27 @@ Exec=sh -c "xset s off; xset -dpms; xset s noblank"
 X-GNOME-Autostart-enabled=true
 DESKTOP
 
+# ── 8. Touchscreen calibration ────────────────────────────────────────────────
+# X11 doesn't know which physical output a touch panel belongs to — by default
+# its coordinates map across the *entire* combined virtual screen (both
+# monitors), not just its own. Without this, touching the kiosk panel produces
+# input scaled across the whole 2944x1080 desktop instead of its own
+# 1024x600 corner. The scale/offset below is specific to this hardware's
+# layout (wall 1920x1080 at 0,0, kiosk 1024x600 at 1920,0) — recompute if the
+# arrangement ever changes: scale = kiosk_size / total_size, offset =
+# kiosk_position / total_size. Wayland never needed this; it maps touch to
+# outputs automatically.
+if [[ -d /etc/X11/xorg.conf.d ]]; then
+    sudo tee /etc/X11/xorg.conf.d/40-touchscreen.conf >/dev/null <<'XCONF'
+Section "InputClass"
+    Identifier "Kiosk touchscreen"
+    MatchIsTouchscreen "on"
+    Driver "libinput"
+    Option "TransformationMatrix" "0.347826 0.000000 0.652174 0.000000 0.555556 0.000000 0.000000 0.000000 1.000000"
+EndSection
+XCONF
+fi
+
 info "Done."
 cat <<SUMMARY
 
