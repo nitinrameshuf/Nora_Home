@@ -263,40 +263,31 @@ body { background: transparent; }
    App Directory's table, every empty-state) put text directly on the scene,
    with no card behind it at all. That text used --text/--text-faint colours
    picked for contrast against a flat --bg, not against a sky that ranges
-   from near-black at night to near-white at noon — on the wrong daypart it
-   goes fully invisible rather than just low-contrast, in *either* theme:
-   light text vanishes into a bright noon sky, dark text vanishes into a
-   night sky, since the theme toggle and the sky's own brightness are
-   completely independent axes. A theme-aware halo guarantees a baseline of
-   contrast against any sky at all, the same trick used for text over a
-   photo, without needing a card behind every paragraph on every page.
+   from near-black at night to near-white at noon.
 
-   A soft blurred text-shadow alone wasn't enough: --text-faint (#62778c,
-   identical in both themes) sits close in both hue and luminosity to the
-   sky's own medium-blue tones at a lot of scroll positions, so a wide,
-   soft glow just smeared into a haze around the letters — legible in light
-   theme, where the white glow had enough headroom against that blue to
-   read as a crisp rim, but not in dark theme, where the darker glow was
-   closer in value to the sky and read as blur instead of an edge. A thin
-   -webkit-text-stroke traces every glyph's actual outline — vector, not
-   blurred — so it stays a hard edge regardless of how close the fill color
-   and the sky happen to be; the shadow now only adds a little depth on top
-   of that, not the primary legibility mechanism. Reset back to nothing
-   inside .card/.dash-tile, where the glass background already carries
-   contrast on its own and a stroke would only make already-fine text look
-   subtly (and pointlessly) outlined. */
+   Two font-rendering tricks were tried here first — a blurred text-shadow,
+   then -webkit-text-stroke — and both turned out DPI-dependent: fine in one
+   screenshot, visibly fuzzy/ghosted on a real 24" panel and worse again on
+   a MacBook's retina display, because how a sub-pixel stroke or a blurred
+   shadow rasterizes is at the mercy of each device's own font hinting and
+   pixel density, not something this stylesheet actually controls. Rather
+   than keep tuning a technique that depends on the renderer, .main gets the
+   exact same real, opaque-ish backdrop .card already relies on — plain
+   alpha compositing, which looks identical on every screen because it isn't
+   involved with font rasterization at all. Slightly less "open sky" shows
+   through outside the cards now, but the text sitting directly on it is
+   reliably legible everywhere, which a halo effect never fully was. */
 .main {
-  -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.8);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  position: relative;
+  z-index: 1;
+  background: rgba(6, 9, 14, 0.4);
+  backdrop-filter: blur(10px) saturate(130%);
+  -webkit-backdrop-filter: blur(10px) saturate(130%);
 }
 :root[data-theme="light"] .main {
-  -webkit-text-stroke: 0.5px rgba(255, 255, 255, 0.85);
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.65);
-}
-.main .card,
-.main .dash-tile {
-  -webkit-text-stroke: 0 transparent;
-  text-shadow: none;
+  background: rgba(255, 255, 255, 0.42);
+  backdrop-filter: blur(10px) saturate(130%);
+  -webkit-backdrop-filter: blur(10px) saturate(130%);
 }
 
 /* The dashed-border empty-state boxes (an empty list, a 404, "nothing here
