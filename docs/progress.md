@@ -1042,6 +1042,33 @@ Integrations' lede paragraph, the 404 page's body copy) is legible in both
 themes. This also closes the "light theme on real hardware" item that was
 sitting in Next below — checked directly this session, not assumed.
 
+**Turned out incomplete**: told directly — "looks good in the bright
+theme, but still illegible in the dark theme... so blurry too" — with
+screenshots of both. The blurred `text-shadow` alone wasn't enough:
+`--text-faint` (`#62778c`, identical in both themes) sits close in hue
+*and* luminosity to the sky's own medium-blue tones at a lot of scroll
+positions, so a wide soft glow just smeared into haze around the letters
+rather than an edge — legible in light theme, where the white glow had
+real headroom against that blue, not in dark, where the darker glow was
+too close in value to read as a rim rather than a smudge. Switched the
+primary mechanism to `-webkit-text-stroke`, which traces the actual glyph
+outline (vector, not blurred) so it stays a hard edge regardless of how
+close the fill and the sky happen to be — reset back to nothing inside
+`.card`/`.dash-tile`, where it isn't needed. Verified with a fresh
+screenshot of the same Displays page that was reported broken.
+
+**Also reported in the same message, unrelated**: the kiosk always showed
+"offline, last heartbeat never" on that same Displays page, despite being
+on and in active use. Root cause: `KioskConsumer` (`nora_home/displays/
+consumers.py`) never registered a `Display` row or handled a heartbeat at
+all — only `DisplayConsumer` (the wall) did both. `kiosk.js` never even
+sent one. Both were genuinely missing, not misconfigured — mirrored the
+wall's registration/heartbeat pattern onto the kiosk consumer and added the
+matching 30s heartbeat send to `kiosk.js`. Verified two ways: querying
+`Display.objects.all()` directly on the Pi after a fresh reconnect (both
+rows `online=True` with matching timestamps) and a screenshot of the same
+Displays page.
+
 ---
 
 ## Next
