@@ -1001,13 +1001,57 @@ kiosk's, not just reasoned through from the CSS.
 
 ---
 
+## 2026-08-03 — invisible text across most of the app, and a 500 on Status
+
+"Pull the visuals for different screens... text is not legible in many
+cases, in either theme." Asked for exactly that rather than guessing: SSH'd
+onto the Pi, screenshotted Home, Tracker, Alerts, Integrations, Status, App
+Directory, and the 404 page, in both themes.
+
+**Root cause**: `.card`/`.sidebar`/`.kiosk-tile` got the living background's
+glass-pane retrofit; nothing else did. Tracker's item list, Alerts' empty
+state, App Directory's table, every `.empty`/`.dash__empty` box, and the
+404/500 pages all put text directly on the scene, using `--text`/
+`--text-faint` colours chosen for contrast against a flat `--bg` — not
+against a sky that swings from near-black at night to near-white at noon,
+*independently* of the light/dark theme toggle. Light theme's dark text
+vanishes on a night sky; dark theme's light text vanishes on a bright one —
+exactly "either theme," and exactly why only some pages looked broken (only
+the ones with real cards were spared).
+
+**Fix**: a theme-aware text-shadow halo on `.main` (dark shadow behind light
+text, light shadow behind dark text) as a baseline for anything sitting
+directly on the scene — harmless where a card's own glass already carries
+the contrast. `.empty`/`.dash__empty` also got an actual background, since a
+dashed box with invisible text inside reads as broken chrome, not
+atmosphere.
+
+**Also found chasing why Status looked blank**: it wasn't contrast there,
+it was a 500. `probe.host|default:probe.reason` in
+`templates/core/system_status.html` raises a hard `VariableDoesNotExist`
+whenever a service dict has neither key (database, disk, cpu_temperature
+never have `host` or `reason`) — Django's `default` filter tolerates a
+missing *primary* variable but not a missing *argument*. Nobody had hit this
+because prior verification passes checked `/home/health/`'s JSON directly,
+never the templated page. Switched to `{% if %}`/`{% elif %}`.
+
+Verified by re-screenshotting the exact same pages after deploying — Status
+now renders (200, not 500) with every probe visible, and the previously
+invisible text (Tracker's "Clear for today.", Alerts' "Nothing to report",
+Integrations' lede paragraph, the 404 page's body copy) is legible in both
+themes. This also closes the "light theme on real hardware" item that was
+sitting in Next below — checked directly this session, not assumed.
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**
    Verified live on the physical wall and kiosk the same session (real
    weather, both screens in sync, no regression to the kiosk remote-control
-   flow) — what's not yet checked is continuous motion (rain/snow/stars,
-   backdrop blur on every pane) over a long stretch on a Pi 5 driving two
-   Chromium instances at once, and the light theme on real hardware.
+   flow), and the light theme is now checked on real hardware too (see the
+   invisible-text fix above) — what's still not checked is continuous motion
+   (rain/snow/stars, backdrop blur on every pane) holding up over hours
+   rather than minutes on a Pi 5 driving two Chromium instances at once.
 2. **Story 24 — house maintenance**, the first real app, which is what proves the
    skeleton was worth building. Unblocked since Story 27 (2026-08-02).
