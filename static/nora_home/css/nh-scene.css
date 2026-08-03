@@ -210,27 +210,27 @@
 body { background: transparent; }
 
 .sidebar {
-  background: rgba(8, 10, 16, 0.34);
+  background: rgba(6, 8, 12, 0.86);
   backdrop-filter: blur(14px) saturate(140%);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .card {
-  background: rgba(8, 10, 16, 0.46);
+  background: rgba(6, 8, 12, 0.86);
   backdrop-filter: blur(16px) saturate(150%);
   -webkit-backdrop-filter: blur(16px) saturate(150%);
   border-color: rgba(255, 255, 255, 0.13);
 }
 
 :root[data-theme="light"] .sidebar {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.86);
   backdrop-filter: blur(14px) saturate(140%);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
   border-right-color: rgba(20, 24, 32, 0.08);
 }
 :root[data-theme="light"] .card {
-  background: rgba(255, 255, 255, 0.62);
+  background: rgba(255, 255, 255, 0.86);
   backdrop-filter: blur(16px) saturate(150%);
   -webkit-backdrop-filter: blur(16px) saturate(150%);
   border-color: rgba(20, 24, 32, 0.1);
@@ -239,19 +239,19 @@ body { background: transparent; }
 /* Kiosk: same material, on its own fixed-purpose page (not base.html). */
 .kiosk { position: relative; z-index: 1; background: transparent; }
 .kiosk-header {
-  background: rgba(8, 10, 16, 0.34);
+  background: rgba(6, 8, 12, 0.86);
   backdrop-filter: blur(12px) saturate(140%);
   -webkit-backdrop-filter: blur(12px) saturate(140%);
   border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 .kiosk-tile {
-  background: rgba(8, 10, 16, 0.46);
+  background: rgba(6, 8, 12, 0.86);
   backdrop-filter: blur(14px) saturate(150%);
   -webkit-backdrop-filter: blur(14px) saturate(150%);
   border-color: rgba(255, 255, 255, 0.13);
 }
 .kiosk-controls {
-  background: rgba(8, 10, 16, 0.34);
+  background: rgba(6, 8, 12, 0.86);
   backdrop-filter: blur(12px) saturate(140%);
   -webkit-backdrop-filter: blur(12px) saturate(140%);
   border-top-color: rgba(255, 255, 255, 0.08);
@@ -276,16 +276,26 @@ body { background: transparent; }
    alpha compositing, which looks identical on every screen because it isn't
    involved with font rasterization at all. Slightly less "open sky" shows
    through outside the cards now, but the text sitting directly on it is
-   reliably legible everywhere, which a halo effect never fully was. */
+   reliably legible everywhere, which a halo effect never fully was.
+
+   First pass at this landed on ~0.54/0.56 alpha, which read fine in the one
+   sky state it was checked against but was never enough headroom: a bright
+   overcast midday sky is close to white, and blended at only ~55% opacity
+   it still lifts the composited background into the same mid-grey range as
+   --text-faint/--text-dim themselves, collapsing contrast to near zero —
+   exactly what happened on the Displays page and the sidebar nav. The scene
+   has to be pushed close to opaque (~0.86) so the composited backdrop stays
+   dark (or paper-white in light theme) at every daypart and weather state,
+   not just the one it happened to be checked against. */
 .main {
   position: relative;
   z-index: 1;
-  background: rgba(5, 8, 12, 0.54);
+  background: rgba(5, 8, 12, 0.86);
   backdrop-filter: blur(13px) saturate(130%);
   -webkit-backdrop-filter: blur(13px) saturate(130%);
 }
 :root[data-theme="light"] .main {
-  background: rgba(255, 255, 255, 0.56);
+  background: rgba(255, 255, 255, 0.86);
   backdrop-filter: blur(13px) saturate(130%);
   -webkit-backdrop-filter: blur(13px) saturate(130%);
 }
@@ -295,13 +305,13 @@ body { background: transparent; }
    filled, like a card, not like a shadow floating in an outline. */
 .empty,
 .dash__empty {
-  background: rgba(8, 10, 16, 0.4);
+  background: rgba(6, 8, 12, 0.82);
   backdrop-filter: blur(14px) saturate(140%);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
 }
 :root[data-theme="light"] .empty,
 :root[data-theme="light"] .dash__empty {
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(14px) saturate(140%);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
 }
