@@ -108,6 +108,7 @@ class KioskConsumer(AsyncJsonWebsocketConsumer):
         await self.channel_layer.group_add(group_for(settings.NORA_HOME_KIOSK_DISPLAY_SLUG),
                                            self.channel_name)
         await self.accept()
+        await self._register()
         await self.send_json({"type": "welcome",
                               "controls": settings.NORA_HOME_MAIN_DISPLAY_SLUG})
 
@@ -116,6 +117,11 @@ class KioskConsumer(AsyncJsonWebsocketConsumer):
             group_for(settings.NORA_HOME_KIOSK_DISPLAY_SLUG), self.channel_name)
 
     async def receive_json(self, content, **kwargs):
+        if content.get("type") == "heartbeat":
+            await self._touch()
+            await self.send_json({"type": "heartbeat.ack"})
+            return
+
         action = content.get("action")
         if action not in KIOSK_ACTIONS:
             logger.warning("Kiosk sent unknown action %r", action)
@@ -143,3 +149,27 @@ class KioskConsumer(AsyncJsonWebsocketConsumer):
         show_panel(target, str(content.get("panel", ""))[:120],
                    pin_seconds=int(content.get("pin_seconds", 0) or 0),
                    issued_by=self.username)
+
+    # ── db ─────────────────────────────────────────────────────────────────────
+    # The kiosk is a Display row too (kind=KIOSK) — without these, nothing ever
+    # marks it online: it only sends commands, never listens on the wall's group,
+    # so it never went through DisplayConsumer at all.
+    @database_sync_to_async
+    def _register(self):
+        from nora_home.displays.models import Display
+
+        slug = settings.NORA_HOME_KIOSK_DISPLAY_SLUG
+        display, created = Display.objects.get_or_create(
+            slug=slug, defaults={"name": slug.title(), "kind": Display.Kind.KIOSK})
+        if created:
+            logger.info("Registered new display %s", slug)
+        display.touch()
+
+    @database_sync_to_async
+    def _touch(self):
+        from django.utils import timezone
+
+        from nora_home.displays.models import Display
+
+        Display.objects.filter(slug=settings.NORA_HOME_KIOSK_DISPLAY_SLUG).update(
+            last_seen_at=timezone.now())

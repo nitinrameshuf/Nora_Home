@@ -94,6 +94,11 @@
     Kiosk.socket.onopen = function () {
       Kiosk.reconnectDelay = 1000;
       Kiosk.setStatus(true);
+      window.setInterval(function () {
+        if (Kiosk.socket.readyState === 1) {
+          Kiosk.socket.send(JSON.stringify({ type: "heartbeat" }));
+        }
+      }, 30000);
     };
 
     Kiosk.socket.onmessage = function (event) {
