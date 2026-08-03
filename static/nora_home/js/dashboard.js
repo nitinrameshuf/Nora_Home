@@ -397,18 +397,38 @@
   };
 
   Dash.add = function (entry) {
-    // Drop it below everything already placed rather than guessing at a gap.
-    var bottom = Dash.placed.reduce(function (max, item) {
-      return Math.max(max, item.y + item.h);
-    }, 0);
+    var w = entry.w || 4, h = entry.h || 3;
+    var pos = Dash.nextSlot(w);
 
     Dash.placed.push({
-      x: 0, y: bottom, w: entry.w || 4, h: entry.h || 3,
+      x: pos.x, y: pos.y, w: w, h: h,
       widget: { key: entry.key, kind: entry.kind, title: entry.title,
                 subtitle: entry.subtitle, app: entry.app, refresh_seconds: 0 }
     });
 
     Dash.save().then(function () { window.location.reload(); });
+  };
+
+  // Fills the current row left-to-right before starting a new one — a plain
+  // "shelf" packer, not general bin-packing, but enough to stop every added
+  // widget landing in its own row at x:0 under whatever's already there,
+  // which is what actually reads as "clumped and uneven" on screen.
+  Dash.nextSlot = function (w) {
+    if (!Dash.placed.length) return { x: 0, y: 0 };
+
+    var lastRowY = Dash.placed.reduce(function (max, item) {
+      return Math.max(max, item.y);
+    }, 0);
+    var rowEdge = Dash.placed.reduce(function (edge, item) {
+      return item.y === lastRowY ? Math.max(edge, item.x + item.w) : edge;
+    }, 0);
+
+    if (rowEdge + w <= 12) return { x: rowEdge, y: lastRowY };
+
+    var bottom = Dash.placed.reduce(function (max, item) {
+      return Math.max(max, item.y + item.h);
+    }, 0);
+    return { x: 0, y: bottom };
   };
 
   Dash.remove = function (key) {
