@@ -1071,6 +1071,39 @@ Displays page.
 
 ---
 
+## 2026-08-03 — the text-stroke fix didn't hold up either; replaced the technique
+
+The `-webkit-text-stroke` fix above looked right in a screenshot and was
+still wrong: reported back with photos of the actual 24" panel and a
+MacBook M4's retina screen, both showing the same ghosted/blurry text the
+very first fix had — worse on retina than on the 24".
+
+Both attempts so far had the same flaw in common, just not named yet: a
+blurred `text-shadow` and a sub-pixel `-webkit-text-stroke` are both font
+*rendering* tricks — how they rasterize depends on each device's own font
+hinting and pixel density, which a stylesheet doesn't actually control.
+That's exactly why a fix could look fine in one screenshot and ghost on
+real hardware, worse again at a different DPI: two different renderers
+making two different calls about the same sub-pixel instruction.
+
+Stopped trying to out-tune a technique that was never going to be
+reliable, and used the one mechanism already *proven* to look identical
+everywhere: `.card`'s real, opaque-ish backdrop — plain alpha compositing,
+nothing to do with font rasterization. Moved that onto `.main` itself
+(`background: rgba(...); backdrop-filter: blur(...)`, same as `.card`),
+removing the stroke/shadow entirely. First pass (0.4 opacity) left the
+lede paragraph a little soft specifically where it crossed a bright
+cloud — not a rendering artifact this time, just needed more margin at
+the brightest end of the sky's range — bumped to ~0.5, matching `.card`'s
+own strength. Verified at both 1x and a simulated 2x (retina) scale via
+Playwright before touching the Pi, then confirmed on the physical wall
+itself. Less open sky shows through outside the cards now, a real
+trade-off, but every test so far — both scales, both themes, the actual
+hardware — reads clean, with nothing left riding on how a given screen
+happens to rasterize a stroke.
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**
