@@ -38,13 +38,8 @@
   --bg-sunken: #080b0f;
   --border: var(--ink-600);
   --text: var(--ink-100);
-  /* One step brighter than the flat-background values these were originally
-     picked against (ink-300/ink-400) — the glass panes behind this text sit
-     on a living sky, not a flat --bg, and even a near-opaque backdrop only
-     gets so dark against a bright midday scene. The extra step is contrast
-     margin, not a palette change. */
-  --text-dim: var(--ink-200);
-  --text-faint: var(--ink-300);
+  --text-dim: var(--ink-300);
+  --text-faint: var(--ink-400);
   --accent: var(--nh-500);
 
   --ok: var(--mint-500);

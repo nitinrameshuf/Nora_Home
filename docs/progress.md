@@ -1200,6 +1200,16 @@ legible, and now visibly distinct again — noon a cool charcoal-blue, night
 deep navy with the profile icon showing its moon, dusk warm plum/rose,
 dawn terracotta.
 
+**Reverted, same day.** Told directly: opacity is the wrong lever
+regardless of how it's tuned — flat or daypart-scaled, it's still fighting
+the scene to make text readable, and the fix should live in text color
+instead. `nh-scene.css`/`nora-home.css` rolled back to `28ccbbd` (the
+state before today's opacity work): `.main` alone at its earlier flat
+0.54/0.56 alpha, `.sidebar`/`.card`/`.kiosk-*` back to 0.34/0.46, and
+`--text-dim`/`--text-faint` back to `ink-300`/`ink-400`. Deployed and
+confirmed the revert landed clean. The actual fix — legibility via text
+color rather than backdrop opacity — is still open; not yet designed.
+
 ---
 
 ## Next
