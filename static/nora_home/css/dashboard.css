@@ -39,7 +39,6 @@
 .dash-tile {
   display: flex;
   flex-direction: column;
-  height: 100%;
   background: var(--bg-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -47,6 +46,19 @@
   box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
+/* Real Gridstack mode positions .dash-tile (= .grid-stack-item-content) with an
+   `inset: Npx` on all four sides, computed by Gridstack itself against its
+   wrapper's height — an explicit `height: 100%` here fights that: the box
+   becomes over-constrained (top + bottom + height all set), so the browser
+   drops Gridstack's bottom inset and the tile ends up exactly one margin too
+   tall, silently erasing the gap to the row below while the untouched width
+   axis (no explicit `width` rule) keeps its gap correctly. `height: auto`
+   (the default — nothing to declare) lets Gridstack's top+bottom insets
+   resolve the height themselves, matching the horizontal behavior exactly.
+   The static (no-Gridstack) fallback below still needs it explicitly, since
+   its wrapper is a CSS grid item with `align-items: start`, which does not
+   stretch children to the row's height on its own. */
+.dash__grid--static .dash-tile { height: 100%; }
 
 .dash-tile__head {
   display: flex;
