@@ -793,20 +793,43 @@ Django's test client with matching `data-season`/`data-daypart`/
 
 **Not yet done**: this is the engine and a first real skin, not the full
 Story 23 scope. No new type scale, no per-component pass across every
-widget, no verification at 375px or on the physical wall/kiosk hardware yet
-— `.card`/`.sidebar`/`.kiosk-tile` cover most of the visual surface area by
-virtue of the existing "widgets return data, not HTML" convention, but
-that's a happy consequence of the existing architecture, not a claim that
-every surface has been individually checked.
+widget, no verification at 375px yet — `.card`/`.sidebar`/`.kiosk-tile`
+cover most of the visual surface area by virtue of the existing "widgets
+return data, not HTML" convention, but that's a happy consequence of the
+existing architecture, not a claim that every surface has been individually
+checked.
+
+**Deployed and seen live on the Pi the same session.** One real bug
+surfaced doing this, unrelated to the living background itself:
+`bootstrap_home`'s `_storage()` only ever caught `StorageUnavailable`, but
+this Pi's actual failure is a MinIO signature mismatch (`botocore
+ClientError`) that isn't that type — it was propagating all the way up and
+silently killing every step after it, including the new `_integrations()`
+seeding step. Fixed by catching the broader exception the same way the rest
+of the codebase treats object storage as optional. After that,
+`bootstrap_home` correctly seeded the weather integration, a manual fetch
+against the live API returned real conditions (cloudy, 24.8°C, correctly
+bucketed), and `current_scene()` derived `summer`/`night` from them exactly
+as it does locally. Screenshots off the physical wall and kiosk (`scrot`
+over SSH) show the atmosphere genuinely rendering — drifting cloud shapes,
+a green summer horizon with trees, the home bot sitting on the hillside —
+behind the real app on the wall and the real button grid on the kiosk, both
+legible. Re-tested the kiosk-remote-control flow from the previous story on
+top of the new skin to check for regressions: tapping "Habits" still
+correctly navigates the wall's iframe and swaps the kiosk to the
+Habits-only control screen. Not yet tested: light theme on real hardware,
+and whether continuous animation plus backdrop blur on every pane holds up
+over hours rather than a few minutes.
 
 ---
 
 ## Next
 
-1. **See the living background on the physical wall and kiosk.** Built and
-   verified locally and against the live weather API; not yet seen on real
-   hardware, and continuous motion (rain/snow/stars, backdrop blur on every
-   pane) on a Pi 5 driving two Chromium instances at once is a real
-   performance question, flagged but untested.
+1. **Living background: check it holds up over hours, not just minutes.**
+   Verified live on the physical wall and kiosk the same session (real
+   weather, both screens in sync, no regression to the kiosk remote-control
+   flow) — what's not yet checked is continuous motion (rain/snow/stars,
+   backdrop blur on every pane) over a long stretch on a Pi 5 driving two
+   Chromium instances at once, and the light theme on real hardware.
 2. **Story 24 — house maintenance**, the first real app, which is what proves the
    skeleton was worth building. Unblocked since Story 27 (2026-08-02).

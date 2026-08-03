@@ -215,17 +215,25 @@ mapping. Both are now permanent: `install-pi.sh` §8 writes
 `/etc/X11/xorg.conf.d/40-touchscreen.conf` itself.
 
 ### Not done — pick up here
-1. **Design system chosen: "Almanac" — built, unproven past local checks.**
+1. **Design system chosen: "Almanac" — engine shipped and seen live on the Pi.**
    See §4's new decision entry and `docs/design-options.html`. The living
    background (season/day-night/weather composited behind the real app, never
    replacing it) is wired into `base.html` and `kiosk.html`, backed by a real
-   weather integration (Open-Meteo, no API key). Verified locally: real
-   fetch against the live API, `manage.py check` clean, `/home/`,
-   `/home/displays/kiosk/`, and `/home/settings/` all render with correct
-   `data-season`/`data-daypart`/`data-weather`. **Not yet built**: a full type
+   weather integration (Open-Meteo, no API key). Verified locally (real fetch
+   against the live API, `manage.py check` clean, key pages rendering with
+   correct `data-season`/`data-daypart`/`data-weather`) and then deployed and
+   screenshotted on the physical wall and kiosk the same session — real
+   weather (cloudy, 24.8°C), correct season/daypart, both screens agreeing,
+   and no regression to the kiosk-drives-wall remote-control flow. One real
+   bug found doing this: `bootstrap_home`'s `_storage()` only caught
+   `StorageUnavailable`, not this Pi's actual MinIO signature-mismatch error,
+   so it was silently killing everything after it including the new
+   integration-seeding step — fixed to degrade the same way the rest of the
+   codebase treats object storage as optional. **Not yet built**: a full type
    scale and per-component restyle across all five surfaces (this pass only
-   retrofit `.card`/`.sidebar`/`.kiosk-tile` to the glass material) — that
-   remains real work, not yet started.
+   retrofit `.card`/`.sidebar`/`.kiosk-tile` to the glass material), and
+   unverified: the light theme on real hardware, and whether continuous
+   animation plus backdrop blur holds up over hours rather than minutes.
 2. **Celery worker/beat health unconfirmed.** Containers start, but showed
    `unhealthy` in `docker compose ps` at least once on the Pi — never confirmed a
    scheduled task (escalation sweep, backup) actually ran end to end.
