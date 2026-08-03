@@ -133,6 +133,14 @@ class WorkoutConfig(NoraAppConfig):
     nora_wall_panels = ["houseapps.workout.widgets.WallSummary"]
     nora_dashboard_cards = []
 
+    # Buttons the 10.1" kiosk shows once someone switches the 24" wall to
+    # this app. Optional — skip it and your app still gets a single tile
+    # that just switches the wall to your app's front page.
+    nora_kiosk_controls = [
+        {"title": "Log a set", "path": "/workout/log/"},
+        {"title": "History", "path": "/workout/history/"},
+    ]
+
     # Truthful declarations — they drive the app directory and MCP listing.
     nora_provides_mcp_tools = True
     nora_owns_telemetry_series = ["workout.volume", "workout.sessions"]
@@ -234,6 +242,31 @@ notify_house(title="Power outage", body="UPS on battery.", severity="critical",
 Routing, quiet hours, per-person channel preferences, delivery receipts, and retries
 are handled. `alert` and `critical` deliberately ignore quiet hours; everything else
 respects them.
+
+---
+
+## The 24" wall and the 10.1" touchscreen
+
+Two physical screens in the house work together, and most apps get useful
+behaviour on both without any extra code:
+
+- The **24" wall** shows the real app — whatever page is currently open,
+  full-size, for anyone in the room to read. It has no touch or mouse.
+- The **10.1" kiosk** is the remote control for it. It never shows your
+  app's pages itself — it's a fixed grid of buttons. Tapping one switches
+  what the wall is showing.
+
+Every app with `nora_nav = True` already gets one kiosk button for free — it
+switches the wall to your app's front page (`nora_url_prefix`). If your app
+has more than one place worth jumping straight to, declare
+`nora_kiosk_controls` in `apps.py` (shown above) and the kiosk grows a
+whole screen of buttons for your app — tapping any of them still switches
+the wall, just to that specific page instead of the front page. No websocket
+code, no JavaScript, nothing else to wire up; the platform's existing
+display bus (`nora_home/displays/`) carries the command.
+
+Paths are plain strings, the same convention `nora_url_prefix` already uses
+— not Django URL names needing `reverse()`.
 
 ---
 

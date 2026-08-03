@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-head">
+        <h3 class="card-title">Wall display schedule</h3>
+        {% if wall_schedule.enabled %}<span class="pill ok">on</span>
+        {% else %}<span class="pill">off</span>{% endif %}
+      </div>
+      <p class="card-subtitle">
+        Power the 24" wall display off outside these hours. The kiosk and the
+        platform itself keep running either way — this only affects the
+        physical monitor.
+      </p>
+      <form method="post" style="display:grid;gap:0.9rem;margin-top:0.9rem">
+        {% csrf_token %}
+        <label style="display:flex;align-items:center;gap:0.6rem">
+          <input type="checkbox" name="wall_schedule_enabled"
+                 {% if wall_schedule.enabled %}checked{% endif %}>
+          <span>Enable schedule</span>
+        </label>
+        <label>
+          <span class="card-subtitle">Off from (hour, 0–23)</span>
+          <input type="number" name="wall_schedule_start" min="0" max="23"
+                 value="{{ wall_schedule.start_hour }}">
+        </label>
+        <label>
+          <span class="card-subtitle">On again from (hour, 0–23)</span>
+          <input type="number" name="wall_schedule_end" min="0" max="23"
+                 value="{{ wall_schedule.end_hour }}">
+        </label>
+        <button class="btn btn-primary" type="submit" style="justify-self:start">
+          Save
+        </button>
+      </form>
+    </div>
+  </div>
+{% endblock %}

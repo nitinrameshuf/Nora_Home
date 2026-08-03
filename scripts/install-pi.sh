@@ -19,11 +19,12 @@ set -euo pipefail
 
 REPO_DIR="${NORA_HOME_DIR:-$HOME/nora-home}"
 NORA_HOME_PORT="${NORA_HOME_PORT:-8000}"
-# The 24" screen shows the full navigable app, not the passive ambient wall
-# view — a deliberate choice, made after actually seeing both. The ambient
-# view still exists at /home/displays/wall/ if that's ever wanted back; only
-# which URL this screen is pointed at changed.
-WALL_URL="http://localhost:${NORA_HOME_PORT}/home/"
+# The 24" shows the full navigable app — but through a thin iframe shell
+# (/home/displays/wall/), not pointed at /home/ directly, so the 10.1" kiosk
+# can drive it remotely (see wall-live.js and the kiosk_controls contract in
+# DEVELOPMENT.md). The kiosk itself never shows the app — it's a fixed
+# button grid built from the same nav structure the sidebar uses.
+WALL_URL="http://localhost:${NORA_HOME_PORT}/home/displays/wall/"
 KIOSK_URL="http://localhost:${NORA_HOME_PORT}/home/displays/kiosk/"
 
 info()  { printf '\n\033[1;36m==>\033[0m %s\n' "$*"; }
@@ -216,12 +217,14 @@ DESKTOP
 launch_script "wall"  "$WALL_URL"  "0,0"    "1920,1080"
 launch_script "kiosk" "$KIOSK_URL" "1920,0" "1024,600"
 
-# Never blank the wall display.
+# Never blank on idle. DPMS itself stays ON (not disabled) — the wall power
+# schedule below (step 9) needs `xset dpms force` to actually do something,
+# and disabling DPMS entirely would make that a no-op.
 cat > "$HOME/.config/autostart/nora-no-blank.desktop" <<'DESKTOP'
 [Desktop Entry]
 Type=Application
 Name=Nora keep displays awake
-Exec=sh -c "xset s off; xset -dpms; xset s noblank"
+Exec=sh -c "xset s off; xset s noblank"
 X-GNOME-Autostart-enabled=true
 DESKTOP
 
@@ -245,6 +248,63 @@ Section "InputClass"
 EndSection
 XCONF
 fi
+
+# ── 9. Wall display power schedule ────────────────────────────────────────────
+# The Settings page (core:settings) lets someone toggle a schedule for the 24"
+# wall to power off outside certain hours — but Django runs in Docker and has
+# no path to the host's X11 session to act on it. This script is that bridge:
+# Django decides on/off (it already knows the house timezone and has the
+# settings store), this script just executes the decision every few minutes.
+#
+# `xset dpms force` was chosen over `xrandr --output ... --off`, which this
+# same install process used earlier for a different problem and found
+# genuinely fragile for repeated, unattended use (output position drift, and
+# once, a broken 0x0 mode needing manual recovery — see docs/progress.md,
+# 2026-08-02). DPMS doesn't touch output/CRTC configuration at all, so it's
+# expected to be safer, but this has NOT been proven safe unattended yet —
+# watch the wall for a day or two after enabling the schedule before trusting
+# it fully, and confirm dpms force off doesn't also blank the kiosk (DPMS can
+# be session-wide rather than per-output on some driver/X-server
+# combinations — if it turns out to be, this needs a different mechanism).
+info "Installing the wall display power schedule"
+cat > "$HOME/.nora/wall-power.sh" <<SCRIPT
+#!/usr/bin/env bash
+cd "$REPO_DIR" || exit 0
+STATE="\$(docker compose exec -T web python manage.py wall_power_state 2>/dev/null | tr -d '[:space:]')"
+case "\$STATE" in
+    on|off) exec xset -display :0 dpms force "\$STATE" ;;
+    *) exit 0 ;;  # app not reachable — leave the display alone rather than guess
+esac
+SCRIPT
+chmod +x "$HOME/.nora/wall-power.sh"
+
+sudo tee /etc/systemd/system/nora-wall-power.service >/dev/null <<UNIT
+[Unit]
+Description=Apply the Nora Home wall display power schedule
+After=nora-home.service
+
+[Service]
+Type=oneshot
+User=$USER
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=%h/.Xauthority
+ExecStart=$HOME/.nora/wall-power.sh
+UNIT
+
+sudo tee /etc/systemd/system/nora-wall-power.timer >/dev/null <<UNIT
+[Unit]
+Description=Check the Nora Home wall display power schedule every 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
+UNIT
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now nora-wall-power.timer
 
 info "Done."
 cat <<SUMMARY

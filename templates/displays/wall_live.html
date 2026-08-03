@@ -1,0 +1,23 @@
+{% load static %}<!doctype html>
+{% comment %}
+The 24" wall — a thin shell around an iframe of the real app. Deliberately
+does NOT extend base.html: no nav, no bot, no chrome of its own, since the
+chrome the iframe's own page renders (sidebar, switcher, etc.) is the point.
+What page shows is driven remotely by the kiosk over the same websocket bus
+the old ambient wall used — see wall-live.js.
+{% endcomment %}
+<html lang="en" data-surface="wall" data-theme="dark" data-nh-bot="off">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ house_name }} — wall</title>
+  <link rel="stylesheet" href="{% static 'nora_home/css/nora-home.css' %}">
+  <link rel="stylesheet" href="{% static 'nora_home/css/displays.css' %}">
+</head>
+<body class="wall-live" data-display-slug="{{ display.slug }}">
+  <iframe data-wall-frame src="{{ default_path }}" title="{{ house_name }}"></iframe>
+  <span class="wall-status wall-live-dot" data-wall-status></span>
+
+  <script src="{% static 'nora_home/js/wall-live.js' %}" defer></script>
+</body>
+</html>

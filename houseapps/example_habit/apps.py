@@ -32,6 +32,15 @@ class ExampleHabitConfig(NoraAppConfig):
     ]
     nora_wall_panels = ["houseapps.example_habit.cards.HabitWallPanel"]
 
+    # What the 10.1" kiosk shows once someone switches the 24" wall to this
+    # app — plain paths, not Django URL names, same as nora_url_prefix above.
+    # This app only has one real page, so there is only one control to show;
+    # an app with several distinct actions (log a set, see history, start a
+    # timer) would list one entry per destination here.
+    nora_kiosk_controls = [
+        {"title": "All habits", "path": "/habits/"},
+    ]
+
     # Declared so the app directory and the MCP listing tell the truth.
     nora_provides_mcp_tools = True
     nora_owns_telemetry_series = ["habits.completion_rate"]

@@ -1,7 +1,12 @@
 {% load static %}<!doctype html>
 {% comment %}
-The 10.1" touchscreen on the Pi's second HDMI output. It drives the wall
-display. Everything is one screen, no scrolling, thumb-sized targets.
+The 10.1" touchscreen on the Pi's second HDMI output. It never shows the app
+itself — it is a set of button screens that tell the 24" wall which page to
+show. Tapping an app switches the wall to it AND swaps the kiosk's own
+buttons to that app's controls (if it declared any via nora_kiosk_controls —
+see NoraAppConfig in nora_home/core/registry.py) so the remote stays
+relevant to whatever's currently on the big screen. Screens scroll if a
+house has grown enough apps that they don't fit on one 10" panel.
 {% endcomment %}
 <html lang="en" data-surface="kiosk" data-theme="dark" data-nh-bot="off">
 <head>
@@ -22,22 +27,51 @@ display. Everything is one screen, no scrolling, thumb-sized targets.
     <span class="kiosk-status" data-kiosk-status></span>
   </header>
 
-  <main class="kiosk-grid">
-    {% for panel in panels %}
-      <button class="kiosk-tile" data-kiosk-action="show"
-              data-panel="{{ panel.key }}" data-pin-seconds="180" type="button">
-        <span class="kiosk-tile__title">{{ panel.title }}</span>
-        <span class="kiosk-tile__hint">Hold on the wall for 3 min</span>
+  <main class="kiosk-grid" data-kiosk-screen="menu">
+    <button class="kiosk-tile" data-kiosk-action="navigate"
+            data-path="{{ home_url }}" type="button">
+      <span class="kiosk-tile__title">Home</span>
+    </button>
+    <button class="kiosk-tile" data-kiosk-action="navigate"
+            data-path="{{ alerts_url }}" type="button">
+      <span class="kiosk-tile__title">Alerts</span>
+    </button>
+    {% for group in nav %}
+      {% for app in group.apps %}
+        <button class="kiosk-tile"
+                data-kiosk-action="{% if app.kiosk_controls %}switch-app{% else %}navigate{% endif %}"
+                data-app="{{ app.slug }}" data-path="{{ app.url }}" type="button">
+          <span class="kiosk-tile__title">{{ app.title }}</span>
+          <span class="kiosk-tile__hint">{{ group.label }}</span>
+        </button>
+      {% endfor %}
+    {% endfor %}
+    {% for link in house_links %}
+      <button class="kiosk-tile" data-kiosk-action="navigate"
+              data-path="{{ link.url }}" type="button">
+        <span class="kiosk-tile__title">{{ link.title }}</span>
+        <span class="kiosk-tile__hint">This house</span>
       </button>
-    {% empty %}
-      <div class="empty">No wall panels are installed yet.</div>
     {% endfor %}
   </main>
 
+  {% for app_slug, app in apps_with_controls.items %}
+    <main class="kiosk-grid" data-kiosk-screen="app:{{ app_slug }}" hidden>
+      <button class="kiosk-tile kiosk-tile--back" data-kiosk-action="show-menu" type="button">
+        <span class="kiosk-tile__title">&larr; Apps</span>
+      </button>
+      {% for control in app.kiosk_controls %}
+        <button class="kiosk-tile" data-kiosk-action="navigate"
+                data-path="{{ control.path }}" type="button">
+          <span class="kiosk-tile__title">{{ control.title }}</span>
+          <span class="kiosk-tile__hint">{{ app.title }}</span>
+        </button>
+      {% endfor %}
+    </main>
+  {% endfor %}
+
   <footer class="kiosk-controls">
-    <button class="btn kiosk-control" data-kiosk-action="previous" type="button">Back</button>
-    <button class="btn kiosk-control" data-kiosk-action="unpin" type="button">Resume rotation</button>
-    <button class="btn kiosk-control" data-kiosk-action="next" type="button">Next</button>
+    <button class="btn kiosk-control" data-kiosk-action="show-menu" type="button">Apps</button>
     <button class="btn kiosk-control" data-kiosk-action="sleep" type="button">Dim</button>
     <button class="btn kiosk-control" data-kiosk-action="wake" type="button">Wake</button>
     <button class="btn kiosk-control" data-kiosk-action="refresh" type="button">Reload</button>

@@ -593,6 +593,85 @@ re-verified against a live request on the Pi — `.env` is gitignored, so the
 existing Pi deployment needs its `DJANGO_ALLOWED_HOSTS` line hand-edited, this
 fix alone won't reach it via `git pull`.
 
+## 2026-08-02 — kiosk becomes a real remote control, and a Settings tab
+
+Two related features, planned together since the wall/kiosk redesign
+touched the same code both would build on.
+
+**Kiosk drives the wall.** Since the 24" now shows the real app instead of
+the old ambient view, the kiosk's old purpose (a fixed grid of buttons that
+told the ambient view which of ~4 panels to show) no longer matched what
+the wall displays. First design pass assumed the kiosk should become its
+own interactive copy of the app — corrected after checking: the kiosk
+should stay what it already architecturally was, a button remote, just
+re-pointed at real app *pages* instead of ambient *panels*. Then corrected
+again: the button set needed to be **context-sensitive** per app, not one
+flat menu — tapping "Workout" should show workout-specific buttons on the
+kiosk, not just switch the wall and leave the same generic menu showing.
+
+Landed as: `NoraAppConfig` gained `nora_kiosk_controls` (`core/registry.py`),
+the same shape as the existing `nora_wall_panels`/`nora_widgets` contract —
+an app lists `{"title", "path"}` entries and gets its own kiosk button
+screen for free, switched to locally the instant its top-level tile is
+tapped (`kiosk.js: Kiosk.showScreen`), no round trip needed since the kiosk
+is the only thing that can ever cause navigation in the first place (the
+wall has no touch/mouse, so it can never navigate independently — this is
+what let the design skip a wall→kiosk state-echo mechanism entirely).
+Reference app (`houseapps/example_habit`) and `DEVELOPMENT.md` both updated
+so a future app author — or their agent — finds this documented, not
+rediscovered from the code.
+
+Wall side: `/home/displays/wall/` now serves a thin iframe shell
+(`wall_live.html`/`wall-live.js`) instead of the old pre-rendered-panels
+page — the outer page and its websocket persist across navigation, only the
+iframe's `src` changes, so a burst of kiosk taps doesn't cost a reconnect
+each time. `X_FRAME_OPTIONS = "SAMEORIGIN"` already permitted this with zero
+header changes. Old ambient `wall.html`/`wall.js`/`kiosk_panels`-based
+`kiosk.html` flow deliberately left untouched, just unused by default.
+
+Verified locally end to end (test client): wall renders the iframe pointed
+at `/home/`, kiosk renders both the top-level menu and a per-app screen for
+`habits` (the reference app, now declaring one control), the HTTP fallback
+command endpoint accepts `navigate` too. Not yet seen on the physical
+screens — that's next.
+
+**Settings tab.** Reused rather than rebuilt: `HouseSetting`
+(`core/models.py`) already existed as a generic, cached, admin-registered
+key/value store with nothing reading or writing it from a real page — the
+exact extensibility mechanism asked for. New `core:settings` page follows
+the same plain-view pattern as `system_status`/`app_directory`; one setting
+so far (a schedule for the wall's power), more to be added as plain form
+fields over time rather than building a settings-registry framework for a
+single current setting.
+
+The real engineering problem: Django runs entirely in Docker, the physical
+monitor is driven by Chromium on the Pi's own X11 session outside any
+container — confirmed via direct search that no bridge between the two
+existed anywhere in this codebase. Built one: a new management command
+(`manage.py wall_power_state`) does the decision-making in Django, which
+already knows the house timezone and has the settings store, printing a
+bare `on`/`off`; a new host-side script (`~/.nora/wall-power.sh`, generated
+by `install-pi.sh`) and systemd timer, running every 5 minutes outside
+Docker, just execute that decision with `xset dpms force`. Chose DPMS over
+`xrandr --output ... --off`, which this same session found genuinely
+fragile for repeated unattended use earlier tonight (position drift, one
+broken `0x0` mode needing manual recovery) — DPMS doesn't touch
+output/CRTC configuration at all, so it's expected to be safer, but this
+is reasoned, not yet proven: needs real verification on the Pi that it (a)
+actually powers the physical panel down, (b) is per-output rather than
+session-wide on this driver — if it turns out to blank the kiosk too, that
+defeats the point, since the kiosk is meant to stay on as the control
+surface. `nora-no-blank.desktop` updated to stop disabling DPMS outright
+(it used to, which would have made `dpms force` permanently a no-op) while
+still disabling idle-based auto-blank.
+
+**Not yet done**: none of this has been deployed to or seen on the real Pi
+yet — verified locally only. Also caught mid-build and fixed before it
+shipped: the systemd wall-power service needs `XAUTHORITY` set explicitly,
+since a system-level service doesn't inherit the graphical session's X11
+auth just because `DISPLAY` is set — added `Environment=XAUTHORITY=%h/.Xauthority`
+before this was ever run for real, not after discovering it broken.
+
 ---
 
 ## Next

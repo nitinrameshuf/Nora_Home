@@ -203,6 +203,19 @@ mapping. Both are now permanent: `install-pi.sh` §8 writes
 4. **No tests.** `pytest` is configured; nothing is written.
 5. **PWA manifest and service worker** — decided (§5) but not written.
 6. **No favicon** — the logs show steady `/favicon.ico` 404s.
+7. **Kiosk-drives-wall redesign and the Settings tab — built, unverified on
+   the Pi.** The 24" wall now serves an iframe shell (`wall_live.html`)
+   instead of pre-rendered ambient panels, and the 10.1" kiosk got
+   context-sensitive per-app button screens (`nora_kiosk_controls` on
+   `NoraAppConfig` — see `DEVELOPMENT.md`). A `Settings` page
+   (`core:settings`) holds house-wide config, starting with a wall power
+   schedule applied by a new host-side script + systemd timer via
+   `xset dpms force`. All verified locally with Django's test client and
+   direct logic tests, none of it seen on the physical screens yet.
+   Specifically unconfirmed: whether `xset dpms force off` actually powers
+   the panel down, and whether it's per-output or would blank the kiosk too
+   — if the latter, the mechanism needs rethinking, since the kiosk has to
+   stay on as the control surface.
 
 ---
 

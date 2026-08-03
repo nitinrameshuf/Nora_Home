@@ -24,8 +24,11 @@ from nora_home.displays.bus import ALL_DISPLAYS_GROUP, group_for
 logger = logging.getLogger(__name__)
 
 # Commands the kiosk is allowed to issue. Anything else is ignored and logged.
+# "navigate" sends the wall to a page of the real app (path rides along in the
+# payload unparsed — see KioskConsumer.receive_json) rather than switching
+# between pre-rendered ambient panels like the others in this set.
 KIOSK_ACTIONS = {"show", "pin", "unpin", "next", "previous", "refresh",
-                 "brightness", "sleep", "wake", "say"}
+                 "brightness", "sleep", "wake", "say", "navigate"}
 
 
 class DisplayConsumer(AsyncJsonWebsocketConsumer):

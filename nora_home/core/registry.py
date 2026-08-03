@@ -98,6 +98,10 @@ class NoraAppConfig(AppConfig):
     nora_dashboard_cards: list[str] = []
     nora_widgets: list[str] = []  # visualizations selectable on the home dashboard
     nora_wall_panels: list[str] = []  # panels eligible for the 24" rotation
+    # Buttons the 10.1" kiosk shows once someone has switched the wall to this
+    # app — e.g. [{"title": "Log a set", "path": "/workout/log/"}]. Optional:
+    # an app with none just gets the default single tile that switches to it.
+    nora_kiosk_controls: list[dict] = []
 
     # Capability flags the platform uses to decide what to wire up
     nora_provides_mcp_tools: bool = False
@@ -123,6 +127,7 @@ class NoraAppConfig(AppConfig):
             dashboard_cards=list(self.nora_dashboard_cards),
             widgets=list(self.nora_widgets),
             wall_panels=list(self.nora_wall_panels),
+            kiosk_controls=list(self.nora_kiosk_controls),
             provides_mcp_tools=self.nora_provides_mcp_tools,
             telemetry_series=list(self.nora_owns_telemetry_series),
             minimum_role=self.nora_minimum_role,
@@ -146,6 +151,7 @@ class AppMetadata:
     dashboard_cards: list[str] = field(default_factory=list)
     widgets: list[str] = field(default_factory=list)
     wall_panels: list[str] = field(default_factory=list)
+    kiosk_controls: list[dict] = field(default_factory=list)
     provides_mcp_tools: bool = False
     telemetry_series: list[str] = field(default_factory=list)
     minimum_role: str = "member"

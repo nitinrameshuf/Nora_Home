@@ -4,45 +4,59 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_POST
 
-from nora_home.core.registry import wall_panels
+from nora_home.core.registry import navigation
 from nora_home.displays.bus import send_to_display, show_panel
 from nora_home.displays.models import Display
 
 
 @login_required
 def wall(request, slug: str = ""):
-    """The always-on 24" screen. No chrome, no nav — just the rotating panels.
-
-    It renders every eligible panel once and switches between them client-side, so a
-    rotation never waits on a network round trip and a brief outage does not blank
-    the wall.
+    """The always-on 24" screen — a thin shell around an iframe of the real
+    app. What it shows is driven remotely by the kiosk (see wall-live.js);
+    this view just picks the starting page and registers the display row.
     """
     slug = slug or settings.NORA_HOME_MAIN_DISPLAY_SLUG
     display, _ = Display.objects.get_or_create(
         slug=slug, defaults={"name": slug.title(), "kind": Display.Kind.WALL})
 
-    panels = [p for p in wall_panels() if p.wall_safe]
-    return render(request, "displays/wall.html", {
+    return render(request, "displays/wall_live.html", {
         "display": display,
-        "panels": [{"key": p.key, "title": p.title, "html": p.render(request)}
-                   for p in panels],
-        "rotation_seconds": display.rotation_seconds,
-        "night_mode": display.in_night_mode(),
+        "default_path": reverse("core:dashboard"),
     })
 
 
 @login_required
 @xframe_options_sameorigin
 def kiosk(request):
-    """The 10.1" touchscreen. Big targets, one thumb, no scrolling required."""
+    """The 10.1" touchscreen. Big targets, one thumb — a remote control for
+    the wall, never the app itself. Tiles mirror the same nav structure the
+    sidebar uses, so a new house app appears here automatically. An app that
+    declares nora_kiosk_controls (NoraAppConfig) gets its own button screen,
+    swapped in on the kiosk the moment someone switches the wall to it.
+    """
+    role = getattr(request.user, "role", "member")
+    nav = navigation(role)
+    apps_with_controls = {
+        app.slug: app
+        for group in nav for app in group["apps"]
+        if app.kiosk_controls
+    }
     return render(request, "displays/kiosk.html", {
         "displays": Display.objects.filter(is_active=True),
         "target": settings.NORA_HOME_MAIN_DISPLAY_SLUG,
-        "panels": [{"key": p.key, "title": p.title, "icon": p.icon}
-                   for p in wall_panels()],
+        "nav": nav,
+        "apps_with_controls": apps_with_controls,
+        "home_url": reverse("core:dashboard"),
+        "alerts_url": reverse("notifications:inbox"),
+        "house_links": [
+            {"title": "Apps", "url": reverse("core:app_directory")},
+            {"title": "Status", "url": reverse("core:system_status")},
+            {"title": "Settings", "url": reverse("core:settings")},
+        ],
     })
 
 
@@ -65,6 +79,9 @@ def command(request, slug: str):
         ok = show_panel(display.slug, request.POST.get("panel", ""),
                         pin_seconds=int(request.POST.get("pin_seconds", 0) or 0),
                         issued_by=request.user.get_username())
+    elif action == "navigate":
+        ok = send_to_display(display.slug, {"type": "navigate",
+                                            "path": request.POST.get("path", "")})
     elif action in {"refresh", "wake", "sleep", "next", "previous", "unpin"}:
         if action == "unpin":
             display.pinned_until = None

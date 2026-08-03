@@ -21,8 +21,27 @@
     document.addEventListener("click", function (event) {
       var button = event.target.closest("[data-kiosk-action]");
       if (!button) return;
-
       var action = button.getAttribute("data-kiosk-action");
+      Kiosk.flash(button);
+
+      // "switch-app" and "show-menu" are local-only: they swap which set of
+      // buttons this screen shows, they don't mean anything to the server.
+      // "switch-app" also tells the wall to go to that app's landing page,
+      // same as a plain "navigate" tap would.
+      if (action === "show-menu") {
+        Kiosk.showScreen("menu");
+        return;
+      }
+      if (action === "switch-app") {
+        Kiosk.showScreen("app:" + button.getAttribute("data-app"));
+        Kiosk.send({
+          action: "navigate",
+          display: button.getAttribute("data-display") || Kiosk.target,
+          path: button.getAttribute("data-path")
+        });
+        return;
+      }
+
       var payload = {
         action: action,
         display: button.getAttribute("data-display") || Kiosk.target
@@ -33,14 +52,21 @@
           button.getAttribute("data-pin-seconds") || "120", 10
         );
       }
-
-      Kiosk.flash(button);
+      if (button.hasAttribute("data-path")) {
+        payload.path = button.getAttribute("data-path");
+      }
       Kiosk.send(payload);
       Kiosk.markActive(button);
     });
 
     // No accidental pinch-zoom or text selection on a wall-mounted panel.
     document.addEventListener("gesturestart", function (e) { e.preventDefault(); });
+  };
+
+  Kiosk.showScreen = function (name) {
+    document.querySelectorAll("[data-kiosk-screen]").forEach(function (screen) {
+      screen.hidden = screen.getAttribute("data-kiosk-screen") !== name;
+    });
   };
 
   Kiosk.flash = function (button) {

@@ -5,11 +5,16 @@ from __future__ import annotations
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_http_methods
 
 from nora_home.core.health import collect_health
 from nora_home.core.registry import registered_apps
+
+WALL_SCHEDULE_KEY = "displays.wall_power_schedule"
+WALL_SCHEDULE_DEFAULT = {"enabled": False, "start_hour": 9, "end_hour": 20}
 
 
 @login_required
@@ -58,6 +63,42 @@ def system_status(request):
         "environment": settings.NORA_HOME_ENV,
         "page_title": "System",
     })
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def settings_page(request):
+    """House-wide configuration. One setting today, more over time — each
+    new one is a form field here backed by a HouseSetting row, not a new
+    model, until there are enough to justify a registry of their own.
+    """
+    from nora_home.core.settings_store import get_setting, set_setting
+
+    if request.method == "POST":
+        set_setting(
+            WALL_SCHEDULE_KEY,
+            {
+                "enabled": request.POST.get("wall_schedule_enabled") == "on",
+                "start_hour": _clamp_hour(request.POST.get("wall_schedule_start"), 9),
+                "end_hour": _clamp_hour(request.POST.get("wall_schedule_end"), 20),
+            },
+            app_slug="displays",
+            description="When the 24\" wall display powers off overnight/off-hours.",
+        )
+        return redirect(reverse("core:settings"))
+
+    wall_schedule = get_setting(WALL_SCHEDULE_KEY, default=WALL_SCHEDULE_DEFAULT)
+    return render(request, "core/settings.html", {
+        "wall_schedule": wall_schedule,
+        "page_title": "Settings",
+    })
+
+
+def _clamp_hour(raw, default: int) -> int:
+    try:
+        return max(0, min(int(raw), 23))
+    except (TypeError, ValueError):
+        return default
 
 
 def not_found(request, exception=None):  # noqa: ARG001

@@ -216,33 +216,45 @@ disappearing.
 
 ## 5. The two screens
 
-The Pi drives both HDMI outputs. The small screen is a **remote control** for the
-big one — commands travel through the server, not directly.
+The Pi drives both HDMI outputs. The 24" wall shows the real app — the same
+`/home/` a phone or laptop would render, inside a thin iframe shell
+(`displays/wall_live.html`) — full-size, for anyone in the room to read, but
+with no touch or mouse of its own. The 10.1" kiosk is its **remote
+control**: a fixed grid of buttons, never the app itself. Commands travel
+through the server (Channels + Redis), not directly between the two screens.
 
 ```mermaid
 sequenceDiagram
     participant K as Kiosk 10.1"
     participant S as Server (Channels + Redis)
     participant W as Wall 24"
-    participant B as Celery beat
 
-    K->>S: {action: "show", panel: "tracker.WallAgenda", pin_seconds: 180}
-    S->>S: persist Display.current_panel + pinned_until
-    S->>W: display.message
-    W->>W: switch panel, hold
-
-    Note over B: every 45s
-    B->>S: rotate_wall_display()
-    S->>W: {type: "next"}
-    Note over W: ignored while pinned
+    K->>S: {action: "navigate", path: "/workout/log/"}
+    S->>W: display.message {type: "navigate", path}
+    W->>W: iframe.src = path
 
     W->>S: heartbeat (30s)
     Note over S: no heartbeat for 10 min → notify the house
 ```
 
-Every panel is rendered into the wall page **once** and switched client-side, so a
-rotation costs nothing and a network blip never blanks the screen. If the socket
-dies, a local timer takes over until the server returns.
+Every registered house app gets one kiosk button for free, switching the
+wall to that app's front page. An app that declares
+`nora_kiosk_controls` on its `NoraAppConfig` (see `DEVELOPMENT.md`) gets a
+whole extra button screen on the kiosk — tapping any of its buttons still
+just sends a `navigate` command, to that app's own page instead of its
+front page. The wall's outer page and its websocket never reload on
+navigation, only the iframe's `src` changes, so a burst of kiosk taps
+doesn't cost a reconnect each time. If the socket dies, commands fall back
+to a plain HTTP POST (`displays/command/`) so the kiosk still works.
+
+A `Settings` page (`core:settings`, in the URL map below) holds house-wide
+configuration — `HouseSetting`, a generic cached key/value store that
+already existed but had no UI reading or writing it until now. First
+setting: a schedule for when the wall display powers off. Django decides
+on/off (`manage.py wall_power_state`, timezone-aware); a small host-side
+script and systemd timer — outside Docker, since that's where the actual
+X11 session and monitor live — poll it every 5 minutes and act with
+`xset dpms force`.
 
 ---
 
@@ -342,13 +354,14 @@ docker/ scripts/ docs/  entrypoint, provisioning, this folder
 /home/tracker/          the tracker
 /home/alerts/           notifications
 /home/displays/         wall + kiosk management
-/home/displays/wall/    THE 24" SCREEN
-/home/displays/kiosk/   THE 10.1" SCREEN
+/home/displays/wall/    THE 24" SCREEN — iframe shell, shows real app pages remotely
+/home/displays/kiosk/   THE 10.1" SCREEN — button remote, never the app itself
 /home/ai/               assistant console
 /home/measurements/     telemetry
 /home/integrations/     integrations
 /home/apps/             app directory
 /home/system/           health and audit
+/home/settings/         house-wide configuration (HouseSetting-backed)
 /home/capabilities/     the capability sheet
 /accounts/              switch (passwordless), profile, household
 /api/                   platform API (device-token auth)
