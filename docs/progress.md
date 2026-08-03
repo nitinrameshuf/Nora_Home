@@ -821,6 +821,63 @@ Habits-only control screen. Not yet tested: light theme on real hardware,
 and whether continuous animation plus backdrop blur on every pane holds up
 over hours rather than a few minutes.
 
+## 2026-08-03 — cross-app aggregation, made explicit and given its second example
+
+Asked directly what a house app needs to follow so `/home/` can review data
+from every app collectively, while still letting apps build anything —
+followed by "why telemetry?" and a concrete question: can a workout app
+schedule something in a todo app, and does anything separate logs from
+alerts. All three were mostly already true of the platform; this session
+made the pattern legible and gave it a second working example.
+
+**The answer was already sitting in `nora_home/tracker/widgets.py`**:
+`TodayWidget`/`OverdueWidget`/`ReliabilityWidget` query every open/overdue
+`Occurrence` with no `app_slug` filter at all. Any app that calls
+`register_trackable()` shows up in everyone's cross-app summary automatically
+— that's the whole mechanism, and it already worked, just wasn't stated
+anywhere as *the* pattern to follow.
+
+**Telemetry didn't have the equivalent**, so it got one:
+`nora_home.telemetry.widgets.HouseVitalsWidget` — a `ListWidget` querying
+every active `Series` with no `app_slug` filter, mirroring `TodayWidget`
+exactly. Added alongside it: a `category` field on `Series` (migration
+`telemetry.0002_series_category`), threaded through `define_series()`, so
+the home screen can group numbers by theme ("health", "house", "fitness")
+instead of only by which app happens to own them — the one thing a private
+metrics table could never give you. `list_telemetry_series` (MCP) and the
+admin now surface it too.
+
+Verified with real, heterogeneous data rather than a single test app: the
+widget correctly aggregated a demo house-telemetry reading, the (seeded but
+inactive) robot's battery series, and the weather integration's own
+temperature reading — three unrelated sources, zero widget code written for
+any of them beyond calling `record_reading`. Along the way, cleaned up the
+weather integration's own series: it was relying on `record()`'s auto-create
+fallback and showing up as "Weather Temperature_C" — now explicitly named
+"Outside temperature" and categorised `house` via `define_series()`, which
+is also now the documented example in `DEVELOPMENT.md`.
+
+**The workout → todo question** turned out to be a naming confusion worth
+closing explicitly in the docs, not a missing feature: there is no separate
+"todo app" to reach into — `tracker` *is* the shared todo/scheduling spine,
+and every app already calls it directly for its own items. What's actually
+forbidden is importing another app's own models/private logic; that stays
+signal-only (`nora_home.core.signals`), unchanged. `DEVELOPMENT.md`'s
+"Talking to other apps" section now says this outright, with a runnable
+example, rather than leaving `app_slug` looking like a permission gate.
+
+**Logs vs. alerts**: confirmed the platform already has four distinct tiers
+— structured `logging` (developers only, on disk), `nora_home.core.audit`
+(durable, queryable, never pushed to anyone), telemetry readings (silent
+until a threshold fires), and `notifications.api.notify()`/`notify_house()`
+(the only one of the four meant to interrupt a person). This was true in
+code already; `DEVELOPMENT.md` now has a table making it explicit, since
+nothing previously said audit and notifications weren't the same thing.
+
+Verified: `manage.py check` clean, migration applied, `/home/` and
+`/home/measurements/` render, and the widget's payload directly inspected
+end to end with real data from three different sources.
+
 ---
 
 ## Next

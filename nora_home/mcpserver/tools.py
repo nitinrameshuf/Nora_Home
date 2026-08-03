@@ -161,7 +161,7 @@ def list_telemetry_series(**_):
 
     return [
         {"key": s.key, "label": s.label, "unit": s.unit, "app": s.app_slug,
-         "latest": s.latest_value()}
+         "category": s.category, "latest": s.latest_value()}
         for s in Series.objects.filter(is_active=True)
     ]
 

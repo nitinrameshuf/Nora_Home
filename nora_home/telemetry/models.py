@@ -37,6 +37,11 @@ class Series(TimeStampedModel):
     description = models.CharField(max_length=255, blank=True)
     unit = models.CharField(max_length=24, blank=True, help_text="kg, °C, %, ms, USD…")
     app_slug = models.CharField(max_length=60, db_index=True, default="telemetry")
+    category = models.CharField(
+        max_length=40, blank=True, db_index=True,
+        help_text="Cross-app grouping, e.g. 'health', 'house', 'robot' — lets the "
+                  "home screen group series by theme instead of by which app owns "
+                  "them. Optional; ungrouped series just sort under app_slug.")
     member = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
                                on_delete=models.CASCADE, related_name="series",
                                help_text="Null for house-wide series.")

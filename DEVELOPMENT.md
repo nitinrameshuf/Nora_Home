@@ -23,6 +23,7 @@ does the hard parts:
 | File uploads to S3 | A normal Django `FileField` |
 | A cron job | `@shared_task` + a PeriodicTask row |
 | An audit trail | `nora_home.core.audit.record()` |
+| A private table in another app's domain | That app's `app_slug` through `tracker`/`telemetry` — see [Talking to other apps](#talking-to-other-apps) |
 | Exposing your data to AI agents | `@mcp_tool` |
 | Login, roles, who lives here | `settings.AUTH_USER_MODEL` |
 
@@ -208,6 +209,13 @@ complete_source(app_slug="workout", source_ref=str(routine.pk),
 
 That is what stops the nagging, extends the streak, and clears the wall display.
 
+This is also the entire mechanism behind the home screen's "Today", "Overdue", and
+"Reliability" widgets (`nora_home.tracker.widgets`) — they query every open/overdue
+`Occurrence` in the house with **no `app_slug` filter at all**. The moment you call
+`register_trackable`, your app's items appear in everyone's cross-app summary for
+free. You do not write an aggregation widget; the platform already has one, and
+`register_trackable` is how you opt in.
+
 ### The escalation ladder
 
 Attached to every trackable via its policy. Ships with three:
@@ -328,6 +336,7 @@ from nora_home.telemetry.api import define_series, record_reading
 
 # Once, at setup — thresholds are what turn a number into an alert.
 define_series("workout.volume", "Weekly volume", unit="kg", app_slug="workout",
+              category="fitness",     # optional — groups across apps, not just yours
               direction="up", show_on_wall=True)
 
 # Whenever you have a reading.
@@ -337,6 +346,16 @@ record_reading("workout.volume", 8100, member=member, source="manual")
 Crossing a threshold fires a notification and the `threshold_crossed` signal
 automatically. Recording here — rather than in your own table — is also what makes
 the number visible to the AI, the MCP tools, and the wall display.
+
+`category` is what a private metrics table could never give you: it lets the home
+screen group your numbers with another app's by *theme* ("fitness", "health",
+"house") instead of by which app happens to own them. Leave it blank and your series
+still shows up everywhere, just grouped under its `app_slug` instead.
+
+Same free-aggregation pattern as tracker: `nora_home.telemetry.widgets.HouseVitalsWidget`
+queries every active `Series` with no `app_slug` filter, the same way `TodayWidget`
+does for occurrences. Call `define_series`/`record_reading` and your number is on it —
+no widget to write, nothing to register beyond the call you were already making.
 
 ---
 
@@ -435,7 +454,41 @@ refuses them unless the caller's token carries that scope.
 
 ## Talking to other apps
 
-Never import another app's models. Send or receive a signal.
+### The shared spine isn't "another app" — call it directly
+
+If you want your workout app to put something on a todo list, you are not
+reaching into a "todo app." There isn't one — `tracker` **is** the house's
+shared todo/scheduling spine, the same way `telemetry` is the shared numbers
+store. Every app already has direct access to both:
+
+```python
+# From anywhere in your workout app:
+from nora_home.tracker.api import register_trackable
+
+register_trackable(
+    owner=member,
+    title="Log yesterday's session",
+    app_slug="workout",              # still yours — this is what makes it
+    source_ref=f"missed-log:{session.pk}",   #   "your" item on the shared board
+    cadence="once",
+    due_time=tomorrow_9am,
+)
+```
+
+This is not a special case — it's the normal way to use tracker/telemetry/
+notifications, which exist precisely so apps don't need private versions of
+"things due" or "numbers over time." `app_slug` records *which app this item
+belongs to* (for its icon, its URL, its place in the nav); it does not gate
+who is allowed to create it. Calling these three APIs is always fine, from
+any app, for your own data.
+
+### Peer apps: never import, only signal
+
+What you must not do is reach into **another app's own models or private
+logic** — e.g. importing `houseapps.mealplan.models.Recipe` from your workout
+app to read its internals directly. If a genuinely separate app needs to
+react to something your app does, it listens for a signal instead of your
+app calling into it:
 
 ```python
 from django.dispatch import receiver
@@ -450,7 +503,30 @@ def on_completion(sender, item, member, completion, **kwargs):
 ```
 
 Available: `item_completed`, `item_missed`, `escalation_raised`, `threshold_crossed`,
-`integration_synced`, `home_should_react`.
+`integration_synced`, `home_should_react`. Firing one of these (or defining your
+own with `django.dispatch.Signal`) is the escape hatch when tracker/telemetry/
+notifications don't already cover what you're announcing — it keeps two apps
+decoupled: yours doesn't need to know the mealplan app exists, or even whether
+anything is listening.
+
+### Logs, audit, and alerts are not the same thing
+
+Four different records exist in this platform, and mixing them up either
+spams the family or loses the trail when something needs investigating:
+
+| | Who sees it | Where it lives | Use for |
+|---|---|---|---|
+| Python `logging.getLogger(__name__)` | Nobody — developers only, on disk | `logs/nora.log` | Debugging, request tracing |
+| `nora_home.core.audit.record()` | Nobody, unless someone goes looking | `AuditEvent` table, queryable | "What happened" — durable, never pushed, never edited |
+| `nora_home.telemetry.api.record_reading()` | Nobody, until it crosses a threshold | `Series`/`Reading` tables | Numbers over time — silent by default |
+| `nora_home.notifications.api.notify()`/`notify_house()` | The person or house it's addressed to, actively | `Notification` + `Delivery` | The only one of the four meant to interrupt someone |
+
+The rule of thumb: **write an audit event for anything a family member might
+later ask "wait, what happened here?" about** — a completion, a config
+change, an app installed. **Only call `notify()` for something a person
+should be told about now.** A threshold crossing on a telemetry reading is
+the one built-in bridge between the silent tiers and the loud one — it
+already fires a notification for you (see [Measurements over time](#measurements-over-time)) — everything else stays exactly as loud as you choose to make it.
 
 ---
 

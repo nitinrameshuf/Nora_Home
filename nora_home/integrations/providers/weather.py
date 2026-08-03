@@ -70,9 +70,19 @@ class Weather(Integration):
 
         condition = bucket_condition(code)
         self._store(condition, code, temp_c, sunrise, sunset)
-        self.record("temperature_c", temp_c)
+        self._record_temperature(temp_c)
 
         return {"condition": condition, "temp_c": temp_c}
+
+    def _record_temperature(self, temp_c: float):
+        from nora_home.telemetry.api import define_series
+
+        # Named and categorised explicitly rather than left to record()'s
+        # auto-create fallback, which would otherwise title-case the raw key
+        # ("Weather Temperature_C") — this is what shows up in HouseVitalsWidget.
+        define_series("weather.temperature_c", "Outside temperature", unit="°C",
+                      app_slug="integrations", category="house", precision=1)
+        self.record("temperature_c", temp_c)
 
     def _store(self, condition: str, code: int, temp_c: float, sunrise: str, sunset: str):
         from django.utils import timezone as djtz

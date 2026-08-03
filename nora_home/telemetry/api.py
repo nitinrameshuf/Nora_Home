@@ -26,15 +26,15 @@ logger = logging.getLogger(__name__)
 
 
 def define_series(key: str, label: str, *, unit: str = "", app_slug: str = "telemetry",
-                  member=None, direction: str = "neutral", description: str = "",
-                  warn_below=None, warn_above=None, alert_below=None, alert_above=None,
-                  show_on_wall: bool = False, precision: int = 2,
-                  retention_days: int = 730) -> Series:
+                  category: str = "", member=None, direction: str = "neutral",
+                  description: str = "", warn_below=None, warn_above=None,
+                  alert_below=None, alert_above=None, show_on_wall: bool = False,
+                  precision: int = 2, retention_days: int = 730) -> Series:
     series, _ = Series.objects.update_or_create(
         key=key,
         defaults={
-            "label": label, "unit": unit, "app_slug": app_slug, "member": member,
-            "direction": direction, "description": description,
+            "label": label, "unit": unit, "app_slug": app_slug, "category": category,
+            "member": member, "direction": direction, "description": description,
             "warn_below": warn_below, "warn_above": warn_above,
             "alert_below": alert_below, "alert_above": alert_above,
             "show_on_wall": show_on_wall, "precision": precision,

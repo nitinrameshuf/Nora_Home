@@ -15,3 +15,4 @@ class TelemetryConfig(NoraAppConfig):
     nora_order = 35
     nora_url_prefix = "home/measurements/"
     nora_provides_mcp_tools = True
+    nora_widgets = ["nora_home.telemetry.widgets.HouseVitalsWidget"]

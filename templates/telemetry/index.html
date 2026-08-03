@@ -11,6 +11,7 @@
         <div class="card-head">
           <h3 class="card-title">{{ s.label }}</h3>
           <span class="pill">{{ s.app_slug }}</span>
+          {% if s.category %}<span class="pill">{{ s.category }}</span>{% endif %}
         </div>
         <div style="font-size:var(--step-3);font-weight:650">
           {{ s.latest_value|default:"—" }}<span class="card-subtitle"> {{ s.unit }}</span>

@@ -5,9 +5,9 @@ from nora_home.telemetry.models import HourlyRollup, Reading, Series
 
 @admin.register(Series)
 class SeriesAdmin(admin.ModelAdmin):
-    list_display = ("key", "label", "unit", "app_slug", "member", "latest_value",
-                    "show_on_wall", "is_active")
-    list_filter = ("app_slug", "direction", "show_on_wall", "is_active")
+    list_display = ("key", "label", "unit", "app_slug", "category", "member",
+                    "latest_value", "show_on_wall", "is_active")
+    list_filter = ("app_slug", "category", "direction", "show_on_wall", "is_active")
     search_fields = ("key", "label")
 
 
