@@ -1134,6 +1134,47 @@ did by hand.
 
 ---
 
+## 2026-08-03 — the legibility fix from earlier today didn't hold, root-caused for real this time
+
+Reported again, with fresh screenshots: the Displays page's intro paragraph
+and the sidebar's nav labels were still barely legible in dark theme, and
+asked separately to make dark theme the default.
+
+Checked the default first, directly rather than assuming: `data-theme="dark"`
+is already hardcoded on `<html>` in every template (`base.html`, `kiosk.html`,
+`wall.html`, `wall_live.html`, `accounts/switch.html`), and there is no
+`prefers-color-scheme` media query anywhere in the CSS overriding it — only
+`:root[data-theme="light"]` token overrides. A fresh Playwright context with
+no stored preference confirmed this renders dark. Dark already was the
+default; that wasn't the bug.
+
+The real bug: the backdrop-opacity fix from earlier today's session
+(`.main` at 0.54 alpha, `.sidebar`/`.card`/`.kiosk-*` never touched at all,
+still 0.34/0.46) was tuned against one sky state and never checked against a
+bright one. Worked through the compositing math: at 0.34-0.56 alpha, a
+bright overcast midday sky blended through pulls the composited background
+up into the same mid-grey range as `--text-faint`/`--text-dim`, collapsing
+contrast to near zero — worst on `.sidebar`, which had the lowest opacity of
+all of them and was never bumped in the first fix, matching exactly which
+element the new screenshot flagged as worst.
+
+Fixed two ways together: pushed `.sidebar`/`.card`/`.main`/`.kiosk-header`/
+`.kiosk-tile`/`.kiosk-controls`/`.empty` to ~0.86 alpha (both themes) so the
+composited backdrop stays reliably dark, or paper-white in light theme,
+regardless of daypart/weather instead of chasing one sky state; and
+brightened `--text-dim`/`--text-faint` one token step in dark theme
+(`ink-300`/`ink-400` → `ink-200`/`ink-300`) for real contrast margin against
+that now-darker backdrop, since the user named this specifically as a text
+color issue, not just a background one.
+
+Verified against the live Pi over HTTPS with Playwright, not just reasoned
+through: logged in passwordlessly, screenshotted `/home/displays/` in a
+fresh context (confirming dark-by-default) — the exact page from the report,
+now legible throughout — and again with `data-theme` forced to light,
+confirming the same fix holds there too.
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**
