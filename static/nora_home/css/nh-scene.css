@@ -209,49 +209,64 @@
 .shell { position: relative; z-index: 1; background: transparent; }
 body { background: transparent; }
 
+/* --pane-alpha scales the scrim to how bright the sky actually is right
+   now, instead of one flat value picked for the worst case (see the .main
+   comment below for how that went). Night's own sky is already close to
+   black, so it needs almost no scrim and stays fully "living" — vivid
+   stars, the moon glow, real hue. Noon's sky bottoms out near-white, so it
+   needs the most. Light theme is the mirror image: a dark night sky under
+   a near-white pane needs the strongest scrim, a bright noon sky needs the
+   least. Same idea as `filter: brightness()` on the whole scene, but tied
+   to the daypart this project already computes server-side, so it's exact
+   instead of a blanket compromise. */
+:root {
+  --pane-rgb: 6, 8, 12;
+  --pane-alpha: 0.55;
+}
+[data-daypart="night"] { --pane-alpha: 0.34; }
+[data-daypart="dusk"]  { --pane-alpha: 0.58; }
+[data-daypart="dawn"]  { --pane-alpha: 0.68; }
+[data-daypart="noon"]  { --pane-alpha: 0.84; }
+
+:root[data-theme="light"] { --pane-rgb: 255, 255, 255; }
+:root[data-theme="light"][data-daypart="night"] { --pane-alpha: 0.84; }
+:root[data-theme="light"][data-daypart="dusk"]  { --pane-alpha: 0.68; }
+:root[data-theme="light"][data-daypart="dawn"]  { --pane-alpha: 0.58; }
+:root[data-theme="light"][data-daypart="noon"]  { --pane-alpha: 0.36; }
+
 .sidebar {
-  background: rgba(6, 8, 12, 0.86);
+  background: rgba(var(--pane-rgb), var(--pane-alpha));
   backdrop-filter: blur(14px) saturate(140%);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .card {
-  background: rgba(6, 8, 12, 0.86);
+  background: rgba(var(--pane-rgb), var(--pane-alpha));
   backdrop-filter: blur(16px) saturate(150%);
   -webkit-backdrop-filter: blur(16px) saturate(150%);
   border-color: rgba(255, 255, 255, 0.13);
 }
 
-:root[data-theme="light"] .sidebar {
-  background: rgba(255, 255, 255, 0.86);
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-  border-right-color: rgba(20, 24, 32, 0.08);
-}
-:root[data-theme="light"] .card {
-  background: rgba(255, 255, 255, 0.86);
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-  border-color: rgba(20, 24, 32, 0.1);
-}
+:root[data-theme="light"] .sidebar { border-right-color: rgba(20, 24, 32, 0.08); }
+:root[data-theme="light"] .card { border-color: rgba(20, 24, 32, 0.1); }
 
 /* Kiosk: same material, on its own fixed-purpose page (not base.html). */
 .kiosk { position: relative; z-index: 1; background: transparent; }
 .kiosk-header {
-  background: rgba(6, 8, 12, 0.86);
+  background: rgba(var(--pane-rgb), var(--pane-alpha));
   backdrop-filter: blur(12px) saturate(140%);
   -webkit-backdrop-filter: blur(12px) saturate(140%);
   border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 .kiosk-tile {
-  background: rgba(6, 8, 12, 0.86);
+  background: rgba(var(--pane-rgb), var(--pane-alpha));
   backdrop-filter: blur(14px) saturate(150%);
   -webkit-backdrop-filter: blur(14px) saturate(150%);
   border-color: rgba(255, 255, 255, 0.13);
 }
 .kiosk-controls {
-  background: rgba(6, 8, 12, 0.86);
+  background: rgba(var(--pane-rgb), var(--pane-alpha));
   backdrop-filter: blur(12px) saturate(140%);
   -webkit-backdrop-filter: blur(12px) saturate(140%);
   border-top-color: rgba(255, 255, 255, 0.08);
@@ -278,40 +293,32 @@ body { background: transparent; }
    through outside the cards now, but the text sitting directly on it is
    reliably legible everywhere, which a halo effect never fully was.
 
-   First pass at this landed on ~0.54/0.56 alpha, which read fine in the one
+   First pass at this landed on one flat alpha, which read fine in the one
    sky state it was checked against but was never enough headroom: a bright
-   overcast midday sky is close to white, and blended at only ~55% opacity
-   it still lifts the composited background into the same mid-grey range as
+   overcast midday sky is close to white, and blended at ~55% opacity it
+   still lifted the composited background into the same mid-grey range as
    --text-faint/--text-dim themselves, collapsing contrast to near zero —
-   exactly what happened on the Displays page and the sidebar nav. The scene
-   has to be pushed close to opaque (~0.86) so the composited backdrop stays
-   dark (or paper-white in light theme) at every daypart and weather state,
-   not just the one it happened to be checked against. */
+   exactly what happened on the Displays page and the sidebar nav. Pushing
+   one flat alpha to ~0.86 everywhere fixed that but overcorrected the other
+   way — it made every daypart look the same, flattening the entire point
+   of a *living* background. `--pane-alpha` above replaces both attempts:
+   it's still one declaration here, just driven by the daypart the scene
+   already knows, so night stays vivid and noon stays legible. */
 .main {
   position: relative;
   z-index: 1;
-  background: rgba(5, 8, 12, 0.86);
-  backdrop-filter: blur(13px) saturate(130%);
-  -webkit-backdrop-filter: blur(13px) saturate(130%);
-}
-:root[data-theme="light"] .main {
-  background: rgba(255, 255, 255, 0.86);
+  background: rgba(var(--pane-rgb), var(--pane-alpha));
   backdrop-filter: blur(13px) saturate(130%);
   -webkit-backdrop-filter: blur(13px) saturate(130%);
 }
 
 /* The dashed-border empty-state boxes (an empty list, a 404, "nothing here
    yet") read as UI chrome, not as loose text on the scene — they should look
-   filled, like a card, not like a shadow floating in an outline. */
+   filled, like a card, not like a shadow floating in an outline. Slightly
+   less solid than a real card, hence the small alpha trim. */
 .empty,
 .dash__empty {
-  background: rgba(6, 8, 12, 0.82);
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-}
-:root[data-theme="light"] .empty,
-:root[data-theme="light"] .dash__empty {
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(var(--pane-rgb), calc(var(--pane-alpha) - 0.06));
   backdrop-filter: blur(14px) saturate(140%);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
 }
