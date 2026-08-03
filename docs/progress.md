@@ -558,8 +558,13 @@ Fixed the two that were actually fixable in the script itself:
   present on the last Pi provisioned tonight, so this exact path never fired)
   — reasoned through carefully, but genuinely "built, unproven" until the
   next truly-fresh Pi confirms it.
-- **Keyring fix from item 7 also applied**: `--password-store=basic` added
-  to every Chromium launch flag set.
+- **Keyring fix from item 7 also applied and confirmed working**:
+  `--password-store=basic` added to every Chromium launch flag set. Tested
+  directly on the live Pi with a genuinely fresh, throwaway profile
+  (`chromium-keyringtest`) — no "Unlock Login Keyring" dialog, no
+  `gcr-prompter` process at all, and the window showed real content (the
+  switcher page) immediately. Not just reasoned through this time — actually
+  seen not happening.
 
 The two structurally unavoidable steps stay manual, correctly:
 `make member` (can't invent a real person's name), and each screen's one

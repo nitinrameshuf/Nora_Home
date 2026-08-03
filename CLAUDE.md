@@ -164,7 +164,22 @@ auto-login's "Unlock Login Keyring" dialog can appear more than once — a
 second `gcr-prompter` instance blocked the kiosk's Chromium independently of
 the one blocking the wall's — and genuinely blocks unattended boot until
 dismissed by hand (`xdotool key Escape` after `windowactivate` worked;
-clicking the Cancel button did not, twice). See item 7 below.
+clicking the Cancel button did not, twice). Traced to Chromium itself: a
+fresh profile reaches for the OS keyring for its own credential storage,
+and since auto-login never unlocks that keyring, the reach always fails and
+prompts. Fixed with `--password-store=basic` on every launch script, which
+stops Chromium from touching the keyring at all — confirmed with a genuinely
+fresh throwaway profile producing no dialog and no `gcr-prompter` process,
+not just reasoned through.
+
+Two more one-click gaps closed the same day: `scripts/pre-install-pi.sh`
+(run once via `sudo`, grants a validated `NOPASSWD` sudoers entry so nothing
+in `install-pi.sh` prompts for a password afterward — no new capability, the
+account already has full sudo, this just removes the prompt), and the
+Docker-install step no longer exits asking for a manual re-login — it
+re-execs itself under `sg docker -c` and continues in the same run instead
+(logic reviewed carefully, not yet re-tested against a genuinely fresh
+install since Docker was already present on the last Pi provisioned).
 
 The kiosk's touchscreen also needed two fixes, both now resolved: the panel's
 touch USB cable wasn't making a working connection to this Pi (swapping the
@@ -188,18 +203,6 @@ mapping. Both are now permanent: `install-pi.sh` §8 writes
 4. **No tests.** `pytest` is configured; nothing is written.
 5. **PWA manifest and service worker** — decided (§5) but not written.
 6. **No favicon** — the logs show steady `/favicon.ico` 404s.
-7. **Login keyring blocking unattended kiosk boot — fix applied, not yet
-   re-verified.** Auto-login leaves the desktop's login keyring locked, so an
-   "Unlock Login Keyring" dialog popped up over the wall and/or kiosk Chromium
-   on first boot — sometimes once per screen — sitting there blocking that
-   screen until dismissed by hand. Traced to Chromium itself: a fresh profile
-   reaches for the OS keyring for its own credential storage, and since
-   auto-login never unlocks that keyring, that reach always fails and prompts.
-   Fixed by adding `--password-store=basic` to every launch script, which
-   stops Chromium from touching the keyring at all. Not yet confirmed against
-   a real reboot — the flag was added and reasoned through, but the next
-   person on the Pi should watch first boot to confirm the dialog is actually
-   gone before treating this as closed.
 
 ---
 
