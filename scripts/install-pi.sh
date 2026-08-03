@@ -15,7 +15,11 @@ set -euo pipefail
 
 REPO_DIR="${NORA_HOME_DIR:-$HOME/nora-home}"
 NORA_HOME_PORT="${NORA_HOME_PORT:-8000}"
-WALL_URL="http://localhost:${NORA_HOME_PORT}/home/displays/wall/"
+# The 24" screen shows the full navigable app, not the passive ambient wall
+# view — a deliberate choice, made after actually seeing both. The ambient
+# view still exists at /home/displays/wall/ if that's ever wanted back; only
+# which URL this screen is pointed at changed.
+WALL_URL="http://localhost:${NORA_HOME_PORT}/home/"
 KIOSK_URL="http://localhost:${NORA_HOME_PORT}/home/displays/kiosk/"
 
 info()  { printf '\n\033[1;36m==>\033[0m %s\n' "$*"; }

@@ -520,6 +520,19 @@ than guessed:
    cable issue is hardware and out of scope for the script, but the mapping
    fix isn't. Confirmed working by the user tapping the physical screen.
 
+### 2026-08-02 — 24" screen repointed from the ambient wall to the main app
+Deliberate change, made after actually seeing the ambient view (`wall.html`)
+running for real: the 24" screen now shows the full navigable app (`/home/`
+— dashboard, sidebar nav, switcher) instead of the passive, non-interactive
+wall view. `install-pi.sh`'s `WALL_URL` updated so this is what a fresh
+install or reinstall gets by default. The `/home/displays/wall/` route and
+`wall.html` itself are untouched and still work — this only changes which
+URL the 24" screen's Chromium instance is launched against. Nothing else
+about the split changes: the 10" kiosk still shows `kiosk.html`, and that
+was always a remote control for the wall specifically, not a general
+navigator — worth revisiting what the kiosk should do now that the 24"
+isn't the passive ambient display anymore, but not changed tonight.
+
 A fourth, unrelated bug surfaced while trying to check the passwordless switcher
 from a phone instead: every request from anywhere but `localhost` — any phone or
 laptop on the house LAN, the platform's actual intended access pattern — got an
