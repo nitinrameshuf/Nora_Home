@@ -1173,6 +1173,33 @@ fresh context (confirming dark-by-default) — the exact page from the report,
 now legible throughout — and again with `data-theme` forced to light,
 confirming the same fix holds there too.
 
+## 2026-08-03 — that fix overcorrected: the living background stopped living
+
+Reported immediately after the above shipped: "thematic elements are barely
+visible now, know? day, night, seasons?" Pushing every glass pane to one
+flat ~0.86 alpha did guarantee contrast at the worst-case sky (bright
+overcast noon), but it applied that same near-opaque scrim at every daypart
+— night's already-dark sky got exactly as much scrim as noon's near-white
+one, so the panes looked identical regardless of season, time of day, or
+weather. That's the entire premise of "Almanac" undone by its own
+legibility fix.
+
+Replaced the flat alpha with `--pane-alpha`, a custom property keyed off
+the `data-daypart` attribute the scene system already sets server-side:
+night ~0.34 (its sky is already close to black, barely needs a scrim),
+dusk/dawn ~0.58-0.68, noon ~0.84 (still the worst case, still needs the
+most). Light theme mirrors this inverted, since there the problem is a dark
+night sky under a near-white pane rather than a bright day sky under a
+near-black one. `.sidebar`/`.card`/`.main`/`.kiosk-*`/`.empty` all read
+from the same variable, so there's one dial instead of duplicated numbers
+per selector.
+
+Verified on the live Pi by forcing `data-daypart` through all four values
+via Playwright and screenshotting each: noon and night are both fully
+legible, and now visibly distinct again — noon a cool charcoal-blue, night
+deep navy with the profile icon showing its moon, dusk warm plum/rose,
+dawn terracotta.
+
 ---
 
 ## Next
