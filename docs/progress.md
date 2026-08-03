@@ -533,6 +533,39 @@ was always a remote control for the wall specifically, not a general
 navigator — worth revisiting what the kiosk should do now that the 24"
 isn't the passive ambient display anymore, but not changed tonight.
 
+### 2026-08-02 — closing the two remaining install-pi.sh gaps
+Asked directly whether `install-pi.sh` was "truly one click." Audited the
+whole flow honestly and found it wasn't, for three reasons: the Docker-group
+step required a human to notice a message and manually re-run the script; a
+plain `sudo` password prompt was needed since no NOPASSWD grant existed by
+default; and the keyring dialog (item 7) still needed dismissing by hand.
+Fixed the two that were actually fixable in the script itself:
+
+- **New `scripts/pre-install-pi.sh`** — run once via `sudo`, writes a
+  `NOPASSWD: ALL` sudoers entry for the invoking user (`$SUDO_USER`),
+  validated with `visudo -c` before being installed so a malformed file can't
+  lock sudo out. Explicitly does not grant any new capability — the target
+  account is already a full sudoer on a device already trusted; this only
+  removes the password prompt, which matters because a fully unattended
+  `install-pi.sh` run (or a future agent driving it over SSH) can't type a
+  password at an interactive prompt at all.
+- **Docker-group step now self-continues.** Previously `install-pi.sh`
+  installed Docker, added the user to the `docker` group, then exited and
+  told a human to log out, back in, and re-run it — group membership only
+  applies to a new login session. Now it re-execs itself under `sg docker -c`
+  immediately after the `usermod`, continuing in the same run instead of
+  stopping. Not re-tested against a real fresh install (Docker was already
+  present on the last Pi provisioned tonight, so this exact path never fired)
+  — reasoned through carefully, but genuinely "built, unproven" until the
+  next truly-fresh Pi confirms it.
+- **Keyring fix from item 7 also applied**: `--password-store=basic` added
+  to every Chromium launch flag set.
+
+The two structurally unavoidable steps stay manual, correctly:
+`make member` (can't invent a real person's name), and each screen's one
+first-ever tap on the switcher to establish its session (the entire point
+of passwordless — nothing to automate around).
+
 A fourth, unrelated bug surfaced while trying to check the passwordless switcher
 from a phone instead: every request from anywhere but `localhost` — any phone or
 laptop on the house LAN, the platform's actual intended access pattern — got an

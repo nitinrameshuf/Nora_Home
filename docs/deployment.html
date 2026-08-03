@@ -157,6 +157,11 @@ curl -fsSL https://raw.githubusercontent.com/&lt;you&gt;/nora-home/main/scripts/
 <p>or, from a clone already on the Pi:</p>
 <pre><code>NORA_HOME_DIR=$HOME/&lt;your-clone-dir&gt; ./scripts/install-pi.sh</code></pre>
 <div class="note">
+  <p><strong>Optional, run first if you don't want to be asked for your password
+  partway through:</strong></p>
+</div>
+<pre><code>sudo ./scripts/pre-install-pi.sh</code></pre>
+<div class="note">
   <p><strong>If you already cloned the repo by hand</strong> (rather than letting the
   script clone it), set <code>NORA_HOME_DIR</code> to that folder as shown above —
   otherwise the script tries to clone a second copy next to it and stops, asking for

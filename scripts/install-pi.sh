@@ -6,6 +6,10 @@
 #
 # or, from a clone:  ./scripts/install-pi.sh
 #
+# Optional first step, avoids every sudo prompt below:
+#
+#     sudo ./scripts/pre-install-pi.sh
+#
 # Installs Docker, brings the house up, and configures both displays: the 24"
 # wall screen on HDMI-0 and the 10.1" kiosk on HDMI-1, each auto-starting
 # Chromium in kiosk mode pointed at the right URL. After this, updating is
@@ -32,8 +36,11 @@ if ! command -v docker >/dev/null 2>&1; then
     info "Installing Docker"
     curl -fsSL https://get.docker.com | sh
     sudo usermod -aG docker "$USER"
-    warn "You were added to the docker group. Log out and back in, then re-run this."
-    exit 0
+    # A new group membership only applies to a new login session — re-exec this
+    # same script under one instead of stopping here and making a human log out,
+    # back in, and re-run it by hand.
+    info "Continuing with the docker group active (no need to log out and back in)"
+    exec sg docker -c "'$0'"
 fi
 
 # ── 2. System packages ────────────────────────────────────────────────────────
@@ -144,6 +151,10 @@ unclutter -idle 3 &
 # named differently across Debian releases — "chromium-browser" on some,
 # plain "chromium" on others (confirmed: Raspberry Pi OS on Trixie only ships
 # /usr/bin/chromium). Resolve it at launch time instead of hardcoding either.
+# --password-store=basic stops Chromium reaching for the OS login keyring for
+# its own credential storage — without it, a fresh profile pops an "Unlock
+# Login Keyring" dialog that sits there blocking the kiosk until dismissed by
+# hand, since auto-login never unlocks that keyring in the first place.
 CHROMIUM="\$(command -v chromium-browser || command -v chromium)"
 if [[ -z "\$CHROMIUM" ]]; then
     echo "No chromium/chromium-browser binary found" >&2
@@ -162,7 +173,8 @@ fi
     --disable-features=TranslateUI \\
     --check-for-update-interval=31536000 \\
     --autoplay-policy=no-user-gesture-required \\
-    --enable-features=OverlayScrollbar &
+    --enable-features=OverlayScrollbar \\
+    --password-store=basic &
 CHROMIUM_PID=\$!
 
 # labwc applies its own window-placement policy when the window is mapped and
