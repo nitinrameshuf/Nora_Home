@@ -416,6 +416,11 @@ kiosk, directly) poll the same `core:weather_current` endpoint every 5
 minutes so they can't drift onto different "moments." See §2's "not done"
 note above — the engine is real and live-tested against the real API, but a
 full per-component restyle across all five surfaces is not done.
+**2026-08-03**: the topbar's profile icon (`.profile-trigger`) now carries
+the sun/moon itself — its background picks up the same daypart gradient as
+`.nh-scene__orb` — so the ambient orb is hidden wherever that icon exists
+(`nh-scene.css`, scoped by `data-surface`), leaving it only on the kiosk,
+the one template with no topbar at all to carry it instead.
 
 **HTTPS via nginx, self-signed, nginx-only.** Asked directly, and answered
 directly: this house has no public domain — it's a Pi on the LAN — so no

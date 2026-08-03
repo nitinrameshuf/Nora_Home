@@ -960,6 +960,47 @@ Story 18 is back to *complete* — see the dashboard.
 
 ---
 
+## 2026-08-03 — topbar decluttered into one profile icon; it now carries the sun/moon
+
+Three rounds of feedback on the same corner of the screen, each building on
+the last, all found by pointing at real screenshots rather than describing
+the problem abstractly.
+
+**"Add a widget / Rearrange / the member switcher / Theme" were four separate
+elements** crowding the top-right, wrapping onto two rows the moment a page
+had its own action buttons. Replaced with a single avatar-icon trigger
+(`.profile-trigger`/`.profile-avatar`, `templates/base.html`); everything
+else — a page's own `{% block actions %}` content, "Signed in as X", the
+rest of the household, Theme — moved into its dropdown. `.btn` buttons
+already used by page-specific actions (`home.html`, `tracker/board.html`)
+needed no changes themselves: `.profile-dropdown .btn` resets them to a flat
+menu row only inside this dropdown.
+
+**Then**: "combine the sun or moon from the background into the profile
+icon... this will remove clutter" — the ambient orb (part of the Almanac
+living background, `nh-scene.css`) sat right next to the new avatar circle,
+two competing circular things near the top. The icon's background/box-shadow
+now picks up the same daypart-driven gradient as the orb itself (dawn/noon/
+dusk/night), so it reads as an extension of the scene instead of bolted-on
+chrome — a small glowing sun or moon with the member's initial on it.
+
+**Then**: "remove the sun from the background, the icon takes care of it,
+right?" — checked rather than assumed: the kiosk (`templates/displays/
+kiosk.html`) is a standalone template with no topbar and no profile icon at
+all, so it's the *only* surface left with no other way to signal day/night.
+The wall didn't need special-casing — it shows `/home/` (which has the icon)
+in an iframe. Scoped the hide to `:root:not([data-surface="kiosk"])` rather
+than deleting the orb outright, so the kiosk keeps its sun/moon exactly as
+before.
+
+Each of the three changes was verified the same way: rendered locally first
+(Django test client / `manage.py check`), then deployed and screenshotted on
+the actual physical wall and kiosk — the last round specifically to confirm
+the orb really did disappear from the wall's sky while staying on the
+kiosk's, not just reasoned through from the CSS.
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**
