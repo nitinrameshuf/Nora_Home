@@ -1,8 +1,10 @@
 """
 Raspberry Pi 5 (8GB) — the real deployment.
 
-Differences from prod: the Pi lives on the house LAN behind no TLS terminator by
-default, and resources are finite, so worker counts and connection pools are small.
+Differences from prod: an nginx container in front terminates TLS with a
+self-signed cert (see nginx/ and scripts/gen-self-signed-cert.sh — there's no
+public domain for a house LAN to get a CA-issued one), and resources are
+finite, so worker counts and connection pools are small.
 """
 
 from .prod import *  # noqa: F403
@@ -24,3 +26,13 @@ DATABASES["default"]["CONN_HEALTH_CHECKS"] = True  # noqa: F405
 
 # The wall display never logs out.
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 365
+
+# prod.py turns HSTS on for a full year whenever SECURE_SSL_REDIRECT is —
+# correct for a CA-issued cert, actively dangerous for this Pi's self-signed
+# one. Once a browser accepts an HSTS max-age for a host, Chrome and Firefox
+# both withdraw the "proceed anyway" click-through for an *invalid* cert on
+# that host — there's no bypass link, just a dead end — which would
+# permanently lock every laptop and phone out the moment the cert is ever
+# replaced or a mismatch occurs. Force it off regardless of
+# SECURE_SSL_REDIRECT until this house has a cert a browser actually trusts.
+SECURE_HSTS_SECONDS = 0

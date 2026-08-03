@@ -19,10 +19,11 @@ help:
 
 # ── everyday ─────────────────────────────────────────────────────────────────
 .PHONY: up
-up: .env ## Start the house (builds on first run, migrates automatically)
+up: .env nginx/certs/nora-home.crt ## Start the house (builds on first run, migrates automatically)
 	$(COMPOSE) up -d --build
 	@echo "\nNora Home is coming up. Watch it with: make logs"
-	@echo "Then open http://localhost:$${NORA_HOME_PORT:-8000}/home/"
+	@echo "Then open https://localhost:$${NORA_HOME_HTTPS_PORT:-443}/home/"
+	@echo "(self-signed cert — your browser will warn once; see docs/deployment.html)"
 
 .PHONY: down
 down: ## Stop everything (data volumes are kept)
@@ -41,7 +42,7 @@ restart: ## Restart the app without touching the databases
 
 .PHONY: logs
 logs: ## Follow logs from the app services
-	$(COMPOSE) logs -f web worker beat
+	$(COMPOSE) logs -f web worker beat nginx
 
 .PHONY: ps
 ps: ## What is running
@@ -121,3 +122,6 @@ lint: ## Ruff
 	@python -c "import secrets;print('DJANGO_SECRET_KEY='+secrets.token_urlsafe(50))" >> .env
 	@echo "Created .env from the example, with a fresh secret key."
 	@echo "Fill in Slack and Anthropic keys when you have them, then re-run."
+
+nginx/certs/nora-home.crt:
+	./scripts/gen-self-signed-cert.sh

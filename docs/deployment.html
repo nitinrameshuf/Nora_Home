@@ -136,6 +136,7 @@
     <b>On this page</b>
     <ol>
       <li><a href="#first-install">First install, on the Pi</a></li>
+      <li><a href="#https">Accessing the house securely (HTTPS)</a></li>
       <li><a href="#updating">Updating the house</a></li>
       <li><a href="#installing-apps">Installing a house app</a></li>
       <li><a href="#uninstalling-apps">Uninstalling a house app</a></li>
@@ -176,14 +177,49 @@ newgrp docker   <span class="c"># applies it to this shell immediately, no logou
 <div class="grid">
   <div class="box"><h4>1. Packages</h4><p>Docker (if missing), git, make, Chromium, and the kiosk helper tools.</p></div>
   <div class="box"><h4>2. The repo &amp; .env</h4><p>Clones if needed, creates <code>.env</code> with a fresh secret key and Pi-specific settings.</p></div>
-  <div class="box"><h4>3. The stack</h4><p><code>docker compose up -d --build</code> — first run builds images, ~10 minutes.</p></div>
-  <div class="box"><h4>4. Start on boot</h4><p>Installs a systemd unit so the house comes back up after a power cut.</p></div>
-  <div class="box"><h4>5. Both displays</h4><p>HDMI-0 (24" wall) and HDMI-1 (10.1" kiosk) each auto-start Chromium in kiosk mode, pointed at the right URL.</p></div>
+  <div class="box"><h4>3. TLS cert</h4><p>Generates the self-signed cert nginx uses to serve the house over HTTPS — see <a href="#https">below</a>.</p></div>
+  <div class="box"><h4>4. The stack</h4><p><code>docker compose up -d --build</code> — first run builds images, ~10 minutes.</p></div>
+  <div class="box"><h4>5. Start on boot</h4><p>Installs a systemd unit so the house comes back up after a power cut.</p></div>
+  <div class="box"><h4>6. Both displays</h4><p>HDMI-0 (24" wall) and HDMI-1 (10.1" kiosk) each auto-start Chromium in kiosk mode, pointed at the right URL.</p></div>
 </div>
 <p>Once it finishes:</p>
 <pre><code>cd ~/nora-home &amp;&amp; make member NAME=&lt;you&gt;   <span class="c"># create your login</span>
 <span class="c"># sign in once on the wall and kiosk screens — they stay signed in</span>
 sudo reboot                                  <span class="c"># both screens now come up on their own</span></code></pre>
+
+<h2 id="https">Accessing the house securely (HTTPS)</h2>
+<p class="section-lede">
+  The house is reachable on <strong>port 443</strong> (regular HTTPS — the same
+  port every other site on the internet uses), not the old <code>:8000</code>.
+  Plain HTTP on port 80 still works, but only to redirect to HTTPS automatically.
+</p>
+<pre><code>https://&lt;the Pi's address&gt;/home/</code></pre>
+<div class="note">
+  <p><strong>Your browser will warn you once per device.</strong> This house has
+  no public domain name — it's a Raspberry Pi on your own LAN — so there's no
+  certificate authority that could ever issue it a certificate a browser
+  already trusts. The install script generates its own ("self-signed") cert
+  instead. It still fully encrypts the connection; the warning just means your
+  browser can't independently vouch for who's on the other end, which on a
+  device you're looking at directly, on your own network, is fine.</p>
+  <p>Click <strong>Advanced</strong> (Chrome, Edge) or <strong>Advanced… →
+  Accept the Risk and Continue</strong> (Firefox), then proceed. Each browser
+  on each device only asks this once.</p>
+</div>
+<p>The wall and kiosk screens never see this warning at all — Chromium is
+launched in kiosk mode with the warning suppressed automatically, since
+nothing is there to click it on an unattended boot.</p>
+<div class="box" style="max-width:640px">
+  <h4>If the Pi's address on your network ever changes</h4>
+  <p>The cert is generated once, during install, and bakes in whatever LAN IP
+  the Pi had at that moment. If the Pi later gets a different IP (a router
+  reset, a new DHCP lease), the cert still works — the connection is still
+  encrypted — but your browser will flag the mismatch as a second, separate
+  warning to click through. To make it match again: delete the two files in
+  <code>nginx/certs/</code> on the Pi and run
+  <code>./scripts/gen-self-signed-cert.sh</code>, then
+  <code>docker compose restart nginx</code>.</p>
+</div>
 
 <h2 id="updating">Updating the house</h2>
 <p class="section-lede">From here on, every update to the platform itself is one command.</p>

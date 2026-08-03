@@ -66,7 +66,8 @@ by hand — `config/urls.py` is never edited to add an app.
 ```mermaid
 graph LR
     subgraph Pi["Raspberry Pi 5 · 8GB · Docker Compose"]
-        WEB["web<br/>Daphne ASGI<br/>:8000"]
+        NGINX["nginx<br/>TLS termination<br/>:443 · :80 redirect"]
+        WEB["web<br/>Daphne ASGI<br/>:8000 (not published to host)"]
         WORK["worker<br/>Celery"]
         BEAT["beat<br/>Celery scheduler"]
 
@@ -81,9 +82,10 @@ graph LR
     KIOSK["10.1&quot; kiosk<br/>HDMI-1 · Chromium kiosk"]
     PHONE["phones · iPads · laptops"]
 
-    WALL <-->|websocket| WEB
-    KIOSK <-->|websocket| WEB
-    PHONE <-->|https| WEB
+    WALL <-->|wss, self-signed cert| NGINX
+    KIOSK <-->|wss, self-signed cert| NGINX
+    PHONE <-->|https, self-signed cert| NGINX
+    NGINX <-->|http, internal network| WEB
 
     WEB --> MYSQL
     WEB --> MONGO

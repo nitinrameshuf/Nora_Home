@@ -18,14 +18,18 @@
 set -euo pipefail
 
 REPO_DIR="${NORA_HOME_DIR:-$HOME/nora-home}"
-NORA_HOME_PORT="${NORA_HOME_PORT:-8000}"
+NORA_HOME_HTTPS_PORT="${NORA_HOME_HTTPS_PORT:-443}"
+# nginx is the only published entry point (see docker-compose.yml, nginx/) —
+# both screens talk to it over HTTPS with a self-signed cert (see
+# scripts/gen-self-signed-cert.sh), same as any laptop or phone on the LAN.
+#
 # The 24" shows the full navigable app — but through a thin iframe shell
 # (/home/displays/wall/), not pointed at /home/ directly, so the 10.1" kiosk
 # can drive it remotely (see wall-live.js and the kiosk_controls contract in
 # DEVELOPMENT.md). The kiosk itself never shows the app — it's a fixed
 # button grid built from the same nav structure the sidebar uses.
-WALL_URL="http://localhost:${NORA_HOME_PORT}/home/displays/wall/"
-KIOSK_URL="http://localhost:${NORA_HOME_PORT}/home/displays/kiosk/"
+WALL_URL="https://localhost:${NORA_HOME_HTTPS_PORT}/home/displays/wall/"
+KIOSK_URL="https://localhost:${NORA_HOME_HTTPS_PORT}/home/displays/kiosk/"
 
 info()  { printf '\n\033[1;36m==>\033[0m %s\n' "$*"; }
 warn()  { printf '\033[1;33m warning:\033[0m %s\n' "$*"; }
@@ -83,7 +87,10 @@ if [[ ! -f .env ]]; then
     warn "Add your Slack and Anthropic keys to $REPO_DIR/.env when you have them."
 fi
 
-# ── 4. Bring the house up ─────────────────────────────────────────────────────
+# ── 4. TLS cert, then bring the house up ──────────────────────────────────────
+info "Generating a self-signed TLS cert for nginx (idempotent — skips if one exists)"
+./scripts/gen-self-signed-cert.sh
+
 info "Starting the house (this builds images on first run — expect ~10 minutes)"
 docker compose up -d --build
 
@@ -145,8 +152,10 @@ launch_script() {
 #!/usr/bin/env bash
 # Wait for the app to answer before opening a window; a kiosk showing a
 # connection error is worse than a black screen for thirty more seconds.
+# -k: the cert is self-signed (see scripts/gen-self-signed-cert.sh), so curl
+# would otherwise fail this check on a perfectly healthy app.
 for _ in \$(seq 1 60); do
-    curl -fsS "http://localhost:${NORA_HOME_PORT}/home/health/" >/dev/null 2>&1 && break
+    curl -fsSk "https://localhost:${NORA_HOME_HTTPS_PORT}/home/health/" >/dev/null 2>&1 && break
     sleep 5
 done
 
@@ -165,6 +174,9 @@ unclutter -idle 3 &
 # its own credential storage — without it, a fresh profile pops an "Unlock
 # Login Keyring" dialog that sits there blocking the kiosk until dismissed by
 # hand, since auto-login never unlocks that keyring in the first place.
+# --ignore-certificate-errors suppresses the self-signed-cert interstitial —
+# its "proceed anyway" link is real page content and would normally still be
+# clickable in --kiosk mode, but nothing here can click it unattended on boot.
 CHROMIUM="\$(command -v chromium-browser || command -v chromium)"
 if [[ -z "\$CHROMIUM" ]]; then
     echo "No chromium/chromium-browser binary found" >&2
@@ -184,7 +196,8 @@ fi
     --check-for-update-interval=31536000 \\
     --autoplay-policy=no-user-gesture-required \\
     --enable-features=OverlayScrollbar \\
-    --password-store=basic &
+    --password-store=basic \\
+    --ignore-certificate-errors &
 CHROMIUM_PID=\$!
 
 # labwc applies its own window-placement policy when the window is mapped and
@@ -318,7 +331,9 @@ sudo systemctl enable --now nora-wall-power.timer
 info "Done."
 cat <<SUMMARY
 
-  The house is at    http://$(hostname -I | awk '{print $1}'):${NORA_HOME_PORT}/home/
+  The house is at    https://$(hostname -I | awk '{print $1}'):${NORA_HOME_HTTPS_PORT}/home/
+                     (self-signed cert — your browser warns once per device;
+                      see docs/deployment.html)
   Wall display       ${WALL_URL}
   Kiosk controller   ${KIOSK_URL}
 

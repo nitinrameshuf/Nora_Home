@@ -254,6 +254,23 @@ mapping. Both are now permanent: `install-pi.sh` §8 writes
    the panel down, and whether it's per-output or would blank the kiosk too
    — if the latter, the mechanism needs rethinking, since the kiosk has to
    stay on as the control surface.
+8. **HTTPS on :443 via nginx — built, unverified on the Pi.** An `nginx`
+   service (`nginx/nginx.conf`) now terminates TLS and redirects plain HTTP;
+   Daphne's `:8000` is no longer published to the host at all. Self-signed
+   cert (`scripts/gen-self-signed-cert.sh` — no public domain exists for a
+   house LAN to get a CA-issued one), chosen explicitly over `mkcert`/a
+   private CA or a real domain with Let's Encrypt, both asked and answered
+   directly. See §4's new decision entry for why `SECURE_HSTS_SECONDS` is
+   force-disabled regardless of `SECURE_SSL_REDIRECT` — a real trap that
+   would have permanently locked browsers out otherwise. Verified locally via
+   Docker Compose against real `config.settings.pi` settings: HTTPS returns
+   200 with no HSTS header, HTTP redirects to HTTPS, `:8000` is unreachable
+   from the host, `manage.py check --deploy` shows only the two
+   already-understood deliberate warnings, and nginx correctly relays a
+   `/ws/` upgrade to the Channels layer. Not yet deployed to the physical Pi
+   — the wall/kiosk Chromium instances now launch with
+   `--ignore-certificate-errors` to suppress the self-signed warning
+   automatically, unconfirmed on real hardware.
 
 ---
 
@@ -277,6 +294,10 @@ Then http://localhost:8000/home/ — no password anywhere; tap `nitin`, `partner
 make up        # first run: builds, migrates, bootstraps
 make deploy    # every update after that
 ```
+`make up` now also generates a self-signed TLS cert on first run (idempotent
+— see §4, "HTTPS via nginx"). The house serves on **https://<address>/home/**,
+port 443, not `:8000` — nginx is the only published entry point. Your browser
+warns once per device on first visit; see `docs/deployment.html`.
 
 ### First time on a new machine
 ```bash
@@ -375,6 +396,28 @@ kiosk, directly) poll the same `core:weather_current` endpoint every 5
 minutes so they can't drift onto different "moments." See §2's "not done"
 note above — the engine is real and live-tested against the real API, but a
 full per-component restyle across all five surfaces is not done.
+
+**HTTPS via nginx, self-signed, nginx-only.** Asked directly, and answered
+directly: this house has no public domain — it's a Pi on the LAN — so no
+certificate authority could ever issue it a certificate a browser trusts by
+default. Chose a self-signed cert (`scripts/gen-self-signed-cert.sh`) over
+standing up a private CA (`mkcert`, trusted per-device) or acquiring a real
+domain for Let's Encrypt, and chose to make nginx (`nginx/nginx.conf`) the
+*only* published entry point rather than leaving `:8000` open alongside
+`:443` for debugging — both were explicit choices, not defaults, made when
+asked. `web` no longer publishes a host port at all; Daphne is reachable only
+through nginx, internally, over the Docker network. **The one real trap this
+surfaced**: `prod.py` turns HSTS on for a year whenever `SECURE_SSL_REDIRECT`
+is true — correct for a CA-issued cert, actively dangerous for a self-signed
+one, since Chrome and Firefox both withdraw the certificate-bypass
+click-through entirely on an HSTS-pinned host. The first cert rotation (or
+the Pi's LAN IP changing, which the cert's SAN is keyed to at generation
+time) would have permanently locked every laptop and phone out with no way
+back in short of clearing HSTS state by hand on every device. `pi.py` now
+forces `SECURE_HSTS_SECONDS = 0` regardless, with the reasoning written down
+so it doesn't get "helpfully" re-enabled later. Verified locally via Docker
+Compose against real `config.settings.pi` settings — not yet on the physical
+Pi; see §2 item 8.
 
 ---
 

@@ -5,7 +5,10 @@
 # brings up MySQL, MongoDB, Redis, RabbitMQ, MinIO, the web app, a Celery worker,
 # and beat — and applies migrations on the way. There is no separate deploy step.
 #
-# Everything binds to the LAN only where it can; the app itself is on :8000.
+# Everything binds to the LAN only where it can. The app itself (Daphne, :8000)
+# is not published to the host at all — nginx is the only way in, terminating
+# TLS on :443 (redirecting :80) and proxying to `web` over the internal Docker
+# network. See nginx/nginx.conf and scripts/gen-self-signed-cert.sh.
 
 name: nora-home
 
@@ -43,13 +46,28 @@ services:
   web:
     <<: *app
     command: ["web"]
-    ports:
-      - "${NORA_HOME_PORT:-8000}:8000"
+    # No `ports:` here on purpose — nginx is the only published entry point.
+    # (Compose's networking is intentionally identical on a laptop and the Pi;
+    # if you need to hit Daphne directly for debugging, `docker compose exec
+    # nginx wget -qO- http://web:8000/home/health/` or temporarily add a
+    # ports: mapping rather than making that the default.)
     volumes:
       - media:/srv/nora/media
       - logs:/srv/nora/logs
       - backups:/var/backups/nora
       - static:/srv/nora/staticfiles
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      web: { condition: service_healthy }
+    ports:
+      - "${NORA_HOME_HTTP_PORT:-80}:80"
+      - "${NORA_HOME_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
 
   worker:
     <<: *app

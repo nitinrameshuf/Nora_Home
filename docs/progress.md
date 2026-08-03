@@ -880,13 +880,78 @@ end to end with real data from three different sources.
 
 ---
 
+## 2026-08-03 — HTTPS on :443, via nginx, with a self-signed cert
+
+Asked "how do I access the site on a laptop" led to "why is it on :8000, what
+would it take to put it on 443" — answered, then asked for outright: nginx in
+front, a real cert, port 443.
+
+No public domain exists for a Pi on a house LAN, so there is no CA that could
+ever issue this house a certificate a browser trusts by default. Went with
+self-signed rather than standing up a private CA (`mkcert`) or acquiring a
+domain purely to satisfy Let's Encrypt's DNS-01/HTTP-01 validation — asked the
+user directly rather than assuming; they picked self-signed, and nginx-only
+(no port 8000 left reachable) over leaving both open.
+
+**What changed**: an `nginx` service (`nginx/nginx.conf`) now terminates TLS
+on :443 and redirects :80 to it, proxying to `web:8000` over the internal
+Docker network — `web` no longer publishes a host port at all, matching the
+existing "nginx only" decision. `scripts/gen-self-signed-cert.sh` generates a
+10-year self-signed cert (SANs: localhost, nora.home, nora.local, 127.0.0.1,
+plus the Pi's LAN IP at generation time), idempotent, called by both
+`install-pi.sh` and `make up` (new `nginx/certs/nora-home.crt` prerequisite).
+Daphne was already started with `--proxy-headers`, and `prod.py` already had
+`SECURE_PROXY_SSL_HEADER` gated behind `NORA_HOME_FORCE_HTTPS` — both
+anticipated a TLS terminator in front, they just never had one until now.
+
+**The subtle bug this would have shipped without local testing first**:
+`prod.py` turns HSTS on for a full year whenever `SECURE_SSL_REDIRECT` is
+true. With a self-signed cert, that's actively dangerous, not just
+unnecessary — once a browser accepts an HSTS max-age for a host, Chrome and
+Firefox both withdraw the "proceed anyway" click-through for an *invalid*
+cert on that host, no exceptions. The first cert rotation (or the Pi's LAN IP
+changing, which the cert's SAN is keyed to) would have permanently locked
+every laptop and phone out, with no way back in except clearing HSTS state on
+every device by hand. `config/settings/pi.py` now forces
+`SECURE_HSTS_SECONDS = 0` regardless of `SECURE_SSL_REDIRECT`, with the
+reasoning written down so it isn't "helpfully" turned back on later.
+
+**Verified locally**, against real `config.settings.pi` settings (not
+`dev.py` — switched `.env` over deliberately, then reverted it after,
+since this laptop's normal setup is SQLite/dev for other testing) via
+`docker compose up`: HTTPS on the mapped port returns `200` with no
+`Strict-Transport-Security` header; plain HTTP redirects to HTTPS; Daphne's
+`:8000` is confirmed unreachable directly from the host; `manage.py check
+--deploy` shows only the two already-understood, deliberate warnings (HSTS
+off by design, `X_FRAME_OPTIONS=SAMEORIGIN` by design for the wall's
+iframe); and nginx correctly relays a `/ws/` upgrade request through to the
+Channels layer — got an application-level 403 for lacking auth, not a
+proxy-level failure, confirming the Upgrade/Connection headers actually reach
+Django. Also found and fixed live: `gen-self-signed-cert.sh`'s `hostname -I`
+call aborted the entire script under `set -e`/`pipefail` wherever that flag
+isn't supported — degraded to `|| true` instead of failing cert generation
+over a cosmetic SAN entry.
+
+**Not yet done**: deployed to the physical Pi, or confirmed on real hardware
+that the wall/kiosk Chromium instances (now launched with
+`--ignore-certificate-errors` to suppress the self-signed warning
+automatically on unattended boot) actually come up over HTTPS. Story 18
+moved from complete back to *built, unproven* until that happens — see the
+dashboard.
+
+---
+
 ## Next
 
-1. **Living background: check it holds up over hours, not just minutes.**
+1. **Deploy the nginx/HTTPS change to the physical Pi and verify it there** —
+   local Docker Compose testing is solid, but the wall and kiosk's
+   `--ignore-certificate-errors` Chromium flag and the cert's real-LAN-IP SAN
+   entry are both hardware-only unknowns until seen on the actual displays.
+2. **Living background: check it holds up over hours, not just minutes.**
    Verified live on the physical wall and kiosk the same session (real
    weather, both screens in sync, no regression to the kiosk remote-control
    flow) — what's not yet checked is continuous motion (rain/snow/stars,
    backdrop blur on every pane) over a long stretch on a Pi 5 driving two
    Chromium instances at once, and the light theme on real hardware.
-2. **Story 24 — house maintenance**, the first real app, which is what proves the
+3. **Story 24 — house maintenance**, the first real app, which is what proves the
    skeleton was worth building. Unblocked since Story 27 (2026-08-02).
