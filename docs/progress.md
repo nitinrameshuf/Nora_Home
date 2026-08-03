@@ -1104,6 +1104,36 @@ happens to rasterize a stroke.
 
 ---
 
+## 2026-08-03 — Story 21 (Test Suite) scoped, deliberately not started yet
+
+Asked directly: do we have tests that could have caught today's bugs (the
+Status-page 500, the kiosk's missing heartbeat) without manual
+screenshotting each time, and that a new house app would automatically get
+covered by too? No — confirmed by checking, not assumed: `pytest`/
+`pytest-django` are configured, zero test files exist anywhere in the repo.
+
+Talked through scope rather than just writing code: route/widget smoke
+tests (walking `all_widgets()`/`navigation()` rather than one test per
+page) plus Channels `WebsocketCommunicator` tests for the heartbeat/relay
+logic would have caught both of today's bugs directly, cheaply, and — this
+was the useful distinction — test *shape*, not internals, so they survive
+a refactor instead of needing to be rewritten by one. Deep logic tests
+(the escalation ladder, the cadence scheduler — the two things that most
+need coverage, since they run unattended and fail silently) are the
+opposite: their internals are exactly what a cleanup pass might change.
+
+Asked whether to write tests before or after "cleaning up the base app."
+Landed on: smoke tests *first*, specifically as the safety net a cleanup
+pass wants, not something to do after it — deep logic tests wait until
+after cleanup so they aren't rewritten twice. Decided to defer the whole
+thing until that cleanup pass happens, rather than start now. Scoped in
+full on Story 21 (dashboard) rather than left as a one-line "no tests"
+note, including the explicit boundary: visual/contrast bugs and real
+hardware behavior are not pytest's job and still need what this session
+did by hand.
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**
