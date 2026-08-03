@@ -114,8 +114,11 @@ reference implementation.
   (`manage.py mcp_stdio`) and HTTP (`/mcp/`).
 - **Datastores** (`nora/datastores/`) — Mongo helper, S3/MinIO helper, and
   `nora_backup` / `nora_restore` with a cross-engine migration path.
-- **Displays** (`nora/displays/`) — the wall/kiosk bus over Channels, server-driven
-  rotation, pinning, night mode.
+- **Displays** (`nora/displays/`) — the wall/kiosk bus over Channels. The 24" wall
+  shows the real app (`/home/`) through a live iframe; the 10.1" kiosk is a
+  context-sensitive button remote that drives it — each app can declare its own
+  kiosk control screen via `nora_kiosk_controls`. A Settings tab holds a schedule
+  for powering both screens off overnight.
 - **Telemetry** (`nora/telemetry/`) — one time-series store for every number in the
   house, with thresholds that fire notifications.
 - **Integrations** (`nora/integrations/`) — framework with scheduling, backoff, and
@@ -156,6 +159,26 @@ so it stops working once this switch happens — Pi Connect's Remote Shell and
 plain SSH are unaffected and are the way to manage the Pi from here on.
 Celery `worker`/`beat` came up but showed `unhealthy` in the one snapshot
 taken — not dug into further, worth checking next time someone's on the Pi.
+
+### Verified on the Pi (2026-08-02, continued) — kiosk-as-remote-control
+The 24" was repointed from the old passive ambient view to the real app, and the
+10.1" kiosk was rebuilt into a context-sensitive remote for it — tapping an app's
+tile switches what the wall shows *and* swaps the kiosk to that app's own control
+buttons, declared per app via `nora_kiosk_controls` (see `DEVELOPMENT.md`). A
+Settings tab was added, its first setting a schedule for powering both screens off
+overnight. Deployed and checked directly against the physical hardware, not just
+`manage.py check`: simulated touch (`xdotool`) confirmed tapping a kiosk tile
+navigates the wall's iframe and switches the kiosk's own screen, and that the
+kiosk's back button returns to its main menu without disturbing the wall. Three
+real, hardware-only bugs surfaced this way: DPMS (`xset dpms force`) blanks *both*
+screens together, not just the wall — confirmed with the user and accepted, since
+per-output control (`xrandr --off`) had already proven fragile earlier in this
+project; the Pi's `.env` still carried `.env.example`'s placeholder timezone
+(`America/Los_Angeles` instead of the real `America/New_York`), now fixed and
+auto-detected by `install-pi.sh` via `timedatectl`; and a CSS specificity bug
+(`.kiosk-grid` vs. the browser's own `[hidden]` rule) let a tapped app's control
+screen render on top of the main menu instead of replacing it, fixed in
+`static/nora_home/css/displays.css`.
 
 Re-verified the same day on a second, freshly-imaged Pi (the first one's
 reliability had become suspect) — `install-pi.sh` hit **zero bugs** end to

@@ -672,6 +672,69 @@ since a system-level service doesn't inherit the graphical session's X11
 auth just because `DISPLAY` is set — added `Environment=XAUTHORITY=%h/.Xauthority`
 before this was ever run for real, not after discovering it broken.
 
+### 2026-08-02 — kiosk remote control and Settings tab, verified live on the Pi
+
+Deployed the above to the Pi and checked every open question against real
+hardware rather than trusting the local-only verification.
+
+**DPMS is session-wide, not per-output** — the open risk flagged above.
+Tested directly (`xset -display :0 dpms force off`) and confirmed by the
+user looking at both physical screens: the wall *and* the kiosk both went
+dark, not just the wall. `vcgencmd display_power` was tried as a
+per-output alternative and found unsupported on this Pi 5's firmware
+("Command not registered"). Given `xrandr --output ... --off` was already
+proven fragile for unattended use earlier in this same story (position
+drift, one broken `0x0` mode), asked the user directly rather than guess:
+confirmed both-screens-off is acceptable, since the platform itself keeps
+running underneath either way and the kiosk being dark for the scheduled
+window is a fair trade against a flakier per-output mechanism. Corrected
+`templates/core/settings.html`'s copy, which had assumed per-output
+control, to say so plainly.
+
+**A real, pre-existing timezone bug, found by testing the schedule
+directly**: `manage.py wall_power_state` uses Django's own timezone-aware
+clock as designed, but the Pi's `.env` still had `.env.example`'s
+placeholder `DJANGO_TIME_ZONE=America/Los_Angeles` — the actual host
+(`timedatectl`) is `America/New_York`. Not a bug in tonight's feature; a
+gap that existed since the Pi was first provisioned and just happened to
+surface now because this was the first thing to actually read that
+setting and compare it against wall-clock time. Fixed the live Pi's
+`.env` directly, and added auto-detection to `install-pi.sh` so a future
+install or reinstall gets the host's real zone automatically instead of
+the placeholder:
+```bash
+PI_TZ="$(timedatectl show --property=Timezone --value 2>/dev/null || true)"
+```
+
+**One real bug in the new kiosk screens themselves**, caught by an actual
+screenshot, not just code review: tapping an app tile correctly switched
+the wall via the iframe, but the kiosk's own screen showed the tapped
+app's controls (e.g. habits' "← Apps" / "All habits") stacked *underneath*
+the still-visible main menu grid, instead of replacing it. Root cause:
+`.kiosk-grid { display: grid }` and the browser's own default
+`[hidden] { display: none }` are equal CSS specificity, and this
+project's stylesheet loads after the browser's — so the class rule won
+the cascade and silently defeated the `hidden` attribute on any element
+carrying both. Fixed with an explicit `.kiosk-grid[hidden] { display:
+none; }` in `static/nora_home/css/displays.css`.
+
+Redeployed, killed and relaunched both Chromium instances, and re-verified
+by screenshot and simulated touch (`xdotool`) end to end: tapping "Habits"
+on the kiosk switches the wall's iframe to `/habits/` and switches the
+kiosk to the habits-only control screen (main menu correctly hidden this
+time); tapping "← Apps" returns the kiosk to the main menu locally without
+disturbing the wall's current page, exactly as designed — the kiosk is the
+only side that can ever navigate, so there's no wall→kiosk state to echo
+back. The wall-power systemd timer (`nora-wall-power.timer`, installed by
+an earlier run of `install-pi.sh` tonight) is confirmed enabled and firing
+every 5 minutes; `manage.py wall_power_state` returns a correct `on`/`off`
+against the now-fixed timezone.
+
+**Story is now fully verified live, not just built.** All three of
+tonight's open risks (DPMS scope, timezone correctness, kiosk screen
+switching) were checked against real hardware and either confirmed
+working or fixed.
+
 ---
 
 ## Next

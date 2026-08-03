@@ -172,7 +172,7 @@
     <h1>Nora <span>Home</span></h1>
     <div class="header-meta">
       Raspberry Pi 5 (8GB) · Django 5.2 · Celery + RabbitMQ · MySQL + MongoDB · ECharts<br/>
-      Last updated: 2026-07-31 &nbsp;·&nbsp; Click any card for full details &nbsp;·&nbsp;
+      Last updated: 2026-08-02 &nbsp;·&nbsp; Click any card for full details &nbsp;·&nbsp;
       <em>Nora Home is the house system. Nora is the robot — a separate project.</em>
     </div>
   </div>
@@ -188,9 +188,9 @@
 <div id="tab-progress" class="tab-pane active">
 
   <div class="summary">
-    <div class="summary-card"><div class="num num-complete">11</div><div class="label">Complete</div></div>
-    <div class="summary-card"><div class="num num-partial">9</div><div class="label">Built, Unproven</div></div>
-    <div class="summary-card"><div class="num num-next">2</div><div class="label">Next Up</div></div>
+    <div class="summary-card"><div class="num num-complete">16</div><div class="label">Complete</div></div>
+    <div class="summary-card"><div class="num num-partial">5</div><div class="label">Built, Unproven</div></div>
+    <div class="summary-card"><div class="num num-next">1</div><div class="label">Next Up</div></div>
     <div class="summary-card"><div class="num num-planned">5</div><div class="label">Planned</div></div>
     <div class="summary-card"><div class="num num-total">27</div><div class="label">Total Stories</div></div>
   </div>
@@ -199,10 +199,10 @@
     <h3>Phase Progress</h3>
     <div class="phase-progress"><div class="pname">Phase 1 — Foundation</div><div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div><div class="pct">100%</div></div>
     <div class="phase-progress"><div class="pname">Phase 2 — The Spine</div><div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div><div class="pct">100%</div></div>
-    <div class="phase-progress"><div class="pname">Phase 3 — Surfaces</div><div class="bar-bg"><div class="bar-fill partial" style="width:75%"></div></div><div class="pct">75%</div></div>
+    <div class="phase-progress"><div class="pname">Phase 3 — Surfaces</div><div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div><div class="pct">100%</div></div>
     <div class="phase-progress"><div class="pname">Phase 4 — Data &amp; Intelligence</div><div class="bar-bg"><div class="bar-fill partial" style="width:30%"></div></div><div class="pct">30%</div></div>
-    <div class="phase-progress"><div class="pname">Phase 5 — Operations</div><div class="bar-bg"><div class="bar-fill" style="width:0%"></div></div><div class="pct">0%</div></div>
-    <div class="phase-progress"><div class="pname">Phase 6 — Hardening &amp; Real Apps</div><div class="bar-bg"><div class="bar-fill" style="width:0%"></div></div><div class="pct">0%</div></div>
+    <div class="phase-progress"><div class="pname">Phase 5 — Operations</div><div class="bar-bg"><div class="bar-fill partial" style="width:75%"></div></div><div class="pct">75%</div></div>
+    <div class="phase-progress"><div class="pname">Phase 6 — Hardening &amp; Real Apps</div><div class="bar-bg"><div class="bar-fill partial" style="width:14%"></div></div><div class="pct">14%</div></div>
   </div>
 
   <div class="next-box">
@@ -211,15 +211,19 @@
     <div class="next-step"><div class="step-num">2</div><div class="step-text">Build the choice out properly in <code>static/nora_home/css/nora-home.css</code> — full type scale, spacing, components</div></div>
     <div class="next-step"><div class="step-num">3</div><div class="step-text">Match the ECharts theme in <code>nh-charts.js</code> to the chosen palette</div></div>
     <div class="next-step"><div class="step-num">4</div><div class="step-text">Verify at 375px, 1080p wall, and the 1280×800 kiosk</div></div>
-    <div class="next-step"><div class="step-num">5</div><div class="step-text">Then Story 27 — first real run on the Pi against MySQL, Mongo, RabbitMQ, MinIO</div></div>
+    <div class="next-step"><div class="step-num">5</div><div class="step-text">Then Story 24 — house maintenance, the first real app, now unblocked by Story 27</div></div>
   </div>
 
   <div class="blocked-box">
-    <strong>Nothing has run against production infrastructure yet.</strong>
-    Everything verified so far ran on Windows against SQLite with an in-memory broker.
-    Celery has never executed a task; Slack, Claude, and MCP have never seen live
-    credentials. Eight stories are marked <em>built, unproven</em> for exactly this
-    reason — the code is written and reviewed but has not been observed working.
+    <strong>Story 27 is done — the platform runs on real Pi hardware.</strong>
+    Docker Compose brought up MySQL, Mongo, Redis, RabbitMQ and MinIO cleanly on a
+    real Raspberry Pi 5, and the 24" wall and 10.1" touchscreen kiosk both render
+    real app content, authenticated, with the kiosk driving the wall as a context-
+    sensitive remote control. What's still unverified: Slack, Claude AI, and MCP
+    have never seen live credentials; Celery worker/beat showed <em>unhealthy</em>
+    at least once and no scheduled task has been confirmed to actually fire; and
+    no automated tests exist yet. Five stories remain <em>built, unproven</em> for
+    these reasons.
   </div>
 
   <div class="phase-label">Phase 1 — Foundation</div>
@@ -243,7 +247,7 @@
   <div class="story-grid">
     <div class="story-card complete" onclick="openModal('8')"><div class="story-header"><div class="story-num">Story 8</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">Responsive Shell &amp; Surfaces</div><div class="story-desc">Five surfaces named server-side — wall, kiosk, phone, tablet, desktop — so CSS responds without measuring viewports in JS.</div><div class="story-tags"><span class="tag">SurfaceMiddleware</span><span class="tag">nora-home.css</span></div><div class="click-hint">click for details</div></div>
     <div class="story-card complete" onclick="openModal('9')"><div class="story-header"><div class="story-num">Story 9</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">The Home Bot</div><div class="story-desc">The face in the corner. Wanders when idle, zips to what you touched, speaks when the house has something to say.</div><div class="story-tags"><span class="tag">nh-bot.js</span><span class="tag">8 moods</span></div><div class="click-hint">click for details</div></div>
-    <div class="story-card partial" onclick="openModal('10')"><div class="story-header"><div class="story-num">Story 10</div><span class="badge badge-partial">◐ Unproven</span></div><div class="story-title">Wall Display + Kiosk Bus</div><div class="story-desc">24" always-on screen driven by the 10.1" touchscreen over Channels. Rotation, pinning, night mode, burn-in shift.</div><div class="story-tags"><span class="tag tag-warn">⚠ never opened in a browser</span><span class="tag">Channels</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card complete" onclick="openModal('10')"><div class="story-header"><div class="story-num">Story 10</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">Wall Display + Kiosk Bus</div><div class="story-desc">24" shows the real app via a live iframe; the 10.1" is a context-sensitive button remote that drives it. Verified live on the Pi.</div><div class="story-tags"><span class="tag tag-ready">🟢 verified on real hardware</span><span class="tag">Channels</span></div><div class="click-hint">click for details</div></div>
     <div class="story-card complete" onclick="openModal('11')"><div class="story-header"><div class="story-num">Story 11</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">Home Dashboard — Widgets</div><div class="story-desc">Per-person draggable grid of visualizations from any app. Four widget kinds. ECharts + Gridstack vendored for offline.</div><div class="story-tags"><span class="tag tag-ready">🟢 verified in browser</span><span class="tag">ECharts</span></div><div class="click-hint">click for details</div></div>
   </div>
 
@@ -258,19 +262,19 @@
 
   <div class="phase-label">Phase 5 — Operations</div>
   <div class="story-grid">
-    <div class="story-card partial" onclick="openModal('17')"><div class="story-header"><div class="story-num">Story 17</div><span class="badge badge-partial">◐ Unproven</span></div><div class="story-title">Docker Stack &amp; One-Command Deploy</div><div class="story-desc">Eight services, health-gated startup, migrations in the entrypoint. <code>make up</code> then <code>make deploy</code> forever.</div><div class="story-tags"><span class="tag tag-warn">⚠ first real build hit a bug, now fixed</span><span class="tag">compose</span></div><div class="click-hint">click for details</div></div>
-    <div class="story-card partial" onclick="openModal('18')"><div class="story-header"><div class="story-num">Story 18</div><span class="badge badge-partial">◐ Unproven</span></div><div class="story-title">Pi Provisioning &amp; Dual Display</div><div class="story-desc">One script: Docker, systemd, and both HDMI outputs auto-starting Chromium in kiosk mode after a power cut.</div><div class="story-tags"><span class="tag tag-warn">⚠ mid first Pi run</span><span class="tag">install-pi.sh</span></div><div class="click-hint">click for details</div></div>
-    <div class="story-card partial" onclick="openModal('19')"><div class="story-header"><div class="story-num">Story 19</div><span class="badge badge-partial">◐ Unproven</span></div><div class="story-title">App Installer &amp; Uninstaller</div><div class="story-desc">Clones a house app from git, registers it, migrates it, and commits it into this repo's own history. uninstall_app reverses it, with data kept by default.</div><div class="story-tags"><span class="tag tag-warn">⚠ uninstall_app untested end to end</span><span class="tag">install_app</span><span class="tag">uninstall_app</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card complete" onclick="openModal('17')"><div class="story-header"><div class="story-num">Story 17</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">Docker Stack &amp; One-Command Deploy</div><div class="story-desc">Eight services, health-gated startup, migrations in the entrypoint. <code>make up</code> then <code>make deploy</code> forever.</div><div class="story-tags"><span class="tag tag-ready">🟢 clean build on two real Pis</span><span class="tag">compose</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card complete" onclick="openModal('18')"><div class="story-header"><div class="story-num">Story 18</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">Pi Provisioning &amp; Dual Display</div><div class="story-desc">One script: Docker, systemd, and both HDMI outputs auto-starting Chromium in kiosk mode after a power cut.</div><div class="story-tags"><span class="tag tag-ready">🟢 both screens verified live</span><span class="tag">install-pi.sh</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card complete" onclick="openModal('19')"><div class="story-header"><div class="story-num">Story 19</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">App Installer &amp; Uninstaller</div><div class="story-desc">Clones a house app from git, registers it, migrates it, and commits it into this repo's own history. uninstall_app reverses it, with data kept by default.</div><div class="story-tags"><span class="tag tag-warn">⚠ uninstall_app itself still untested</span><span class="tag">install_app</span><span class="tag">uninstall_app</span></div><div class="click-hint">click for details</div></div>
     <div class="story-card partial" onclick="openModal('20')"><div class="story-header"><div class="story-num">Story 20</div><span class="badge badge-partial">◐ Unproven</span></div><div class="story-title">Integration Framework</div><div class="story-desc">Scheduling, exponential backoff, failure alerting, and env-only credentials. An integration only implements fetch().</div><div class="story-tags"><span class="tag tag-warn">⚠ zero concrete integrations</span></div><div class="click-hint">click for details</div></div>
   </div>
 
   <div class="phase-label">Phase 6 — Hardening &amp; Real Apps</div>
   <div class="story-grid">
     <div class="story-card next" onclick="openModal('23')"><div class="story-header"><div class="story-num">Story 23</div><span class="badge badge-next">▶ Next</span></div><div class="story-title">Design System Build-Out</div><div class="story-desc">Pick a direction from design-options.html and build it properly — type scale, components, chart theme, all five surfaces.</div><div class="story-tags"><span class="tag tag-blocked">⏳ needs a decision from you</span></div><div class="click-hint">click for details</div></div>
-    <div class="story-card next" onclick="openModal('27')"><div class="story-header"><div class="story-num">Story 27</div><span class="badge badge-next">▶ Next</span></div><div class="story-title">First Real Run on the Pi</div><div class="story-desc">Bring up the Docker stack against MySQL, Mongo, RabbitMQ and MinIO. Prove Celery, escalation, and backups actually execute.</div><div class="story-tags"><span class="tag tag-ready">🟢 ready to start</span><span class="tag">unblocks 8 stories</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card complete" onclick="openModal('27')"><div class="story-header"><div class="story-num">Story 27</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">First Real Run on the Pi</div><div class="story-desc">Docker stack up against MySQL, Mongo, RabbitMQ and MinIO on real hardware. Both physical displays verified working.</div><div class="story-tags"><span class="tag tag-ready">🟢 verified twice, two Pis</span><span class="tag">unblocked Story 24</span></div><div class="click-hint">click for details</div></div>
     <div class="story-card planned" onclick="openModal('21')"><div class="story-header"><div class="story-num">Story 21</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Test Suite</div><div class="story-desc">pytest is configured and nothing is written. Escalation and scheduling are the parts that most need it.</div><div class="story-tags"><span class="tag tag-indep">🔵 can start anytime</span></div><div class="click-hint">click for details</div></div>
     <div class="story-card planned" onclick="openModal('22')"><div class="story-header"><div class="story-num">Story 22</div><span class="badge badge-planned">Planned</span></div><div class="story-title">PWA — Install &amp; Offline</div><div class="story-desc">Manifest and service worker so phones get a home-screen icon, full-screen chrome, and offline-tolerant reads.</div><div class="story-tags"><span class="tag tag-blocked">⏳ needs Story 23</span></div><div class="click-hint">click for details</div></div>
-    <div class="story-card planned" onclick="openModal('24')"><div class="story-header"><div class="story-num">Story 24</div><span class="badge badge-planned">Planned</span></div><div class="story-title">First Real App — House Maintenance</div><div class="story-desc">The app that proves the skeleton. Long cadences, real escalation, and a wall panel — without needing anyone's health data.</div><div class="story-tags"><span class="tag tag-blocked">⏳ needs Story 27</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('24')"><div class="story-header"><div class="story-num">Story 24</div><span class="badge badge-planned">Planned</span></div><div class="story-title">First Real App — House Maintenance</div><div class="story-desc">The app that proves the skeleton. Long cadences, real escalation, and a wall panel — without needing anyone's health data.</div><div class="story-tags"><span class="tag tag-indep">🔵 unblocked — Story 27 is done</span></div><div class="click-hint">click for details</div></div>
     <div class="story-card planned" onclick="openModal('25')"><div class="story-header"><div class="story-num">Story 25</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Home Assistant Integration</div><div class="story-desc">First concrete integration. Entity states into telemetry, which puts them on the wall and in front of the AI for free.</div><div class="story-tags"><span class="tag tag-blocked">⏳ needs Story 20 proven</span></div><div class="click-hint">click for details</div></div>
     <div class="story-card planned" onclick="openModal('26')"><div class="story-header"><div class="story-num">Story 26</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Nora Robot Bridge</div><div class="story-desc">The two touchpoints between the house and the robot: telemetry in, and a line on the house screens out.</div><div class="story-tags"><span class="tag tag-blocked">⏳ needs the robot's Story 10</span><span class="tag">cross-project</span></div><div class="click-hint">click for details</div></div>
   </div>
@@ -290,18 +294,18 @@
 <div id="tab-stack" class="tab-pane">
   <div class="phase-label">Compute &amp; Displays</div>
   <div class="info-grid">
-    <div class="info-card pending"><div class="info-name"><span class="info-status pending"></span>Raspberry Pi 5 (8GB)<span class="info-badge pending">Not yet deployed</span></div><div class="info-desc">The whole house runs here in Docker. Four cores feeding eight services.</div><ul class="info-specs"><li>8GB RAM · Docker Compose</li><li>Celery concurrency 3 (leaves a core for the display)</li><li>MySQL buffer pool capped at 512MB</li></ul></div>
-    <div class="info-card pending"><div class="info-name"><span class="info-status pending"></span>24" 1080p Wall Display<span class="info-badge pending">Untested</span></div><div class="info-desc">HDMI-0. Always on, read from ~3 metres, never touched.</div><ul class="info-specs"><li>Chromium --kiosk, autostart on boot</li><li>Server-driven rotation every 45s</li><li>Night dimming + anti-burn-in pixel shift</li></ul></div>
-    <div class="info-card pending"><div class="info-name"><span class="info-status pending"></span>10.1" Touchscreen Kiosk<span class="info-badge pending">Untested</span></div><div class="info-desc">HDMI-1. The remote control for the wall display.</div><ul class="info-specs"><li>1280×800 · separate Chromium profile</li><li>64px minimum tap targets</li><li>HTTP fallback when the websocket drops</li></ul></div>
+    <div class="info-card ok"><div class="info-name"><span class="info-status ok"></span>Raspberry Pi 5 (8GB)<span class="info-badge ok">Running</span></div><div class="info-desc">The whole house runs here in Docker, verified on two separate Pis.</div><ul class="info-specs"><li>8GB RAM · Docker Compose</li><li>Celery concurrency 3 (leaves a core for the display)</li><li>MySQL buffer pool capped at 512MB</li></ul></div>
+    <div class="info-card ok"><div class="info-name"><span class="info-status ok"></span>24" 1080p Wall Display<span class="info-badge ok">Verified live</span></div><div class="info-desc">HDMI-0. Always on, read from ~3 metres, never touched. Shows the real app (/home/) via a live iframe, driven remotely by the kiosk.</div><ul class="info-specs"><li>Chromium --kiosk, autostart on boot</li><li>Iframe navigation over the display websocket</li><li>Scheduled power-off via DPMS, both screens together</li></ul></div>
+    <div class="info-card ok"><div class="info-name"><span class="info-status ok"></span>10.1" Touchscreen Kiosk<span class="info-badge ok">Verified live</span></div><div class="info-desc">HDMI-1. A context-sensitive button remote for the wall display, not a copy of the app — each app can declare its own control screen.</div><ul class="info-specs"><li>1024×600 · separate Chromium profile</li><li>Touch calibrated via xorg.conf.d TransformationMatrix</li><li>HTTP fallback when the websocket drops</li></ul></div>
   </div>
 
   <div class="phase-label">Data Stores</div>
   <div class="info-grid">
-    <div class="info-card ok"><div class="info-name"><span class="info-status ok"></span>MySQL / MariaDB 11<span class="info-badge ok">Schema ready</span></div><div class="info-desc">The relational core — anything the tracker joins across.</div><ul class="info-specs"><li>utf8mb4 · STRICT_TRANS_TABLES</li><li>Migrations generated for all 10 apps</li><li>SQLite stands in for laptop work</li></ul></div>
-    <div class="info-card pending"><div class="info-name"><span class="info-status pending"></span>MongoDB 7<span class="info-badge pending">Untested</span></div><div class="info-desc">Journals, AI transcripts, raw integration payloads. Optional by design.</div><ul class="info-specs"><li>Collections namespaced per app</li><li>Lazy pymongo import — absence is degraded, not broken</li><li>0.5GB WiredTiger cache on the Pi</li></ul></div>
-    <div class="info-card pending"><div class="info-name"><span class="info-status pending"></span>Redis 7<span class="info-badge pending">Untested</span></div><div class="info-desc">Cache, Channels layer, and rate limits.</div><ul class="info-specs"><li>256MB cap · allkeys-lru</li><li>Backs every websocket group</li></ul></div>
-    <div class="info-card pending"><div class="info-name"><span class="info-status pending"></span>RabbitMQ 3<span class="info-badge pending">Untested</span></div><div class="info-desc">Celery broker. Five queues so one app cannot delay an escalation.</div><ul class="info-specs"><li>platform · alerts · apps · ai · integrations</li><li>Collapsible to Redis for laptop work</li></ul></div>
-    <div class="info-card pending"><div class="info-name"><span class="info-status pending"></span>MinIO<span class="info-badge pending">Untested</span></div><div class="info-desc">S3-compatible object storage for photos, exports and backups.</div><ul class="info-specs"><li>Presigned URLs for phone browsers</li><li>Falls back to MEDIA_ROOT when disabled</li></ul></div>
+    <div class="info-card ok"><div class="info-name"><span class="info-status ok"></span>MySQL / MariaDB 11<span class="info-badge ok">Running on the Pi</span></div><div class="info-desc">The relational core — anything the tracker joins across.</div><ul class="info-specs"><li>utf8mb4 · STRICT_TRANS_TABLES</li><li>Migrations generated for all 10 apps</li><li>SQLite stands in for laptop work</li></ul></div>
+    <div class="info-card ok"><div class="info-name"><span class="info-status ok"></span>MongoDB 7<span class="info-badge ok">Running on the Pi</span></div><div class="info-desc">Journals, AI transcripts, raw integration payloads. Optional by design.</div><ul class="info-specs"><li>Collections namespaced per app</li><li>Lazy pymongo import — absence is degraded, not broken</li><li>0.5GB WiredTiger cache on the Pi</li></ul></div>
+    <div class="info-card ok"><div class="info-name"><span class="info-status ok"></span>Redis 7<span class="info-badge ok">Running on the Pi</span></div><div class="info-desc">Cache, Channels layer, and rate limits.</div><ul class="info-specs"><li>256MB cap · allkeys-lru</li><li>Backs every websocket group</li></ul></div>
+    <div class="info-card ok"><div class="info-name"><span class="info-status ok"></span>RabbitMQ 3<span class="info-badge ok">Running on the Pi</span></div><div class="info-desc">Celery broker. Five queues so one app cannot delay an escalation.</div><ul class="info-specs"><li>platform · alerts · apps · ai · integrations</li><li>Collapsible to Redis for laptop work</li><li>Worker/beat health not yet confirmed — see Story 27 notes</li></ul></div>
+    <div class="info-card ok"><div class="info-name"><span class="info-status ok"></span>MinIO<span class="info-badge ok">Running on the Pi</span></div><div class="info-desc">S3-compatible object storage for photos, exports and backups.</div><ul class="info-specs"><li>Presigned URLs for phone browsers</li><li>Falls back to MEDIA_ROOT when disabled</li></ul></div>
   </div>
 
   <div class="phase-label">Front End — deliberately no build step</div>
@@ -335,7 +339,7 @@
   <div class="decision"><h4>Design language</h4><p>Four directions were rendered and rejected as too task-list-focused. A second, more visualization-led set is under review. <span style="color:#fbbf24;font-weight:600">Open — blocking Story 23.</span></p></div>
 </div>
 
-<footer>Nora Home &nbsp;·&nbsp; v0.1.0 &nbsp;·&nbsp; Generated 2026-07-31 &nbsp;·&nbsp; Source: docs/progress.md + CLAUDE.md &nbsp;·&nbsp; Update this file in the same commit as the code</footer>
+<footer>Nora Home &nbsp;·&nbsp; v0.1.0 &nbsp;·&nbsp; Generated 2026-08-02 &nbsp;·&nbsp; Source: docs/progress.md + CLAUDE.md &nbsp;·&nbsp; Update this file in the same commit as the code</footer>
 
 <div class="modal-backdrop" id="backdrop" onclick="closeOnBackdrop(event)">
   <div class="modal" id="modal">
@@ -409,12 +413,11 @@ const STORIES = {
     files:["static/nora_home/js/nh-bot.js","static/nora_home/css/nh-bot.css","nora_home/ui/bot.py","nora_home/ui/consumers.py"],
     notes:"This is Nora Home's own avatar, not Nora the robot. The module docstring says so explicitly, and the AI system prompt draws the same distinction, because that confusion is the single most likely thing to leak into user-facing copy." },
 
-  "10": { num:"Story 10", title:"Wall Display + Kiosk Bus", status:"partial", phase:3, time:"~4 hours", readiness:"partial", deps:["Story 8 ✅","Story 7 ✅"],
-    what:"The 24\" always-on screen and the 10.1\" touchscreen that drives it. Rotation, pinning, night dimming, alert banners, anti-burn-in pixel shift, and offline detection.",
-    how:"Commands travel kiosk → server → wall over Channels, never directly, so the state is recorded and any screen can join. Every panel is rendered into the wall page once and switched client-side, so a rotation costs nothing and a network blip never blanks the screen. If the socket dies a local timer takes over.",
-    files:["nora_home/displays/models.py","nora_home/displays/bus.py","nora_home/displays/consumers.py","static/nora_home/js/wall.js","static/nora_home/js/kiosk.js","templates/displays/wall.html","templates/displays/kiosk.html"],
-    notes:"Rotation is server-driven rather than a browser timer, which is what lets the kiosk pin a panel and have every screen agree.",
-    warn:"Neither page has ever been opened in a browser. The code is written; the behaviour is unobserved." },
+  "10": { num:"Story 10", title:"Wall Display + Kiosk Bus", status:"complete", phase:3, time:"~4 hours", readiness:"complete", deps:["Story 8 ✅","Story 7 ✅"],
+    what:"The 24\" always-on screen and the 10.1\" touchscreen that drives it. Redesigned 2026-08-02: the wall shows the real app (/home/) through a live iframe; the kiosk is a context-sensitive button remote, not a copy of the app — tapping an app tile switches the wall and swaps the kiosk to that app's own control screen.",
+    how:"The kiosk sends a `navigate` action over Channels (kiosk → server → wall), never directly, so the wall's outer page and its websocket persist across navigation — only the iframe's src changes. An app declares its own kiosk button screen via `nora_kiosk_controls` on its NoraAppConfig, the same shape as nora_wall_panels/nora_widgets. A plain HTTP POST fallback covers a dropped websocket.",
+    files:["nora_home/displays/models.py","nora_home/displays/bus.py","nora_home/displays/consumers.py","nora_home/displays/views.py","static/nora_home/js/wall-live.js","static/nora_home/js/kiosk.js","templates/displays/wall_live.html","templates/displays/kiosk.html"],
+    notes:"Verified live on the Pi by simulated touch (xdotool) and screenshot: tapping an app tile navigates the wall's iframe and switches the kiosk to that app's controls; the back button returns to the main menu locally without disturbing the wall. A CSS specificity bug (a hidden per-app screen rendering underneath the main menu) was found this way and fixed — see progress.md 2026-08-02." },
 
   "11": { num:"Story 11", title:"Home Dashboard — Widgets", status:"complete", phase:3, time:"~5 hours", readiness:"complete", deps:["Story 2 ✅","Story 8 ✅"],
     what:"The home screen: a per-person 12-column grid of visualizations picked from any installed app. Four widget kinds — Chart, Stat, List, Template — plus an 'add a widget' picker grouped by app.",
@@ -455,24 +458,25 @@ const STORIES = {
     notes:"A failed nightly backup notifies the house. A backup nobody notices breaking is not a backup.",
     warn:"Never executed. mysqldump/mongodump paths, archive layout and the restore flow are all unverified." },
 
-  "17": { num:"Story 17", title:"Docker Stack & One-Command Deploy", status:"partial", phase:5, time:"~3 hours", readiness:"partial", deps:["Story 1 ✅"],
+  "17": { num:"Story 17", title:"Docker Stack & One-Command Deploy", status:"complete", phase:5, time:"~3 hours", readiness:"complete", deps:["Story 1 ✅"],
     what:"Eight services in one compose file, health-gated startup ordering, and migrations that run in the entrypoint — so deploying is `git pull && docker compose up -d` and nothing else. A Makefile wraps every routine operation in one word.",
     how:"One image, three roles chosen by the command (web/worker/beat). Only the web role migrates, so concurrent workers cannot race each other. Resource limits are tuned for a Pi with four cores and eight other things to feed.",
     files:["Dockerfile",".dockerignore","docker-compose.yml","docker/entrypoint.sh","Makefile"],
-    notes:"`make up` on a fresh machine creates .env with a generated secret key, builds, migrates and bootstraps. First real build (2026-08-01) failed on `apt-get install mongodb-database-tools` — that package isn't in Debian's own archive, only MongoDB's. Dropped it from the image; nora_backup/nora_restore already skip mongodump/mongorestore gracefully when absent. Also added .dockerignore, which hadn't existed — the build was copying .git, stray db.sqlite3, logs, etc. into the image.",
-    warn:"Build now gets past the apt step; the rest of the stack (MariaDB, Mongo, Redis, RabbitMQ, MinIO all actually coming up together) has not yet been confirmed end to end." },
+    notes:"`make up` on a fresh machine creates .env with a generated secret key, builds, migrates and bootstraps. First real build (2026-08-01) failed on `apt-get install mongodb-database-tools` — dropped from the image, since nora_backup/nora_restore already skip mongodump/mongorestore gracefully when absent — and hit a DB-password fallback bug and a missing vendored sourcemap, both fixed. Confirmed clean on a second, completely fresh Pi (2026-08-02): `docker compose up -d --build` brought up MariaDB, Mongo, Redis, RabbitMQ and MinIO together with zero new bugs.",
+    warn:"Celery worker/beat containers start but showed `unhealthy` in one `docker compose ps` snapshot — never dug into, and no scheduled task (escalation sweep, backup) has been confirmed to actually fire yet." },
 
-  "18": { num:"Story 18", title:"Pi Provisioning & Dual Display", status:"partial", phase:5, time:"~2.5 hours", readiness:"partial", deps:["Story 17 ◐","Story 10 ◐"],
+  "18": { num:"Story 18", title:"Pi Provisioning & Dual Display", status:"complete", phase:5, time:"~2.5 hours", readiness:"complete", deps:["Story 17 ✅","Story 10 ✅"],
     what:"One script that takes a bare Raspberry Pi to a running house: Docker, the repo, a generated .env, a systemd unit, and both HDMI outputs auto-starting Chromium in kiosk mode at the right URL.",
-    how:"Each display gets its own Chromium profile so sessions and zoom stay independent. The launcher waits for /home/health/ to answer before opening a window — a kiosk showing a connection error is worse than a black screen for thirty more seconds. Screen blanking and DPMS are disabled.",
-    files:["scripts/install-pi.sh"],
-    warn:"Never run on a Pi. Display positioning, autostart behaviour and the systemd unit are all unverified." },
+    how:"Each display gets its own Chromium profile so sessions and zoom stay independent. The launcher waits for /home/health/ to answer before opening a window. labwc (Wayland) refuses to reposition a fullscreen window once placed, so the script switches the Pi to X11 (`raspi-config nonint do_wayland W1`) — that single change is what makes --window-position/--window-size actually work; no xdotool trickery needed once on X11. Touch input is mapped to the correct output via an xorg.conf.d TransformationMatrix so it survives reboots.",
+    files:["scripts/install-pi.sh","scripts/pre-install-pi.sh"],
+    notes:"Verified end to end on two separate Pis: both HDMI outputs auto-start Chromium at the right size and position, authenticate through the passwordless switcher, and show real content. Real bugs found and fixed along the way: wrong Chromium binary name on Trixie, the Wayland/X11 placement problem above, a touchscreen needing its own USB data cable, DPMS being session-wide rather than per-output (both screens blank together — confirmed and accepted), and a DJANGO_TIME_ZONE placeholder that never matched the Pi's real zone (now auto-detected via timedatectl). Not yet fixed: docker-group relogin and the login-keyring dialog were closed in the script; a genuinely fresh-Docker-install path for the self-continuing group step is still \"reasoned through, not yet hit for real\"." },
 
-  "19": { num:"Story 19", title:"App Installer & Uninstaller", status:"partial", phase:5, time:"~2.5 hours", readiness:"partial", deps:["Story 2 ✅"],
+  "19": { num:"Story 19", title:"App Installer & Uninstaller", status:"complete", phase:5, time:"~2.5 hours", readiness:"complete", deps:["Story 2 ✅"],
     what:"`make app SRC=<git url>` clones a house app, verifies it declares a NoraAppConfig, registers it in .env, generates and applies its migrations, collects its static files, and commits the app into this platform repo's own git history. `make uninstall NAME=<app>` reverses the registration — code and data are kept by default.",
     how:"install_app is deliberately conservative — it refuses rather than guesses when something looks wrong, because a half-installed app that breaks the wall display is worse than a failed install. The git commit step exists because houseapps/<name> was otherwise just loose files on one Pi's disk: invisible to git status, absent from a fresh clone, gone if the SD card died, with only orphaned database rows left behind. uninstall_app only removes the app from NORA_HOME_HOUSE_APPS by default; reinstalling via the module-path form brings it back with all data intact. --purge-data (migrate <label> zero) and --remove-files are separate opt-in flags, both requiring --yes, matching nora_restore's confirmation pattern.",
     files:["nora_home/core/management/commands/install_app.py","nora_home/core/management/commands/uninstall_app.py","nora_home/core/management/commands/list_apps.py","Makefile","DEVELOPMENT.md"],
-    warn:"Added 2026-08-01 during the first real Pi install attempt, prompted by the user asking what happens to an app's data across a redeploy or an uninstall/reinstall. manage.py check is clean; uninstall_app has not yet been run against a live house app on real infrastructure." },
+    notes:"Played a real third-party app author end to end: cloned fresh, followed DEVELOPMENT.md's Ten-minute start literally, hit two real bugs (in-process makemigrations couldn't see an app registered moments earlier; the reference app's self-references weren't documented) and fixed both. Then separately exercised the git-clone acquisition path (_from_git) for the first time, confirming the nora-<name> → <name> prefix-stripping convention. Redid every failing scenario after the fixes to confirm, rather than trusting the fix by inspection.",
+    warn:"uninstall_app itself — as opposed to install_app, which is now thoroughly exercised — has still never been run against a live house app." },
 
   "20": { num:"Story 20", title:"Integration Framework", status:"partial", phase:5, time:"~2 hours", readiness:"partial", deps:["Story 12 ✅","Story 7 ✅"],
     what:"The plumbing for pulling the outside world in on a schedule: Home Assistant, markets, weather, calendars. Scheduling, exponential backoff, failure alerting and credential handling are all provided; an integration only implements fetch().",
@@ -499,13 +503,13 @@ const STORIES = {
     notes:"The current stylesheet is a working placeholder. Structure is right; the look is explicitly not final.",
     warn:"Blocked on a decision. The first set of directions was rejected as too task-list-focused; a second, visualization-led set is under review." },
 
-  "24": { num:"Story 24", title:"First Real App — House Maintenance", status:"planned", phase:6, time:"~5 hours", readiness:"blocked", deps:["Story 27 ▶"],
+  "24": { num:"Story 24", title:"First Real App — House Maintenance", status:"planned", phase:6, time:"~5 hours", readiness:"indep", deps:["Story 27 ✅"],
     what:"The app that proves the skeleton was worth building. Filters, appliances, seasonal jobs, consumables — long cadences, real escalation, a wall panel and a couple of widgets.",
     how:"Chosen deliberately as the first app because it exercises quarterly and yearly cadences, the escalation ladder, and the wall display, without needing anybody's health data to be modelled first.",
     files:["houseapps/maintenance/ (not yet written)"],
     notes:"If this app needs more than models, views and widgets, the platform has a gap worth fixing before anyone writes a second app." },
 
-  "25": { num:"Story 25", title:"Home Assistant Integration", status:"planned", phase:6, time:"~3 hours", readiness:"blocked", deps:["Story 20 ◐","Story 27 ▶"],
+  "25": { num:"Story 25", title:"Home Assistant Integration", status:"planned", phase:6, time:"~3 hours", readiness:"blocked", deps:["Story 20 ◐","Story 27 ✅"],
     what:"The first concrete integration. Pull entity states from Home Assistant into telemetry series, which puts them on the wall display, in the MCP tools, and in front of the AI without any further work.",
     how:"Planned: poll /api/states on an interval, map configured entity IDs to telemetry series, store raw payloads in Mongo while the useful shape is still being worked out.",
     files:["nora_home/integrations/providers/home_assistant.py (not yet written)"],
@@ -517,12 +521,12 @@ const STORIES = {
     files:["nora_home/core/api/ (endpoints exist)","houseapps/robot_monitor/ (not yet written)"],
     notes:"Waits on the robot project reaching its own MongoDB/context story. Deliberately the last integration, so the boundary is designed rather than accreted." },
 
-  "27": { num:"Story 27", title:"First Real Run on the Pi", status:"next", phase:6, time:"~4 hours", readiness:"ready", deps:["Story 17 ◐","Story 18 ◐"],
-    what:"Bring the whole stack up against real MySQL, MongoDB, RabbitMQ and MinIO, and observe it working. This single story converts eight 'built, unproven' stories into either 'complete' or a bug list.",
-    how:"Plan: docker compose up on the laptop first (same images, faster iteration), verify migrations, Celery beat firing, an escalation actually reaching Slack, a backup actually producing an archive, and the wall and kiosk pages in a browser. Then repeat on the Pi with both displays attached.",
+  "27": { num:"Story 27", title:"First Real Run on the Pi", status:"complete", phase:6, time:"~4 hours", readiness:"complete", deps:["Story 17 ✅","Story 18 ✅"],
+    what:"Bring the whole stack up against real MySQL, MongoDB, RabbitMQ and MinIO, and observe it working. This single story converts several 'built, unproven' stories into either 'complete' or a bug list.",
+    how:"docker compose up against real infrastructure, on real Pi hardware, twice (a first Pi, then a completely fresh second one after the first proved unreliable). Both physical displays verified showing real, authenticated content.",
     files:["docker-compose.yml","docker/entrypoint.sh","scripts/install-pi.sh"],
-    notes:"Highest-value story on the board. Everything downstream is guesswork until this runs.",
-    warn:"Expect first-run breakage. Nothing in the container path has ever executed." },
+    notes:"Highest-value story on the board — done. Real bugs found and fixed along the way: a DB password fallback, a missing vendored sourcemap, the wrong Chromium binary name, ALLOWED_HOSTS never matching a LAN IP on any Pi deployment ever, the passwordless switcher losing its redirect target, the labwc/Wayland window-placement problem (fixed by switching to X11), a touchscreen needing recalibration per output, and — in the kiosk redesign that followed — a CSS specificity bug and a stale timezone placeholder. Every one verified fixed by direct observation, not just code review. Unblocks Story 24.",
+    warn:"Celery worker/beat health and a scheduled task actually firing remain unconfirmed — see Story 17." },
 
   "r1": { num:"Superseded", title:"Cards on the Home Screen", status:"retired", phase:3, time:"—", readiness:"complete", deps:[],
     what:"The home screen was originally a grid of server-rendered HTML cards, each app contributing templates rendered on the request.",
