@@ -117,6 +117,15 @@
 }
 [data-daypart="night"] .profile-avatar { color: #1a2444; }
 
+/* Now that the profile icon carries the sun/moon, the ambient orb (and its
+   rays, which have no source without it) would be a duplicate everywhere the
+   icon exists — every base.html surface (wall included: it shows /home/ in
+   an iframe, which has its own icon). The one exception is the kiosk: a
+   standalone template with no topbar or profile icon at all, so it's the
+   only surface where the orb is still the sole day/night signal. */
+:root:not([data-surface="kiosk"]) .nh-scene__orb,
+:root:not([data-surface="kiosk"]) .nh-scene__rays { display: none; }
+
 /* ── Season: horizon colour and foliage ──────────────────────────────────── */
 [data-season="spring"] .nh-hill { fill: #3f6b4a; }
 [data-season="spring"] .nh-canopy { fill: #7fb069; }
