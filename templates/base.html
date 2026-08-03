@@ -66,32 +66,46 @@ viewport measuring in JavaScript.
     <div class="topbar">
       <h1>{% block heading %}{{ page_title|default:"Home" }}{% endblock %}</h1>
       <div class="topbar-actions">
-        {% block actions %}{% endblock %}
-        {% if request.user.is_authenticated %}
-          <details class="switcher">
-            <summary class="btn btn-ghost">
-              {% if nh_view_scope == "all" %}Everyone{% else %}{{ request.user.name }}{% endif %}
-            </summary>
-            <div class="switcher-menu">
-              {% for member in active_members %}
-                {% if member.id != request.user.id or nh_view_scope == "all" %}
-                  <form method="post" action="{% url 'accounts:switch_to' member.id %}">
+        <details class="profile-menu">
+          <summary class="profile-trigger" aria-label="Menu">
+            {% if request.user.is_authenticated %}
+              <span class="profile-avatar">{{ request.user.name|first|upper }}</span>
+            {% else %}
+              <span class="profile-avatar profile-avatar--anon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <circle cx="12" cy="8" r="4"/>
+                  <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
+                </svg>
+              </span>
+            {% endif %}
+          </summary>
+          <div class="profile-dropdown">
+            {% if request.user.is_authenticated %}
+              {% block actions %}{% endblock %}
+              <div class="profile-dropdown__section">
+                <div class="profile-dropdown__who">
+                  Signed in as {% if nh_view_scope == "all" %}Everyone{% else %}{{ request.user.name }}{% endif %}
+                </div>
+                {% for member in active_members %}
+                  {% if member.id != request.user.id or nh_view_scope == "all" %}
+                    <form method="post" action="{% url 'accounts:switch_to' member.id %}">
+                      {% csrf_token %}
+                      <button class="switcher-option" type="submit">{{ member.name }}</button>
+                    </form>
+                  {% endif %}
+                {% endfor %}
+                {% if nh_view_scope != "all" %}
+                  <form method="post" action="{% url 'accounts:switch_to_everyone' %}">
                     {% csrf_token %}
-                    <button class="switcher-option" type="submit">{{ member.name }}</button>
+                    <button class="switcher-option" type="submit">Everyone</button>
                   </form>
                 {% endif %}
-              {% endfor %}
-              {% if nh_view_scope != "all" %}
-                <form method="post" action="{% url 'accounts:switch_to_everyone' %}">
-                  {% csrf_token %}
-                  <button class="switcher-option" type="submit">Everyone</button>
-                </form>
-              {% endif %}
-            </div>
-          </details>
-        {% endif %}
-        <button class="btn btn-ghost" data-theme-toggle type="button"
-                aria-label="Switch between light and dark">Theme</button>
+              </div>
+            {% endif %}
+            <button class="switcher-option" data-theme-toggle type="button">Theme</button>
+          </div>
+        </details>
       </div>
     </div>
 

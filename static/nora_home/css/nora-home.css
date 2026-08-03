@@ -190,29 +190,82 @@ pre {
 }
 .topbar h1 { margin: 0; }
 
-/* ── Profile switcher ─────────────────────────────────────────────────────── */
-/* No password anywhere in the house — this is the entire auth UI: a name in the
-   topbar that opens onto the rest of the household plus "Everyone". */
-.switcher { position: relative; }
-.switcher > summary {
-  list-style: none;
+/* ── Profile menu ─────────────────────────────────────────────────────────── */
+/* No password anywhere in the house — this is the entire auth UI: one icon in
+   the topbar opens onto whatever this page offers (its own actions, if any),
+   the rest of the household, "Everyone", and the theme toggle. Everything that
+   used to be a row of separate buttons/pills lives in here now, so the topbar
+   never wraps or crowds regardless of how many things a page contributes via
+   {% block actions %}. */
+.profile-menu { position: relative; }
+.profile-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
   cursor: pointer;
+  list-style: none;
 }
-.switcher > summary::-webkit-details-marker { display: none; }
-.switcher-menu {
+.profile-trigger::-webkit-details-marker { display: none; }
+.profile-trigger:hover { border-color: var(--ink-400); }
+.profile-avatar {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--accent);
+}
+.profile-avatar--anon { color: var(--text-faint); }
+
+.profile-dropdown {
   position: absolute;
   right: 0;
-  top: calc(100% + 0.4rem);
+  top: calc(100% + 0.5rem);
   z-index: 20;
   display: flex;
   flex-direction: column;
-  min-width: 160px;
+  gap: 0.1rem;
+  min-width: 200px;
   padding: 0.4rem;
   background: var(--bg-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-sm);
 }
+/* A page's own {% block actions %} buttons (e.g. "Add a widget") keep using
+   the ordinary .btn classes everywhere else on the page — only reset to a
+   flat menu row once they land inside this dropdown specifically. */
+.profile-dropdown .btn {
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0.5rem 0.7rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+}
+.profile-dropdown .btn:hover { background: var(--ink-700); }
+:root[data-theme="light"] .profile-dropdown .btn:hover { background: var(--bg-sunken); }
+
+.profile-dropdown__section {
+  margin-top: 0.3rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--border);
+}
+.profile-dropdown__who {
+  padding: 0.3rem 0.7rem 0.4rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+
 .switcher-option {
   display: block;
   width: 100%;
