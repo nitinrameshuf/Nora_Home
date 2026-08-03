@@ -414,6 +414,41 @@ verified working. The dual-monitor kiosk placement problem remains open;
 `cage` is the recommended next attempt, in a dedicated session with a fresh
 `sudo` budget rather than continued live experimentation.
 
+**Update — solved, differently than planned.** Rather than `cage`, switched
+the Pi's whole desktop session from Wayland (`labwc`) to X11 (`openbox`) via
+`sudo raspi-config nonint do_wayland W1` + reboot — a toggle Raspberry Pi OS
+ships specifically for compatibility cases like this one. Confirmed via
+`xdotool`/`ps` immediately after: both `--kiosk` instances landed correctly
+and simultaneously, with zero repositioning tricks — wall at `0,0`/`1920x1080`,
+kiosk at `1920,0`/`1024x600` — the exact layout `install-pi.sh` was written
+for from the start. Root cause fully confirmed: this was never a bug in this
+project's own code, it was `labwc` specifically refusing to let any
+mechanism — not Chromium's own flags, not `xdotool`, not `labwc`'s own
+`MoveToOutput` action — reposition a fullscreen window once placed. Recorded
+in `CLAUDE.md`'s Pi section so it isn't rediscovered from scratch if this Pi's
+OS is ever reinstalled.
+
+Hit one real scare on the way: shortly after the reboot into X11, the Pi
+became fully unreachable — SSH refused from every angle, physical screens
+white — serious enough that a fresh OS install was considered. Recovered with
+a plain reboot via Pi Connect, no reinstall needed. Root cause not
+determined; possibly the fresh Chromium launches under the new session type,
+possibly unrelated. Worth watching for a recurrence, not yet worth deeper
+investigation given it self-resolved.
+
+After that reboot, both Chromium profiles had lost their session again (same
+class of issue as the earlier wall-profile case above) and initially showed
+blank/loading state rather than real content. Resolved on their own after the
+recovery reboot — confirmed by direct observation on the physical hardware
+(not remote tooling, which lost Pi access again partway through and never
+reconnected this session): the 10" shows the kiosk's tap-tile controller, the
+24" shows the wall's real agenda view (correctly empty — no habits exist yet
+in this fresh database). **Story 27 is done**: first real Pi run, from a
+completely unexercised codebase to both physical displays working correctly,
+authenticated, on real hardware. Every bug found tonight was fixed and is
+recorded above for exactly this reason — so none of it has to be
+rediscovered.
+
 A fourth, unrelated bug surfaced while trying to check the passwordless switcher
 from a phone instead: every request from anywhere but `localhost` — any phone or
 laptop on the house LAN, the platform's actual intended access pattern — got an

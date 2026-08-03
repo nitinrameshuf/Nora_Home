@@ -88,7 +88,29 @@ UNIT
 sudo systemctl daemon-reload
 sudo systemctl enable nora-home.service
 
-# ── 6. The two displays ───────────────────────────────────────────────────────
+# ── 6. X11, not Wayland ───────────────────────────────────────────────────────
+# Raspberry Pi OS defaults to labwc (Wayland) on the Pi 4/5. labwc refuses to
+# let anything — not Chromium's own flags, not xdotool, not even labwc's own
+# MoveToOutput action — reposition a fullscreen window once placed, so the wall
+# and kiosk always land on whichever output the compositor picks, not the one
+# each is meant for. Confirmed by actually running both on real dual-monitor
+# hardware (see docs/progress.md, 2026-08-02). X11 (openbox) honors
+# --window-position/--window-size the normal way, so switch to it here rather
+# than rediscovering this from scratch on every fresh Pi.
+if command -v raspi-config >/dev/null 2>&1; then
+    CURRENT_SESSION="$(grep -oP '(?<=^autologin-session=).*' /etc/lightdm/lightdm.conf 2>/dev/null || true)"
+    if [[ "$CURRENT_SESSION" != *-x ]]; then
+        info "Switching the desktop session from Wayland to X11 (needed for correct wall/kiosk placement)"
+        sudo raspi-config nonint do_wayland W1
+        warn "Session switched to X11 — takes effect after the reboot at the end of this script."
+    fi
+else
+    warn "raspi-config not found — could not switch to X11. If the wall and kiosk" \
+         "end up on the same screen, see docs/progress.md (2026-08-02) for why, and" \
+         "run: sudo raspi-config nonint do_wayland W1 && sudo reboot"
+fi
+
+# ── 7. The two displays ───────────────────────────────────────────────────────
 # The first HDMI output is the 24" wall screen (1920x1080), the second the
 # touchscreen kiosk (1024x600 on the hardware this was verified against — check
 # `wlr-randr` if it's ever swapped for a different panel). Each gets its own

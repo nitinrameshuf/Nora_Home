@@ -135,21 +135,40 @@ boots under Daphne, login works, the home dashboard renders list/stat/chart widg
 the widget picker adds and removes tiles, and the app registry mounts
 `houseapps.example_habit` at `/habits/`.
 
+### Verified on the Pi (2026-08-02)
+`docker compose up -d --build` runs on real hardware against MySQL, Mongo,
+RabbitMQ, and MinIO — `web` healthy, migrations and `bootstrap_home` running
+automatically on container start. The wall (24" monitor) and kiosk (10.1"
+touchscreen) both render correctly in Chromium kiosk mode on their own physical
+screens, authenticated through the passwordless switcher, showing real app
+content — not just code-reviewed, actually seen working. This needed one
+environment-level fix beyond the app itself: Raspberry Pi OS's default desktop
+session (`labwc`, Wayland) refuses to let anything reposition a fullscreen
+window once placed, so both kiosk instances always ended up on the same
+monitor regardless of any flag or tool. Switched the Pi to the X11 session
+(`sudo raspi-config nonint do_wayland W1`, then reboot) instead, which honors
+window placement the way `scripts/install-pi.sh` was written assuming, and the
+whole problem disappeared. `install-pi.sh` now does this switch itself (§6 in
+the script), so a reinstalled or fresh Pi picks it up automatically — no need
+to rediscover it. One side effect worth knowing: Raspberry Pi Connect's
+screen-share (Remote Desktop) only works on Wayland (it's built on `wayvnc`),
+so it stops working once this switch happens — Pi Connect's Remote Shell and
+plain SSH are unaffected and are the way to manage the Pi from here on.
+Celery `worker`/`beat` came up but showed `unhealthy` in the one snapshot
+taken — not dug into further, worth checking next time someone's on the Pi.
+
 ### Not done — pick up here
 1. **Design system is unchosen.** `docs/design-options.html` has four directions
    rendered. The user is particular about UI and wants to approve one before it is
    built out. Until then `static/nora_home/css/nora-home.css` is the "Nightfall" direction.
    **Do not invest in visual polish before this is settled.**
-2. **Never run on the Pi, or against MySQL/Mongo/RabbitMQ/MinIO.** Only SQLite +
-   in-memory broker have been exercised. `docker compose up -d` is untested.
-3. **Celery has never run.** Beat schedule, escalation sweeps, and backups are all
-   written but have not executed. Dev settings run tasks eagerly.
-4. **Slack, AI, MCP untested against live services.** No API keys were available.
-5. **No tests.** `pytest` is configured; nothing is written.
-6. **PWA manifest and service worker** — decided (§5) but not written.
-7. **No favicon** — the logs show steady `/favicon.ico` 404s.
-8. **Wall and kiosk pages unverified in a browser.** The code is written; only the
-   home dashboard has actually been looked at.
+2. **Celery worker/beat health unconfirmed.** Containers start, but showed
+   `unhealthy` in `docker compose ps` at least once on the Pi — never confirmed a
+   scheduled task (escalation sweep, backup) actually ran end to end.
+3. **Slack, AI, MCP untested against live services.** No API keys were available.
+4. **No tests.** `pytest` is configured; nothing is written.
+5. **PWA manifest and service worker** — decided (§5) but not written.
+6. **No favicon** — the logs show steady `/favicon.ico` 404s.
 
 ---
 
