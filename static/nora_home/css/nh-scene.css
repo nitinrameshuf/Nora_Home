@@ -84,6 +84,39 @@
 }
 [data-daypart="night"] .nh-scene__stars { display: block; }
 
+/* ── Profile icon: the same sun/moon, not a second circle competing with it ──
+   The topbar's profile trigger picks up the sky's own orb gradient instead of
+   a flat, disconnected UI circle — one glowing sun or moon in the corner
+   doubling as "who's signed in", rather than the ambient orb plus an
+   unrelated dark dot both sitting near the top of the page. */
+[data-daypart="dawn"] .profile-trigger {
+  background: radial-gradient(circle at 35% 35%, #fff2d0, #ffb066 70%);
+  border-color: transparent;
+  box-shadow: 0 0 12px rgba(255, 176, 102, 0.55);
+}
+[data-daypart="dawn"] .profile-avatar { color: #4a2400; }
+
+[data-daypart="noon"] .profile-trigger {
+  background: radial-gradient(circle at 35% 35%, #fff, #ffe27a 70%);
+  border-color: transparent;
+  box-shadow: 0 0 12px rgba(255, 226, 122, 0.55);
+}
+[data-daypart="noon"] .profile-avatar { color: #5a3d00; }
+
+[data-daypart="dusk"] .profile-trigger {
+  background: radial-gradient(circle at 35% 35%, #ffd8b0, #ff7a59 70%);
+  border-color: transparent;
+  box-shadow: 0 0 12px rgba(255, 122, 89, 0.55);
+}
+[data-daypart="dusk"] .profile-avatar { color: #3a0f00; }
+
+[data-daypart="night"] .profile-trigger {
+  background: radial-gradient(circle at 35% 35%, #f4f7ff, #c9d6e8 70%);
+  border-color: transparent;
+  box-shadow: 0 0 10px rgba(201, 214, 232, 0.4);
+}
+[data-daypart="night"] .profile-avatar { color: #1a2444; }
+
 /* ── Season: horizon colour and foliage ──────────────────────────────────── */
 [data-season="spring"] .nh-hill { fill: #3f6b4a; }
 [data-season="spring"] .nh-canopy { fill: #7fb069; }
