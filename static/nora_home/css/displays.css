@@ -154,6 +154,12 @@
   overflow-y: auto;
   align-content: start;
 }
+/* [hidden] and .kiosk-grid{display:grid} are equal specificity, and this
+   stylesheet loads after the browser's own — without this, a screen with
+   both the class and the hidden attribute stays visible as a grid, since
+   the class rule wins the cascade. Multiple app screens showing at once
+   was the actual observed bug this fixes. */
+.kiosk-grid[hidden] { display: none; }
 .kiosk-tile {
   display: flex;
   flex-direction: column;

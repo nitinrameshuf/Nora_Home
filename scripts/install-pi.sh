@@ -71,6 +71,15 @@ if [[ ! -f .env ]]; then
     # how everyone actually reaches it. The LAN is already the trust boundary
     # everywhere else in this house — see CLAUDE.md §4 — so allow all of it.
     sed -i 's/^DJANGO_ALLOWED_HOSTS=.*/DJANGO_ALLOWED_HOSTS=*/' .env
+    # .env.example's DJANGO_TIME_ZONE is just a generic placeholder — without
+    # this, every schedule the house has (wall power, escalations, quiet
+    # hours) runs against whatever timezone the placeholder happened to be,
+    # not wherever this Pi actually is. timedatectl already knows the real
+    # answer; the system was already configured with it during OS setup.
+    PI_TZ="$(timedatectl show --property=Timezone --value 2>/dev/null || true)"
+    if [[ -n "$PI_TZ" ]]; then
+        sed -i "s#^DJANGO_TIME_ZONE=.*#DJANGO_TIME_ZONE=${PI_TZ}#" .env
+    fi
     warn "Add your Slack and Anthropic keys to $REPO_DIR/.env when you have them."
 fi
 

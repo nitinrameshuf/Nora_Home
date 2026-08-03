@@ -9,9 +9,10 @@
         {% else %}<span class="pill">off</span>{% endif %}
       </div>
       <p class="card-subtitle">
-        Power the 24" wall display off outside these hours. The kiosk and the
-        platform itself keep running either way — this only affects the
-        physical monitor.
+        Power both physical screens off outside these hours (the wall and the
+        kiosk go together — the display hardware doesn't support turning off
+        just one). The platform itself keeps running either way; this only
+        affects the monitors.
       </p>
       <form method="post" style="display:grid;gap:0.9rem;margin-top:0.9rem">
         {% csrf_token %}
