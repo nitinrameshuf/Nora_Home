@@ -20,4 +20,5 @@ urlpatterns = [
     path("system/", views.system_status, name="system_status"),
     path("settings/", views.settings_page, name="settings"),
     path("health/", views.health, name="health"),
+    path("api/weather/", views.weather_current, name="weather_current"),
 ]

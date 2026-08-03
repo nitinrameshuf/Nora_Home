@@ -5,6 +5,7 @@ tablet, desktop) are set server-side on <html> so CSS can respond without any
 viewport measuring in JavaScript.
 {% endcomment %}
 <html lang="en" data-surface="{{ surface }}" data-theme="dark"
+      data-season="{{ nh_season }}" data-daypart="{{ nh_daypart }}" data-weather="{{ nh_weather }}"
       {% if not nh_bot_enabled %}data-nh-bot="off"{% endif %}>
 <head>
   <meta charset="utf-8">
@@ -13,11 +14,13 @@ viewport measuring in JavaScript.
   <meta name="theme-color" content="#0c1015">
   <title>{% block title %}{% if page_title %}{{ page_title }} · {% endif %}{{ house_name }}{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'nora_home/css/nora-home.css' %}">
+  <link rel="stylesheet" href="{% static 'nora_home/css/nh-scene.css' %}">
   {% if nh_bot_enabled %}<link rel="stylesheet" href="{% static 'nora_home/css/nh-bot.css' %}">{% endif %}
   {% block head %}{% endblock %}
 </head>
 <body>
 {% block body %}
+{% include "partials/scene.html" %}
 <div class="shell">
   <nav class="sidebar" aria-label="House navigation">
     <a class="brand" href="/">
@@ -104,6 +107,7 @@ viewport measuring in JavaScript.
 {% endblock %}
 
 <script src="{% static 'nora_home/js/nh-app.js' %}" defer></script>
+<script src="{% static 'nora_home/js/nh-scene.js' %}" defer></script>
 {% if nh_bot_enabled %}<script src="{% static 'nora_home/js/nh-bot.js' %}" defer></script>{% endif %}
 {% block scripts %}{% endblock %}
 </body>

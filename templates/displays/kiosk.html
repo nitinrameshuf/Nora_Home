@@ -8,15 +8,18 @@ see NoraAppConfig in nora_home/core/registry.py) so the remote stays
 relevant to whatever's currently on the big screen. Screens scroll if a
 house has grown enough apps that they don't fit on one 10" panel.
 {% endcomment %}
-<html lang="en" data-surface="kiosk" data-theme="dark" data-nh-bot="off">
+<html lang="en" data-surface="kiosk" data-theme="dark" data-nh-bot="off"
+      data-season="{{ nh_season }}" data-daypart="{{ nh_daypart }}" data-weather="{{ nh_weather }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>{{ house_name }} — kiosk</title>
   <link rel="stylesheet" href="{% static 'nora_home/css/nora-home.css' %}">
   <link rel="stylesheet" href="{% static 'nora_home/css/displays.css' %}">
+  <link rel="stylesheet" href="{% static 'nora_home/css/nh-scene.css' %}">
 </head>
 <body class="kiosk" data-target-display="{{ target }}">
+  {% include "partials/scene.html" %}
   {% csrf_token %}
 
   <header class="kiosk-header">
@@ -80,6 +83,7 @@ house has grown enough apps that they don't fit on one 10" panel.
   <div class="kiosk-toast" data-kiosk-toast role="status"></div>
 
   <script src="{% static 'nora_home/js/nh-app.js' %}" defer></script>
+  <script src="{% static 'nora_home/js/nh-scene.js' %}" defer></script>
   <script src="{% static 'nora_home/js/kiosk.js' %}" defer></script>
 </body>
 </html>

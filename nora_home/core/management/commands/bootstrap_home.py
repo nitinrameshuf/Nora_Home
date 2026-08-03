@@ -62,6 +62,7 @@ class Command(BaseCommand):
         self._policies()
         self._displays()
         self._storage()
+        self._integrations()
         if options["demo"]:
             self._demo()
         self.stdout.write(self.style.SUCCESS("The house is ready."))
@@ -93,6 +94,19 @@ class Command(BaseCommand):
             )
             self.stdout.write(f"  display {slug}: "
                               f"{'created' if created else 'already there'}")
+
+    def _integrations(self):
+        from nora_home.integrations.models import Integration
+
+        # Weather is the first concrete integration — it needs no credentials,
+        # just the house's location (NORA_HOME_LAT/LON), so it's safe to enable
+        # by default rather than leaving it for someone to find in the admin.
+        _, created = Integration.objects.get_or_create(
+            slug="weather",
+            defaults={"name": "Weather", "interval_minutes": 15, "is_enabled": True},
+        )
+        self.stdout.write(f"  integration weather: "
+                          f"{'created' if created else 'already there'}")
 
     def _storage(self):
         from nora_home.datastores.objects import StorageUnavailable, ensure_bucket

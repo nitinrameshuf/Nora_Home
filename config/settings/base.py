@@ -48,6 +48,16 @@ def env_list(key: str, default: list[str] | None = None) -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+def env_float(key: str, default: float | None) -> float | None:
+    raw = env(key)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
+
+
 # ── Identity ───────────────────────────────────────────────────────────────────
 NORA_HOME_ENV = env("NORA_HOME_ENV", "dev")
 NORA_HOME_NAME = env("NORA_HOME_NAME", "Nora Home")
@@ -136,6 +146,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "nora_home.core.context_processors.house",
                 "nora_home.ui.context_processors.surface",
+                "nora_home.ui.context_processors.scene",
             ],
         },
     },
@@ -302,6 +313,14 @@ NORA_HOME_MCP_TOKEN = env("NORA_HOME_MCP_TOKEN", "")
 NORA_HOME_MAIN_DISPLAY_SLUG = env("NORA_HOME_MAIN_DISPLAY_SLUG", "wall")
 NORA_HOME_KIOSK_DISPLAY_SLUG = env("NORA_HOME_KIOSK_DISPLAY_SLUG", "kiosk")
 NORA_HOME_DISPLAY_ROTATE_SECONDS = env_int("NORA_HOME_DISPLAY_ROTATE_SECONDS", 45)
+
+
+# ── Location ───────────────────────────────────────────────────────────────────
+# Drives the weather integration and the living background's season/day-night
+# axes (nora_home/ui/scene.py). Defaults to New York City, matching this house's
+# DJANGO_TIME_ZONE default — correct it in .env for the house's real location.
+NORA_HOME_LAT = env_float("NORA_HOME_LAT", 40.7128)
+NORA_HOME_LON = env_float("NORA_HOME_LON", -74.0060)
 
 
 # ── Backups ────────────────────────────────────────────────────────────────────

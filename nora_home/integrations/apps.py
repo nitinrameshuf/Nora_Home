@@ -14,3 +14,6 @@ class IntegrationsConfig(NoraAppConfig):
     nora_category = Category.INTEGRATIONS
     nora_order = 10
     nora_url_prefix = "home/integrations/"
+
+    def ready(self):
+        from nora_home.integrations import providers  # noqa: F401

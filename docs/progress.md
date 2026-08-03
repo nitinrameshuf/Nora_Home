@@ -735,13 +735,78 @@ tonight's open risks (DPMS scope, timezone correctness, kiosk screen
 switching) were checked against real hardware and either confirmed
 working or fixed.
 
+## 2026-08-03 — Story 23 decided and built: the living background, and a real weather integration
+
+Two rounds of `docs/design-options.html` mockups were rejected as generic —
+recognizable as "an AI-generated dashboard" no matter the palette, because a
+sidebar-plus-card-grid *is* that template regardless of colour, and a first
+pass at fixing this by making the wall passively ambient was also rejected
+("forget about that ambient wall, i dont want that entirely itself"). What
+landed instead: the real season, time of day, and actual outside weather
+composited as a living background *behind* the real, fully interactive app
+— the wall keeps showing `/home/` (or whatever the kiosk pointed it at), the
+kiosk keeps being buttons-only, neither changes shape. "Charm outside,
+polish inside" — the atmosphere carries the personality, the data sitting on
+top of it in translucent glass panes stays disciplined.
+
+Asked to "code that real time weather now" rather than keep it as a mockup,
+so this landed as working code, not another round of `design-options.html`:
+
+- **`nora_home/ui/scene.py`** — season from the date plus the house's own
+  latitude (flips correctly south of the equator), day/night from the
+  *actual* sunrise and sunset for the house's location, not fixed clock
+  hours. Shared by a context processor (first paint, no flash of the wrong
+  sky) and a small JSON endpoint (`core:weather_current`) both the wall
+  (through the app it iframes) and the kiosk poll every 5 minutes, so two
+  screens that each sit open for hours can't quietly drift onto different
+  seasons or times of day.
+- **`nora_home/integrations/providers/weather.py`** — the platform's first
+  concrete integration, exercising the integration framework for real for
+  the first time since it was written (`Story 20`'s "zero concrete
+  integrations exist, the framework has never polled anything" is no longer
+  true). Open-Meteo, chosen specifically because it needs no API key — only
+  `NORA_HOME_LAT`/`NORA_HOME_LON`, defaulted to New York City to match the
+  Pi's already-configured timezone. WMO weather codes bucket down into the
+  four states the background actually renders: clear, cloudy, rain, snow.
+  Registered via `IntegrationsConfig.ready()`, seeded by `bootstrap_home`.
+- **`static/nora_home/css/nh-scene.css`** — the scene itself (sky gradient,
+  sun/moon position, horizon silhouette and foliage, rain/snow/cloud/sun-ray
+  overlays), plus a retrofit of `.card`, `.sidebar`, and `.kiosk-tile` onto
+  translucent, blurred glass so text stays legible over any sky, in both
+  light and dark theme. Loads after `nora-home.css` so it can override by
+  cascade order alone, without needing to touch the base stylesheet.
+- **`static/nora_home/js/nh-scene.js`** — the only client-side logic is
+  "poll and apply." All the actual season/daypart/weather computation stays
+  server-side in `scene.py`, which is what guarantees the wall and kiosk
+  can never disagree about what moment it is — there's exactly one place
+  that decides.
+
+**Verified, not just written**: a real fetch against the live Open-Meteo API
+during this session returned genuine current conditions (light rain, 24.9°C,
+real sunrise/sunset for the default NYC coordinates) and `current_scene()`
+correctly derived `summer`/`night` from them. `manage.py check` clean,
+fresh `migrate` + `bootstrap_home --demo` run clean (no new migrations —
+this reuses the existing `HouseSetting`/`Integration`/`Series` tables), and
+`/home/`, `/home/displays/kiosk/`, and `/home/settings/` all render via
+Django's test client with matching `data-season`/`data-daypart`/
+`data-weather` attributes on `<html>`.
+
+**Not yet done**: this is the engine and a first real skin, not the full
+Story 23 scope. No new type scale, no per-component pass across every
+widget, no verification at 375px or on the physical wall/kiosk hardware yet
+— `.card`/`.sidebar`/`.kiosk-tile` cover most of the visual surface area by
+virtue of the existing "widgets return data, not HTML" convention, but
+that's a happy consequence of the existing architecture, not a claim that
+every surface has been individually checked.
+
 ---
 
 ## Next
 
-1. **Story 23 — design system.** Blocked on a decision between the directions in
-   `design-options.html`.
-2. **Story 27 — first real run on the Pi.** The highest-value story on the board: it
-   converts eight *built, unproven* stories into either *complete* or a bug list.
-3. **Story 24 — house maintenance**, the first real app, which is what proves the
-   skeleton was worth building.
+1. **See the living background on the physical wall and kiosk.** Built and
+   verified locally and against the live weather API; not yet seen on real
+   hardware, and continuous motion (rain/snow/stars, backdrop blur on every
+   pane) on a Pi 5 driving two Chromium instances at once is a real
+   performance question, flagged but untested.
+2. **Story 24 — house maintenance**, the first real app, which is what proves the
+   skeleton was worth building. Unblocked since Story 27 (2026-08-02).

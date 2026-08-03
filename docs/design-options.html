@@ -3,1041 +3,657 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nora Home — design directions, round 2</title>
+<title>Nora Home — design direction, round 3</title>
 <style>
 /* ─────────────────────────────────────────────────────────────────────────────
-   Round 2. The first set was rejected for reading like a todo app — checklists
-   were the hero and charts were decoration. This set inverts that: every
-   direction leads with data visualisation, and tasks appear the way they should
-   on a house dashboard — as one signal among many.
+   Round 3, corrected. The first pass at this direction showed an "ambient
+   wall" — a passive screen with four numbers on it. That's not what this
+   house does: the 24" always shows the real, fully interactive /home/ app
+   (or whichever app someone picked), and the 10.1" is strictly a button
+   remote for it — it never mirrors the app, only sends it somewhere. That's
+   the shipped architecture (nora_home/displays/), not a proposal.
 
-   Same data, same widgets, same information in all five. Only the design system
-   changes. Whichever is chosen becomes static/nora_home/css/nora-home.css.
+   So this pass keeps the living atmosphere — season, time of day, weather —
+   but puts it *behind* the real, full-functionality screens instead of
+   replacing them. Shown across a spread of seasons/times/weather so the
+   range is honest, plus the kiosk paired next to the wall since that's how
+   they're physically seen — side by side, same moment.
    ──────────────────────────────────────────────────────────────────────────── */
 
 *,*::before,*::after { box-sizing: border-box; }
 body {
-  margin: 0; background: #08090c; color: #e6ecf2;
+  margin: 0; background: #0a0b0d; color: #eef1f4;
   font: 16px/1.6 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
-.page { max-width: 1240px; margin: 0 auto; padding: 3rem 1.5rem 6rem; }
+.page { max-width: 1320px; margin: 0 auto; padding: 3rem 1.5rem 6rem; }
 
-.masthead { border-bottom: 1px solid #222a36; padding-bottom: 2rem; margin-bottom: 1.6rem; }
+.masthead { border-bottom: 1px solid #23262c; padding-bottom: 2rem; margin-bottom: 1.6rem; }
 .masthead h1 { font-size: 2.6rem; margin: 0 0 .4rem; letter-spacing: -.03em; }
-.masthead p { color: #93a5b8; max-width: 66ch; margin: 0 0 .6rem; }
-.masthead code { background: #12181f; padding: .1em .4em; border-radius: 4px; font-size: .9em; }
+.masthead p { color: #a3aab3; max-width: 70ch; margin: 0 0 .6rem; }
+.masthead code { background: #16181c; padding: .1em .4em; border-radius: 4px; font-size: .9em; }
 .callout {
-  background: #12181f; border: 1px solid #222a36; border-left: 3px solid #ff9a5c;
-  border-radius: 10px; padding: 1rem 1.3rem; margin-bottom: 3rem; color: #93a5b8;
+  background: #16181c; border: 1px solid #23262c; border-left: 3px solid #e0793a;
+  border-radius: 10px; padding: 1.1rem 1.4rem; margin-bottom: 2.4rem; color: #a3aab3;
 }
-.callout strong { color: #e6ecf2; }
+.callout strong { color: #eef1f4; }
 
-.option { margin: 0 0 5rem; }
-.option__head { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: .5rem; }
-.option__num {
-  font-size: .8rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
-  color: #62778c; border: 1px solid #222a36; border-radius: 999px; padding: .2rem .7rem;
+.section-label {
+  font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em;
+  color: #6b7280; margin: 3.4rem 0 1rem; display: flex; align-items: center; gap: .8rem;
 }
-.option__name { font-size: 1.9rem; margin: 0; letter-spacing: -.02em; }
-.option__tag { color: #93a5b8; font-style: italic; }
-.option__body { color: #93a5b8; max-width: 70ch; margin: 0 0 1.2rem; }
-.option__meta { display: flex; gap: 2rem; flex-wrap: wrap; margin: 0 0 1.3rem; font-size: .86rem; }
-.option__meta div { color: #62778c; }
-.option__meta strong { color: #c3cfdb; display: block; font-weight: 600; }
+.section-label::after { content: ''; flex: 1; height: 1px; background: #23262c; }
+.section-body { color: #a3aab3; max-width: 76ch; margin: 0 0 1.4rem; }
 
-.swatches { display: flex; gap: .4rem; margin-bottom: 1.3rem; flex-wrap: wrap; }
-.swatch { width: 40px; height: 40px; border-radius: 9px; border: 1px solid rgba(255,255,255,.12); }
+/* ═══════════════════ engine ═══════════════════ */
+.engine { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; }
+@media (max-width: 800px) { .engine { grid-template-columns: 1fr; } }
+.engine__card { background: #16181c; border: 1px solid #23262c; border-radius: 14px; padding: 1.2rem 1.4rem; }
+.engine__card h3 { margin: 0 0 .4rem; font-size: .95rem; }
+.engine__card p { margin: 0 0 .8rem; font-size: .84rem; color: #8b929c; }
+.engine__swatches { display: flex; gap: .5rem; flex-wrap: wrap; }
+.eswatch { display: flex; flex-direction: column; align-items: center; gap: .35rem; font-size: .68rem; color: #8b929c; }
+.eswatch i { width: 40px; height: 40px; border-radius: 10px; display: block; border: 1px solid rgba(255,255,255,.08); }
 
-.render { border-radius: 16px; overflow: hidden; border: 1px solid #222a36; box-shadow: 0 18px 50px rgba(0,0,0,.55); margin-bottom: 1rem; }
-.render__label { font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: #62778c; padding: 0 0 .5rem; }
-.split { display: grid; grid-template-columns: 1fr 300px; gap: 1rem; align-items: start; }
-@media (max-width: 940px) { .split { grid-template-columns: 1fr; } }
+/* ═══════════════════ the living scene: sky / horizon / weather ═══════════════════ */
+.scene { position: relative; overflow: hidden; font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.scene__sky { position: absolute; inset: 0; }
+.scene__vignette { position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 100%, rgba(0,0,0,.4), transparent 60%); }
+.scene__horizon { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; display: block; opacity: .92; }
+.scene__orb { position: absolute; border-radius: 50%; transform: translate(-50%, -50%); }
+.scene__stars { position: absolute; inset: 0; display: none; }
+.scene__stars i { position: absolute; width: 2px; height: 2px; background: #fff; border-radius: 50%; animation: twinkle 3.4s ease-in-out infinite; }
+@keyframes twinkle { 0%,100% { opacity: .25 } 50% { opacity: .95 } }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   Shared skeleton. Every theme fills the same slots with the same data.
-   ═══════════════════════════════════════════════════════════════════════ */
-.mock { display: grid; grid-template-columns: 176px 1fr; min-height: 520px; }
-.mock--rail { grid-template-columns: 64px 1fr; }
-.mock--top { grid-template-columns: 1fr; }
+.t-dawn      .scene__sky { background: linear-gradient(180deg, #2b3a55, #e8946a 62%, #ffd9a0); }
+.t-dawn      .scene__orb { left: 13%; top: 70%; width: 8%; aspect-ratio:1; background: radial-gradient(circle at 35% 35%, #fff2d0, #ffb066 70%); box-shadow: 0 0 5vmin rgba(255,176,102,.55); }
+.t-noon      .scene__sky { background: linear-gradient(180deg, #3f86bd, #8fc7e8 55%, #eaf7ff); }
+.t-noon      .scene__orb { left: 50%; top: 10%; width: 6.5%; aspect-ratio:1; background: radial-gradient(circle at 35% 35%, #fff, #ffe27a 70%); box-shadow: 0 0 6vmin rgba(255,226,122,.55); }
+.t-dusk      .scene__sky { background: linear-gradient(180deg, #241b3a, #7a3b5e 55%, #e8845a); }
+.t-dusk      .scene__orb { left: 84%; top: 62%; width: 8%; aspect-ratio:1; background: radial-gradient(circle at 35% 35%, #ffd8b0, #ff7a59 70%); box-shadow: 0 0 6vmin rgba(255,122,89,.55); }
+.t-night     .scene__sky { background: linear-gradient(180deg, #05070f, #0e1326 55%, #1a2444); }
+.t-night     .scene__orb { left: 50%; top: 18%; width: 5%; aspect-ratio:1; background: radial-gradient(circle at 35% 35%, #f4f7ff, #c9d6e8 70%); box-shadow: 0 0 4vmin rgba(201,214,232,.4); }
+.t-night     .scene__stars { display: block; }
 
-.nav { padding: 1.1rem .75rem; display: flex; flex-direction: column; gap: .12rem; }
-.nav__brand { display: flex; align-items: center; gap: .55rem; font-weight: 700; padding: 0 .45rem 1.1rem; font-size: .95rem; }
-.nav__dot { width: 22px; height: 22px; border-radius: 7px; flex: 0 0 auto; }
-.nav__label { font-size: .62rem; text-transform: uppercase; letter-spacing: .1em; padding: .85rem .5rem .25rem; opacity: .45; }
-.nav__item { padding: .38rem .5rem; border-radius: 7px; font-size: .82rem; }
+.s-spring .scene__horizon .hill { fill: #3f6b4a; } .s-spring .scene__horizon .canopy { fill: #7fb069; }
+.s-spring .scene__horizon .bare { display: none; } .s-spring .scene__horizon .leafy { display: block; } .s-spring .scene__horizon .blossom { display: block; }
+.s-summer .scene__horizon .hill { fill: #2c5233; } .s-summer .scene__horizon .canopy { fill: #3f7d4f; }
+.s-summer .scene__horizon .bare { display: none; } .s-summer .scene__horizon .leafy { display: block; } .s-summer .scene__horizon .blossom { display: none; }
+.s-autumn .scene__horizon .hill { fill: #5a3a24; } .s-autumn .scene__horizon .canopy { fill: #c96f34; }
+.s-autumn .scene__horizon .bare { display: none; } .s-autumn .scene__horizon .leafy { display: block; } .s-autumn .scene__horizon .blossom { display: none; }
+.s-winter .scene__horizon .hill { fill: #4a5568; } .s-winter .scene__horizon .canopy { fill: #eef2f5; }
+.s-winter .scene__horizon .bare { display: block; } .s-winter .scene__horizon .leafy { display: none; } .s-winter .scene__horizon .blossom { display: none; } .s-winter .scene__horizon .snowcap { display: block; }
+.scene__horizon .snowcap { display: none; }
 
-.main { padding: 1.1rem 1.3rem; min-width: 0; }
-.top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; gap: 1rem; }
-.top h1 { margin: 0; font-size: 1.4rem; letter-spacing: -.02em; }
-.top__sub { font-size: .78rem; opacity: .55; margin-top: .15rem; }
-
-.grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: .75rem; }
-.w { border-radius: 12px; padding: .85rem 1rem; min-width: 0; display: flex; flex-direction: column; }
-.w--2 { grid-column: span 2; } .w--3 { grid-column: span 3; } .w--4 { grid-column: span 4; }
-.w--5 { grid-column: span 5; } .w--6 { grid-column: span 6; } .w--7 { grid-column: span 7; }
-.w--8 { grid-column: span 8; } .w--9 { grid-column: span 9; } .w--12 { grid-column: span 12; }
-
-.w__head { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; margin-bottom: .5rem; }
-.w__title { font-size: .7rem; text-transform: uppercase; letter-spacing: .09em; opacity: .55; font-weight: 600; }
-.w__meta { font-size: .68rem; opacity: .4; }
-.w__big { font-size: 2rem; font-weight: 700; line-height: 1; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
-.w__big--xl { font-size: 3.2rem; }
-.w__unit { font-size: .4em; font-weight: 400; opacity: .5; }
-.w__sub { font-size: .74rem; opacity: .5; margin-top: .25rem; }
-.w__delta { font-size: .72rem; font-weight: 600; margin-top: .2rem; }
-.w__viz { flex: 1; min-height: 0; display: flex; align-items: flex-end; margin-top: .5rem; }
-.w__viz svg { width: 100%; display: block; }
-
-.chip { font-size: .66rem; padding: .1rem .5rem; border-radius: 999px; font-weight: 700; letter-spacing: .02em; }
-
-/* people strip */
-.people { display: flex; gap: .5rem; }
-.person { flex: 1; text-align: center; }
-.person__ring { width: 100%; max-width: 56px; margin: 0 auto; }
-.person__name { font-size: .68rem; opacity: .6; margin-top: .2rem; }
-
-/* heatmap */
-.heat { display: grid; grid-template-columns: repeat(26, 1fr); gap: 2px; width: 100%; }
-.heat i { aspect-ratio: 1; border-radius: 2px; display: block; }
-
-/* the home bot */
-.bot { width: 30px; height: 30px; border-radius: 44% 56% 52% 48% / 50% 46% 54% 50%; position: relative; flex: 0 0 auto; }
-.bot::before, .bot::after { content:""; position: absolute; top: 36%; width: 4px; height: 5px; border-radius: 50%; background: rgba(0,0,0,.72); }
-.bot::before { left: 28%; } .bot::after { right: 28%; }
-
-/* wall strip */
-.wall { padding: 1.1rem 1.4rem; min-height: 210px; display: flex; flex-direction: column; }
-.wall__time { font-size: 2.8rem; font-weight: 250; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
-.wall__grid { display: grid; grid-template-columns: repeat(4,1fr); gap: .9rem; margin-top: 1rem; flex: 1; }
-.wall__k { font-size: .62rem; text-transform: uppercase; letter-spacing: .09em; opacity: .5; }
-.wall__v { font-size: 1.5rem; font-weight: 650; line-height: 1.1; font-variant-numeric: tabular-nums; }
-
-.phone { width: 200px; padding: .85rem; min-height: 320px; }
-.phone__h { font-size: .95rem; font-weight: 700; margin-bottom: .6rem; }
-
-/* ═══════════════ 1 — OBSERVATORY ═══════════════ */
-.t-obs {
-  --bg:#0a0e14; --raised:#111823; --line:#1e2836; --text:#dfe8f2; --dim:#7e93a8; --faint:#4d6072;
-  --acc:#4dd4ff; --a2:#7c8cff; --ok:#3ddc97; --warn:#ffc857; --bad:#ff6b6b;
-  background: var(--bg); color: var(--text); font-family: ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+.w-rain .drop { position: absolute; width: 1.5px; height: 14px; background: linear-gradient(180deg, transparent, rgba(210,225,240,.6)); animation: fall 0.9s linear infinite; }
+@keyframes fall { from { transform: translateY(-20px); opacity: 0 } 15% { opacity: 1 } to { transform: translateY(120px); opacity: 0 } }
+.w-rain .scene__sky { filter: saturate(.7) brightness(.82); }
+.w-snow .flake { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #fff; animation: drift 6s linear infinite; opacity: .85; }
+@keyframes drift { from { transform: translate(0,-20px); } to { transform: translate(14px, 140px); } }
+.w-sunny .ray { position: absolute; background: linear-gradient(90deg, rgba(255,230,170,.35), transparent); height: 2px; transform-origin: left center; }
+.w-cloudy .scene__sky { filter: saturate(.4) brightness(.88); }
+.w-cloudy .scene__orb { opacity: .3; filter: blur(7px); box-shadow: none !important; }
+.w-cloudy .cloud {
+  position: absolute; border-radius: 50%; filter: blur(3px);
+  background: radial-gradient(ellipse at 40% 40%, rgba(255,255,255,.5), rgba(255,255,255,0) 72%);
+  animation: driftcloud 50s linear infinite;
 }
-.t-obs .nav { background: #070a0f; border-right: 1px solid var(--line); }
-.t-obs .nav__dot { background: linear-gradient(145deg,#4dd4ff,#7c8cff); box-shadow: 0 0 16px rgba(77,212,255,.5); }
-.t-obs .nav__item { color: var(--dim); }
-.t-obs .nav__item.on { background: rgba(77,212,255,.1); color: var(--acc); box-shadow: inset 2px 0 0 var(--acc); }
-.t-obs .w { background: var(--raised); border: 1px solid var(--line); }
-.t-obs .w--hero { background: linear-gradient(160deg, rgba(77,212,255,.09), var(--raised) 55%); border-color: rgba(77,212,255,.22); }
-.t-obs .chip { background: rgba(61,220,151,.15); color: var(--ok); }
-.t-obs .chip--bad { background: rgba(255,107,107,.15); color: var(--bad); }
-.t-obs .bot { background: radial-gradient(circle at 34% 30%,#8ee6ff,#3aa8d8 72%); box-shadow: 0 0 16px rgba(77,212,255,.45); }
-.t-obs .wall { background: #05070a; }
-.t-obs .phone { background: var(--bg); }
+@keyframes driftcloud { from { transform: translateX(-6%); } to { transform: translateX(6%); } }
 
-/* ═══════════════ 2 — VITALS ═══════════════ */
-.t-vit {
-  --bg:#0d1117; --raised:#151d26; --line:#232f3d; --text:#e8eef5; --dim:#8296ab; --faint:#546a80;
-  --acc:#ff7a59; --a2:#22d3a5; --ok:#22d3a5; --warn:#ffb84d; --bad:#f2545b;
-  background: var(--bg); color: var(--text); font-family: ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+/* charm outside, polish inside: a consistent dark glass surface for data */
+.pane {
+  position: relative; background: rgba(8,10,16,.48); backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%); border: 1px solid rgba(255,255,255,.13);
+  border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.4); color: #f3f5f8;
 }
-.t-vit .nav { background: transparent; border-right: 1px solid var(--line); }
-.t-vit .nav__dot { background: conic-gradient(from 180deg, #ff7a59, #22d3a5, #ff7a59); border-radius: 50%; }
-.t-vit .nav__item { color: var(--dim); }
-.t-vit .nav__item.on { color: var(--text); background: rgba(255,122,89,.12); border-radius: 999px; }
-.t-vit .w { background: var(--raised); border: 1px solid var(--line); border-radius: 18px; }
-.t-vit .w--hero { background: radial-gradient(120% 100% at 0% 0%, rgba(34,211,165,.14), var(--raised) 60%); border-color: rgba(34,211,165,.25); }
-.t-vit .w__title { text-transform: none; letter-spacing: 0; font-size: .8rem; opacity: .65; }
-.t-vit .chip { background: rgba(34,211,165,.16); color: var(--ok); }
-.t-vit .chip--bad { background: rgba(242,84,91,.16); color: var(--bad); }
-.t-vit .bot { background: radial-gradient(circle at 34% 30%,#ffb199,#ff7a59 72%); box-shadow: 0 0 18px rgba(255,122,89,.4); }
-.t-vit .wall { background: #080c11; }
-.t-vit .phone { background: var(--bg); }
+.pane__title { font-size: .64rem; text-transform: uppercase; letter-spacing: .09em; opacity: .6; font-weight: 600; }
+.pane__big { font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif; font-size: 1.7rem; font-weight: 500; line-height: 1; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.pane__big--xl { font-size: 2.9rem; }
+.pane__unit { font-size: .44em; font-weight: 400; opacity: .55; font-family: ui-sans-serif,-apple-system,sans-serif; }
+.pane__sub { font-size: .74rem; opacity: .62; margin-top: .3rem; }
+.pchip { font-size: .62rem; padding: .1rem .5rem; border-radius: 999px; font-weight: 700; background: rgba(224,121,58,.22); color: #ffb37a; }
+.pchip--leaf { background: rgba(127,176,105,.22); color: #a8d99a; }
+.pchip--frost { background: rgba(169,216,232,.2); color: #bfe6f2; }
 
-/* ═══════════════ 3 — ATRIUM ═══════════════ */
-.t-atr {
-  --bg:#f5f4f0; --raised:#ffffff; --line:#e3e0d8; --text:#1a1815; --dim:#6f6a61; --faint:#9a938a;
-  --acc:#2f5d50; --a2:#c1663f; --ok:#2f5d50; --warn:#c1663f; --bad:#a33a3a;
-  background: var(--bg); color: var(--text); font-family: ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
-}
-.t-atr .nav__brand, .t-atr .top h1, .t-atr .w__big, .t-atr .wall__time {
-  font-family: Georgia,"Iowan Old Style","Palatino Linotype",serif; font-weight: 500;
-}
-.t-atr .nav { background: transparent; border-right: 1px solid var(--line); }
-.t-atr .nav__dot { background: var(--acc); border-radius: 50%; }
-.t-atr .nav__item { color: var(--dim); }
-.t-atr .nav__item.on { color: var(--acc); font-weight: 650; }
-.t-atr .nav__item.on::before { content:"— "; }
-.t-atr .w { background: var(--raised); border: 1px solid var(--line); border-radius: 4px; }
-.t-atr .w--hero { background: var(--acc); color: #f2efe9; border-color: var(--acc); }
-.t-atr .w--hero .w__title, .t-atr .w--hero .w__sub { opacity: .75; }
-.t-atr .w__title { font-variant: small-caps; text-transform: none; letter-spacing: .05em; font-size: .78rem; }
-.t-atr .chip { background: rgba(47,93,80,.12); color: var(--acc); }
-.t-atr .chip--bad { background: rgba(163,58,58,.12); color: var(--bad); }
-.t-atr .bot { background: radial-gradient(circle at 34% 30%,#5c8c7c,#2f5d50 72%); }
-.t-atr .wall { background: #16211d; color: #eef2ef; }
-.t-atr .phone { background: var(--bg); }
+/* ═══════════════════ 24" wall = the real app, full functionality ═══════════════════ */
+.wallshell { border-radius: 16px; box-shadow: 0 22px 60px rgba(0,0,0,.5); border: 1px solid #23262c; }
+.wallshell__inner { position: relative; z-index: 1; display: grid; grid-template-columns: 168px 1fr; }
 
-/* ═══════════════ 4 — FLIGHT DECK ═══════════════ */
-.t-fd {
-  --bg:#060809; --raised:#0c1013; --line:#1a2226; --text:#c8d6dc; --dim:#6b8592; --faint:#42575f;
-  --acc:#00e5c0; --a2:#ffb020; --ok:#00e5c0; --warn:#ffb020; --bad:#ff4d5e;
-  background: var(--bg); color: var(--text);
-  font-family: ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace; font-size: 13.5px;
-}
-.t-fd .nav { background: #040607; border-right: 1px solid var(--line); }
-.t-fd .nav__brand { text-transform: uppercase; letter-spacing: .08em; font-size: .78rem; }
-.t-fd .nav__dot { background: var(--acc); border-radius: 2px; box-shadow: 0 0 14px rgba(0,229,192,.6); }
-.t-fd .nav__item { color: var(--dim); border-radius: 2px; text-transform: lowercase; }
-.t-fd .nav__item.on { color: var(--acc); background: rgba(0,229,192,.08); box-shadow: inset 2px 0 0 var(--acc); }
-.t-fd .w {
-  background: var(--raised); border: 1px solid var(--line); border-radius: 3px;
-  background-image: linear-gradient(rgba(0,229,192,.02) 1px, transparent 1px); background-size: 100% 20px;
-}
-.t-fd .w--hero { border-color: rgba(0,229,192,.35); }
-.t-fd .w__title { color: var(--acc); opacity: .8; }
-.t-fd .w__big { font-weight: 500; }
-.t-fd .chip { background: rgba(0,229,192,.14); color: var(--ok); border-radius: 2px; }
-.t-fd .chip--bad { background: rgba(255,77,94,.14); color: var(--bad); }
-.t-fd .bot { border-radius: 4px; background: var(--acc); box-shadow: 0 0 18px rgba(0,229,192,.5); }
-.t-fd .wall { background: #000; }
-.t-fd .phone { background: var(--bg); }
+.hnav { padding: 1.1rem .8rem; display: flex; flex-direction: column; gap: .12rem; background: rgba(6,8,12,.34); backdrop-filter: blur(10px); }
+.hnav__brand { display: flex; align-items: center; gap: .55rem; font-weight: 700; padding: 0 .45rem 1.1rem; font-size: .92rem; font-family: Georgia,serif; }
+.hlantern { width: 22px; height: 26px; border-radius: 50% 50% 46% 46%; position: relative; flex: 0 0 auto; background: radial-gradient(circle at 38% 32%, #ffd9a0, #e0793a 75%); box-shadow: 0 0 14px rgba(224,121,58,.6); }
+.hlantern::before { content:""; position:absolute; top:-5px; left:50%; transform:translateX(-50%); width:3px; height:6px; background:#8b6a4a; border-radius:2px; }
+.hnav__label { font-size: .58rem; text-transform: uppercase; letter-spacing: .1em; padding: .8rem .5rem .2rem; opacity: .5; }
+.hnav__item { padding: .34rem .5rem; border-radius: 7px; font-size: .78rem; color: #cfd4da; }
+.hnav__item.on { background: rgba(255,255,255,.1); color: #fff; box-shadow: inset 2px 0 0 var(--accent, #e0793a); }
 
-/* ═══════════════ 5 — TERRAZZO ═══════════════ */
-.t-ter {
-  --bg:#12101a; --raised:#1c1928; --line:#2b2740; --text:#f0ecf7; --dim:#a79fc0; --faint:#6f688a;
-  --acc:#ffd166; --a2:#ef7674; --ok:#8ce99a; --warn:#ffd166; --bad:#ef7674;
-  background: var(--bg); color: var(--text); font-family: ui-rounded,ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
-}
-.t-ter .nav { background: transparent; }
-.t-ter .nav__dot { background: linear-gradient(145deg,#ffd166,#ef7674); border-radius: 9px; }
-.t-ter .nav__item { color: var(--dim); border-radius: 10px; font-weight: 550; }
-.t-ter .nav__item.on { background: var(--raised); color: var(--acc); }
-.t-ter .w { background: var(--raised); border: none; border-radius: 20px; }
-.t-ter .w--hero { background: linear-gradient(145deg,#ffd166,#f4a261); color: #2a1f06; }
-.t-ter .w--hero .w__title, .t-ter .w--hero .w__sub { opacity: .7; }
-.t-ter .w--rose { background: linear-gradient(145deg,#ef7674,#c25b76); color: #2b0f16; }
-.t-ter .w--rose .w__title, .t-ter .w--rose .w__sub { opacity: .72; }
-.t-ter .w--mint { background: linear-gradient(145deg,#8ce99a,#4fbf8b); color: #08301d; }
-.t-ter .w--mint .w__title, .t-ter .w--mint .w__sub { opacity: .72; }
-.t-ter .w__big { font-weight: 800; }
-.t-ter .chip { background: rgba(140,233,154,.18); color: var(--ok); }
-.t-ter .chip--bad { background: rgba(239,118,116,.2); color: #ffb3b2; }
-.t-ter .bot { background: radial-gradient(circle at 34% 30%,#ffe29a,#f4a261 72%); box-shadow: 0 4px 16px rgba(255,209,102,.35); }
-.t-ter .wall { background: #0b0912; }
-.t-ter .phone { background: var(--bg); }
+.hmain { padding: 1.1rem 1.3rem; min-width: 0; }
+.htop { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; gap: 1rem; }
+.htop h1 { margin: 0; font-size: 1.3rem; font-family: Georgia,"Iowan Old Style",serif; font-weight: 500; letter-spacing: -.01em; }
+.htop__sub { font-size: .76rem; opacity: .65; margin-top: .15rem; }
 
-/* comparison */
-table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: .89rem; }
-th,td { text-align: left; padding: .6rem .75rem; border-bottom: 1px solid #222a36; vertical-align: top; }
-th { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: #62778c; }
-td strong { color: #e6ecf2; }
-.verdict { background: #12181f; border: 1px solid #222a36; border-left: 3px solid #4dd4ff; border-radius: 10px; padding: 1.2rem 1.4rem; margin-top: 1.5rem; }
-.verdict h3 { margin: 0 0 .5rem; font-size: 1.1rem; }
-.verdict p { color: #93a5b8; margin: 0 0 .7rem; }
-.verdict p:last-child { margin: 0; }
-.verdict strong { color: #e6ecf2; }
+.hgrid { display: grid; grid-template-columns: repeat(12, 1fr); gap: .7rem; }
+.hp { padding: .8rem .95rem; }
+.hp--3 { grid-column: span 3; } .hp--4 { grid-column: span 4; } .hp--5 { grid-column: span 5; }
+.hp--6 { grid-column: span 6; } .hp--7 { grid-column: span 7; } .hp--8 { grid-column: span 8; } .hp--12 { grid-column: span 12; }
+.hp__head { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; margin-bottom: .45rem; }
+.hviz { margin-top: .45rem; }
+
+/* ═══════════════════ pair: wall + kiosk, physically side by side ═══════════════════ */
+.pair { display: flex; gap: .9rem; align-items: stretch; margin-bottom: .6rem; }
+.pair__wall { flex: 1.85; min-width: 0; }
+.pair__kiosk { flex: 1; min-width: 0; }
+@media (max-width: 900px) { .pair { flex-direction: column; } }
+.rig-label { font-size: .78rem; color: #a3aab3; margin-bottom: .5rem; display: flex; justify-content: space-between; }
+.rig-label b { color: #eef1f4; font-weight: 600; }
+
+/* ═══════════════════ 10.1" kiosk = buttons only, never a copy of the app ═══════════════════ */
+.kioskshell { border-radius: 14px; box-shadow: 0 18px 46px rgba(0,0,0,.5); border: 1px solid #23262c; aspect-ratio: 1024/600; padding: .8rem .9rem; display: flex; flex-direction: column; gap: .5rem; }
+.khead { display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 1; font-size: .68rem; opacity: .75; }
+.kdot { width: 7px; height: 7px; border-radius: 50%; background: #7fe0a8; box-shadow: 0 0 6px #7fe0a8; }
+.ktiles { position: relative; z-index: 1; flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: .45rem; align-content: start; }
+.ktile { padding: .55rem .65rem; display: flex; flex-direction: column; justify-content: center; gap: .1rem; }
+.ktile__title { font-size: .78rem; font-weight: 650; }
+.ktile__hint { font-size: .6rem; opacity: .55; }
+.kbar { position: relative; z-index: 1; display: grid; grid-auto-flow: column; gap: .4rem; }
+.kbar .ktile { align-items: center; text-align: center; padding: .45rem; }
+.kback { grid-column: span 2; }
+
+/* ═══════════════════ phone ═══════════════════ */
+.phone-wrap { display: flex; gap: 2rem; flex-wrap: wrap; align-items: flex-start; }
+.phone-scene { width: 230px; aspect-ratio: 9/18; border-radius: 28px; padding: 0; border: 6px solid #16181c; box-shadow: 0 20px 50px rgba(0,0,0,.5); overflow: hidden; display: flex; flex-direction: column; }
+.phone-scene__top { position: relative; padding: .8rem .75rem .6rem; }
+.phone-scene__time { font-family: Georgia,serif; font-size: 1.3rem; position: relative; z-index: 1; }
+.phone-scene__date { font-size: .6rem; opacity: .7; position: relative; z-index: 1; }
+.phone-scene__body { flex: 1; padding: .6rem .65rem; display: flex; flex-direction: column; gap: .5rem; overflow: hidden; }
+.phone-scene .pane { padding: .7rem .8rem; }
+.phone-nav { display: flex; gap: .35rem; padding: .5rem .65rem .7rem; }
+.phone-nav i { flex: 1; height: 3px; border-radius: 2px; background: rgba(255,255,255,.14); }
+.phone-nav i.on { background: var(--accent, #e0793a); }
+
+.note { font-size: .78rem; color: #6b7280; margin: .6rem 0 0; }
+
+/* ═══════════════════ closing ═══════════════════ */
+.notes { background: #16181c; border: 1px solid #23262c; border-radius: 14px; padding: 1.4rem 1.6rem; margin-top: 1rem; }
+.notes h3 { margin: 0 0 .7rem; font-size: 1rem; }
+.notes ul { margin: 0; padding-left: 1.2rem; color: #a3aab3; font-size: .88rem; line-height: 1.85; }
+.notes li strong { color: #eef1f4; }
 </style>
 </head>
 <body>
 <div class="page">
 
 <header class="masthead">
-  <h1>Design directions — round 2</h1>
+  <h1>Round 3, corrected — <em>Almanac</em></h1>
   <p>
-    Five directions, all showing the same house on the same evening. Unlike the first
-    round, the hero of every layout is a <em>visualisation</em>, not a checklist —
-    trends, rings, distributions, load over time. Tasks are still there, because the
-    house genuinely tracks them, but they sit where they belong: one signal among many.
-  </p>
-  <p>
-    Say a number, or mix (&ldquo;4&rsquo;s density with 2&rsquo;s warmth&rdquo; is a
-    perfectly good answer). Whatever you pick becomes
-    <code>static/nora_home/css/nora-home.css</code> and the ECharts theme derives from
-    the same variables, so charts and chrome can never drift apart.
+    The first pass showed a passive "ambient wall" — that's not this house.
+    The 24" always shows the real, fully interactive <code>/home/</code> app
+    (or whatever app someone picked on the kiosk); the 10.1" is strictly a
+    button remote and never mirrors the app itself. This pass keeps the
+    living atmosphere — season, time of day, weather — but puts it behind
+    the actual product, shown as it's actually built: the two screens
+    together, side by side, the same moment.
   </p>
 </header>
 
 <div class="callout">
-  <strong>What changed from round 1.</strong> The old mockups led with a
-  &ldquo;Today&rdquo; list and put a bar chart in the corner — which is why they read
-  as a todo app. These lead with a full-width trend, a household ring set, a
-  distribution, and a year heatmap. Every direction below carries the same eight
-  widgets so the comparison is honest.
+  <strong>What's shown below.</strong> The 24" wall across four different
+  seasons, times of day, and weather conditions — full nav, full widget grid,
+  a different app selected in two of the four to prove this isn't a skin on
+  one screen. The 10.1" kiosk paired next to it three times, at the same moment as
+  the wall, plus its per-app control screen. Then the phone, full
+  functionality, same living background. Laptop is skipped — same layout as
+  the 24" wall, just narrower.
 </div>
 
-<!-- ══════════════════════ 1 ══════════════════════ -->
-<section class="option">
-  <div class="option__head">
-    <span class="option__num">Option 1</span>
-    <h2 class="option__name">Observatory</h2>
-    <span class="option__tag">a quiet monitoring console</span>
-  </div>
-  <p class="option__body">
-    Cool cyan and indigo on near-black. Built for reading many numbers at once without
-    fatigue — the hero is a full-width trend with a gradient fill, and everything else
-    orbits it. This is what a house that also runs a robot probably wants.
-  </p>
-  <div class="option__meta">
-    <div><strong>Type</strong> System sans, tabular numerals</div>
-    <div><strong>Density</strong> High</div>
-    <div><strong>Wall at 3m</strong> Excellent</div>
-    <div><strong>Risk</strong> Cool palette can feel unhomely</div>
-  </div>
-  <div class="swatches">
-    <div class="swatch" style="background:#0a0e14"></div><div class="swatch" style="background:#111823"></div>
-    <div class="swatch" style="background:#4dd4ff"></div><div class="swatch" style="background:#7c8cff"></div>
-    <div class="swatch" style="background:#3ddc97"></div><div class="swatch" style="background:#ffc857"></div>
-    <div class="swatch" style="background:#ff6b6b"></div>
-  </div>
-
-  <div class="render__label">Home screen · 1440px</div>
-  <div class="render">
-    <div class="mock t-obs">
-      <nav class="nav">
-        <div class="nav__brand"><span class="nav__dot"></span> Nora Home</div>
-        <div class="nav__item on">Overview</div>
-        <div class="nav__item">Alerts</div>
-        <div class="nav__label">Family</div>
-        <div class="nav__item">Workout</div>
-        <div class="nav__item">Diet</div>
-        <div class="nav__item">Health</div>
-        <div class="nav__label">House</div>
-        <div class="nav__item">Maintenance</div>
-        <div class="nav__item">Energy</div>
-        <div class="nav__label">Robot</div>
-        <div class="nav__item">Nora telemetry</div>
-      </nav>
-      <main class="main">
-        <div class="top">
-          <div><h1>Thursday evening</h1><div class="top__sub">Everything nominal · 2 items outstanding</div></div>
-          <div class="bot"></div>
-        </div>
-        <div class="grid">
-
-          <div class="w w--8 w--hero">
-            <div class="w__head"><span class="w__title">House energy · 24 hours</span><span class="w__meta">kWh</span></div>
-            <div class="w__big">18.4<span class="w__unit"> kWh today</span></div>
-            <div class="w__viz">
-              <svg viewBox="0 0 520 108" preserveAspectRatio="none" style="height:108px">
-                <defs><linearGradient id="og1" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#4dd4ff" stop-opacity=".55"/>
-                  <stop offset="100%" stop-color="#4dd4ff" stop-opacity="0"/></linearGradient></defs>
-                <path d="M0,88 L26,84 L52,86 L78,72 L104,60 L130,64 L156,44 L182,38 L208,52 L234,46 L260,30 L286,36 L312,22 L338,28 L364,18 L390,34 L416,48 L442,42 L468,58 L494,50 L520,62 L520,108 L0,108 Z" fill="url(#og1)"/>
-                <polyline points="0,88 26,84 52,86 78,72 104,60 130,64 156,44 182,38 208,52 234,46 260,30 286,36 312,22 338,28 364,18 390,34 416,48 442,42 468,58 494,50 520,62" fill="none" stroke="#4dd4ff" stroke-width="2"/>
-                <polyline points="0,96 26,94 52,95 78,88 104,84 130,86 156,78 182,74 208,80 234,78 260,70 286,74 312,66 338,70 364,64 390,74 416,82 442,78 468,86 494,82 520,88" fill="none" stroke="#7c8cff" stroke-width="1.5" stroke-dasharray="3 3" opacity=".7"/>
-              </svg>
-            </div>
-            <div class="w__sub">Solid: today · dashed: 7-day average</div>
-          </div>
-
-          <div class="w w--4">
-            <div class="w__head"><span class="w__title">Household consistency</span></div>
-            <div class="people" style="margin-top:.4rem">
-              <div class="person"><svg class="person__ring" viewBox="0 0 40 40">
-                <circle cx="20" cy="20" r="16" fill="none" stroke="#1e2836" stroke-width="5"/>
-                <circle cx="20" cy="20" r="16" fill="none" stroke="#3ddc97" stroke-width="5" stroke-dasharray="100.5" stroke-dashoffset="17" stroke-linecap="round" transform="rotate(-90 20 20)"/>
-                <text x="20" y="24" text-anchor="middle" font-size="11" fill="#dfe8f2" font-weight="700">83</text></svg>
-                <div class="person__name">Nitin</div></div>
-              <div class="person"><svg class="person__ring" viewBox="0 0 40 40">
-                <circle cx="20" cy="20" r="16" fill="none" stroke="#1e2836" stroke-width="5"/>
-                <circle cx="20" cy="20" r="16" fill="none" stroke="#4dd4ff" stroke-width="5" stroke-dasharray="100.5" stroke-dashoffset="9" stroke-linecap="round" transform="rotate(-90 20 20)"/>
-                <text x="20" y="24" text-anchor="middle" font-size="11" fill="#dfe8f2" font-weight="700">91</text></svg>
-                <div class="person__name">Partner</div></div>
-              <div class="person"><svg class="person__ring" viewBox="0 0 40 40">
-                <circle cx="20" cy="20" r="16" fill="none" stroke="#1e2836" stroke-width="5"/>
-                <circle cx="20" cy="20" r="16" fill="none" stroke="#ffc857" stroke-width="5" stroke-dasharray="100.5" stroke-dashoffset="44" stroke-linecap="round" transform="rotate(-90 20 20)"/>
-                <text x="20" y="24" text-anchor="middle" font-size="11" fill="#dfe8f2" font-weight="700">56</text></svg>
-                <div class="person__name">Kid</div></div>
-            </div>
-            <div class="w__sub" style="margin-top:.6rem">7-day completion rate</div>
-          </div>
-
-          <div class="w w--3">
-            <div class="w__head"><span class="w__title">Body weight</span></div>
-            <div class="w__big">74.2<span class="w__unit"> kg</span></div>
-            <div class="w__delta" style="color:#3ddc97">▼ 1.1 this month</div>
-            <div class="w__viz"><svg viewBox="0 0 140 34" preserveAspectRatio="none" style="height:34px">
-              <polyline points="0,26 15,23 30,27 45,18 60,21 75,14 90,17 105,10 120,13 140,8" fill="none" stroke="#3ddc97" stroke-width="2" stroke-linecap="round"/></svg></div>
-          </div>
-
-          <div class="w w--3">
-            <div class="w__head"><span class="w__title">Living room</span></div>
-            <div class="w__big">21.4<span class="w__unit"> °C</span></div>
-            <div class="w__sub">humidity 46% · CO₂ 620ppm</div>
-            <div class="w__viz"><svg viewBox="0 0 140 34" preserveAspectRatio="none" style="height:34px">
-              <polyline points="0,20 15,22 30,18 45,16 60,19 75,14 90,12 105,16 120,13 140,15" fill="none" stroke="#4dd4ff" stroke-width="2"/></svg></div>
-          </div>
-
-          <div class="w w--3">
-            <div class="w__head"><span class="w__title">Nora robot</span><span class="chip">docked</span></div>
-            <div class="w__big">87<span class="w__unit"> %</span></div>
-            <div class="w__sub">uptime 14d · 3 sessions today</div>
-            <div class="w__viz"><svg viewBox="0 0 140 34" preserveAspectRatio="none" style="height:34px">
-              <g fill="#7c8cff"><rect x="2" y="14" width="9" height="20" rx="1"/><rect x="16" y="8" width="9" height="26" rx="1"/><rect x="30" y="18" width="9" height="16" rx="1"/><rect x="44" y="6" width="9" height="28" rx="1"/><rect x="58" y="12" width="9" height="22" rx="1"/><rect x="72" y="20" width="9" height="14" rx="1"/><rect x="86" y="10" width="9" height="24" rx="1"/><rect x="100" y="16" width="9" height="18" rx="1"/><rect x="114" y="4" width="9" height="30" rx="1"/><rect x="128" y="12" width="9" height="22" rx="1"/></g></svg></div>
-          </div>
-
-          <div class="w w--3">
-            <div class="w__head"><span class="w__title">Outstanding</span><span class="chip chip--bad">2 late</span></div>
-            <div class="w__big">2<span class="w__unit"> of 11</span></div>
-            <div class="w__sub">HVAC filter · 2d · escalation L2</div>
-            <div class="w__viz"><svg viewBox="0 0 140 12" preserveAspectRatio="none" style="height:12px">
-              <rect x="0" y="2" width="140" height="8" rx="4" fill="#1e2836"/>
-              <rect x="0" y="2" width="115" height="8" rx="4" fill="#3ddc97"/>
-              <rect x="115" y="2" width="25" height="8" rx="4" fill="#ff6b6b"/></svg></div>
-          </div>
-
-          <div class="w w--12">
-            <div class="w__head"><span class="w__title">The year, by day</span><span class="w__meta">completion · 26 weeks</span></div>
-            <div class="heat" style="margin-top:.4rem">
-              <i style="background:#3ddc97"></i><i style="background:#2fa876"></i><i style="background:#1e2836"></i><i style="background:#3ddc97"></i><i style="background:#3ddc97"></i><i style="background:#2fa876"></i><i style="background:#1e2836"></i><i style="background:#3ddc97"></i><i style="background:#2fa876"></i><i style="background:#3ddc97"></i><i style="background:#1e2836"></i><i style="background:#2fa876"></i><i style="background:#3ddc97"></i><i style="background:#3ddc97"></i><i style="background:#1e2836"></i><i style="background:#3ddc97"></i><i style="background:#2fa876"></i><i style="background:#3ddc97"></i><i style="background:#3ddc97"></i><i style="background:#1e2836"></i><i style="background:#2fa876"></i><i style="background:#3ddc97"></i><i style="background:#3ddc97"></i><i style="background:#2fa876"></i><i style="background:#3ddc97"></i><i style="background:#3ddc97"></i>
-              <i style="background:#2fa876"></i><i style="background:#3ddc97"></i><i style="background:#3ddc97"></i><i style="background:#1e2836"></i><i style="background:#2fa876"></i><i style="background:#3ddc97"></i><i style="background:#3ddc97"></i><i style="background:#2fa876"></i><i style="background:#1e2836"></i><i style="background:#3ddc97"></i><i style="background:#3ddc97"></i><i style="background:#2fa876"></i><i style="background:#3ddc97"></i><i style="background:#1e2836"></i><i style="background:#3ddc97"></i><i style="background:#3ddc97"></i><i style="background:#2fa876"></i><i style="background:#3ddc97"></i><i style="background:#3ddc97"></i><i style="background:#3ddc97"></i><i style="background:#2fa876"></i><i style="background:#1e2836"></i><i style="background:#3ddc97"></i><i style="background:#3ddc97"></i><i style="background:#2fa876"></i><i style="background:#3ddc97"></i>
-              <i style="background:#1e2836"></i><i style="background:#2fa876"></i><i style="background:#3ddc97"></i><i style="background:#3ddc97"></i><i style="background:#3ddc97"></i><i style="background:#1e2836"></i><i style="background:#2fa876"></i><i style="background:#3ddc97"></i><i style="background:#3ddc97"></i><i style="background:#2fa876"></i><i style="background:#3ddc97"></i><i style="background:#3ddc97"></i><i style="background:#1e2836"></i><i style="background:#3ddc97"></i><i style="background:#2fa876"></i><i style="background:#3ddc97"></i><i style="background:#3ddc97"></i><i style="background:#3ddc97"></i><i style="background:#2fa876"></i><i style="background:#3ddc97"></i><i style="background:#1e2836"></i><i style="background:#3ddc97"></i><i style="background:#2fa876"></i><i style="background:#3ddc97"></i><i style="background:#3ddc97"></i><i style="background:#2fa876"></i>
-            </div>
-          </div>
-
-        </div>
-      </main>
+<div class="section-label">The engine</div>
+<p class="section-body">
+  Three independent axes composite behind every screen: season sets the
+  horizon and foliage, time of day sets the sky and the sun or moon's
+  position, weather adds rain, snow, or sun on top. All three come from data
+  the house already has or can get cheaply — the system clock, and once
+  wired up, an outdoor weather integration (Story 25).
+</p>
+<div class="engine">
+  <div class="engine__card">
+    <h3>Season</h3>
+    <p>Horizon colour and tree canopy. Four states.</p>
+    <div class="engine__swatches">
+      <div class="eswatch"><i style="background:linear-gradient(160deg,#7fb069,#e8a0bb)"></i>Spring</div>
+      <div class="eswatch"><i style="background:linear-gradient(160deg,#3f7d4f,#ffd166)"></i>Summer</div>
+      <div class="eswatch"><i style="background:linear-gradient(160deg,#c96f34,#7a4a2b)"></i>Autumn</div>
+      <div class="eswatch"><i style="background:linear-gradient(160deg,#eef2f5,#4a5568)"></i>Winter</div>
     </div>
   </div>
-
-  <div class="split">
-    <div>
-      <div class="render__label">Wall display · 24&quot; at 1080p</div>
-      <div class="render"><div class="wall t-obs">
-        <div class="wall__time">18:42</div>
-        <div style="font-size:.78rem;opacity:.5">Thursday, 30 July</div>
-        <div class="wall__grid">
-          <div><div class="wall__k">Energy today</div><div class="wall__v">18.4 kWh</div></div>
-          <div><div class="wall__k">Living room</div><div class="wall__v">21.4 °C</div></div>
-          <div><div class="wall__k">Outstanding</div><div class="wall__v" style="color:#ff6b6b">2 late</div></div>
-          <div><div class="wall__k">Nora robot</div><div class="wall__v">87 %</div></div>
-        </div>
-      </div></div>
-    </div>
-    <div>
-      <div class="render__label">Phone</div>
-      <div class="render" style="width:200px"><div class="phone t-obs">
-        <div class="phone__h">This evening</div>
-        <div class="w w--12 w--hero" style="margin-bottom:.5rem">
-          <div class="w__title">Energy</div><div class="w__big">18.4<span class="w__unit"> kWh</span></div>
-          <div class="w__viz"><svg viewBox="0 0 160 30" preserveAspectRatio="none" style="height:30px">
-            <polyline points="0,24 20,20 40,22 60,12 80,16 100,8 120,14 140,6 160,11" fill="none" stroke="#4dd4ff" stroke-width="2"/></svg></div>
-        </div>
-        <div class="w w--12">
-          <div class="w__title">Consistency</div>
-          <div class="w__big" style="font-size:1.5rem">83<span class="w__unit"> %</span></div>
-          <div class="w__sub">2 items late</div>
-        </div>
-      </div></div>
+  <div class="engine__card">
+    <h3>Time of day</h3>
+    <p>Sky gradient and the sun/moon's position. Shown here: four states.</p>
+    <div class="engine__swatches">
+      <div class="eswatch"><i style="background:linear-gradient(180deg,#2b3a55,#ffd9a0)"></i>Dawn</div>
+      <div class="eswatch"><i style="background:linear-gradient(180deg,#3f86bd,#eaf7ff)"></i>Noon</div>
+      <div class="eswatch"><i style="background:linear-gradient(180deg,#241b3a,#e8845a)"></i>Dusk</div>
+      <div class="eswatch"><i style="background:linear-gradient(180deg,#05070f,#1a2444)"></i>Night</div>
     </div>
   </div>
-</section>
-
-<!-- ══════════════════════ 2 ══════════════════════ -->
-<section class="option">
-  <div class="option__head">
-    <span class="option__num">Option 2</span>
-    <h2 class="option__name">Vitals</h2>
-    <span class="option__tag">the house as a body being cared for</span>
+  <div class="engine__card">
+    <h3>Weather</h3>
+    <p>An overlay on top of the other two — pulled from real conditions.</p>
+    <div class="engine__swatches">
+      <div class="eswatch"><i style="background:#2c333d"></i>Clear</div>
+      <div class="eswatch"><i style="background:#5b6470"></i>Cloudy</div>
+      <div class="eswatch"><i style="background:#3a4551"></i>Rain</div>
+      <div class="eswatch"><i style="background:#4d5866"></i>Snow</div>
+    </div>
   </div>
-  <p class="option__body">
-    Rings and arcs carry the load, the way a fitness app does — but at house scale, and
-    warmer than clinical. Coral against mint on deep navy. Rounded, generous, and
-    genuinely pleasant to glance at, which matters for a screen that is on all day.
-  </p>
-  <div class="option__meta">
-    <div><strong>Type</strong> System sans, soft weights</div>
-    <div><strong>Density</strong> Medium</div>
-    <div><strong>Wall at 3m</strong> Very good — rings read instantly</div>
-    <div><strong>Risk</strong> Rings suit rates, not raw values</div>
-  </div>
-  <div class="swatches">
-    <div class="swatch" style="background:#0d1117"></div><div class="swatch" style="background:#151d26"></div>
-    <div class="swatch" style="background:#ff7a59"></div><div class="swatch" style="background:#22d3a5"></div>
-    <div class="swatch" style="background:#ffb84d"></div><div class="swatch" style="background:#f2545b"></div>
-  </div>
+</div>
 
-  <div class="render__label">Home screen · 1440px</div>
-  <div class="render">
-    <div class="mock t-vit">
-      <nav class="nav">
-        <div class="nav__brand"><span class="nav__dot"></span> Nora Home</div>
-        <div class="nav__item on">Overview</div>
-        <div class="nav__item">Alerts</div>
-        <div class="nav__label">Family</div>
-        <div class="nav__item">Workout</div>
-        <div class="nav__item">Diet</div>
-        <div class="nav__item">Health</div>
-        <div class="nav__label">House</div>
-        <div class="nav__item">Maintenance</div>
-        <div class="nav__item">Energy</div>
-        <div class="nav__label">Robot</div>
-        <div class="nav__item">Nora telemetry</div>
-      </nav>
-      <main class="main">
-        <div class="top">
-          <div><h1>Thursday evening</h1><div class="top__sub">The house is in good shape</div></div>
-          <div class="bot"></div>
-        </div>
-        <div class="grid">
+<div class="section-label">24" wall + 10.1" kiosk, paired · Autumn, dusk, clear</div>
+<p class="section-body">
+  This is the actual physical layout: the wall on the left running the real
+  <code>Overview</code> screen, the kiosk on the right showing only its
+  button grid — app tiles, plus Dim / Wake / Reload for the display itself.
+  Tapping a tile sends the wall somewhere; the kiosk never shows the app.
+</p>
+<div class="rig-label"><b>Overview selected</b><span>6:52pm</span></div>
+<div class="pair">
+  <div class="pair__wall">
+    <div class="scene wallshell t-dusk s-autumn" style="--accent:#e0793a">
+      <div class="scene__sky"></div><div class="scene__orb"></div>
+      <svg class="scene__horizon" viewBox="0 0 400 60" preserveAspectRatio="none">
+        <path class="hill" d="M0,60 L0,40 Q50,26 100,34 T220,28 T320,36 T400,26 L400,60 Z"/>
+        <g class="leafy"><circle class="canopy" cx="60" cy="30" r="9"/><circle class="canopy" cx="150" cy="24" r="7"/><circle class="canopy" cx="270" cy="30" r="8"/><circle class="canopy" cx="350" cy="22" r="6"/></g>
+      </svg>
+      <div class="scene__vignette"></div>
+      <div class="wallshell__inner">
+        <nav class="hnav">
+          <div class="hnav__brand"><span class="hlantern"></span> Nora Home</div>
+          <div class="hnav__item on">Overview</div>
+          <div class="hnav__item">Alerts</div>
+          <div class="hnav__label">Family</div>
+          <div class="hnav__item">Workout</div>
+          <div class="hnav__item">Diet</div>
+          <div class="hnav__label">House</div>
+          <div class="hnav__item">Maintenance</div>
+          <div class="hnav__item">Energy</div>
+        </nav>
+        <main class="hmain">
+          <div class="htop"><div><h1>Thursday evening</h1><div class="htop__sub">14°C outside, calm · 2 items outstanding</div></div></div>
+          <div class="hgrid">
+            <div class="pane hp hp--5"><div class="hp__head"><span class="pane__title">Outside right now</span><span class="pchip pchip--leaf">Autumn</span></div><div class="pane__big pane__big--xl">14<span class="pane__unit">°C</span></div><div class="pane__sub">Clear · sunset in 38 min</div></div>
+            <div class="pane hp hp--7"><div class="hp__head"><span class="pane__title">House energy · 24h</span><span style="font-size:.6rem;opacity:.5">kWh</span></div><div class="pane__big" style="font-size:1.4rem">18.4<span class="pane__unit"> kWh today</span></div>
+              <div class="hviz"><svg viewBox="0 0 460 54" preserveAspectRatio="none" style="width:100%;height:54px"><defs><linearGradient id="pg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e0793a" stop-opacity=".5"/><stop offset="100%" stop-color="#e0793a" stop-opacity="0"/></linearGradient></defs><path d="M0,44 L60,36 L120,40 L180,26 L240,30 L300,16 L360,22 L420,10 L460,14 L460,54 L0,54 Z" fill="url(#pg1)"/><polyline points="0,44 60,36 120,40 180,26 240,30 300,16 360,22 420,10 460,14" fill="none" stroke="#ffb37a" stroke-width="2" stroke-linecap="round"/></svg></div>
+            </div>
+            <div class="pane hp hp--4"><div class="pane__title">Body weight</div><div class="pane__big" style="font-size:1.4rem">74.2<span class="pane__unit"> kg</span></div><div class="pane__sub" style="color:#a8d99a">▼ 1.1 this month</div></div>
+            <div class="pane hp hp--4"><div class="hp__head"><span class="pane__title">Outstanding</span><span class="pchip">2 late</span></div><div class="pane__big" style="font-size:1.4rem">2<span class="pane__unit"> of 11</span></div><div class="pane__sub">HVAC filter · 2d late</div></div>
+            <div class="pane hp hp--4"><div class="pane__title">Consistency, 7 days</div><div class="pane__big" style="font-size:1.4rem">82<span class="pane__unit">%</span></div><div class="pane__sub">Best week since March</div></div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+  <div class="pair__kiosk">
+    <div class="scene kioskshell t-dusk s-autumn">
+      <div class="scene__sky"></div><div class="scene__orb"></div>
+      <svg class="scene__horizon" viewBox="0 0 400 60" preserveAspectRatio="none">
+        <path class="hill" d="M0,60 L0,40 Q50,26 100,34 T220,28 T320,36 T400,26 L400,60 Z"/>
+        <g class="leafy"><circle class="canopy" cx="60" cy="30" r="9"/><circle class="canopy" cx="270" cy="30" r="8"/></g>
+      </svg>
+      <div class="scene__vignette"></div>
+      <div class="khead"><span>Nora Home · driving wall</span><span class="kdot"></span></div>
+      <div class="ktiles">
+        <div class="pane ktile"><div class="ktile__title">Home</div><div class="ktile__hint">Overview</div></div>
+        <div class="pane ktile"><div class="ktile__title">Alerts</div><div class="ktile__hint">2 open</div></div>
+        <div class="pane ktile"><div class="ktile__title">Habits</div><div class="ktile__hint">Self improvement</div></div>
+        <div class="pane ktile"><div class="ktile__title">Workout</div><div class="ktile__hint">Family</div></div>
+        <div class="pane ktile"><div class="ktile__title">Maintenance</div><div class="ktile__hint">House</div></div>
+        <div class="pane ktile"><div class="ktile__title">Tracker</div><div class="ktile__hint">System</div></div>
+        <div class="pane ktile"><div class="ktile__title">Assistant</div><div class="ktile__hint">System</div></div>
+        <div class="pane ktile"><div class="ktile__title">Settings</div><div class="ktile__hint">This house</div></div>
+      </div>
+      <div class="kbar">
+        <div class="pane ktile"><div class="ktile__title" style="font-size:.7rem">Apps</div></div>
+        <div class="pane ktile"><div class="ktile__title" style="font-size:.7rem">Dim</div></div>
+        <div class="pane ktile"><div class="ktile__title" style="font-size:.7rem">Wake</div></div>
+        <div class="pane ktile"><div class="ktile__title" style="font-size:.7rem">Reload</div></div>
+      </div>
+    </div>
+  </div>
+</div>
 
-          <div class="w w--5 w--hero" style="align-items:center;text-align:center">
-            <div class="w__head" style="width:100%"><span class="w__title">House rhythm</span><span class="chip">on track</span></div>
-            <svg viewBox="0 0 130 130" style="width:150px;height:150px;margin:.2rem auto">
-              <circle cx="65" cy="65" r="56" fill="none" stroke="#232f3d" stroke-width="11"/>
-              <circle cx="65" cy="65" r="56" fill="none" stroke="#22d3a5" stroke-width="11" stroke-dasharray="351.9" stroke-dashoffset="63" stroke-linecap="round" transform="rotate(-90 65 65)"/>
-              <circle cx="65" cy="65" r="41" fill="none" stroke="#232f3d" stroke-width="11"/>
-              <circle cx="65" cy="65" r="41" fill="none" stroke="#ff7a59" stroke-width="11" stroke-dasharray="257.6" stroke-dashoffset="72" stroke-linecap="round" transform="rotate(-90 65 65)"/>
-              <circle cx="65" cy="65" r="26" fill="none" stroke="#232f3d" stroke-width="11"/>
-              <circle cx="65" cy="65" r="26" fill="none" stroke="#ffb84d" stroke-width="11" stroke-dasharray="163.4" stroke-dashoffset="98" stroke-linecap="round" transform="rotate(-90 65 65)"/>
-            </svg>
-            <div style="display:flex;gap:1rem;font-size:.72rem;justify-content:center;margin-top:.3rem">
-              <span style="color:#22d3a5">● Habits 82%</span><span style="color:#ff7a59">● House 72%</span><span style="color:#ffb84d">● Health 40%</span>
+<div class="section-label">Same pair · Winter, night, snow · Maintenance selected</div>
+<p class="section-body">
+  A different app on the wall (tapped from the kiosk), and the season shapes
+  what that app actually surfaces — a maintenance app in winter reasonably
+  leads with heating load and a pre-freeze reminder, not generic filler.
+</p>
+<div class="rig-label"><b>Maintenance selected</b><span>9:18pm</span></div>
+<div class="pair">
+  <div class="pair__wall">
+    <div class="scene wallshell t-night s-winter w-snow" style="--accent:#a9d8e8">
+      <div class="scene__sky"></div>
+      <div class="scene__stars"><i style="left:10%;top:12%"></i><i style="left:26%;top:8%;animation-delay:1.1s"></i><i style="left:42%;top:18%;animation-delay:.6s"></i><i style="left:60%;top:9%;animation-delay:1.8s"></i><i style="left:76%;top:20%;animation-delay:.4s"></i><i style="left:90%;top:10%;animation-delay:2.2s"></i></div>
+      <div class="scene__orb"></div>
+      <div class="flake" style="left:12%;top:0;animation-delay:0s"></div><div class="flake" style="left:30%;top:0;animation-delay:1.2s"></div><div class="flake" style="left:48%;top:0;animation-delay:.5s"></div><div class="flake" style="left:66%;top:0;animation-delay:2s"></div><div class="flake" style="left:84%;top:0;animation-delay:.9s"></div>
+      <svg class="scene__horizon" viewBox="0 0 400 60" preserveAspectRatio="none">
+        <path class="hill" d="M0,60 L0,40 Q50,26 100,34 T220,28 T320,36 T400,26 L400,60 Z"/>
+        <g class="bare" stroke="#eef2f5" stroke-width="1.2" fill="none"><path d="M60,40 L60,26 M60,32 L52,26 M60,32 L68,26"/><path d="M270,40 L270,24 M270,30 L261,23 M270,30 L279,23"/></g>
+        <path class="snowcap" d="M0,40 Q50,26 100,34 T220,28 T320,36 T400,26" fill="none" stroke="#eef2f5" stroke-width="2.4" stroke-linecap="round"/>
+      </svg>
+      <div class="scene__vignette"></div>
+      <div class="wallshell__inner">
+        <nav class="hnav">
+          <div class="hnav__brand"><span class="hlantern"></span> Nora Home</div>
+          <div class="hnav__item">Overview</div>
+          <div class="hnav__item">Alerts</div>
+          <div class="hnav__label">Family</div>
+          <div class="hnav__item">Workout</div>
+          <div class="hnav__item">Diet</div>
+          <div class="hnav__label">House</div>
+          <div class="hnav__item on">Maintenance</div>
+          <div class="hnav__item">Energy</div>
+        </nav>
+        <main class="hmain">
+          <div class="htop"><div><h1>Maintenance</h1><div class="htop__sub">−3°C outside, light snow · heating running</div></div></div>
+          <div class="hgrid">
+            <div class="pane hp hp--12" style="border-color:rgba(169,216,232,.35)"><div class="hp__head"><span class="pane__title">Before the ground freezes</span><span class="pchip pchip--frost">Winter</span></div><div class="pane__sub" style="font-size:.82rem;margin-top:.15rem">Outdoor spigots not yet shut off · gutter check overdue by 6 days</div></div>
+            <div class="pane hp hp--4"><div class="pane__title">Heating load, 24h</div><div class="pane__big" style="font-size:1.4rem">6.1<span class="pane__unit"> kWh</span></div><div class="pane__sub">38% above last week</div></div>
+            <div class="pane hp hp--4"><div class="hp__head"><span class="pane__title">Outstanding</span><span class="pchip">3 late</span></div><div class="pane__big" style="font-size:1.4rem">3<span class="pane__unit"> of 9</span></div><div class="pane__sub">Spigots · gutters · salt stock</div></div>
+            <div class="pane hp hp--4"><div class="pane__title">Snow tonight</div><div class="pane__big" style="font-size:1.4rem">2<span class="pane__unit"> cm</span></div><div class="pane__sub">Since dusk</div></div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+  <div class="pair__kiosk">
+    <div class="scene kioskshell t-night s-winter w-snow">
+      <div class="scene__sky"></div>
+      <div class="scene__stars"><i style="left:14%;top:14%"></i><i style="left:34%;top:9%;animation-delay:1s"></i><i style="left:58%;top:16%;animation-delay:.5s"></i><i style="left:80%;top:10%;animation-delay:1.6s"></i></div>
+      <div class="scene__orb"></div>
+      <div class="flake" style="left:18%;top:0;animation-delay:.3s"></div><div class="flake" style="left:50%;top:0;animation-delay:1.4s"></div><div class="flake" style="left:78%;top:0;animation-delay:.7s"></div>
+      <svg class="scene__horizon" viewBox="0 0 400 60" preserveAspectRatio="none">
+        <path class="hill" d="M0,60 L0,40 Q50,26 100,34 T220,28 T320,36 T400,26 L400,60 Z"/>
+        <path class="snowcap" d="M0,40 Q50,26 100,34 T220,28 T320,36 T400,26" fill="none" stroke="#eef2f5" stroke-width="2.4" stroke-linecap="round"/>
+      </svg>
+      <div class="scene__vignette"></div>
+      <div class="khead"><span>Nora Home · driving wall</span><span class="kdot"></span></div>
+      <div class="ktiles">
+        <div class="pane ktile"><div class="ktile__title">Home</div><div class="ktile__hint">Overview</div></div>
+        <div class="pane ktile"><div class="ktile__title">Alerts</div><div class="ktile__hint">3 open</div></div>
+        <div class="pane ktile"><div class="ktile__title">Habits</div><div class="ktile__hint">Self improvement</div></div>
+        <div class="pane ktile"><div class="ktile__title">Workout</div><div class="ktile__hint">Family</div></div>
+        <div class="pane ktile" style="border-color:rgba(169,216,232,.4)"><div class="ktile__title">Maintenance</div><div class="ktile__hint">House</div></div>
+        <div class="pane ktile"><div class="ktile__title">Tracker</div><div class="ktile__hint">System</div></div>
+        <div class="pane ktile"><div class="ktile__title">Assistant</div><div class="ktile__hint">System</div></div>
+        <div class="pane ktile"><div class="ktile__title">Settings</div><div class="ktile__hint">This house</div></div>
+      </div>
+      <div class="kbar">
+        <div class="pane ktile"><div class="ktile__title" style="font-size:.7rem">Apps</div></div>
+        <div class="pane ktile"><div class="ktile__title" style="font-size:.7rem">Dim</div></div>
+        <div class="pane ktile"><div class="ktile__title" style="font-size:.7rem">Wake</div></div>
+        <div class="pane ktile"><div class="ktile__title" style="font-size:.7rem">Reload</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="rig-label"><b>Diet selected</b><span>1:20pm</span></div>
+<div class="pair">
+  <div class="pair__wall">
+    <div class="scene wallshell t-noon s-autumn w-cloudy" style="--accent:#c96f34">
+      <div class="scene__sky"></div>
+      <div class="cloud" style="left:6%;top:6%;width:26%;height:34%"></div>
+      <div class="cloud" style="left:44%;top:2%;width:22%;height:28%"></div>
+      <div class="cloud" style="left:70%;top:10%;width:20%;height:26%"></div>
+      <div class="scene__orb"></div>
+      <svg class="scene__horizon" viewBox="0 0 400 60" preserveAspectRatio="none">
+        <path class="hill" d="M0,60 L0,40 Q50,26 100,34 T220,28 T320,36 T400,26 L400,60 Z"/>
+        <g class="leafy"><circle class="canopy" cx="60" cy="30" r="9"/><circle class="canopy" cx="150" cy="24" r="7"/><circle class="canopy" cx="270" cy="30" r="8"/></g>
+      </svg>
+      <div class="scene__vignette"></div>
+      <div class="wallshell__inner">
+        <nav class="hnav">
+          <div class="hnav__brand"><span class="hlantern"></span> Nora Home</div>
+          <div class="hnav__item">Overview</div>
+          <div class="hnav__item">Alerts</div>
+          <div class="hnav__label">Family</div>
+          <div class="hnav__item">Workout</div>
+          <div class="hnav__item on">Diet</div>
+          <div class="hnav__label">House</div>
+          <div class="hnav__item">Maintenance</div>
+        </nav>
+        <main class="hmain">
+          <div class="htop"><div><h1>Diet</h1><div class="htop__sub">16°C, overcast · lunch logged</div></div></div>
+          <div class="hgrid">
+            <div class="pane hp hp--4"><div class="pane__title">Today's calories</div><div class="pane__big" style="font-size:1.5rem">1,240<span class="pane__unit"> of 2,100</span></div><div class="pane__sub">On track for the day</div></div>
+            <div class="pane hp hp--4"><div class="pane__title">Water</div><div class="pane__big" style="font-size:1.5rem">1.1<span class="pane__unit"> of 2.5L</span></div><div class="pane__sub">Behind by midday</div></div>
+            <div class="pane hp hp--4"><div class="pane__title">Overcast today</div><div class="pane__big" style="font-size:1.5rem">16<span class="pane__unit">°C</span></div><div class="pane__sub">Good light for a walk anyway</div></div>
+            <div class="pane hp hp--12"><div class="pane__title">This week's macros</div>
+              <div class="hviz"><svg viewBox="0 0 460 40" preserveAspectRatio="none" style="width:100%;height:40px"><g fill="#c96f34" opacity=".8"><rect x="0" y="8" width="46" height="32"/><rect x="58" y="4" width="46" height="36"/><rect x="116" y="14" width="46" height="26"/><rect x="174" y="2" width="46" height="38"/><rect x="232" y="10" width="46" height="30"/><rect x="290" y="6" width="46" height="34"/><rect x="348" y="0" width="46" height="40"/></g></svg></div>
             </div>
           </div>
+        </main>
+      </div>
+    </div>
+  </div>
+  <div class="pair__kiosk">
+    <div class="scene kioskshell t-noon s-autumn w-cloudy">
+      <div class="scene__sky"></div>
+      <div class="cloud" style="left:10%;top:8%;width:30%;height:36%"></div>
+      <div class="cloud" style="left:55%;top:4%;width:26%;height:30%"></div>
+      <div class="scene__orb"></div>
+      <svg class="scene__horizon" viewBox="0 0 400 60" preserveAspectRatio="none">
+        <path class="hill" d="M0,60 L0,40 Q50,26 100,34 T220,28 T320,36 T400,26 L400,60 Z"/>
+        <g class="leafy"><circle class="canopy" cx="60" cy="30" r="9"/><circle class="canopy" cx="270" cy="30" r="8"/></g>
+      </svg>
+      <div class="scene__vignette"></div>
+      <div class="khead"><span>Nora Home · driving wall</span><span class="kdot"></span></div>
+      <div class="ktiles">
+        <div class="pane ktile"><div class="ktile__title">Home</div><div class="ktile__hint">Overview</div></div>
+        <div class="pane ktile"><div class="ktile__title">Alerts</div><div class="ktile__hint">0 open</div></div>
+        <div class="pane ktile"><div class="ktile__title">Habits</div><div class="ktile__hint">Self improvement</div></div>
+        <div class="pane ktile" style="border-color:rgba(201,111,52,.4)"><div class="ktile__title">Diet</div><div class="ktile__hint">Family</div></div>
+        <div class="pane ktile"><div class="ktile__title">Maintenance</div><div class="ktile__hint">House</div></div>
+        <div class="pane ktile"><div class="ktile__title">Tracker</div><div class="ktile__hint">System</div></div>
+        <div class="pane ktile"><div class="ktile__title">Assistant</div><div class="ktile__hint">System</div></div>
+        <div class="pane ktile"><div class="ktile__title">Settings</div><div class="ktile__hint">This house</div></div>
+      </div>
+      <div class="kbar">
+        <div class="pane ktile"><div class="ktile__title" style="font-size:.7rem">Apps</div></div>
+        <div class="pane ktile"><div class="ktile__title" style="font-size:.7rem">Dim</div></div>
+        <div class="pane ktile"><div class="ktile__title" style="font-size:.7rem">Wake</div></div>
+        <div class="pane ktile"><div class="ktile__title" style="font-size:.7rem">Reload</div></div>
+      </div>
+    </div>
+  </div>
+</div>
 
-          <div class="w w--7">
-            <div class="w__head"><span class="w__title">Sleep &amp; recovery, 14 nights</span><span class="w__meta">hours</span></div>
-            <div class="w__viz">
-              <svg viewBox="0 0 460 120" preserveAspectRatio="none" style="height:120px">
-                <defs><linearGradient id="vg1" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#22d3a5" stop-opacity=".4"/><stop offset="100%" stop-color="#22d3a5" stop-opacity="0"/></linearGradient></defs>
-                <line x1="0" y1="40" x2="460" y2="40" stroke="#232f3d" stroke-width="1" stroke-dasharray="4 4"/>
-                <text x="4" y="34" font-size="9" fill="#546a80">target 7h30</text>
-                <path d="M0,72 L33,58 L66,80 L99,50 L132,64 L165,44 L198,56 L231,38 L264,66 L297,48 L330,42 L363,60 L396,36 L429,50 L460,44 L460,120 L0,120 Z" fill="url(#vg1)"/>
-                <polyline points="0,72 33,58 66,80 99,50 132,64 165,44 198,56 231,38 264,66 297,48 330,42 363,60 396,36 429,50 460,44" fill="none" stroke="#22d3a5" stroke-width="2.5" stroke-linecap="round"/>
-                <circle cx="396" cy="36" r="4" fill="#22d3a5"/>
-              </svg>
+<div class="section-label">The wall alone, two more seasons</div>
+<p class="section-body">
+  Rounding out the range: spring morning and a rainy summer afternoon, each
+  with a different app on screen, to keep this honest rather than showing
+  the same "Overview" four times in different colours.
+</p>
+<div class="showcase" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:1.1rem">
+
+  <div>
+    <div class="rig-label"><b>Spring · dawn · clear · Overview</b><span>6:14am</span></div>
+    <div class="scene wallshell t-dawn s-spring" style="--accent:#7fb069">
+      <div class="scene__sky"></div><div class="scene__orb"></div>
+      <svg class="scene__horizon" viewBox="0 0 400 60" preserveAspectRatio="none">
+        <path class="hill" d="M0,60 L0,40 Q50,26 100,34 T220,28 T320,36 T400,26 L400,60 Z"/>
+        <g class="leafy"><circle class="canopy" cx="60" cy="30" r="9"/><circle class="canopy" cx="150" cy="24" r="7"/><circle class="canopy" cx="270" cy="30" r="8"/></g>
+        <g class="blossom" fill="#ffd3e6"><circle cx="55" cy="24" r="1.6"/><circle cx="65" cy="22" r="1.6"/><circle cx="266" cy="24" r="1.6"/></g>
+      </svg>
+      <div class="scene__vignette"></div>
+      <div class="wallshell__inner">
+        <nav class="hnav">
+          <div class="hnav__brand"><span class="hlantern"></span> Nora Home</div>
+          <div class="hnav__item on">Overview</div>
+          <div class="hnav__item">Alerts</div>
+          <div class="hnav__label">Family</div>
+          <div class="hnav__item">Workout</div>
+          <div class="hnav__label">House</div>
+          <div class="hnav__item">Maintenance</div>
+        </nav>
+        <main class="hmain">
+          <div class="htop"><div><h1>Friday morning</h1><div class="htop__sub">9°C, clear · nothing due yet</div></div></div>
+          <div class="hgrid">
+            <div class="pane hp hp--6"><div class="hp__head"><span class="pane__title">Outside right now</span><span class="pchip pchip--leaf">Spring</span></div><div class="pane__big" style="font-size:1.7rem">9<span class="pane__unit">°C</span></div><div class="pane__sub">First light 26 min ago</div></div>
+            <div class="pane hp hp--6"><div class="pane__title">Today</div><div class="pane__big" style="font-size:1.7rem">0<span class="pane__unit"> due</span></div><div class="pane__sub">Nothing scheduled before 8am</div></div>
+            <div class="pane hp hp--12"><div class="pane__title">Household consistency, 7 days</div><div class="pane__big" style="font-size:1.6rem">82<span class="pane__unit">%</span></div><div class="pane__sub">Nitin 91% · Partner 88% · Kid 66%</div></div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="rig-label"><b>Summer · afternoon · rain · Workout</b><span>4:40pm</span></div>
+    <div class="scene wallshell t-noon s-summer w-rain" style="--accent:#ffd166">
+      <div class="scene__sky"></div><div class="scene__orb"></div>
+      <div class="drop" style="left:10%;top:0;animation-delay:.1s"></div><div class="drop" style="left:26%;top:0;animation-delay:.4s"></div><div class="drop" style="left:42%;top:0;animation-delay:.05s"></div><div class="drop" style="left:58%;top:0;animation-delay:.3s"></div><div class="drop" style="left:74%;top:0;animation-delay:.5s"></div><div class="drop" style="left:88%;top:0;animation-delay:.2s"></div>
+      <svg class="scene__horizon" viewBox="0 0 400 60" preserveAspectRatio="none">
+        <path class="hill" d="M0,60 L0,40 Q50,26 100,34 T220,28 T320,36 T400,26 L400,60 Z"/>
+        <g class="leafy"><circle class="canopy" cx="60" cy="30" r="10"/><circle class="canopy" cx="270" cy="30" r="9"/></g>
+      </svg>
+      <div class="scene__vignette"></div>
+      <div class="wallshell__inner">
+        <nav class="hnav">
+          <div class="hnav__brand"><span class="hlantern"></span> Nora Home</div>
+          <div class="hnav__item">Overview</div>
+          <div class="hnav__item">Alerts</div>
+          <div class="hnav__label">Family</div>
+          <div class="hnav__item on">Workout</div>
+          <div class="hnav__label">House</div>
+          <div class="hnav__item">Maintenance</div>
+        </nav>
+        <main class="hmain">
+          <div class="htop"><div><h1>Workout</h1><div class="htop__sub">19°C, rain · indoor session today</div></div></div>
+          <div class="hgrid">
+            <div class="pane hp hp--5"><div class="pane__title">This week's volume</div><div class="pane__big" style="font-size:1.6rem">8.1<span class="pane__unit"> t</span></div><div class="pane__sub">▲ 6% on last week</div></div>
+            <div class="pane hp hp--7"><div class="pane__title">Session, last 8 weeks</div>
+              <div class="hviz"><svg viewBox="0 0 460 50" preserveAspectRatio="none" style="width:100%;height:50px"><g fill="#ffd166" opacity=".8"><rect x="0" y="28" width="46" height="22"/><rect x="58" y="18" width="46" height="32"/><rect x="116" y="24" width="46" height="26"/><rect x="174" y="10" width="46" height="40"/><rect x="232" y="16" width="46" height="34"/><rect x="290" y="6" width="46" height="44"/><rect x="348" y="12" width="46" height="38"/><rect x="406" y="4" width="46" height="46"/></g></svg></div>
             </div>
+            <div class="pane hp hp--12"><div class="pane__title">Rain means: today's plan moved indoors</div><div class="pane__sub" style="font-size:.82rem;margin-top:.15rem">Outdoor run swapped for the indoor circuit — same session, no decision needed</div></div>
           </div>
-
-          <div class="w w--4">
-            <div class="w__head"><span class="w__title">Training load</span><span class="chip">building</span></div>
-            <div class="w__big">8,100<span class="w__unit"> kg / wk</span></div>
-            <div class="w__viz"><svg viewBox="0 0 260 60" preserveAspectRatio="none" style="height:60px">
-              <g><rect x="2" y="34" width="18" height="26" rx="4" fill="#2a3a4a"/><rect x="24" y="28" width="18" height="32" rx="4" fill="#2a3a4a"/><rect x="46" y="38" width="18" height="22" rx="4" fill="#2a3a4a"/><rect x="68" y="22" width="18" height="38" rx="4" fill="#2a3a4a"/><rect x="90" y="26" width="18" height="34" rx="4" fill="#2a3a4a"/><rect x="112" y="16" width="18" height="44" rx="4" fill="#ff7a59"/><rect x="134" y="20" width="18" height="40" rx="4" fill="#ff7a59"/><rect x="156" y="10" width="18" height="50" rx="4" fill="#ff7a59"/><rect x="178" y="24" width="18" height="36" rx="4" fill="#ff7a59"/><rect x="200" y="6" width="18" height="54" rx="4" fill="#22d3a5"/><rect x="222" y="14" width="18" height="46" rx="4" fill="#22d3a5"/><rect x="244" y="2" width="16" height="58" rx="4" fill="#22d3a5"/></g></svg></div>
-          </div>
-
-          <div class="w w--4">
-            <div class="w__head"><span class="w__title">Weight trend</span></div>
-            <div class="w__big">74.2<span class="w__unit"> kg</span></div>
-            <div class="w__delta" style="color:#22d3a5">▼ 1.1 kg in 30 days</div>
-            <div class="w__viz"><svg viewBox="0 0 260 52" preserveAspectRatio="none" style="height:52px">
-              <polyline points="0,38 26,34 52,40 78,26 104,31 130,20 156,25 182,14 208,19 234,10 260,14" fill="none" stroke="#22d3a5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <circle cx="260" cy="14" r="4" fill="#22d3a5"/></svg></div>
-          </div>
-
-          <div class="w w--4">
-            <div class="w__head"><span class="w__title">Needs attention</span><span class="chip chip--bad">2</span></div>
-            <div style="margin-top:.3rem;font-size:.82rem;line-height:1.9">
-              <div style="display:flex;justify-content:space-between"><span>HVAC filter</span><span style="color:#f2545b">2d late</span></div>
-              <div style="display:flex;justify-content:space-between"><span>Water softener salt</span><span style="color:#ffb84d">due today</span></div>
-              <div style="display:flex;justify-content:space-between;opacity:.5"><span>Gutter check</span><span>in 9 days</span></div>
-            </div>
-          </div>
-
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   </div>
 
-  <div class="split">
-    <div>
-      <div class="render__label">Wall display · 24&quot; at 1080p</div>
-      <div class="render"><div class="wall t-vit">
-        <div class="wall__time">18:42</div>
-        <div style="font-size:.78rem;opacity:.5">Thursday, 30 July</div>
-        <div class="wall__grid">
-          <div><div class="wall__k">House rhythm</div><div class="wall__v" style="color:#22d3a5">82 %</div></div>
-          <div><div class="wall__k">Sleep, 7-night</div><div class="wall__v">7h 12m</div></div>
-          <div><div class="wall__k">Needs attention</div><div class="wall__v" style="color:#f2545b">2</div></div>
-          <div><div class="wall__k">Training load</div><div class="wall__v">8.1 t</div></div>
-        </div>
-      </div></div>
+</div>
+
+<div class="section-label">10.1" kiosk — the per-app control screen</div>
+<p class="section-body">
+  Tapping a tile switches the wall <em>and</em> swaps the kiosk to that app's
+  own buttons — this is <code>nora_kiosk_controls</code>, already shipped.
+  Never the app itself, just its controls: here, tapping "Habits" from the
+  main menu above replaces the kiosk's tile grid with exactly this.
+</p>
+<div style="max-width:420px">
+  <div class="rig-label"><b>Habits selected</b><span>Spring · dawn</span></div>
+  <div class="scene kioskshell t-dawn s-spring">
+    <div class="scene__sky"></div><div class="scene__orb"></div>
+    <svg class="scene__horizon" viewBox="0 0 400 60" preserveAspectRatio="none">
+      <path class="hill" d="M0,60 L0,40 Q50,26 100,34 T220,28 T320,36 T400,26 L400,60 Z"/>
+      <g class="leafy"><circle class="canopy" cx="60" cy="30" r="9"/><circle class="canopy" cx="270" cy="30" r="8"/></g>
+      <g class="blossom" fill="#ffd3e6"><circle cx="55" cy="24" r="1.6"/><circle cx="266" cy="24" r="1.6"/></g>
+    </svg>
+    <div class="scene__vignette"></div>
+    <div class="khead"><span>Nora Home · driving wall</span><span class="kdot"></span></div>
+    <div class="ktiles" style="grid-template-columns:repeat(2,1fr)">
+      <div class="pane ktile kback"><div class="ktile__title">← Apps</div></div>
+      <div class="pane ktile"><div class="ktile__title">All habits</div><div class="ktile__hint">Habits</div></div>
     </div>
-    <div>
-      <div class="render__label">Phone</div>
-      <div class="render" style="width:200px"><div class="phone t-vit">
-        <div class="phone__h">Your evening</div>
-        <div class="w w--12 w--hero" style="margin-bottom:.5rem;align-items:center">
-          <svg viewBox="0 0 90 90" style="width:96px;height:96px">
-            <circle cx="45" cy="45" r="38" fill="none" stroke="#232f3d" stroke-width="8"/>
-            <circle cx="45" cy="45" r="38" fill="none" stroke="#22d3a5" stroke-width="8" stroke-dasharray="238.8" stroke-dashoffset="43" stroke-linecap="round" transform="rotate(-90 45 45)"/>
-            <text x="45" y="50" text-anchor="middle" font-size="18" fill="#e8eef5" font-weight="700">82%</text></svg>
-        </div>
-        <div class="w w--12">
-          <div class="w__title">Needs attention</div>
-          <div class="w__big" style="font-size:1.6rem;color:#f2545b">2</div>
-          <div class="w__sub">filter · softener salt</div>
-        </div>
-      </div></div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════ 3 ══════════════════════ -->
-<section class="option">
-  <div class="option__head">
-    <span class="option__num">Option 3</span>
-    <h2 class="option__name">Atrium</h2>
-    <span class="option__tag">a well-set page in a good annual report</span>
-  </div>
-  <p class="option__body">
-    Warm paper, deep green, serif numerals. One big statement figure carries the page
-    and the charts are thin, precise and unfussy. The most <em>calm</em> of the five,
-    and the only one that would look at home printed. The wall flips to a dark variant
-    so it is not a lightbulb at night.
-  </p>
-  <div class="option__meta">
-    <div><strong>Type</strong> Serif figures, sans labels</div>
-    <div><strong>Density</strong> Low — space is the point</div>
-    <div><strong>Wall at 3m</strong> Good (dark variant)</div>
-    <div><strong>Risk</strong> Least room for many numbers</div>
-  </div>
-  <div class="swatches">
-    <div class="swatch" style="background:#f5f4f0"></div><div class="swatch" style="background:#ffffff"></div>
-    <div class="swatch" style="background:#2f5d50"></div><div class="swatch" style="background:#c1663f"></div>
-    <div class="swatch" style="background:#1a1815"></div>
-  </div>
-
-  <div class="render__label">Home screen · 1440px</div>
-  <div class="render">
-    <div class="mock t-atr">
-      <nav class="nav">
-        <div class="nav__brand"><span class="nav__dot"></span> Nora Home</div>
-        <div class="nav__item on">Overview</div>
-        <div class="nav__item">Alerts</div>
-        <div class="nav__label">Family</div>
-        <div class="nav__item">Workout</div>
-        <div class="nav__item">Diet</div>
-        <div class="nav__item">Health</div>
-        <div class="nav__label">House</div>
-        <div class="nav__item">Maintenance</div>
-        <div class="nav__item">Energy</div>
-        <div class="nav__label">Robot</div>
-        <div class="nav__item">Nora telemetry</div>
-      </nav>
-      <main class="main">
-        <div class="top">
-          <div><h1>Thursday, 30 July</h1><div class="top__sub">Week 31 · the house at a glance</div></div>
-          <div class="bot"></div>
-        </div>
-        <div class="grid">
-
-          <div class="w w--5 w--hero">
-            <div class="w__head"><span class="w__title">Consistency this month</span></div>
-            <div class="w__big w__big--xl">82<span class="w__unit">%</span></div>
-            <div class="w__sub">Up 6 points on June. Best month since March.</div>
-            <div class="w__viz"><svg viewBox="0 0 300 46" preserveAspectRatio="none" style="height:46px">
-              <polyline points="0,36 30,32 60,34 90,26 120,29 150,22 180,24 210,16 240,19 270,12 300,9" fill="none" stroke="#f2efe9" stroke-width="2" opacity=".85"/>
-              <circle cx="300" cy="9" r="3.5" fill="#f2efe9"/></svg></div>
-          </div>
-
-          <div class="w w--7">
-            <div class="w__head"><span class="w__title">Where the effort went</span><span class="w__meta">hours, 30 days</span></div>
-            <div style="margin-top:.5rem;font-size:.8rem">
-              <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.45rem"><span style="width:74px;opacity:.65">Training</span>
-                <svg viewBox="0 0 100 8" preserveAspectRatio="none" style="flex:1;height:8px"><rect width="100" height="8" rx="4" fill="#e3e0d8"/><rect width="78" height="8" rx="4" fill="#2f5d50"/></svg><span style="width:38px;text-align:right">31h</span></div>
-              <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.45rem"><span style="width:74px;opacity:.65">Reading</span>
-                <svg viewBox="0 0 100 8" preserveAspectRatio="none" style="flex:1;height:8px"><rect width="100" height="8" rx="4" fill="#e3e0d8"/><rect width="61" height="8" rx="4" fill="#2f5d50"/></svg><span style="width:38px;text-align:right">24h</span></div>
-              <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.45rem"><span style="width:74px;opacity:.65">House</span>
-                <svg viewBox="0 0 100 8" preserveAspectRatio="none" style="flex:1;height:8px"><rect width="100" height="8" rx="4" fill="#e3e0d8"/><rect width="43" height="8" rx="4" fill="#c1663f"/></svg><span style="width:38px;text-align:right">17h</span></div>
-              <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.45rem"><span style="width:74px;opacity:.65">Learning</span>
-                <svg viewBox="0 0 100 8" preserveAspectRatio="none" style="flex:1;height:8px"><rect width="100" height="8" rx="4" fill="#e3e0d8"/><rect width="30" height="8" rx="4" fill="#2f5d50"/></svg><span style="width:38px;text-align:right">12h</span></div>
-              <div style="display:flex;align-items:center;gap:.6rem"><span style="width:74px;opacity:.65">Robot</span>
-                <svg viewBox="0 0 100 8" preserveAspectRatio="none" style="flex:1;height:8px"><rect width="100" height="8" rx="4" fill="#e3e0d8"/><rect width="18" height="8" rx="4" fill="#c1663f"/></svg><span style="width:38px;text-align:right">7h</span></div>
-            </div>
-          </div>
-
-          <div class="w w--4">
-            <div class="w__head"><span class="w__title">Body weight</span></div>
-            <div class="w__big">74.2<span class="w__unit"> kg</span></div>
-            <div class="w__sub">−1.1 kg since 1 July</div>
-            <div class="w__viz"><svg viewBox="0 0 240 44" preserveAspectRatio="none" style="height:44px">
-              <line x1="0" y1="22" x2="240" y2="22" stroke="#e3e0d8"/>
-              <polyline points="0,32 24,29 48,34 72,22 96,26 120,17 144,21 168,12 192,16 216,8 240,11" fill="none" stroke="#2f5d50" stroke-width="1.8"/></svg></div>
-          </div>
-
-          <div class="w w--4">
-            <div class="w__head"><span class="w__title">House energy</span></div>
-            <div class="w__big">18.4<span class="w__unit"> kWh</span></div>
-            <div class="w__sub">7% under the 7-day average</div>
-            <div class="w__viz"><svg viewBox="0 0 240 44" preserveAspectRatio="none" style="height:44px">
-              <g fill="#2f5d50"><rect x="2" y="24" width="14" height="20"/><rect x="21" y="18" width="14" height="26"/><rect x="40" y="28" width="14" height="16"/><rect x="59" y="14" width="14" height="30"/><rect x="78" y="20" width="14" height="24"/><rect x="97" y="26" width="14" height="18"/><rect x="116" y="10" width="14" height="34"/><rect x="135" y="22" width="14" height="22"/><rect x="154" y="16" width="14" height="28"/><rect x="173" y="30" width="14" height="14"/><rect x="192" y="12" width="14" height="32"/><rect x="211" y="20" width="14" height="24"/></g></svg></div>
-          </div>
-
-          <div class="w w--4">
-            <div class="w__head"><span class="w__title">Outstanding</span><span class="chip chip--bad">2 late</span></div>
-            <div style="margin-top:.35rem;font-size:.82rem;line-height:1.95">
-              <div style="display:flex;justify-content:space-between;border-bottom:1px solid #e3e0d8;padding-bottom:.2rem"><span>HVAC filter</span><span style="color:#a33a3a">2d</span></div>
-              <div style="display:flex;justify-content:space-between;border-bottom:1px solid #e3e0d8;padding:.2rem 0"><span>Softener salt</span><span style="color:#c1663f">today</span></div>
-              <div style="display:flex;justify-content:space-between;padding-top:.2rem;opacity:.55"><span>Gutter check</span><span>9d</span></div>
-            </div>
-          </div>
-
-        </div>
-      </main>
+    <div class="kbar">
+      <div class="pane ktile"><div class="ktile__title" style="font-size:.7rem">Apps</div></div>
+      <div class="pane ktile"><div class="ktile__title" style="font-size:.7rem">Dim</div></div>
+      <div class="pane ktile"><div class="ktile__title" style="font-size:.7rem">Wake</div></div>
+      <div class="pane ktile"><div class="ktile__title" style="font-size:.7rem">Reload</div></div>
     </div>
   </div>
+</div>
 
-  <div class="split">
-    <div>
-      <div class="render__label">Wall display · dark variant</div>
-      <div class="render"><div class="wall t-atr">
-        <div class="wall__time">18:42</div>
-        <div style="font-size:.78rem;opacity:.55">Thursday, 30 July</div>
-        <div class="wall__grid">
-          <div><div class="wall__k">Consistency</div><div class="wall__v">82 %</div></div>
-          <div><div class="wall__k">Energy today</div><div class="wall__v">18.4 kWh</div></div>
-          <div><div class="wall__k">Outstanding</div><div class="wall__v" style="color:#e08a6b">2 late</div></div>
-          <div><div class="wall__k">Weight</div><div class="wall__v">74.2 kg</div></div>
-        </div>
-      </div></div>
+<div class="section-label">Phone</div>
+<p class="section-body">
+  Full functionality here too, not a cut-down view — same nav, same app
+  switching, just stacked instead of sidebarred. The atmosphere becomes a
+  quieter gesture behind the top card, since the data has to win at this
+  size.
+</p>
+<div class="phone-wrap">
+
+  <div class="scene phone-scene t-noon s-summer w-sunny" style="--accent:#ffd166">
+    <div class="scene__sky" style="position:absolute;inset:0;height:42%"></div>
+    <div class="ray" style="left:80%;top:8%;width:40px;transform:rotate(30deg)"></div>
+    <div class="ray" style="left:80%;top:8%;width:34px;transform:rotate(60deg)"></div>
+    <div class="scene__orb" style="top:16%;left:80%"></div>
+    <div class="scene__vignette" style="height:42%"></div>
+    <div class="phone-scene__top">
+      <div class="phone-scene__time">12:03</div>
+      <div class="phone-scene__date">Summer · sunny · Overview</div>
     </div>
-    <div>
-      <div class="render__label">Phone</div>
-      <div class="render" style="width:200px"><div class="phone t-atr">
-        <div class="phone__h">Thursday</div>
-        <div class="w w--12 w--hero" style="margin-bottom:.5rem">
-          <div class="w__title">Consistency</div><div class="w__big" style="font-size:2.4rem">82<span class="w__unit">%</span></div>
-        </div>
-        <div class="w w--12">
-          <div class="w__title">Outstanding</div>
-          <div class="w__big" style="font-size:1.6rem">2</div>
-          <div class="w__sub">filter · softener salt</div>
-        </div>
-      </div></div>
+    <div class="phone-scene__body">
+      <div class="pane"><div class="pane__title">Outside</div><div class="pane__big" style="font-size:1.6rem">28<span class="pane__unit">°C</span></div><div class="pane__sub">Sunny · great for a walk</div></div>
+      <div class="pane"><div class="pane__title">Today</div><div class="pane__big" style="font-size:1.3rem">0<span class="pane__unit"> due</span></div></div>
+      <div class="pane"><div class="pane__title">Consistency</div><div class="pane__big" style="font-size:1.3rem">82<span class="pane__unit">%</span></div></div>
     </div>
-  </div>
-</section>
-
-<!-- ══════════════════════ 4 ══════════════════════ -->
-<section class="option">
-  <div class="option__head">
-    <span class="option__num">Option 4</span>
-    <h2 class="option__name">Flight Deck</h2>
-    <span class="option__tag">a glass cockpit for the house</span>
-  </div>
-  <p class="option__body">
-    Monospace, near-black, teal and amber. Segmented readouts, threshold markers, and
-    a horizon-style load bar. The highest information density of the five and by some
-    margin the most legible from across a room — but it commits hard to a personality.
-  </p>
-  <div class="option__meta">
-    <div><strong>Type</strong> Monospace throughout</div>
-    <div><strong>Density</strong> Very high</div>
-    <div><strong>Wall at 3m</strong> Best of the five</div>
-    <div><strong>Risk</strong> Kids and guests may find it cold</div>
-  </div>
-  <div class="swatches">
-    <div class="swatch" style="background:#060809"></div><div class="swatch" style="background:#0c1013"></div>
-    <div class="swatch" style="background:#00e5c0"></div><div class="swatch" style="background:#ffb020"></div>
-    <div class="swatch" style="background:#ff4d5e"></div>
+    <div class="phone-nav"><i class="on"></i><i></i><i></i><i></i></div>
   </div>
 
-  <div class="render__label">Home screen · 1440px</div>
-  <div class="render">
-    <div class="mock t-fd">
-      <nav class="nav">
-        <div class="nav__brand"><span class="nav__dot"></span> NORA_HOME</div>
-        <div class="nav__item on">overview</div>
-        <div class="nav__item">alerts</div>
-        <div class="nav__label">family</div>
-        <div class="nav__item">workout</div>
-        <div class="nav__item">diet</div>
-        <div class="nav__item">health</div>
-        <div class="nav__label">house</div>
-        <div class="nav__item">maintenance</div>
-        <div class="nav__item">energy</div>
-        <div class="nav__label">robot</div>
-        <div class="nav__item">nora_telemetry</div>
-      </nav>
-      <main class="main">
-        <div class="top">
-          <div><h1>nitin@nora-home</h1><div class="top__sub">sys nominal · 2 items overdue · uptime 14d 06:22</div></div>
-          <div class="bot"></div>
-        </div>
-        <div class="grid">
-
-          <div class="w w--9 w--hero">
-            <div class="w__head"><span class="w__title">house.energy [24h]</span><span class="w__meta">kWh · peak 2.41 @ 18:10</span></div>
-            <div class="w__viz">
-              <svg viewBox="0 0 580 104" preserveAspectRatio="none" style="height:104px">
-                <line x1="0" y1="26" x2="580" y2="26" stroke="#1a2226" stroke-dasharray="2 4"/>
-                <line x1="0" y1="52" x2="580" y2="52" stroke="#1a2226" stroke-dasharray="2 4"/>
-                <line x1="0" y1="78" x2="580" y2="78" stroke="#1a2226" stroke-dasharray="2 4"/>
-                <line x1="0" y1="18" x2="580" y2="18" stroke="#ffb020" stroke-width="1" opacity=".55"/>
-                <text x="4" y="14" font-size="8" fill="#ffb020">threshold 2.5</text>
-                <polyline points="0,86 24,82 48,84 72,70 96,58 120,62 144,42 168,36 192,50 216,44 240,28 264,34 288,20 312,26 336,16 360,32 384,46 408,40 432,56 456,48 480,60 504,54 528,68 552,62 580,72" fill="none" stroke="#00e5c0" stroke-width="1.6"/>
-                <g fill="#00e5c0" opacity=".22"><rect x="0" y="86" width="22" height="18"/><rect x="24" y="82" width="22" height="22"/><rect x="48" y="84" width="22" height="20"/><rect x="72" y="70" width="22" height="34"/><rect x="96" y="58" width="22" height="46"/><rect x="120" y="62" width="22" height="42"/><rect x="144" y="42" width="22" height="62"/><rect x="168" y="36" width="22" height="68"/><rect x="192" y="50" width="22" height="54"/><rect x="216" y="44" width="22" height="60"/><rect x="240" y="28" width="22" height="76"/><rect x="264" y="34" width="22" height="70"/><rect x="288" y="20" width="22" height="84"/><rect x="312" y="26" width="22" height="78"/><rect x="336" y="16" width="22" height="88"/><rect x="360" y="32" width="22" height="72"/><rect x="384" y="46" width="22" height="58"/><rect x="408" y="40" width="22" height="64"/><rect x="432" y="56" width="22" height="48"/><rect x="456" y="48" width="22" height="56"/><rect x="480" y="60" width="22" height="44"/><rect x="504" y="54" width="22" height="50"/><rect x="528" y="68" width="22" height="36"/><rect x="552" y="62" width="22" height="42"/></g>
-              </svg>
-            </div>
-          </div>
-
-          <div class="w w--3">
-            <div class="w__head"><span class="w__title">sys.load</span></div>
-            <div style="font-size:.72rem;line-height:2.1;margin-top:.2rem">
-              <div style="display:flex;justify-content:space-between"><span style="opacity:.6">cpu</span><span>21%</span></div>
-              <svg viewBox="0 0 100 5" preserveAspectRatio="none" style="width:100%;height:5px"><rect width="100" height="5" fill="#1a2226"/><rect width="21" height="5" fill="#00e5c0"/></svg>
-              <div style="display:flex;justify-content:space-between"><span style="opacity:.6">mem</span><span>54%</span></div>
-              <svg viewBox="0 0 100 5" preserveAspectRatio="none" style="width:100%;height:5px"><rect width="100" height="5" fill="#1a2226"/><rect width="54" height="5" fill="#00e5c0"/></svg>
-              <div style="display:flex;justify-content:space-between"><span style="opacity:.6">disk</span><span>71%</span></div>
-              <svg viewBox="0 0 100 5" preserveAspectRatio="none" style="width:100%;height:5px"><rect width="100" height="5" fill="#1a2226"/><rect width="71" height="5" fill="#ffb020"/></svg>
-              <div style="display:flex;justify-content:space-between"><span style="opacity:.6">temp</span><span>52°C</span></div>
-              <svg viewBox="0 0 100 5" preserveAspectRatio="none" style="width:100%;height:5px"><rect width="100" height="5" fill="#1a2226"/><rect width="46" height="5" fill="#00e5c0"/></svg>
-            </div>
-          </div>
-
-          <div class="w w--3">
-            <div class="w__head"><span class="w__title">body.weight</span></div>
-            <div class="w__big">74.2<span class="w__unit">kg</span></div>
-            <div class="w__delta" style="color:#00e5c0">-1.10 / 30d</div>
-            <div class="w__viz"><svg viewBox="0 0 150 30" preserveAspectRatio="none" style="height:30px">
-              <polyline points="0,22 16,20 32,24 48,15 64,18 80,11 96,14 112,7 128,10 150,5" fill="none" stroke="#00e5c0" stroke-width="1.4"/></svg></div>
-          </div>
-
-          <div class="w w--3">
-            <div class="w__head"><span class="w__title">nora.battery</span><span class="chip">DOCK</span></div>
-            <div class="w__big">87<span class="w__unit">%</span></div>
-            <div class="w__sub">chg 1.2A · 14d up</div>
-            <div class="w__viz"><svg viewBox="0 0 150 30" preserveAspectRatio="none" style="height:30px">
-              <polyline points="0,8 16,14 32,20 48,25 64,18 80,10 96,6 112,12 128,18 150,4" fill="none" stroke="#ffb020" stroke-width="1.4"/></svg></div>
-          </div>
-
-          <div class="w w--3">
-            <div class="w__head"><span class="w__title">tracker.open</span><span class="chip chip--bad">L2</span></div>
-            <div class="w__big">02<span class="w__unit">/11</span></div>
-            <div style="font-size:.68rem;line-height:1.8;margin-top:.3rem;opacity:.75">
-              <div style="color:#ff4d5e">hvac_filter +2d04h</div>
-              <div style="color:#ffb020">softener_salt +0h</div>
-            </div>
-          </div>
-
-          <div class="w w--3">
-            <div class="w__head"><span class="w__title">env.living_room</span></div>
-            <div class="w__big">21.4<span class="w__unit">°C</span></div>
-            <div style="font-size:.68rem;line-height:1.8;margin-top:.3rem;opacity:.7">
-              <div>rh 46% · co2 620ppm</div>
-              <div>src=home_assistant t-3m</div>
-            </div>
-          </div>
-
-        </div>
-      </main>
+  <div class="scene phone-scene t-night s-winter w-snow" style="--accent:#a9d8e8">
+    <div class="scene__sky" style="position:absolute;inset:0;height:42%"></div>
+    <div class="scene__stars" style="height:42%"><i style="left:16%;top:16%"></i><i style="left:36%;top:10%;animation-delay:1s"></i><i style="left:64%;top:20%;animation-delay:.5s"></i><i style="left:82%;top:12%;animation-delay:1.5s"></i></div>
+    <div class="scene__orb" style="top:22%"></div>
+    <div class="flake" style="left:22%;top:0;animation-delay:.2s"></div><div class="flake" style="left:60%;top:0;animation-delay:1.1s"></div>
+    <div class="scene__vignette" style="height:42%"></div>
+    <div class="phone-scene__top">
+      <div class="phone-scene__time">9:18</div>
+      <div class="phone-scene__date">Winter · snow · Maintenance</div>
     </div>
-  </div>
-
-  <div class="split">
-    <div>
-      <div class="render__label">Wall display · 24&quot; at 1080p</div>
-      <div class="render"><div class="wall t-fd">
-        <div class="wall__time">18:42</div>
-        <div style="font-size:.75rem;opacity:.5">thu 30 jul · sys nominal</div>
-        <div class="wall__grid">
-          <div><div class="wall__k">energy 24h</div><div class="wall__v">18.4<span style="font-size:.6em"> kWh</span></div></div>
-          <div><div class="wall__k">living_room</div><div class="wall__v">21.4<span style="font-size:.6em"> °C</span></div></div>
-          <div><div class="wall__k">tracker.open</div><div class="wall__v" style="color:#ff4d5e">02 <span style="font-size:.5em">L2</span></div></div>
-          <div><div class="wall__k">nora.battery</div><div class="wall__v">87<span style="font-size:.6em"> %</span></div></div>
-        </div>
-      </div></div>
+    <div class="phone-scene__body">
+      <div class="pane"><div class="pane__title">Outside</div><div class="pane__big" style="font-size:1.6rem">−3<span class="pane__unit">°C</span></div><div class="pane__sub">Light snow · 2cm since dusk</div></div>
+      <div class="pane"><div class="pane__title">Outstanding</div><div class="pane__big" style="font-size:1.3rem;color:#ffb37a">3<span class="pane__unit"> late</span></div></div>
+      <div class="pane"><div class="pane__title">Heating, 24h</div><div class="pane__big" style="font-size:1.3rem">6.1<span class="pane__unit"> kWh</span></div></div>
     </div>
-    <div>
-      <div class="render__label">Phone</div>
-      <div class="render" style="width:200px"><div class="phone t-fd">
-        <div class="phone__h">overview</div>
-        <div class="w w--12 w--hero" style="margin-bottom:.5rem">
-          <div class="w__title">house.energy</div><div class="w__big" style="font-size:1.6rem">18.4<span class="w__unit">kWh</span></div>
-          <div class="w__viz"><svg viewBox="0 0 160 26" preserveAspectRatio="none" style="height:26px">
-            <polyline points="0,20 20,17 40,19 60,10 80,13 100,6 120,11 140,4 160,9" fill="none" stroke="#00e5c0" stroke-width="1.4"/></svg></div>
-        </div>
-        <div class="w w--12">
-          <div class="w__title">tracker.open</div>
-          <div class="w__big" style="font-size:1.5rem;color:#ff4d5e">02</div>
-          <div class="w__sub">hvac_filter +2d</div>
-        </div>
-      </div></div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════ 5 ══════════════════════ -->
-<section class="option">
-  <div class="option__head">
-    <span class="option__num">Option 5</span>
-    <h2 class="option__name">Terrazzo</h2>
-    <span class="option__tag">colour that carries meaning</span>
-  </div>
-  <p class="option__body">
-    Deep plum with saffron, rose and mint blocks. Big rounded tiles where colour is
-    the encoding rather than decoration — the eye finds &ldquo;the amber one&rdquo;
-    before it reads a word. Warm and family-legible without tipping into a toy.
-  </p>
-  <div class="option__meta">
-    <div><strong>Type</strong> Rounded sans, heavy figures</div>
-    <div><strong>Density</strong> Medium</div>
-    <div><strong>Wall at 3m</strong> Very good — colour reads first</div>
-    <div><strong>Risk</strong> Colour budget runs out with many apps</div>
-  </div>
-  <div class="swatches">
-    <div class="swatch" style="background:#12101a"></div><div class="swatch" style="background:#1c1928"></div>
-    <div class="swatch" style="background:#ffd166"></div><div class="swatch" style="background:#ef7674"></div>
-    <div class="swatch" style="background:#8ce99a"></div><div class="swatch" style="background:#a79fc0"></div>
+    <div class="phone-nav"><i></i><i></i><i class="on"></i><i></i></div>
   </div>
 
-  <div class="render__label">Home screen · 1440px</div>
-  <div class="render">
-    <div class="mock t-ter">
-      <nav class="nav">
-        <div class="nav__brand"><span class="nav__dot"></span> Nora Home</div>
-        <div class="nav__item on">Overview</div>
-        <div class="nav__item">Alerts</div>
-        <div class="nav__label">Family</div>
-        <div class="nav__item">Workout</div>
-        <div class="nav__item">Diet</div>
-        <div class="nav__item">Health</div>
-        <div class="nav__label">House</div>
-        <div class="nav__item">Maintenance</div>
-        <div class="nav__item">Energy</div>
-        <div class="nav__label">Robot</div>
-        <div class="nav__item">Nora telemetry</div>
-      </nav>
-      <main class="main">
-        <div class="top">
-          <div><h1>Thursday evening</h1><div class="top__sub">Two things want attention</div></div>
-          <div class="bot"></div>
-        </div>
-        <div class="grid">
+</div>
+<p class="note">Laptop skipped — same layout as the 24" wall (sidebar + grid), just at a narrower width; nothing about the atmosphere or the data changes.</p>
 
-          <div class="w w--4 w--hero">
-            <div class="w__head"><span class="w__title">Consistency</span></div>
-            <div class="w__big w__big--xl">82<span class="w__unit">%</span></div>
-            <div class="w__sub">Best month since March</div>
-            <div class="w__viz"><svg viewBox="0 0 220 40" preserveAspectRatio="none" style="height:40px">
-              <polyline points="0,32 24,28 48,30 72,22 96,25 120,17 144,20 168,11 192,15 220,6" fill="none" stroke="#2a1f06" stroke-width="2.5" stroke-linecap="round" opacity=".55"/></svg></div>
-          </div>
-
-          <div class="w w--8">
-            <div class="w__head"><span class="w__title">House energy · 24 hours</span><span class="w__meta">18.4 kWh</span></div>
-            <div class="w__viz"><svg viewBox="0 0 500 104" preserveAspectRatio="none" style="height:104px">
-              <defs><linearGradient id="tg1" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#ffd166" stop-opacity=".45"/><stop offset="100%" stop-color="#ffd166" stop-opacity="0"/></linearGradient></defs>
-              <path d="M0,86 L25,82 L50,84 L75,70 L100,58 L125,62 L150,42 L175,36 L200,50 L225,44 L250,28 L275,34 L300,20 L325,26 L350,16 L375,32 L400,46 L425,40 L450,56 L475,48 L500,60 L500,104 L0,104 Z" fill="url(#tg1)"/>
-              <polyline points="0,86 25,82 50,84 75,70 100,58 125,62 150,42 175,36 200,50 225,44 250,28 275,34 300,20 325,26 350,16 375,32 400,46 425,40 450,56 475,48 500,60" fill="none" stroke="#ffd166" stroke-width="2.5" stroke-linecap="round"/></svg></div>
-          </div>
-
-          <div class="w w--3 w--mint">
-            <div class="w__head"><span class="w__title">Body weight</span></div>
-            <div class="w__big">74.2<span class="w__unit"> kg</span></div>
-            <div class="w__sub">▼ 1.1 kg this month</div>
-          </div>
-
-          <div class="w w--3">
-            <div class="w__head"><span class="w__title">Living room</span></div>
-            <div class="w__big">21.4<span class="w__unit"> °C</span></div>
-            <div class="w__sub">humidity 46%</div>
-          </div>
-
-          <div class="w w--3">
-            <div class="w__head"><span class="w__title">Nora robot</span><span class="chip">docked</span></div>
-            <div class="w__big">87<span class="w__unit"> %</span></div>
-            <div class="w__sub">3 sessions today</div>
-          </div>
-
-          <div class="w w--3 w--rose">
-            <div class="w__head"><span class="w__title">Wants attention</span></div>
-            <div class="w__big">2</div>
-            <div class="w__sub">filter 2d late · salt today</div>
-          </div>
-
-          <div class="w w--12">
-            <div class="w__head"><span class="w__title">The year, by day</span><span class="w__meta">26 weeks</span></div>
-            <div class="heat" style="margin-top:.4rem">
-              <i style="background:#8ce99a"></i><i style="background:#5cb98a"></i><i style="background:#2b2740"></i><i style="background:#8ce99a"></i><i style="background:#8ce99a"></i><i style="background:#ffd166"></i><i style="background:#2b2740"></i><i style="background:#8ce99a"></i><i style="background:#5cb98a"></i><i style="background:#8ce99a"></i><i style="background:#ef7674"></i><i style="background:#5cb98a"></i><i style="background:#8ce99a"></i><i style="background:#8ce99a"></i><i style="background:#2b2740"></i><i style="background:#8ce99a"></i><i style="background:#ffd166"></i><i style="background:#8ce99a"></i><i style="background:#8ce99a"></i><i style="background:#2b2740"></i><i style="background:#5cb98a"></i><i style="background:#8ce99a"></i><i style="background:#8ce99a"></i><i style="background:#5cb98a"></i><i style="background:#8ce99a"></i><i style="background:#8ce99a"></i>
-              <i style="background:#5cb98a"></i><i style="background:#8ce99a"></i><i style="background:#8ce99a"></i><i style="background:#ef7674"></i><i style="background:#5cb98a"></i><i style="background:#8ce99a"></i><i style="background:#8ce99a"></i><i style="background:#ffd166"></i><i style="background:#2b2740"></i><i style="background:#8ce99a"></i><i style="background:#8ce99a"></i><i style="background:#5cb98a"></i><i style="background:#8ce99a"></i><i style="background:#2b2740"></i><i style="background:#8ce99a"></i><i style="background:#8ce99a"></i><i style="background:#5cb98a"></i><i style="background:#8ce99a"></i><i style="background:#8ce99a"></i><i style="background:#8ce99a"></i><i style="background:#ffd166"></i><i style="background:#2b2740"></i><i style="background:#8ce99a"></i><i style="background:#8ce99a"></i><i style="background:#5cb98a"></i><i style="background:#8ce99a"></i>
-              <i style="background:#2b2740"></i><i style="background:#5cb98a"></i><i style="background:#8ce99a"></i><i style="background:#8ce99a"></i><i style="background:#8ce99a"></i><i style="background:#ef7674"></i><i style="background:#5cb98a"></i><i style="background:#8ce99a"></i><i style="background:#8ce99a"></i><i style="background:#ffd166"></i><i style="background:#8ce99a"></i><i style="background:#8ce99a"></i><i style="background:#2b2740"></i><i style="background:#8ce99a"></i><i style="background:#5cb98a"></i><i style="background:#8ce99a"></i><i style="background:#8ce99a"></i><i style="background:#8ce99a"></i><i style="background:#5cb98a"></i><i style="background:#8ce99a"></i><i style="background:#2b2740"></i><i style="background:#8ce99a"></i><i style="background:#ffd166"></i><i style="background:#8ce99a"></i><i style="background:#8ce99a"></i><i style="background:#5cb98a"></i>
-            </div>
-          </div>
-
-        </div>
-      </main>
-    </div>
-  </div>
-
-  <div class="split">
-    <div>
-      <div class="render__label">Wall display · 24&quot; at 1080p</div>
-      <div class="render"><div class="wall t-ter">
-        <div class="wall__time">18:42</div>
-        <div style="font-size:.78rem;opacity:.5">Thursday, 30 July</div>
-        <div class="wall__grid">
-          <div><div class="wall__k">Consistency</div><div class="wall__v" style="color:#ffd166">82 %</div></div>
-          <div><div class="wall__k">Energy today</div><div class="wall__v">18.4 kWh</div></div>
-          <div><div class="wall__k">Wants attention</div><div class="wall__v" style="color:#ef7674">2</div></div>
-          <div><div class="wall__k">Nora robot</div><div class="wall__v" style="color:#8ce99a">87 %</div></div>
-        </div>
-      </div></div>
-    </div>
-    <div>
-      <div class="render__label">Phone</div>
-      <div class="render" style="width:200px"><div class="phone t-ter">
-        <div class="phone__h">Thursday</div>
-        <div class="w w--12 w--hero" style="margin-bottom:.5rem">
-          <div class="w__title">Consistency</div><div class="w__big" style="font-size:2.2rem">82<span class="w__unit">%</span></div>
-        </div>
-        <div class="w w--12 w--rose">
-          <div class="w__title">Wants attention</div>
-          <div class="w__big" style="font-size:1.7rem">2</div>
-          <div class="w__sub">filter · salt</div>
-        </div>
-      </div></div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════ compare ══════════════════════ -->
-<section class="option">
-  <h2 class="option__name" style="margin-bottom:1rem">Side by side</h2>
-  <table>
-    <thead><tr><th>&nbsp;</th><th>1 · Observatory</th><th>2 · Vitals</th><th>3 · Atrium</th><th>4 · Flight Deck</th><th>5 · Terrazzo</th></tr></thead>
-    <tbody>
-      <tr><td><strong>Feels like</strong></td><td>Monitoring console</td><td>Health app, house-scale</td><td>Annual report</td><td>Glass cockpit</td><td>Modern gallery</td></tr>
-      <tr><td><strong>Wall at 3m</strong></td><td>Excellent</td><td>Very good</td><td>Good</td><td><strong>Best</strong></td><td>Very good</td></tr>
-      <tr><td><strong>Dense data</strong></td><td>Strong</td><td>Medium</td><td>Weak</td><td><strong>Strongest</strong></td><td>Medium</td></tr>
-      <tr><td><strong>Kid-legible</strong></td><td>Medium</td><td>Good</td><td>Good</td><td>Poor</td><td><strong>Best</strong></td></tr>
-      <tr><td><strong>Home bot fits</strong></td><td>Yes</td><td><strong>Perfectly</strong></td><td>Awkward</td><td>Odd</td><td><strong>Perfectly</strong></td></tr>
-      <tr><td><strong>Scales to 12 apps</strong></td><td><strong>Yes</strong></td><td>Yes</td><td>Strained</td><td><strong>Yes</strong></td><td>Colour runs out</td></tr>
-      <tr><td><strong>Night glare</strong></td><td>None</td><td>None</td><td>Light mode is bright</td><td>None</td><td>None</td></tr>
-      <tr><td><strong>Needs a dark variant</strong></td><td>No</td><td>No</td><td><strong>Yes</strong></td><td>No</td><td>No</td></tr>
-    </tbody>
-  </table>
-
-  <div class="verdict">
-    <h3>If you want a recommendation</h3>
-    <p>
-      <strong>Option 1 (Observatory) as the base, with Option 2's rings on the home
-      screen.</strong> Observatory is the only one that stays readable as the app count
-      grows past a handful, needs no separate light variant for a screen that is on all
-      day, and handles both a dense maintenance log and a wall panel without
-      compromise. Borrowing Vitals' ring set for the household-consistency widget gives
-      the family-facing screen the warmth Observatory lacks on its own.
-    </p>
-    <p>
-      <strong>Option 4 (Flight Deck)</strong> is the better answer if the robot
-      telemetry ends up being the thing you look at most — it is genuinely the most
-      legible across a room, and the density is real, not styling. The cost is that it
-      will never feel welcoming to anyone but you.
-    </p>
-    <p>
-      <strong>Option 5 (Terrazzo)</strong> is the one the rest of the family will
-      like most. Its ceiling is real though: colour is doing the encoding, and once
-      eight or ten apps each want a hue, the system stops meaning anything.
-    </p>
-    <p>
-      Say a number and I will build it out properly — full type scale, spacing,
-      components, the matching ECharts theme, and verification at 375px, on the 1080p
-      wall, and on the 1280×800 kiosk.
-    </p>
-  </div>
-</section>
+<div class="notes">
+  <h3>Open questions, before this goes further</h3>
+  <ul>
+    <li><strong>Real weather source.</strong> Every "outside" number here is
+      invented for the mockup, but tying the theme to the actual weather is
+      a real, reachable build, not a stretch goal: a free source like
+      Open-Meteo (no API key) or Home Assistant's own weather entity (Story
+      25) gets polled every 10&ndash;15 minutes by the existing integration
+      framework, its condition code buckets into clear / cloudy / rain /
+      snow, and that one value gets pushed to both screens over the same
+      display websocket the kiosk already uses to drive the wall — so the
+      sky updates live, not just on a page reload. Season and time of day
+      need no integration at all; they already come from the system clock.
+      Worth sequencing Story 25 earlier than planned if this direction is
+      the one.</li>
+    <li><strong>Kiosk legibility under the atmosphere.</strong> The kiosk's
+      whole job is fast, unambiguous taps — worth checking the living
+      background never competes with a tile at arm's length, especially at
+      night when the sky is darkest and tiles need to still read instantly.</li>
+    <li><strong>Two screens, one moment.</strong> The wall and kiosk need to
+      agree on season/time/weather in real time so they don't drift out of
+      sync — a shared piece of state both templates read, not two
+      independent clocks.</li>
+    <li><strong>Performance on the Pi.</strong> Backdrop blur on every pane,
+      continuous small animations (rain, snow, stars), on <em>two</em>
+      Chromium instances at once on a Pi 5 — untested. May need to trade
+      blur for a flat tint, or cap concurrent particles.</li>
+    <li><strong>How far the illustration goes.</strong> This mockup hand-
+      places concrete states; a real build needs the axes to interpolate
+      continuously — sunrise eases rather than jumping from "dawn" to
+      "noon."</li>
+  </ul>
+</div>
 
 </div>
 </body>

@@ -172,11 +172,11 @@
     <h1>Nora <span>Home</span></h1>
     <div class="header-meta">
       Raspberry Pi 5 (8GB) · Django 5.2 · Celery + RabbitMQ · MySQL + MongoDB · ECharts<br/>
-      Last updated: 2026-08-02 &nbsp;·&nbsp; Click any card for full details &nbsp;·&nbsp;
+      Last updated: 2026-08-03 &nbsp;·&nbsp; Click any card for full details &nbsp;·&nbsp;
       <em>Nora Home is the house system. Nora is the robot — a separate project.</em>
     </div>
   </div>
-  <div class="status-pill">▶ Blocked on a design decision — Story 23</div>
+  <div class="status-pill">◐ Design system decided &amp; engine shipped — full restyle still ahead</div>
 </div>
 
 <div class="tab-nav">
@@ -188,9 +188,9 @@
 <div id="tab-progress" class="tab-pane active">
 
   <div class="summary">
-    <div class="summary-card"><div class="num num-complete">16</div><div class="label">Complete</div></div>
+    <div class="summary-card"><div class="num num-complete">17</div><div class="label">Complete</div></div>
     <div class="summary-card"><div class="num num-partial">5</div><div class="label">Built, Unproven</div></div>
-    <div class="summary-card"><div class="num num-next">1</div><div class="label">Next Up</div></div>
+    <div class="summary-card"><div class="num num-next">0</div><div class="label">Next Up</div></div>
     <div class="summary-card"><div class="num num-planned">5</div><div class="label">Planned</div></div>
     <div class="summary-card"><div class="num num-total">27</div><div class="label">Total Stories</div></div>
   </div>
@@ -201,17 +201,17 @@
     <div class="phase-progress"><div class="pname">Phase 2 — The Spine</div><div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div><div class="pct">100%</div></div>
     <div class="phase-progress"><div class="pname">Phase 3 — Surfaces</div><div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div><div class="pct">100%</div></div>
     <div class="phase-progress"><div class="pname">Phase 4 — Data &amp; Intelligence</div><div class="bar-bg"><div class="bar-fill partial" style="width:30%"></div></div><div class="pct">30%</div></div>
-    <div class="phase-progress"><div class="pname">Phase 5 — Operations</div><div class="bar-bg"><div class="bar-fill partial" style="width:75%"></div></div><div class="pct">75%</div></div>
+    <div class="phase-progress"><div class="pname">Phase 5 — Operations</div><div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div><div class="pct">100%</div></div>
     <div class="phase-progress"><div class="pname">Phase 6 — Hardening &amp; Real Apps</div><div class="bar-bg"><div class="bar-fill partial" style="width:14%"></div></div><div class="pct">14%</div></div>
   </div>
 
   <div class="next-box">
-    <h3>🎯 Story 23 — Design system build-out (immediate next, needs a decision)</h3>
-    <div class="next-step"><div class="step-num">1</div><div class="step-text">Open <code>docs/design-options.html</code> and pick a direction (or mix two)</div></div>
-    <div class="next-step"><div class="step-num">2</div><div class="step-text">Build the choice out properly in <code>static/nora_home/css/nora-home.css</code> — full type scale, spacing, components</div></div>
-    <div class="next-step"><div class="step-num">3</div><div class="step-text">Match the ECharts theme in <code>nh-charts.js</code> to the chosen palette</div></div>
-    <div class="next-step"><div class="step-num">4</div><div class="step-text">Verify at 375px, 1080p wall, and the 1280×800 kiosk</div></div>
-    <div class="next-step"><div class="step-num">5</div><div class="step-text">Then Story 24 — house maintenance, the first real app, now unblocked by Story 27</div></div>
+    <h3>🎯 Story 23 — Design system build-out (engine shipped, finishing it is next)</h3>
+    <div class="next-step"><div class="step-num">1</div><div class="step-text">See the living background on the physical wall and kiosk — built and verified locally against the live weather API, not yet seen on real hardware</div></div>
+    <div class="next-step"><div class="step-num">2</div><div class="step-text">Check continuous motion (rain/snow/stars) and backdrop blur on every pane don't strain a Pi 5 driving two Chromium instances at once</div></div>
+    <div class="next-step"><div class="step-num">3</div><div class="step-text">A full type scale and a real per-component pass — this round only retrofit <code>.card</code>/<code>.sidebar</code>/<code>.kiosk-tile</code></div></div>
+    <div class="next-step"><div class="step-num">4</div><div class="step-text">Verify at 375px, 1080p wall, and the 1024×600 kiosk</div></div>
+    <div class="next-step"><div class="step-num">5</div><div class="step-text">Then Story 24 — house maintenance, the first real app, already unblocked by Story 27</div></div>
   </div>
 
   <div class="blocked-box">
@@ -265,12 +265,12 @@
     <div class="story-card complete" onclick="openModal('17')"><div class="story-header"><div class="story-num">Story 17</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">Docker Stack &amp; One-Command Deploy</div><div class="story-desc">Eight services, health-gated startup, migrations in the entrypoint. <code>make up</code> then <code>make deploy</code> forever.</div><div class="story-tags"><span class="tag tag-ready">🟢 clean build on two real Pis</span><span class="tag">compose</span></div><div class="click-hint">click for details</div></div>
     <div class="story-card complete" onclick="openModal('18')"><div class="story-header"><div class="story-num">Story 18</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">Pi Provisioning &amp; Dual Display</div><div class="story-desc">One script: Docker, systemd, and both HDMI outputs auto-starting Chromium in kiosk mode after a power cut.</div><div class="story-tags"><span class="tag tag-ready">🟢 both screens verified live</span><span class="tag">install-pi.sh</span></div><div class="click-hint">click for details</div></div>
     <div class="story-card complete" onclick="openModal('19')"><div class="story-header"><div class="story-num">Story 19</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">App Installer &amp; Uninstaller</div><div class="story-desc">Clones a house app from git, registers it, migrates it, and commits it into this repo's own history. uninstall_app reverses it, with data kept by default.</div><div class="story-tags"><span class="tag tag-warn">⚠ uninstall_app itself still untested</span><span class="tag">install_app</span><span class="tag">uninstall_app</span></div><div class="click-hint">click for details</div></div>
-    <div class="story-card partial" onclick="openModal('20')"><div class="story-header"><div class="story-num">Story 20</div><span class="badge badge-partial">◐ Unproven</span></div><div class="story-title">Integration Framework</div><div class="story-desc">Scheduling, exponential backoff, failure alerting, and env-only credentials. An integration only implements fetch().</div><div class="story-tags"><span class="tag tag-warn">⚠ zero concrete integrations</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card complete" onclick="openModal('20')"><div class="story-header"><div class="story-num">Story 20</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">Integration Framework</div><div class="story-desc">Scheduling, exponential backoff, failure alerting, and env-only credentials. An integration only implements fetch().</div><div class="story-tags"><span class="tag tag-ready">🟢 proven by the weather integration</span></div><div class="click-hint">click for details</div></div>
   </div>
 
   <div class="phase-label">Phase 6 — Hardening &amp; Real Apps</div>
   <div class="story-grid">
-    <div class="story-card next" onclick="openModal('23')"><div class="story-header"><div class="story-num">Story 23</div><span class="badge badge-next">▶ Next</span></div><div class="story-title">Design System Build-Out</div><div class="story-desc">Pick a direction from design-options.html and build it properly — type scale, components, chart theme, all five surfaces.</div><div class="story-tags"><span class="tag tag-blocked">⏳ needs a decision from you</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card partial" onclick="openModal('23')"><div class="story-header"><div class="story-num">Story 23</div><span class="badge badge-partial">◐ Built, unproven</span></div><div class="story-title">Design System Build-Out</div><div class="story-desc">Decided: "Almanac" — a living seasonal/weather background behind the real app. Engine shipped; full per-component restyle still ahead.</div><div class="story-tags"><span class="tag tag-warn">⚠ not seen on physical hardware</span></div><div class="click-hint">click for details</div></div>
     <div class="story-card complete" onclick="openModal('27')"><div class="story-header"><div class="story-num">Story 27</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">First Real Run on the Pi</div><div class="story-desc">Docker stack up against MySQL, Mongo, RabbitMQ and MinIO on real hardware. Both physical displays verified working.</div><div class="story-tags"><span class="tag tag-ready">🟢 verified twice, two Pis</span><span class="tag">unblocked Story 24</span></div><div class="click-hint">click for details</div></div>
     <div class="story-card planned" onclick="openModal('21')"><div class="story-header"><div class="story-num">Story 21</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Test Suite</div><div class="story-desc">pytest is configured and nothing is written. Escalation and scheduling are the parts that most need it.</div><div class="story-tags"><span class="tag tag-indep">🔵 can start anytime</span></div><div class="click-hint">click for details</div></div>
     <div class="story-card planned" onclick="openModal('22')"><div class="story-header"><div class="story-num">Story 22</div><span class="badge badge-planned">Planned</span></div><div class="story-title">PWA — Install &amp; Offline</div><div class="story-desc">Manifest and service worker so phones get a home-screen icon, full-screen chrome, and offline-tolerant reads.</div><div class="story-tags"><span class="tag tag-blocked">⏳ needs Story 23</span></div><div class="click-hint">click for details</div></div>
@@ -336,10 +336,10 @@
   <div class="decision"><h4>Vendored libraries, no build step</h4><p>ECharts and Gridstack are committed to the repo. The house must render with the internet down, the Pi must never run a bundler, and a CDN outage must not blank the wall display. <span class="verdict">Settled.</span></p></div>
   <div class="decision"><h4>Secrets never enter the database</h4><p>Integration credentials are read from the environment via <code>Integration.secret()</code>. A database dump shared for debugging carries no tokens. <span class="verdict">Settled.</span></p></div>
   <div class="decision"><h4>Nora Home is not Nora</h4><p>The robot is a separate machine with its own repository. Package, settings prefix, CSS classes and JS globals were all renamed to <code>nora_home</code> / <code>NORA_HOME_*</code> / <code>nh-</code> so the two can never be confused in an import or a system prompt. They meet at exactly two places. <span class="verdict">Settled 2026-07-31.</span></p></div>
-  <div class="decision"><h4>Design language</h4><p>Four directions were rendered and rejected as too task-list-focused. A second, more visualization-led set is under review. <span style="color:#fbbf24;font-weight:600">Open — blocking Story 23.</span></p></div>
+  <div class="decision"><h4>Design language: "Almanac"</h4><p>Two dashboard-shaped rounds rejected as generic regardless of palette; an ambient/passive-wall idea was tried and rejected too. Landed on a living background — real season, time of day, and outside weather composited behind the actual, fully-interactive app. "Charm outside, polish inside." <span class="verdict">Decided and shipped 2026-08-03 — engine only, full component restyle still ahead.</span></p></div>
 </div>
 
-<footer>Nora Home &nbsp;·&nbsp; v0.1.0 &nbsp;·&nbsp; Generated 2026-08-02 &nbsp;·&nbsp; Source: docs/progress.md + CLAUDE.md &nbsp;·&nbsp; Update this file in the same commit as the code</footer>
+<footer>Nora Home &nbsp;·&nbsp; v0.1.0 &nbsp;·&nbsp; Generated 2026-08-03 &nbsp;·&nbsp; Source: docs/progress.md + CLAUDE.md &nbsp;·&nbsp; Update this file in the same commit as the code</footer>
 
 <div class="modal-backdrop" id="backdrop" onclick="closeOnBackdrop(event)">
   <div class="modal" id="modal">
@@ -405,7 +405,7 @@ const STORIES = {
     how:"URL decides for wall and kiosk (fixed-purpose pages), User-Agent for the rest, and a cookie overrides everything. Sizing is driven by CSS custom properties scoped to [data-surface].",
     files:["nora_home/ui/middleware.py","nora_home/ui/context_processors.py","static/nora_home/css/nora-home.css","templates/base.html"],
     notes:"No web fonts — the Pi has to render with the internet down. System font stack throughout.",
-    warn:"The visual design is a placeholder pending Story 23. Structure is sound; the look is not final." },
+    warn:"Story 23 decided and the living-background engine is layered on top (nh-scene.css/js) — a full per-component restyle of this base shell is still ahead." },
 
   "9": { num:"Story 9", title:"The Home Bot", status:"complete", phase:3, time:"~2.5 hours", readiness:"complete", deps:["Story 8 ✅"],
     what:"The little face in the corner. It wanders when idle, zips toward whatever was just touched, and speaks when the house has something to say. Eight moods, a speech bubble, and a websocket for live pushes.",
@@ -478,11 +478,11 @@ const STORIES = {
     notes:"Played a real third-party app author end to end: cloned fresh, followed DEVELOPMENT.md's Ten-minute start literally, hit two real bugs (in-process makemigrations couldn't see an app registered moments earlier; the reference app's self-references weren't documented) and fixed both. Then separately exercised the git-clone acquisition path (_from_git) for the first time, confirming the nora-<name> → <name> prefix-stripping convention. Redid every failing scenario after the fixes to confirm, rather than trusting the fix by inspection.",
     warn:"uninstall_app itself — as opposed to install_app, which is now thoroughly exercised — has still never been run against a live house app." },
 
-  "20": { num:"Story 20", title:"Integration Framework", status:"partial", phase:5, time:"~2 hours", readiness:"partial", deps:["Story 12 ✅","Story 7 ✅"],
+  "20": { num:"Story 20", title:"Integration Framework", status:"complete", phase:5, time:"~2 hours", readiness:"complete", deps:["Story 12 ✅","Story 7 ✅"],
     what:"The plumbing for pulling the outside world in on a schedule: Home Assistant, markets, weather, calendars. Scheduling, exponential backoff, failure alerting and credential handling are all provided; an integration only implements fetch().",
     how:"Failures back off exponentially, so a dead service is polled every few hours rather than every few minutes. The house is told after three consecutive failures — once, not every cycle. Credentials are read from the environment, never the database, so a shared database dump carries no tokens.",
-    files:["nora_home/integrations/base.py","nora_home/integrations/models.py","nora_home/integrations/tasks.py"],
-    warn:"Zero concrete integrations exist. The framework has never polled anything." },
+    files:["nora_home/integrations/base.py","nora_home/integrations/models.py","nora_home/integrations/tasks.py","nora_home/integrations/providers/weather.py"],
+    notes:"Proven for real 2026-08-03 by the weather integration (Story 23) — the first concrete integration, needing no API key at all, just NORA_HOME_LAT/LON. A live fetch() against Open-Meteo during that session returned genuine current conditions and stored them correctly. No longer 'zero concrete integrations, never polled anything.'" },
 
   "21": { num:"Story 21", title:"Test Suite", status:"planned", phase:6, time:"~6 hours", readiness:"indep", deps:[],
     what:"pytest with pytest-django is configured and not one test is written. The escalation ladder and the cadence scheduler are the parts that most need coverage — they run unattended and their failures are silent.",
@@ -496,12 +496,12 @@ const STORIES = {
     files:["(not yet written)"],
     notes:"Waits on Story 23 because the manifest needs final icons and theme colours." },
 
-  "23": { num:"Story 23", title:"Design System Build-Out", status:"next", phase:6, time:"~6 hours", readiness:"blocked", deps:["a decision from you"],
-    what:"Take the chosen design direction and build it properly: full type scale, spacing system, every component, the ECharts theme, light and dark, and verification across all five surfaces.",
-    how:"docs/design-options.html renders complete directions side by side against the same data. Whichever is chosen becomes static/nora_home/css/nora-home.css, and nh-charts.js derives the chart palette from the same variables so charts and chrome can never drift apart.",
-    files:["static/nora_home/css/nora-home.css","static/nora_home/js/nh-charts.js","docs/design-options.html"],
-    notes:"The current stylesheet is a working placeholder. Structure is right; the look is explicitly not final.",
-    warn:"Blocked on a decision. The first set of directions was rejected as too task-list-focused; a second, visualization-led set is under review." },
+  "23": { num:"Story 23", title:"Design System Build-Out", status:"partial", phase:6, time:"~6 hours", readiness:"partial", deps:["a decision from you ✅"],
+    what:"Decided 2026-08-03: \"Almanac\" — real season, time of day, and outside weather composited as a living background behind the actual, fully-interactive app (the wall keeps showing /home/, the kiosk stays buttons-only). \"Charm outside, polish inside\": the atmosphere carries the personality, the data on top stays disciplined.",
+    how:"nora_home/ui/scene.py computes season (date + house latitude) and day/night (real sunrise/sunset from the weather integration, not fixed clock hours) once, server-side. A context processor sets it on <html> for first paint; nh-scene.js polls core:weather_current every 5 minutes so the wall and kiosk — both open for hours at a stretch — can't drift onto different moments. nh-scene.css retrofits .card/.sidebar/.kiosk-tile onto translucent glass, loading after nora-home.css so it overrides by cascade order alone.",
+    files:["nora_home/ui/scene.py","nora_home/integrations/providers/weather.py","static/nora_home/css/nh-scene.css","static/nora_home/js/nh-scene.js","templates/partials/scene.html","docs/design-options.html"],
+    notes:"Two dashboard-shaped rounds were rejected as generic regardless of palette; a passive/ambient-wall idea was tried and explicitly rejected too (\"i dont want that entirely itself\"). Verified with a real fetch against the live Open-Meteo API and Django's test client rendering /home/, the kiosk, and Settings with correct data-season/data-daypart/data-weather.",
+    warn:"Engine and a first real skin only — no new type scale, no per-component pass across every widget, not yet seen on the physical wall/kiosk hardware, and continuous animation + backdrop blur on a Pi 5 driving two screens is untested." },
 
   "24": { num:"Story 24", title:"First Real App — House Maintenance", status:"planned", phase:6, time:"~5 hours", readiness:"indep", deps:["Story 27 ✅"],
     what:"The app that proves the skeleton was worth building. Filters, appliances, seasonal jobs, consumables — long cadences, real escalation, a wall panel and a couple of widgets.",

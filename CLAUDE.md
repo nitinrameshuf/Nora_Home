@@ -215,10 +215,17 @@ mapping. Both are now permanent: `install-pi.sh` §8 writes
 `/etc/X11/xorg.conf.d/40-touchscreen.conf` itself.
 
 ### Not done — pick up here
-1. **Design system is unchosen.** `docs/design-options.html` has four directions
-   rendered. The user is particular about UI and wants to approve one before it is
-   built out. Until then `static/nora_home/css/nora-home.css` is the "Nightfall" direction.
-   **Do not invest in visual polish before this is settled.**
+1. **Design system chosen: "Almanac" — built, unproven past local checks.**
+   See §4's new decision entry and `docs/design-options.html`. The living
+   background (season/day-night/weather composited behind the real app, never
+   replacing it) is wired into `base.html` and `kiosk.html`, backed by a real
+   weather integration (Open-Meteo, no API key). Verified locally: real
+   fetch against the live API, `manage.py check` clean, `/home/`,
+   `/home/displays/kiosk/`, and `/home/settings/` all render with correct
+   `data-season`/`data-daypart`/`data-weather`. **Not yet built**: a full type
+   scale and per-component restyle across all five surfaces (this pass only
+   retrofit `.card`/`.sidebar`/`.kiosk-tile` to the glass material) — that
+   remains real work, not yet started.
 2. **Celery worker/beat health unconfirmed.** Containers start, but showed
    `unhealthy` in `docker compose ps` at least once on the Pi — never confirmed a
    scheduled task (escalation sweep, backup) actually ran end to end.
@@ -338,6 +345,28 @@ ambient display. Chosen explicitly over keeping a password on `/admin/` when ask
 `--role`) instead of Django's `createsuperuser`, which used to make every house
 member a superuser regardless of role — harmless while a password gated `/admin/`,
 not once it doesn't.
+
+**Design system: "Almanac" — a living, seasonal background, not a themed
+dashboard.** Two rounds of dashboard-shaped mockups (`docs/design-options.html`)
+were rejected as generic — recognizable as "an AI-generated dashboard" no
+matter the palette, because a sidebar-plus-card-grid is that template
+regardless of colour. The direction that stuck instead: the actual season,
+time of day, and real outside weather are composited as a living background
+*behind* the real, fully-functional app — never replacing it, never becoming
+an ambient/passive screen (that idea was explicitly tried and rejected too).
+"Charm outside, polish inside": the atmosphere (sky gradient, horizon,
+sun/moon, rain/snow/clouds) carries the personality; the data sitting on top,
+in translucent glass panes, stays disciplined — tabular numbers, no
+ornamentation. Landed as `nora_home/ui/scene.py` (season from date + house
+latitude; day/night from *real* sunrise/sunset, not fixed clock hours),
+a first concrete integration (`nora_home/integrations/providers/weather.py`,
+Open-Meteo, no API key — just `NORA_HOME_LAT`/`NORA_HOME_LON`), and
+`static/nora_home/css/nh-scene.css` retrofitting `.card`/`.sidebar`/
+`.kiosk-tile` onto it. Both screens (the wall, via the app it iframes; the
+kiosk, directly) poll the same `core:weather_current` endpoint every 5
+minutes so they can't drift onto different "moments." See §2's "not done"
+note above — the engine is real and live-tested against the real API, but a
+full per-component restyle across all five surfaces is not done.
 
 ---
 

@@ -1,0 +1,39 @@
+{% comment %}
+The living background — sky, sun/moon, horizon, weather. Included by
+base.html and kiosk.html so the wall (via base.html, rendered inside its
+iframe) and the kiosk agree on the same atmosphere. Driven entirely by
+data-season/data-daypart/data-weather on <html> — this markup never changes,
+only what CSS shows/hides on it (see static/nora_home/css/nh-scene.css).
+{% endcomment %}
+<div class="nh-scene" aria-hidden="true">
+  <div class="nh-scene__sky"></div>
+  <div class="nh-scene__clouds"><i></i><i></i><i></i></div>
+  <div class="nh-scene__rays"><i></i><i></i><i></i><i></i></div>
+  <div class="nh-scene__stars">
+    <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+  </div>
+  <div class="nh-scene__orb"></div>
+  <div class="nh-scene__precip">
+    <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+  </div>
+  <svg class="nh-scene__horizon" viewBox="0 0 400 60" preserveAspectRatio="none">
+    <path class="nh-hill" d="M0,60 L0,40 Q50,26 100,34 T220,28 T320,36 T400,26 L400,60 Z"/>
+    <g class="nh-leafy">
+      <circle class="nh-canopy" cx="60" cy="30" r="9"/>
+      <circle class="nh-canopy" cx="150" cy="24" r="7"/>
+      <circle class="nh-canopy" cx="270" cy="30" r="8"/>
+      <circle class="nh-canopy" cx="350" cy="22" r="6"/>
+    </g>
+    <g class="nh-bare" stroke-width="1.2">
+      <path d="M60,40 L60,26 M60,32 L52,26 M60,32 L68,26"/>
+      <path d="M270,40 L270,24 M270,30 L261,23 M270,30 L279,23"/>
+      <path d="M350,40 L350,28 M350,34 L344,29 M350,34 L356,29"/>
+    </g>
+    <g class="nh-blossom" fill="#ffd3e6">
+      <circle cx="55" cy="24" r="1.6"/><circle cx="65" cy="22" r="1.6"/>
+      <circle cx="146" cy="18" r="1.4"/><circle cx="266" cy="24" r="1.6"/>
+    </g>
+    <path class="nh-snowcap" d="M0,40 Q50,26 100,34 T220,28 T320,36 T400,26" fill="none" stroke-linecap="round"/>
+  </svg>
+  <div class="nh-scene__vignette"></div>
+</div>

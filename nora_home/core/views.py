@@ -51,6 +51,20 @@ def health(request):
     return JsonResponse(report, status=200 if report["healthy"] else 503)
 
 
+@never_cache
+def weather_current(request):
+    """Season / time-of-day / weather for the living background. Polled every
+    few minutes by nh-scene.js on the wall and kiosk, which otherwise sit open
+    for hours and would never see a change without this.
+
+    Deliberately unauthenticated, same reasoning as health(): the wall and
+    kiosk are never logged in as anyone in particular.
+    """
+    from nora_home.ui.scene import current_scene
+
+    return JsonResponse(current_scene())
+
+
 @login_required
 def system_status(request):
     """Human-readable version of /health, plus recent audit activity."""
