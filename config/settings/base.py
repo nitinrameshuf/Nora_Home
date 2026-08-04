@@ -42,10 +42,16 @@ def env_int(key: str, default: int) -> int:
 
 
 def env_list(key: str, default: list[str] | None = None) -> list[str]:
-    raw = env(key)
-    if raw is None:
+    # Deliberately doesn't go through env() above: env() treats "" the same as
+    # unset, which is right for scalars (an accidentally-blank secret or host
+    # shouldn't silently disappear) but wrong here — an explicitly empty list
+    # is a real, meaningful config (e.g. NORA_HOME_HOUSE_APPS= with no house
+    # apps installed), not a mistake to paper over. uninstall_app writes
+    # exactly that line when the last house app comes out, so this has to be
+    # able to mean "empty," not just "give me the default back."
+    if key not in os.environ:
         return list(default or [])
-    return [item.strip() for item in raw.split(",") if item.strip()]
+    return [item.strip() for item in os.environ[key].split(",") if item.strip()]
 
 
 def env_float(key: str, default: float | None) -> float | None:

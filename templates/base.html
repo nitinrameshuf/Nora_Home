@@ -51,9 +51,11 @@ viewport measuring in JavaScript.
           {% endif %}
         {% endfor %}
         {% if group.key == 'house' %}
-          {# Apps/Status/Settings aren't app-registry entries — they're platform
-             pages the house always has, so they ride along in the same group
-             rather than getting their own "This house" header. #}
+          {% comment %}
+            Apps/Status/Settings aren't app-registry entries — they're platform
+            pages the house always has, so they ride along in the same group
+            rather than getting their own "This house" header.
+          {% endcomment %}
           <a class="nav-link" href="{% url 'core:app_directory' %}">Apps</a>
           <a class="nav-link" href="{% url 'core:system_status' %}">Status</a>
           <a class="nav-link" href="{% url 'core:settings' %}">Settings</a>
