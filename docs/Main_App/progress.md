@@ -1635,6 +1635,16 @@ tracker, notifications, telemetry, displays, integrations, scene, dashboard, ui,
 every page requested for real, and a contract file that walks *every* installed
 house app.
 
+**Verified in the built production image, not just on the laptop** — and that
+caught a fourth bug. pytest-django's settings precedence is `--ds`, then the
+`DJANGO_SETTINGS_MODULE` *environment variable*, then the ini file. The image
+exports `DJANGO_SETTINGS_MODULE=config.settings.pi`, so `pyproject.toml`'s
+setting lost, and all 496 tests errored trying to reach the real Redis and MySQL
+the moment the suite ran inside a container. `run-tests.sh` now pins it with
+`--ds`, which is the only level that beats the environment. The docs had
+confidently claimed the opposite; running it in the image is what disproved
+that. 496 green inside the image afterwards, on Python 3.13.
+
 ### Four things the suite found while being written
 
 - **`notify_house()` accepted a `dedupe_key` and ignored it.** Only `notify()`

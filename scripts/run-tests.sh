@@ -37,10 +37,21 @@ ARGS+=("$@")
 PYTHON="${PYTHON:-python}"
 command -v "${PYTHON}" >/dev/null 2>&1 || PYTHON=python3
 
+# Pin the settings explicitly. pytest-django's precedence is --ds, then the
+# DJANGO_SETTINGS_MODULE *environment variable*, then the ini file — so the ini
+# setting in pyproject.toml does NOT win inside the container, where the image
+# exports DJANGO_SETTINGS_MODULE=config.settings.pi. Without this, running the
+# suite on the Pi picked up the pi settings and every single test errored trying
+# to reach the real Redis and MySQL. --ds is the only level that beats the
+# environment. Override with NORA_HOME_TEST_SETTINGS to run against something
+# else deliberately.
+TEST_SETTINGS="${NORA_HOME_TEST_SETTINGS:-config.settings.dev}"
+
 # --tb=line keeps the file readable too: one line per failure rather than a
 # full stack. Swap to --tb=long by hand when a failure genuinely needs it.
 set +e
 "${PYTHON}" -m pytest \
+    --ds="${TEST_SETTINGS}" \
     --tb=line \
     -q \
     --no-header \

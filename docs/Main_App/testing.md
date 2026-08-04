@@ -60,10 +60,22 @@ make test-pi        # the same thing, from the Pi's own checkout
 
 `pytest` and `pytest-django` are installed in the production image on purpose
 (`requirements/test.txt`) so this works on the machine the house actually runs on.
-Note the suite runs under `config.settings.dev` even there — pytest's own
-`DJANGO_SETTINGS_MODULE` in `pyproject.toml` wins over the image's environment.
-That is intended: tests get their own SQLite database and never touch the real
-MySQL data. The report header says `dev · sqlite3` on the Pi for that reason.
+
+The suite runs under `config.settings.dev` even there, so tests get their own
+SQLite database and never touch real MySQL data — the report header says
+`dev · sqlite3` on the Pi for that reason. **`run-tests.sh` pins that with
+`--ds`, and it has to.** pytest-django's precedence is `--ds`, then the
+`DJANGO_SETTINGS_MODULE` *environment variable*, then the ini file — so the
+setting in `pyproject.toml` loses inside the container, where the image exports
+`DJANGO_SETTINGS_MODULE=config.settings.pi`. Without `--ds`, all 496 tests error
+trying to reach the real Redis and MySQL. Found by running the suite in the
+built image rather than trusting the ini file, 2026-08-04.
+
+To run against different settings deliberately:
+
+```bash
+NORA_HOME_TEST_SETTINGS=config.settings.pi ./scripts/run-tests.sh
+```
 
 ### The report is the point
 
