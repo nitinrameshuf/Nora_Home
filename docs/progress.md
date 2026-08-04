@@ -1398,6 +1398,38 @@ Fixed by nesting the antenna inside `.nh-bot__head` (so it's unambiguously
 part of the head) and reducing the glow radius on both the eyes and the
 head panel. Re-screenshotted at 4x zoom to confirm before calling it done.
 
+## 2026-08-03 — Add a widget was broken by the bot's own script, silently
+
+Reported as "Add a widget functionality is not working." Root-caused with a
+real request, not a guess: `window.NoraHome.csrfToken` was `undefined`.
+`nh-bot.js` ended with `window.NoraHome = NoraHome` — an unconditional
+overwrite of the global object `nh-app.js` (loaded first, per `base.html`)
+had already put `post()`/`csrfToken()` on. Every page with the bot enabled
+silently lost both the moment nh-bot.js ran.
+
+`dashboard.js`'s `Dash.save()` needs `csrfToken()` for its CSRF header;
+without it the save POST came back `403`. Confirmed directly: called the
+save endpoint from the console with the token nh-bot.js's overwrite left in
+place — `403`, empty token. `fetch()` only rejects on a network failure,
+not a non-2xx status, so that `403` resolved fine and `Dash.add()`'s
+`.then(reload)` fired anyway — the picker closed, the page reloaded, and
+the widget was never actually persisted. Looked exactly like "nothing
+happens" from the UI, with no error visible anywhere.
+
+Fixed at the source: `nh-bot.js` now extends the same `window.NoraHome`
+object `nh-app.js` created (`window.NoraHome = window.NoraHome || {}`)
+instead of replacing it. Also hardened `Dash.save()` to check
+`response.ok` and throw on failure rather than treating any resolved fetch
+as success, so a real failure now shows the existing "I couldn't save that
+layout" message instead of silently reloading with nothing saved.
+
+Verified live on the Pi, not just read: confirmed `csrfToken`/`post`/`say`
+are all functions on `window.NoraHome` after the fix, then drove the real
+UI — opened the picker, added "Disk," and confirmed the tile count went
+from 5 to 6 *after a reload* (persisted server-side, not just added to the
+in-memory list) — then removed it again the same way to leave the
+dashboard as it was.
+
 ---
 
 ## Next
