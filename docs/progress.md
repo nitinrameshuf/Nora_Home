@@ -1327,6 +1327,24 @@ Verified locally: `registered_apps()` now shows `has_page=False` on exactly
 those four, `has_page=True` and a working URL on everything else, and
 `manage.py check` clean.
 
+**Same session, one more layer of this.** Shown a screenshot of the fixed
+Apps directory, pushed back further: it was still listing Displays, Alerts,
+Assistant, Measurements, Integrations, Tracker, and Home as if they were
+"apps" — but every one of those is an internal Django app that's part of
+the platform itself, not something a family member installed. The registry
+already drew this exact line — `house_apps()`, "apps the family wrote, as
+opposed to platform apps" — the page just never used it, using
+`registered_apps()` (everything) instead.
+
+`core:app_directory` now calls `house_apps(include_disabled=True)` (added
+`include_disabled` to `house_apps()` for parity with `registered_apps()`),
+and the template got a real empty state instead of an empty table when
+there's nothing to show — accurate right now, since Habits was the only
+family app and it was removed a session ago. Points at `DEVELOPMENT.md`'s
+"Ten-minute start" for how to add one. Verified on the live Pi: the page
+now genuinely reads as "nothing installed yet," not a broken or incomplete
+table.
+
 ---
 
 ## Next
