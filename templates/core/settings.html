@@ -76,5 +76,47 @@
         </button>
       </form>
     </div>
+
+    {% comment %}
+    The two physical screens. These used to be a whole "Displays" nav entry;
+    two read-only status cards did not earn that much prominence, and they are
+    house configuration, so they live here now. /home/displays/ redirects here.
+
+    "Open" points this browser at the screen's own URL. There is deliberately
+    no Minimize or Close: Django runs in Docker with no access to the Pi's X
+    session, so nothing here can touch the physical Chromium windows — that
+    needs a host-side agent, the same way the power schedule below does.
+    {% endcomment %}
+    {% for display in displays %}
+      <div class="card">
+        <div class="card-head">
+          <h3 class="card-title">{{ display.name }}</h3>
+          {% if display.is_online %}<span class="pill ok">online</span>
+          {% else %}<span class="pill alert">offline</span>{% endif %}
+        </div>
+        <ul class="item-list">
+          <li class="item"><div class="item-body">Slug</div><code>{{ display.slug }}</code></li>
+          <li class="item"><div class="item-body">Kind</div>{{ display.get_kind_display }}</li>
+          <li class="item"><div class="item-body">Last heartbeat</div>
+            {{ display.last_seen_at|default:"never" }}</li>
+        </ul>
+        <p style="margin-top:1rem">
+          {% if display.kind == "kiosk" %}
+            <a class="btn" href="{% url 'displays:kiosk' %}">Open</a>
+          {% else %}
+            <a class="btn" href="{% url 'displays:wall_named' display.slug %}">Open</a>
+          {% endif %}
+        </p>
+      </div>
+    {% empty %}
+      <div class="card">
+        <div class="card-head"><h3 class="card-title">Screens</h3></div>
+        <div class="empty">
+          No displays registered yet. Open
+          <a href="{% url 'displays:wall' %}">the wall page</a> on the 24" screen
+          and it will register itself.
+        </div>
+      </div>
+    {% endfor %}
   </div>
 {% endblock %}

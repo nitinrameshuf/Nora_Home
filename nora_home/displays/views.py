@@ -3,7 +3,7 @@ from __future__ import annotations
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_POST
@@ -62,10 +62,13 @@ def kiosk(request):
 
 @login_required
 def manage(request):
-    return render(request, "displays/manage.html", {
-        "displays": Display.objects.all(),
-        "page_title": "Displays",
-    })
+    """Folded into core:settings — kept as a redirect so bookmarks still land.
+
+    The screens are house configuration, not a place anyone spends time, so a
+    whole nav entry for two read-only status cards was more prominence than
+    they earned.
+    """
+    return redirect("core:settings")
 
 
 @login_required

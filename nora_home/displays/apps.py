@@ -14,3 +14,8 @@ class DisplaysConfig(NoraAppConfig):
     nora_category = Category.HOUSE
     nora_order = 15
     nora_url_prefix = "home/displays/"
+    # No nav entry: the screens' status cards live on the Settings page, next
+    # to the wall power schedule that configures them. /home/displays/
+    # redirects there. The wall and kiosk pages themselves are unaffected —
+    # they are what the two physical screens actually load.
+    nora_nav = False

@@ -102,11 +102,16 @@ def settings_page(request):
         )
         return redirect(reverse("core:settings"))
 
+    from nora_home.displays.models import Display
+
     wall_schedule = get_setting(WALL_SCHEDULE_KEY, default=WALL_SCHEDULE_DEFAULT)
     return render(request, "core/settings.html", {
         "wall_schedule": wall_schedule,
         "member": request.user,
         "chain": request.user.escalation_chain(),
+        # The two physical screens. Imported inside the view rather than at
+        # module level: core must not depend on another app at import time.
+        "displays": Display.objects.filter(is_active=True),
         "page_title": "Settings",
     })
 
