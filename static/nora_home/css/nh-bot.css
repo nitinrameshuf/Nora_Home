@@ -1,10 +1,11 @@
 /*
- * Nora — the bot that lives in the corner of the screen and refuses to sit still.
+ * Nora — the robot that walks the bottom edge of the screen, left and right.
  *
- * She is one absolutely-positioned element with a small SVG face inside. All the
- * personality is in the transforms; nothing here blocks layout or scrolling, and
- * the whole thing collapses to a static, silent avatar under
- * prefers-reduced-motion.
+ * She is one absolutely-positioned element with a small CSS robot head inside.
+ * All the personality is in the transforms; nothing here blocks layout or
+ * scrolling, and the whole thing collapses to a static, silent avatar under
+ * prefers-reduced-motion. Vertical position is fixed in nh-bot.js (the
+ * bottom strip) — she never wanders up into the page content.
  */
 
 .nh-bot {
@@ -24,14 +25,14 @@
 .nh-bot__body {
   width: 100%;
   height: 100%;
-  border-radius: 44% 56% 52% 48% / 50% 46% 54% 50%;
-  background: radial-gradient(circle at 34% 30%, var(--nh-400), var(--nh-600) 72%);
+  border-radius: 30%;
+  background: linear-gradient(155deg, var(--nh-400), var(--nh-600) 78%);
   box-shadow: 0 0 26px var(--nh-glow), inset 0 -5px 12px rgba(0, 0, 0, 0.22);
   position: relative;
   animation: nh-breathe 4.2s ease-in-out infinite;
 }
 
-/* The trail that makes a fast move read as a zip rather than a teleport. */
+/* The trail that makes a fast move read as a slide rather than a teleport. */
 .nh-bot::after {
   content: "";
   position: absolute;
@@ -46,28 +47,64 @@
 .nh-bot.is-zipping::after { opacity: 0.65; }
 .nh-bot.is-zipping { transition-duration: 0.42s; transition-timing-function: cubic-bezier(0.2, 0.9, 0.25, 1); }
 
+/* A little antenna, because a rounded square alone reads as an app icon,
+   not a robot. */
+.nh-bot__antenna {
+  position: absolute;
+  left: 50%;
+  top: -8px;
+  width: 3px;
+  height: 8px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--nh-600);
+}
+.nh-bot__antenna::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -5px;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 50%;
+  background: var(--nh-400);
+  box-shadow: 0 0 6px var(--nh-glow);
+}
+
+/* The visor: a dark panel the eyes sit inside, like a screen rather than a
+   face painted straight onto the body. */
+.nh-bot__visor {
+  position: absolute;
+  inset: 28% 12% auto;
+  height: 26%;
+  border-radius: 40%;
+  background: #17100a;
+}
 .nh-bot__eyes {
   position: absolute;
-  inset: 32% 24% auto;
+  inset: 0 14%;
   display: flex;
+  align-items: center;
   justify-content: space-between;
 }
 .nh-bot__eye {
-  width: 9px;
-  height: 11px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: #17100a;
+  background: var(--nh-400);
+  box-shadow: 0 0 5px var(--nh-glow);
   animation: nh-blink 5.6s infinite;
   transition: height 0.18s ease, transform 0.18s ease;
 }
 .nh-bot__mouth {
   position: absolute;
   left: 50%;
-  top: 60%;
-  width: 17px;
-  height: 9px;
-  margin-left: -8.5px;
-  border-radius: 0 0 20px 20px;
+  bottom: 20%;
+  width: 24px;
+  height: 5px;
+  margin-left: -12px;
+  border-radius: 3px;
   background: #17100a;
   transition: all 0.22s ease;
 }

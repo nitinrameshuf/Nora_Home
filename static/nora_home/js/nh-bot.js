@@ -1,15 +1,18 @@
 /*
  * NoraHome — the bot, client side.
  *
- * She wanders when idle, zips toward whatever the user just touched, and speaks
- * when the server has something to say. No framework, no build step: this file is
- * served straight off the Pi and has to keep working when npm does not exist.
+ * She wanders when idle, slides toward whatever the user just touched, and
+ * speaks when the server has something to say. Always on the ground, in the
+ * bottom strip of the screen — she never climbs up into the content, just
+ * left and right. No framework, no build step: this file is served straight
+ * off the Pi and has to keep working when npm does not exist.
  *
  * Public API (house apps may call these):
  *     NoraHome.say("Nice work.", { mood: "proud" })
  *     NoraHome.react("celebrate")
- *     NoraHome.moveTo(x, y)          // viewport pixels
- *     NoraHome.goTo(element)         // zip to an element and hover beside it
+ *     NoraHome.moveTo(x)             // viewport pixels; vertical position is
+ *                                    // always the bottom strip, not settable
+ *     NoraHome.goTo(element)         // slide beside an element, same strip
  */
 (function (window, document) {
   "use strict";
@@ -17,13 +20,7 @@
   var REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var IDLE_WANDER_MS = 9000;
   var MARGIN = 24;
-
-  var GREETINGS = [
-    "Morning. Two things are already late, but we can fix that.",
-    "Hello. The house is behaving itself.",
-    "Back again. Want the short version or the whole picture?",
-    "Everything's ticking over. Nothing on fire."
-  ];
+  var GROUND_MARGIN = 28; // how far above the very bottom edge the strip sits
 
   var NoraHome = {
     el: null,
@@ -45,11 +42,14 @@
     bot.setAttribute("data-mood", "idle");
     bot.setAttribute("role", "button");
     bot.setAttribute("tabindex", "0");
-    bot.setAttribute("aria-label", "Nora Home. Press to hear the current status.");
+    bot.setAttribute("aria-label", "Nora Home. Press to say hello.");
     bot.innerHTML =
       '<div class="nh-bot__body">' +
+      '<div class="nh-bot__antenna"></div>' +
+      '<div class="nh-bot__visor">' +
       '<div class="nh-bot__eyes">' +
       '<span class="nh-bot__eye"></span><span class="nh-bot__eye"></span>' +
+      "</div>" +
       "</div>" +
       '<div class="nh-bot__mouth"></div>' +
       "</div>";
@@ -64,7 +64,7 @@
     NoraHome.el = bot;
     NoraHome.bubble = bubble;
 
-    NoraHome.moveTo(window.innerWidth - 110, window.innerHeight - 130);
+    NoraHome.moveTo(window.innerWidth - 110);
     bot.addEventListener("click", NoraHome.onPoke);
     bot.addEventListener("keydown", function (event) {
       if (event.key === "Enter" || event.key === " ") {
@@ -78,19 +78,19 @@
     NoraHome.connect();
 
     window.addEventListener("resize", function () {
-      NoraHome.moveTo(
-        Math.min(NoraHome.position.x, window.innerWidth - 90),
-        Math.min(NoraHome.position.y, window.innerHeight - 110)
-      );
+      NoraHome.moveTo(Math.min(NoraHome.position.x, window.innerWidth - 90));
     });
   };
 
   /* ── Movement ───────────────────────────────────────────────────────────── */
-  NoraHome.moveTo = function (x, y, zip) {
+  // Vertical position is never a free variable — she walks along the bottom
+  // strip of the screen, left and right, and never climbs up into the
+  // content above it.
+  NoraHome.moveTo = function (x, zip) {
     if (!NoraHome.el) return;
     var size = NoraHome.el.offsetWidth || 62;
     x = Math.max(MARGIN, Math.min(x, window.innerWidth - size - MARGIN));
-    y = Math.max(MARGIN, Math.min(y, window.innerHeight - size - MARGIN));
+    var y = window.innerHeight - size - GROUND_MARGIN;
     NoraHome.position = { x: x, y: y };
 
     if (zip && !REDUCED) {
@@ -107,20 +107,12 @@
     if (!element || !element.getBoundingClientRect) return;
     var box = element.getBoundingClientRect();
     if (box.width === 0 && box.height === 0) return;
-    NoraHome.moveTo(box.right + 12, box.top - 8, true);
+    NoraHome.moveTo(box.right + 12, true);
   };
 
   NoraHome.wander = function () {
     if (!NoraHome.enabled || REDUCED || document.hidden) return;
-    // Stay near the edges: the middle of the screen is where the content is.
-    var edge = Math.random() < 0.5;
-    var x = edge
-      ? (Math.random() < 0.5 ? MARGIN : window.innerWidth - 100)
-      : Math.random() * window.innerWidth;
-    var y = edge
-      ? Math.random() * window.innerHeight
-      : (Math.random() < 0.5 ? MARGIN : window.innerHeight - 120);
-    NoraHome.moveTo(x, y);
+    NoraHome.moveTo(Math.random() * window.innerWidth);
     NoraHome.scheduleWander();
   };
 
@@ -175,12 +167,10 @@
     window.setTimeout(function () { NoraHome.setMood("idle"); }, 2200);
   };
 
+  // Just "Hi" for now — deliberately minimal. What she should actually do
+  // when poked is an open question for later, not decided yet.
   NoraHome.onPoke = function () {
-    NoraHome.react("celebrate");
-    NoraHome.send({ type: "poke" });
-    NoraHome.say(GREETINGS[Math.floor(Math.random() * GREETINGS.length)], {
-      mood: "happy"
-    });
+    NoraHome.say("Hi", { mood: "happy" });
   };
 
   /* ── Reacting to the user ───────────────────────────────────────────────── */
