@@ -36,16 +36,24 @@
 .dash__empty p { max-width: 46ch; margin: 0 auto 1.2rem; }
 
 /* ── tiles ────────────────────────────────────────────────────────────────── */
+/* .dash-tile is built by dashboard.js (Dash.add()), not the template — it
+   never got class="card", so it never picked up nh-scene.css's glass
+   material and sat on a flat, opaque --bg-raised the whole time the living
+   background existed. Same treatment as .card here, sharing --pane-rgb
+   (defined in nh-scene.css) so the two stay in sync if that ever changes. */
 .dash-tile {
   display: flex;
   flex-direction: column;
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
+  background: rgba(var(--pane-rgb), 0.3);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: var(--radius);
   padding: 0.9rem 1.05rem;
   box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
+:root[data-theme="light"] .dash-tile { border-color: rgba(20, 24, 32, 0.1); }
 /* Real Gridstack mode positions .dash-tile (= .grid-stack-item-content) with an
    `inset: Npx` on all four sides, computed by Gridstack itself against its
    wrapper's height — an explicit `height: 100%` here fights that: the box
