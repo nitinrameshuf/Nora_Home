@@ -122,7 +122,7 @@ Five queues, so one app's slowness is never another's outage:
 
 | Queue | Carries | Who may use it |
 |---|---|---|
-| `platform` | Health snapshots, rollups, display rotation, backups | Platform only |
+| `platform` | Health snapshots, rollups, backups | Platform only |
 | `alerts` | Notification delivery, escalation sweeps | Platform only |
 | `apps` | Everything a house app schedules | **House apps — use this** |
 | `ai` | Claude calls | Anyone |
@@ -238,6 +238,21 @@ sequenceDiagram
     W->>S: heartbeat (30s)
     Note over S: no heartbeat for 10 min → notify the house
 ```
+
+**The wall implements exactly three message types** — `navigate`, `refresh`, and
+`banner` (`static/nora_home/js/wall-live.js`). The bus relays anything it is given
+and the browser silently ignores what it has no handler for, so a control wired to
+an unimplemented type looks completely functional and does nothing. `KIOSK_ACTIONS`
+in `displays/consumers.py` is deliberately kept to the same three.
+
+This has bitten twice, both fixed 2026-08-04: the kiosk's Dim/Wake buttons sent
+`sleep`/`wake`, which nothing handled, and the `display` notification channel sent
+`banner` to a page with no banner handler, silently dropping every alert routed to
+the wall. **Adding a message type means adding its handler in the same commit.**
+
+Screen power is not on this bus at all — it is a host-side concern, applied by
+`~/.nora/wall-power.sh` (`xset dpms`) on a systemd timer, because Django runs in
+Docker and the monitors belong to the Pi's own X session.
 
 Every registered house app gets one kiosk button for free, switching the
 wall to that app's front page. An app that declares
@@ -364,7 +379,6 @@ docker/ scripts/ docs/  entrypoint, provisioning, this folder
 /home/apps/             app directory
 /home/system/           health and audit
 /home/settings/         house-wide configuration (HouseSetting-backed)
-/home/capabilities/     the capability sheet
 /accounts/              switch (passwordless), profile, household
 /api/                   platform API (device-token auth)
 /mcp/                   MCP tools over HTTP
