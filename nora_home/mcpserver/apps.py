@@ -15,6 +15,12 @@ class MCPServerConfig(NoraAppConfig):
     nora_order = 40
     nora_url_prefix = "mcp/"
     nora_minimum_role = "admin"
+    # Real endpoints (mcp/tools/, mcp/call/), but both require MCP device-
+    # token auth, not the regular session login every other directory entry
+    # assumes — a human admin clicking through would just get a 401 JSON
+    # body, not a page. Machine-only, so it doesn't belong in a directory of
+    # things a person can visit.
+    nora_has_page = False
 
     def ready(self):
         # Importing the module registers the platform's own tools.

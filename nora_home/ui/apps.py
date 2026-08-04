@@ -13,4 +13,7 @@ class UIConfig(NoraAppConfig):
     nora_category = Category.SYSTEM
     nora_nav = False
     nora_order = 1
-    nora_url_prefix = "home/"
+    # No urls.py — this app exists only to hold registry metadata (theme,
+    # surfaces, the home bot), not a page of its own. url_prefix would
+    # otherwise be pure fiction on the Apps directory.
+    nora_has_page = False

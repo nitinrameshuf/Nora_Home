@@ -435,7 +435,7 @@ const STORIES = {
     what:"A house-wide Claude client. Three tiers (fast/house/deep) so apps ask for a capability rather than naming a model, a shared prompt-cached system prefix, per-call cost accounting, and a monthly budget that refuses rather than spends.",
     how:"The stable house prompt sits behind a cache_control breakpoint, so it is nearly free after the first call of the window; per-app instructions go after the breakpoint so they never bust the shared cache. Adaptive thinking and effort are only sent to models that accept them. stop_reason is checked before reading content, so a refusal cannot crash a caller.",
     files:["nora_home/ai/client.py","nora_home/ai/catalog.py","nora_home/ai/models.py","nora_home/ai/tasks.py"],
-    notes:"The system prompt states explicitly that Nora Home is not Nora the robot, so the assistant never answers as though it were the robot.",
+    notes:"The system prompt states explicitly that Nora Home is not Nora the robot, so the assistant never answers as though it were the robot. 2026-08-03: pulled from the sidebar nav (nora_nav = False on AIConfig) so an unproven feature isn't presented as a live one — code, models, and the console stay installed, this story is what tracks bringing it back once it's actually been run against a key.",
     warn:"No API key has been available. Not one request has been made — model IDs, caching and cost maths are all unverified against the live API." },
 
   "14": { num:"Story 14", title:"MCP Server", status:"partial", phase:4, time:"~2.5 hours", readiness:"partial", deps:["Story 5 ✅","Story 12 ✅"],

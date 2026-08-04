@@ -19,9 +19,17 @@ WALL_SCHEDULE_DEFAULT = {"enabled": False, "start_hour": 9, "end_hour": 20}
 
 @login_required
 def app_directory(request):
-    """Every app installed in the house, what it does, and who may see it."""
+    """Every app installed that actually has somewhere to go.
+
+    registered_apps() also includes a few platform apps that exist purely to
+    hold registry metadata (widget ownership, telemetry provenance) with no
+    urls.py and no page of their own — nora_has_page=False. Listing those
+    here meant rows pointing at a URL that either 404s or silently lands on
+    a completely different app's page, which read as broken/fake. Filtered
+    out; they're still real, installed apps, just not visitable ones.
+    """
     return render(request, "core/app_directory.html", {
-        "apps": registered_apps(include_disabled=True),
+        "apps": [a for a in registered_apps(include_disabled=True) if a.has_page],
         "page_title": "Apps",
     })
 

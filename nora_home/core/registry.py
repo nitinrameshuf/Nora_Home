@@ -111,6 +111,15 @@ class NoraAppConfig(AppConfig):
     # Set False to keep an app installed but hidden (half-built, or seasonal).
     nora_enabled: bool = True
 
+    # Most NoraAppConfigs mount a urls.py somewhere real. A few platform ones
+    # (ui, datastores) exist purely to hold registry metadata — widget
+    # ownership, telemetry provenance — and have no urls.py and no page of
+    # their own at all; their url_prefix would otherwise be pure fiction on
+    # the Apps directory (either 404ing or silently landing on some other
+    # app's unrelated page). Set False there so the directory only ever
+    # links to something that's actually reachable.
+    nora_has_page: bool = True
+
     @property
     def nora_home_metadata(self) -> "AppMetadata":
         return AppMetadata(
@@ -122,6 +131,7 @@ class NoraAppConfig(AppConfig):
             color=self.nora_color,
             module=self.name,
             nav=self.nora_nav,
+            has_page=self.nora_has_page,
             order=self.nora_order,
             url_prefix=self.nora_url_prefix or f"{self.nora_slug or self.label}/",
             dashboard_cards=list(self.nora_dashboard_cards),
@@ -146,6 +156,7 @@ class AppMetadata:
     color: str
     module: str
     nav: bool
+    has_page: bool
     order: int
     url_prefix: str
     dashboard_cards: list[str] = field(default_factory=list)

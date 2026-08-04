@@ -12,5 +12,7 @@ class AccountsConfig(NoraAppConfig):
     nora_icon = "users"
     nora_category = Category.SYSTEM
     nora_nav = False
-    nora_url_prefix = "accounts/"
+    # accounts/ itself has no index route (only switch/, me/, household/,
+    # logout/) — household/ is the one that's actually a real, working page.
+    nora_url_prefix = "accounts/household/"
     nora_order = 10

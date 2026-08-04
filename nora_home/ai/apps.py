@@ -13,3 +13,8 @@ class AIConfig(NoraAppConfig):
     nora_category = Category.HOUSE
     nora_order = 30
     nora_url_prefix = "home/ai/"
+    # Story 13 (dashboard) — built, never run against a real API key. Not
+    # exposed as a live nav destination until that's actually proven; the
+    # code, models, and console stay installed so proving it out later
+    # doesn't mean building it from scratch.
+    nora_nav = False

@@ -1291,6 +1291,42 @@ no Self Improvement, no Tracker, no separate This house/You — and
 `/home/settings/` shows the profile card, escalation chain card, and wall
 schedule card together on one page.
 
+## 2026-08-03 — Assistant out of nav (Story 13), and the Apps directory stopped linking to fiction
+
+**Assistant pulled from the sidebar**, same treatment as Tracker last round
+(`nora_nav = False` on `AIConfig`) — code, models, and the console stay
+installed, nothing deleted. Story 13 ("AI — Claude Integration") already
+existed on the dashboard at exactly the right status, "partial/unproven,"
+since no API key has ever been available to actually test it against; that
+story is now the single place tracking this feature, with a note added
+about the nav removal so re-enabling it later is a deliberate, tracked
+decision rather than something that quietly crept back.
+
+**Asked to make the Apps directory only show apps that are actually there.**
+Investigated `registered_apps()`'s output directly rather than guessing, and
+found real, concrete breakage: `ui` and `datastores` have no `urls.py` at
+all, so their listed URLs (`/home/`, `/home/system/`) were pure fiction —
+clicking "Interface" landed on the Home dashboard by coincidence (same
+prefix as `core`), and clicking "Data" landed on the Status page (same
+prefix as `core`'s `system/` route) — two different apps quietly aliasing
+someone else's page. `dashboard` had a `urls.py`, but its own `""` route
+renders the identical view as `core`'s `/home/`, so it was really just Home
+under a second name. `mcpserver`'s two real endpoints both require MCP
+device-token auth, not the session login every other row assumes, so a
+human clicking "MCP" got a bare `{"error": "unauthorized"}`, not a page.
+
+Added `nora_has_page` to `NoraAppConfig` (default `True`) and set it `False`
+on exactly those four (`ui`, `datastores`, `dashboard`, `mcpserver`) —
+they're still real, installed, legitimate parts of the platform, just not
+things a person can visit, so the directory view now filters on
+`has_page`. Two more had real pages just at the wrong URL, fixed rather
+than hidden: `accounts` ("Household") pointed at bare `/accounts/`, which
+has no index route — repointed at `/accounts/household/`, its actual page.
+
+Verified locally: `registered_apps()` now shows `has_page=False` on exactly
+those four, `has_page=True` and a working URL on everything else, and
+`manage.py check` clean.
+
 ---
 
 ## Next

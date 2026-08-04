@@ -13,5 +13,9 @@ class DatastoresConfig(NoraAppConfig):
     nora_category = Category.SYSTEM
     nora_nav = False
     nora_order = 50
-    nora_url_prefix = "home/system/"
     nora_minimum_role = "admin"
+    # No urls.py — this app exists only to hold registry metadata for Mongo/
+    # object storage/backups. Its old url_prefix ("home/system/") wasn't a
+    # page of its own at all; it just happened to alias the real Status
+    # page's URL, which read as a second, fake "Data" app on the directory.
+    nora_has_page = False
