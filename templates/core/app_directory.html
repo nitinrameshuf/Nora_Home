@@ -2,39 +2,49 @@
 
 {% block content %}
   <p class="card-subtitle">
-    Everything installed in this house, platform and family apps alike. An app appears
-    here the moment its <code>NoraAppConfig</code> is added to
+    Apps the family has added to this house — not the platform's own built-in
+    pieces (Displays, Alerts, Tracker, and the rest), which power the house
+    itself rather than being something anyone installed. An app appears here
+    the moment its <code>NoraAppConfig</code> is added to
     <code>NORA_HOME_HOUSE_APPS</code> — no other wiring needed.
   </p>
 
-  <div class="table-scroll">
-    <table>
-      <thead>
-        <tr>
-          <th>App</th><th>Category</th><th>Where</th><th>Module</th>
-          <th>Role</th><th>State</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for app in apps %}
-        <tr>
-          <td>
-            <strong>{{ app.title }}</strong><br>
-            <span class="card-subtitle">{{ app.description }}</span>
-          </td>
-          <td>{{ app.category_label }}</td>
-          <td><a href="{{ app.url }}"><code>{{ app.url }}</code></a></td>
-          <td><code>{{ app.module }}</code></td>
-          <td>{{ app.minimum_role }}</td>
-          <td>
-            {% if app.enabled %}<span class="pill ok">enabled</span>
-            {% else %}<span class="pill">disabled</span>{% endif %}
-            {% if app.is_platform %}<span class="pill">platform</span>{% endif %}
-            {% if app.provides_mcp_tools %}<span class="pill info">MCP</span>{% endif %}
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
+  {% if apps %}
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>App</th><th>Category</th><th>Where</th><th>Module</th>
+            <th>Role</th><th>State</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for app in apps %}
+          <tr>
+            <td>
+              <strong>{{ app.title }}</strong><br>
+              <span class="card-subtitle">{{ app.description }}</span>
+            </td>
+            <td>{{ app.category_label }}</td>
+            <td><a href="{{ app.url }}"><code>{{ app.url }}</code></a></td>
+            <td><code>{{ app.module }}</code></td>
+            <td>{{ app.minimum_role }}</td>
+            <td>
+              {% if app.enabled %}<span class="pill ok">enabled</span>
+              {% else %}<span class="pill">disabled</span>{% endif %}
+              {% if app.provides_mcp_tools %}<span class="pill info">MCP</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty">
+      No family apps installed yet. See <code>DEVELOPMENT.md</code>'s
+      "Ten-minute start" for how to add one — copy
+      <code>houseapps/example_habit</code>, rename it, and
+      <code>python manage.py install_app houseapps.&lt;yours&gt;</code>.
+    </div>
+  {% endif %}
 {% endblock %}

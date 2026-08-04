@@ -11,7 +11,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
 from nora_home.core.health import collect_health
-from nora_home.core.registry import registered_apps
+from nora_home.core.registry import house_apps
 
 WALL_SCHEDULE_KEY = "displays.wall_power_schedule"
 WALL_SCHEDULE_DEFAULT = {"enabled": False, "start_hour": 9, "end_hour": 20}
@@ -19,17 +19,21 @@ WALL_SCHEDULE_DEFAULT = {"enabled": False, "start_hour": 9, "end_hour": 20}
 
 @login_required
 def app_directory(request):
-    """Every app installed that actually has somewhere to go.
+    """Apps the family has added to the house — not the platform's own
+    built-in pieces (Displays, Alerts, Tracker, and so on are each their own
+    Django app internally, for code organization, but nobody "installed"
+    them the way a family app gets added; house_apps() is the registry's own
+    name for that distinction). Empty until someone adds one.
 
-    registered_apps() also includes a few platform apps that exist purely to
-    hold registry metadata (widget ownership, telemetry provenance) with no
-    urls.py and no page of their own — nora_has_page=False. Listing those
-    here meant rows pointing at a URL that either 404s or silently lands on
-    a completely different app's page, which read as broken/fake. Filtered
-    out; they're still real, installed apps, just not visitable ones.
+    Also filters to nora_has_page=True: a couple of platform apps exist
+    purely to hold registry metadata (widget ownership, telemetry
+    provenance) with no urls.py and no page of their own — showing those
+    meant rows pointing at a URL that either 404s or silently lands on a
+    completely different app's page. This mostly matters if a future house
+    app ever does the same.
     """
     return render(request, "core/app_directory.html", {
-        "apps": [a for a in registered_apps(include_disabled=True) if a.has_page],
+        "apps": [a for a in house_apps(include_disabled=True) if a.has_page],
         "page_title": "Apps",
     })
 

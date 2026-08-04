@@ -193,9 +193,9 @@ def registered_apps(include_disabled: bool = False) -> list[AppMetadata]:
     return found
 
 
-def house_apps() -> list[AppMetadata]:
+def house_apps(include_disabled: bool = False) -> list[AppMetadata]:
     """Apps the family wrote, as opposed to platform apps."""
-    return [m for m in registered_apps() if not m.is_platform]
+    return [m for m in registered_apps(include_disabled=include_disabled) if not m.is_platform]
 
 
 def navigation(role: str = "member") -> list[dict]:
