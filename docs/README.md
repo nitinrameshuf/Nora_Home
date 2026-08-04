@@ -20,13 +20,15 @@ docs/
 │   ├── DEVELOPMENT.md             how to write a house app
 │   ├── cross-functionality.md     what every app offers every other app
 │   ├── architecture.md            how the pieces fit together, with diagrams
-│   ├── testing.md                 how to verify a change on real hardware
+│   ├── testing.md                 the test suite, and how to verify on real hardware
 │   ├── progress.md                the narrative log, newest last
 │   └── subsystems/                one file per platform subsystem
 │
 └── House_Apps/        the family's own apps
     ├── README.md                  the index, and the required sections
     └── <app-name>/                one folder per app, holding its docs
+        ├── README.md              what it is and where it appears
+        └── testing.md             what its tests cover, and what needs a screen
 ```
 
 **The rule:** a document about the platform goes in `Main_App/`. A document about
@@ -43,7 +45,7 @@ person rather than an agent — the HTML views — goes in `User/`.
 | Build an app inside it | [`Main_App/DEVELOPMENT.md`](Main_App/DEVELOPMENT.md) |
 | Use another app's capabilities | [`Main_App/cross-functionality.md`](Main_App/cross-functionality.md) |
 | Understand one subsystem | [`Main_App/subsystems/`](Main_App/subsystems/) |
-| Verify your change actually works | [`Main_App/testing.md`](Main_App/testing.md) |
+| Run the tests, or verify your change actually works | [`Main_App/testing.md`](Main_App/testing.md) |
 | Know what happened and when | [`Main_App/progress.md`](Main_App/progress.md) |
 | Read about an installed family app | [`House_Apps/`](House_Apps/) |
 
@@ -64,7 +66,7 @@ person rather than an agent — the HTML views — goes in `User/`.
 | [`Main_App/architecture.md`](Main_App/architecture.md) | How the system fits together, with Mermaid diagrams | A component, boundary, or data flow changes |
 | [`Main_App/DEVELOPMENT.md`](Main_App/DEVELOPMENT.md) | The guide for anyone writing a house app | The app contract, surfaces, or platform APIs change |
 | [`Main_App/cross-functionality.md`](Main_App/cross-functionality.md) | Index of every published cross-app API | You add, change, or remove a published function |
-| [`Main_App/testing.md`](Main_App/testing.md) | Pi access, the deploy loop, and how to check real hardware | The verification workflow changes |
+| [`Main_App/testing.md`](Main_App/testing.md) | The test suite, Pi access, the deploy loop, and how to check real hardware | The verification workflow changes, or a subsystem's coverage does |
 | [`Main_App/subsystems/*.md`](Main_App/subsystems/) | One subsystem each — what it owns, its models, tasks, settings, gaps | That subsystem changes |
 
 ### House_Apps/ — the family's apps

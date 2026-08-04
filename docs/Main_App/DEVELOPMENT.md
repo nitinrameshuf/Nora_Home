@@ -8,7 +8,7 @@ finish before writing code. It is short on purpose.
 |---|---|
 | [`cross-functionality.md`](cross-functionality.md) | The full index of what every app can call from every other app — signatures, arguments, and the rule about never importing a peer app |
 | [`../CLAUDE.md`](../../CLAUDE.md) | What Nora Home *is*, and why it is built this way |
-| [`testing.md`](testing.md) | How to actually verify your app on the real hardware |
+| [`testing.md`](testing.md) | The test suite, and how to verify your app on the real hardware |
 | [`architecture.md`](architecture.md) | How the pieces fit together, with diagrams |
 
 ---
@@ -653,6 +653,56 @@ Your pages must work on a phone, an iPad, a laptop, and the 24" wall display. Te
 
 ---
 
+## Testing your app
+
+The platform already tests a lot on your behalf. `tests/test_house_apps.py` walks
+every installed app and checks it automatically — that its widgets and cards load,
+that its page returns 200, that its kiosk controls resolve, that its models inherit
+`TimeStampedModel`, that it has a migration, and that it obeys the two rules in
+"What not to do" below about `os.environ` and other apps' models. **You get all of
+that by existing.** Do not write it again.
+
+What is left for you is your app's own logic. Put it in `tests/test_<yourapp>.py`,
+so it appears as its own line in the report:
+
+```python
+"""Workout — sets, volume, and the weekly rollup."""
+
+import pytest
+
+from houseapps.workout.models import Session
+
+pytestmark = pytest.mark.django_db
+
+
+def test_logging_a_session_registers_it_with_the_tracker(member):
+    """The platform owns the schedule; this app only hands it the record."""
+    from nora_home.tracker.models import Trackable
+
+    session = Session.objects.create(owner=member, title="Push day")
+
+    assert Trackable.objects.filter(app_slug="workout",
+                                    source_ref=str(session.pk)).exists()
+```
+
+Fixtures from `tests/conftest.py` are available to you — `member`, `adult`,
+`admin_member`, `household`, `make_member`, `make_trackable`, `make_occurrence`,
+`series`, `wall_display`, `kiosk_display`, `signal_recorder`. Use them instead of
+building people and trackables by hand.
+
+```bash
+./scripts/run-tests.sh workout      # just yours
+./scripts/run-tests.sh              # everything, before you push
+```
+
+Two house rules worth copying: **a test name is a sentence**
+(`test_a_miss_breaks_the_streak`, not `test_streak_2`), and **nothing may depend on
+the wall clock** — use fixed dates, because a test that passes all day and fails at
+22:00 is worse than no test. Full detail, including how the compact report works
+and what it deliberately does not cover, is in [`testing.md`](testing.md).
+
+---
+
 ## What not to do
 
 - **Do not import another app's models.** Signals and published APIs only.
@@ -685,4 +735,8 @@ Your pages must work on a phone, an iPad, a laptop, and the 24" wall display. Te
 - [ ] No secrets outside `.env`; no direct imports of other apps' models
 - [ ] Failures log and degrade rather than 500
 - [ ] `python manage.py check` is clean
+- [ ] `./scripts/run-tests.sh` is green — including the house-app contract checks
+      in `tests/test_house_apps.py`, which run against your app automatically
+- [ ] Tests written for your app's own logic, in `tests/test_<yourapp>.py`
+- [ ] `docs/House_Apps/<yourapp>/README.md` **and** `testing.md` exist
 - [ ] Actually seen working — see [`testing.md`](testing.md), not just a diff

@@ -7,8 +7,16 @@ live in [`../Main_App/subsystems/`](../Main_App/subsystems/).
 House_Apps/
 ├── README.md            you are here — the index and the required sections
 └── <app-name>/          one folder per app
-    └── README.md        the app's main doc; diagrams and notes go here too
+    ├── README.md        the app's main doc; diagrams and notes go here too
+    └── testing.md       what its own tests cover, and what still needs a screen
 ```
+
+**Both files are required.** `install_app` warns when either is missing, and
+`tests/test_house_apps.py` fails without them. Copy
+[`example_habit/README.md`](example_habit/README.md) and
+[`example_habit/testing.md`](example_habit/testing.md) — the second is written as
+the template, and explains which checks the platform already runs for you so you
+do not write them again.
 
 An app's folder is named after its module (`houseapps.workout` → `workout/`) and is
 the place for **all** of that app's documentation — not only the README.

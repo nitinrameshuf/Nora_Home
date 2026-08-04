@@ -1,0 +1,11 @@
+# The test suite's own dependencies, kept apart from dev.txt so they can go into
+# the Pi's image without dragging django-debug-toolbar and django-extensions with
+# them.
+#
+# These *are* installed in the production image, deliberately. The Pi is this
+# project's verification target — CLAUDE.md's whole status vocabulary turns on
+# "observed working on the real hardware" — so `make test-pi` has to work there,
+# not only on a laptop. Three pure-Python packages is a cheap price for being
+# able to prove the house is sound on the machine the house actually runs on.
+pytest>=8.3
+pytest-django>=4.9

@@ -85,7 +85,13 @@ def _parse_naive(iso: str) -> datetime | None:
 def current_scene() -> dict:
     from nora_home.core.settings_store import get_setting
 
-    weather = get_setting("weather.current", default={}) or {}
+    # This runs in a context processor, on the first paint of every page in the
+    # house. The value is JSON a person can edit in the admin, so anything that
+    # is not a dict has to degrade to "no weather yet" rather than raising —
+    # otherwise one bad edit 500s every screen at once, including the wall.
+    weather = get_setting("weather.current", default={})
+    if not isinstance(weather, dict):
+        weather = {}
     now = djtz.localtime()
     return {
         "season": season_for(now.date()),

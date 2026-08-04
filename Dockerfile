@@ -32,7 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /wheels
 COPY requirements/ requirements/
-RUN pip wheel --wheel-dir=/wheels -r requirements/prod.txt
+RUN pip wheel --wheel-dir=/wheels -r requirements/prod.txt -r requirements/test.txt
 
 # ── final ─────────────────────────────────────────────────────────────────────
 FROM base
@@ -43,13 +43,14 @@ WORKDIR /srv/nora
 COPY --from=builder /wheels /wheels
 COPY requirements/ requirements/
 RUN pip install --no-index --find-links=/wheels -r requirements/prod.txt \
+                    -r requirements/test.txt \
     && rm -rf /wheels
 
 COPY --chown=nora:nora . .
 
 RUN mkdir -p /srv/nora/staticfiles /srv/nora/media /srv/nora/logs /var/backups/nora \
     && chown -R nora:nora /srv/nora /var/backups/nora \
-    && chmod +x /srv/nora/docker/entrypoint.sh
+    && chmod +x /srv/nora/docker/entrypoint.sh /srv/nora/scripts/run-tests.sh
 
 USER nora
 EXPOSE 8000

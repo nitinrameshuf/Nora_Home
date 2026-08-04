@@ -47,7 +47,8 @@ than merely stated.
 | One subsystem's models, API, tasks, or gaps | The matching file in [`docs/Main_App/subsystems/`](docs/Main_App/subsystems/) |
 | A published cross-app function | [`docs/Main_App/cross-functionality.md`](docs/Main_App/cross-functionality.md) — signatures are copied from the code, so keep them true |
 | The app contract, or anything about the five surfaces | [`docs/Main_App/DEVELOPMENT.md`](docs/Main_App/DEVELOPMENT.md) |
-| How you verify work on the Pi | [`docs/Main_App/testing.md`](docs/Main_App/testing.md) |
+| Anything at all — add or update a test | `tests/test_<subsystem>.py`, and a house app's own `tests/test_<app>.py` |
+| How you verify work on the Pi, or what the suite covers | [`docs/Main_App/testing.md`](docs/Main_App/testing.md) |
 | A house app | That app's folder in [`docs/House_Apps/`](docs/House_Apps/) |
 | A deployment, install, or uninstall step | [`docs/User/deployment.html`](docs/User/deployment.html) — for people, not agents; keep it in sync with `scripts/install-pi.sh`, the `Makefile`, `install_app`, and `uninstall_app` |
 | A decision worth not re-litigating | §4 here, **and** the Decisions tab of the dashboard |
@@ -301,7 +302,18 @@ screen (`--ignore-certificate-errors` did its job).
    `unhealthy` in `docker compose ps` at least once on the Pi — never confirmed a
    scheduled task (escalation sweep, backup) actually ran end to end.
 3. **Slack, AI, MCP untested against live services.** No API keys were available.
-4. **No tests.** `pytest` is configured; nothing is written.
+4. **Tests: ~500, one file per subsystem, green.** `./scripts/run-tests.sh` (or
+   `make test`; `make test-pi` runs it inside the container on the Pi). Runs in
+   ~2s with no containers, no network, and no credentials — SQLite, in-memory
+   channel layer, eager Celery — so it gives the same answer on a laptop and on
+   the Pi. The root `conftest.py` prints a **fixed-size report** instead of
+   pytest's output: one line per subsystem, one line per failure carrying only
+   its assertion, with full tracebacks written to `logs/test-full.txt` for the
+   rare case they are needed. That is deliberate — reading raw pytest back over
+   SSH costs more than the information in it is worth. Still uncovered: Celery
+   beat actually firing, Slack/AI/MCP against live services, Mongo/MinIO, and
+   the websocket consumers. See
+   [`docs/Main_App/testing.md`](docs/Main_App/testing.md) § Known gaps.
 5. **PWA manifest and service worker** — decided (§5) but not written.
 6. **No favicon** — the logs show steady `/favicon.ico` 404s.
 7. **Kiosk-drives-wall redesign and the Settings tab — built, unverified on

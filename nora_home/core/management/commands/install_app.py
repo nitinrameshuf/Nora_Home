@@ -146,6 +146,20 @@ class Command(BaseCommand):
             if app_docs.exists():
                 self.stdout.write(f"    (docs/House_Apps/{name}/ exists but has no README.md)")
 
+        # Same rule for testing.md: how the next person verifies this app, rather
+        # than guessing. tests/test_house_apps.py fails without it, so warning
+        # here is the friendly early notice, not the enforcement.
+        if (app_docs / "testing.md").exists():
+            self.stdout.write(f"  docs/House_Apps/{name}/testing.md present [ok]")
+        else:
+            self.stdout.write(self.style.WARNING(
+                f"  {module} has no testing.md. Every house app needs "
+                f"docs/House_Apps/{name}/testing.md — what its own tests cover, "
+                "and what still has to be checked on the real screens. Copy "
+                "docs/House_Apps/example_habit/testing.md, which is the template. "
+                "tests/test_house_apps.py fails while it is missing."
+            ))
+
     def _register(self, base: Path, module: str):
         """Add the module to NORA_HOME_HOUSE_APPS in .env, creating the line if needed."""
         env_path = base / ".env"

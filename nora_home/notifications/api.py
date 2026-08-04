@@ -59,8 +59,20 @@ def notify(recipient, *, title: str, body: str = "", app_slug: str = "",
 def notify_house(*, title: str, body: str = "", app_slug: str = "",
                  severity: str = Severity.INFO, url: str = "", icon: str = "",
                  channels: list[str] | None = None, dedupe_key: str = "",
-                 sync: bool = False, **context) -> Notification:
-    """Tell everyone. Goes to the house Slack channel and the wall display."""
+                 dedupe_minutes: int = DEDUPE_WINDOW_MINUTES,
+                 sync: bool = False, **context) -> Notification | None:
+    """Tell everyone. Goes to the house Slack channel and the wall display.
+
+    Returns None if deduplicated away, same as notify(). House-wide alerts need
+    this at least as much as personal ones do: every caller that passes a
+    dedupe_key here is a repeating source — a threshold on a stuck sensor, an
+    integration that keeps failing, a top-rung escalation — and without
+    suppression each one puts a fresh banner on the wall on every single cycle.
+    """
+    if dedupe_key and _recently_sent(dedupe_key, None, dedupe_minutes):
+        logger.debug("Suppressed duplicate house notification %s", dedupe_key)
+        return None
+
     notification = Notification.objects.create(
         app_slug=app_slug or "core", title=title[:160], body=body, severity=severity,
         recipient=None, url=url, icon=icon, dedupe_key=dedupe_key, context=context,

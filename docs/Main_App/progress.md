@@ -1597,6 +1597,99 @@ the living background covers the page correctly.
 
 ---
 
+## 2026-08-04 — a test suite, written to be cheap to read
+
+Asked for unit tests across the whole app, recorded in `testing.md`, with the
+same expected of each house app — and specifically **written so they run on the
+Pi and report pass/fail compactly, to reduce token usage**. That last constraint
+shaped the design more than the tests themselves did.
+
+### The report is the feature
+
+Raw pytest output is hundreds of lines, and an agent reading it back over SSH
+pays for every one. So the root `conftest.py` replaces pytest's summary with a
+fixed-size report: one line per subsystem, one line per failure carrying only
+its assertion. A green run is ~20 lines however many tests there are. Full
+tracebacks still exist — `scripts/run-tests.sh` writes them to
+`logs/test-full.txt` — so the detail is one file read away instead of being paid
+for on every run.
+
+The reporter is built so it cannot report a false green. That mattered
+immediately: the first version printed `ALL PASSED` on a run where a whole file
+failed to import (a hyphen in a function name), because a collection error never
+reaches a test's call phase and so was invisible to the per-test hooks. It now
+reports `BROKEN` for collection errors and `NOT OK` for any other non-zero exit.
+A report that is trusted without reading the raw output has to earn that.
+
+### 496 tests, one file per subsystem
+
+`tests/`, no containers, no network, no credentials — SQLite, in-memory channel
+layer, eager Celery, ~2 seconds. Deliberately hermetic so it gives the same
+answer on a laptop and on the Pi. `pytest` and `pytest-django` went into the
+production image (`requirements/test.txt`) so `make test-pi` works on the machine
+the house actually runs on; it still runs under `config.settings.dev` there, so
+tests get their own SQLite database and never touch real MySQL data.
+
+Coverage is per subsystem: registry, core, accounts, scheduling, escalation,
+tracker, notifications, telemetry, displays, integrations, scene, dashboard, ui,
+every page requested for real, and a contract file that walks *every* installed
+house app.
+
+### Four things the suite found while being written
+
+- **`notify_house()` accepted a `dedupe_key` and ignored it.** Only `notify()`
+  checked for recent duplicates. Every caller that passes a key here is a
+  repeating source — a threshold on a stuck sensor, an integration that keeps
+  failing, a top-rung escalation — so each cycle put a fresh banner on the wall.
+  Personal alerts were suppressed; house-wide ones, the loudest surface in the
+  building, were not. Fixed, with a test naming the day it was found.
+- **The suite caught its own flakiness before it could rot.** Two notification
+  routing tests failed only because the run happened at 05:54, inside the
+  default 22:00–07:00 quiet window, which silently reroutes every push channel
+  to `inapp`. `make_member` now disables quiet hours by default; tests that are
+  actually about quiet hours set the window themselves. A test that passes all
+  day and fails at 22:00 is worse than no test.
+- **`current_scene()` could 500 every screen at once.** It runs in a context
+  processor on the first paint of every page, and read a `HouseSetting` that a
+  person can edit in the admin. A non-dict value there — a string, a list —
+  would raise on `.get()`. One bad edit would have taken down the wall, the
+  kiosk, and every phone together. Now degrades to "no weather yet", which is
+  what the module already promised.
+- **The reference app teaches the pattern the platform forbids.** CLAUDE.md §6
+  says never import another app's models; `example_habit` imports
+  `nora_home.tracker.models` in five files, and it is the app DEVELOPMENT.md
+  tells every family member to copy. Not fixed here — clearing it needs query
+  helpers on `nora_home.tracker.api` that do not exist yet (streaks for a
+  `source_ref`, completion history, the open occurrence for a record). Recorded
+  as `KNOWN_MODEL_IMPORT_DEBT` in `tests/test_house_apps.py`, with a companion
+  test that fails if the entry ever stops being true, so new apps are held to
+  the rule while the debt stays visible rather than hidden.
+
+### The house-app contract
+
+`tests/test_house_apps.py` walks every installed app rather than naming any, so a
+family member's new app is checked the moment it is installed: identity and
+category, no reserved URL prefix, page returns 200, every declared widget/card/
+wall panel loads, wall panels are `wall_safe`, kiosk control paths resolve, models
+inherit `TimeStampedModel`, a migration exists, no `os.environ`, no cross-app
+model imports, and both required docs present.
+
+That last one is new: each house app now needs `docs/House_Apps/<app>/testing.md`
+as well as its README. `install_app` warns for both; the contract test fails
+without them. `example_habit/testing.md` is written as the template, and leads
+with which checks the platform already runs so nobody writes them twice.
+
+### One test worth calling out
+
+`test_every_kiosk_action_has_a_handler_on_the_wall` parses `wall-live.js` for its
+`case "..."` branches and asserts every action in `KIOSK_ACTIONS` has one. This
+subsystem's recurring bug is not a crash but silence — the bus relays anything,
+the browser ignores what it cannot handle, so a dead control looks alive. It has
+happened twice (the kiosk's Dim/Wake buttons, and the notification banner). This
+makes the third time fail in CI instead of on the wall.
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**

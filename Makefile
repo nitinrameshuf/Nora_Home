@@ -110,8 +110,12 @@ shell: ## Django shell inside the container
 	$(MANAGE) shell
 
 .PHONY: test
-test: ## Run the test suite
-	pytest
+test: ## Run the test suite and print the short report
+	./scripts/run-tests.sh
+
+.PHONY: test-pi
+test-pi: ## Run the test suite inside the container, as the Pi runs it
+	$(COMPOSE) exec -T web ./scripts/run-tests.sh
 
 .PHONY: lint
 lint: ## Ruff

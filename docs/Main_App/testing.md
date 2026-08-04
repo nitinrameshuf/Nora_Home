@@ -34,6 +34,126 @@ about.
 
 ---
 
+## The test suite
+
+`pytest`, at `tests/`, one file per subsystem. ~500 tests, ~2 seconds. It needs no
+containers, no network, and no credentials: SQLite, the in-memory channel layer,
+eager Celery. That is deliberate — it must give the same answer on a laptop and on
+the Pi, rather than depending on which services happen to be up.
+
+```bash
+./scripts/run-tests.sh              # everything
+./scripts/run-tests.sh tracker      # one subsystem (tests/test_tracker.py)
+./scripts/run-tests.sh -k escalate  # anything else pytest understands
+make test                           # same thing
+```
+
+On the Pi, run it inside the container so it uses the same Python and settings the
+house actually runs on:
+
+```bash
+ssh -i ~/.ssh/nora_pi ckstation@192.168.1.253 \
+  "cd ~/Nora_Home && docker compose exec -T web ./scripts/run-tests.sh"
+
+make test-pi        # the same thing, from the Pi's own checkout
+```
+
+`pytest` and `pytest-django` are installed in the production image on purpose
+(`requirements/test.txt`) so this works on the machine the house actually runs on.
+Note the suite runs under `config.settings.dev` even there — pytest's own
+`DJANGO_SETTINGS_MODULE` in `pyproject.toml` wins over the image's environment.
+That is intended: tests get their own SQLite database and never touch the real
+MySQL data. The report header says `dev · sqlite3` on the Pi for that reason.
+
+### The report is the point
+
+Raw pytest output is hundreds of lines, and an agent reading it back over SSH pays
+for every one. So `conftest.py` at the repo root replaces the summary with a
+fixed-size report: one line per subsystem, one line per failure carrying only its
+assertion. A green run is ~20 lines however many tests there are.
+
+```
+──────────────────────────────────────────────────────────────
+ NORA HOME — test report
+ 2026-08-04 07:58:02 · dev · sqlite3 · python 3.13.7
+──────────────────────────────────────────────────────────────
+  accounts                26 ok
+  core                    31 ok
+  escalation              32 ok   1 FAIL
+  ...
+──────────────────────────────────────────────────────────────
+ FAILURES
+  test_escalation.py::test_the_chain_rung_notifies_the_first_contact
+    AssertionError: assert [<HouseMember: Nitin>] == [<HouseMember: Partner>]
+──────────────────────────────────────────────────────────────
+ 1 FAILED · 495 passed · 1 failed · 0 skipped · 1.9s
+──────────────────────────────────────────────────────────────
+```
+
+Full tracebacks still exist — they go to `logs/test-full.txt`. Read that file only
+when the one-line assertion is not enough, which is most of the time it is not
+needed. **Do not re-run with `--tb=long` reflexively**; that is the expensive path.
+
+The report is built to never lie about a green run: a collection error (a bad
+import, a missing dependency) reports `BROKEN`, and any other non-zero exit
+reports `NOT OK` rather than `ALL PASSED`. If it says `ALL PASSED`, it ran.
+
+### What is covered
+
+| File | Covers |
+|---|---|
+| `test_registry.py` | App discovery, nav grouping, role filtering, URL mounting, reserved slugs |
+| `test_core.py` | Settings store + cache, soft delete, audit, device tokens, health probes |
+| `test_accounts.py` | Roles → admin flags, quiet hours across midnight, escalation chains |
+| `test_scheduling.py` | Every cadence, month-end clamping, materialization idempotency |
+| `test_escalation.py` | The ladder: climbing, stopping, audiences, expiry, resilience |
+| `test_tracker.py` | The published API house apps call, streaks, occurrence lifecycle |
+| `test_notifications.py` | Routing, dedupe, quiet hours, delivery receipts, retries |
+| `test_telemetry.py` | Series, thresholds, alert suppression, history windows |
+| `test_displays.py` | The bus, heartbeats, and **every kiosk action having a wall handler** |
+| `test_integrations.py` | Scheduling, exponential backoff, failure alerting, the weather provider |
+| `test_scene.py` | Season, real sunrise/sunset dayparts, weather bucketing |
+| `test_dashboard.py` | Widget contract, layout persistence, the save endpoint's validation |
+| `test_ui.py` | Surface detection for all five screens, the home bot |
+| `test_pages.py` | Every page requested for real; the passwordless switcher |
+| `test_house_apps.py` | The contract *every* house app must satisfy — see below |
+
+### Conventions
+
+- **One file per subsystem**, named `test_<subsystem>.py`. The report groups by it.
+- **A test name is a sentence.** `test_a_miss_breaks_the_streak`, not `test_streak_2`.
+- **Say why in the docstring when the why is not obvious** — particularly when the
+  test exists because something already broke once. Several here are regression
+  guards for bugs in `progress.md`, and the docstring is where that link lives.
+- **Never depend on the wall clock.** Fixed dates, and `make_member` disables quiet
+  hours by default. A routing test written without that passed all day and failed
+  at 22:00 — it was caught while writing this suite, not in production.
+- **Nothing reaches the network.** Integrations are driven with recorded payloads.
+
+### Known gaps
+
+Be honest about these rather than implying the suite proves more than it does.
+
+- **No Celery beat / worker test.** Tasks are called directly. Whether `beat`
+  actually fires them on the Pi is still unconfirmed (CLAUDE.md §2, item 2).
+- **No Slack, AI, or MCP round-trip.** No credentials exist. The Slack channel is
+  tested through its `is_configured()` gate only.
+- **No Mongo or MinIO.** `nora_home.datastores` is untested; both are optional
+  dependencies the house degrades without.
+- **No websocket consumer tests.** The bus is tested, and the message-type contract
+  between kiosk and wall is tested, but the consumers themselves are not driven.
+- **`example_habit` imports `nora_home.tracker.models` directly**, which CLAUDE.md §6
+  forbids — in `views.py`, `widgets.py`, `cards.py`, `tasks.py`, and `mcp_tools.py`.
+  It is the app DEVELOPMENT.md tells people to copy, so it currently teaches the
+  forbidden pattern. Recorded as `KNOWN_MODEL_IMPORT_DEBT` in `test_house_apps.py`
+  so new apps are held to the rule while the debt stays visible. Clearing it needs
+  query helpers on `nora_home.tracker.api` that do not exist yet: streaks for a
+  `source_ref`, completion history, and the open occurrence for a record.
+- **None of it says anything about how the house looks.** See "What this cannot
+  catch" below. A green suite is not a deployed, seen-working feature.
+
+---
+
 ## The deploy loop
 
 Docs-only changes need no rebuild — `git pull` on the Pi is enough. Anything under
@@ -187,8 +307,12 @@ rather than *Complete*.
 
 ## Before calling something done
 
-1. `manage.py check` clean, locally **and** on the Pi.
-2. Deployed — actually rebuilt, not hot-copied.
-3. Seen working: a screenshot, a measured value, or a shell query. Not a diff.
-4. The *reported symptom* re-tested, not just the code path you believed was wrong.
-5. `docs/progress.md` updated in the same commit ([`../CLAUDE.md`](../../CLAUDE.md) § 0).
+1. `./scripts/run-tests.sh` green, and **a new test covering the change** — a fix
+   with no test is a fix that gets re-broken.
+2. `manage.py check` clean, locally **and** on the Pi.
+3. Deployed — actually rebuilt, not hot-copied.
+4. The suite run again *on the Pi*, inside the container.
+5. Seen working: a screenshot, a measured value, or a shell query. Not a diff.
+6. The *reported symptom* re-tested, not just the code path you believed was wrong.
+7. `docs/Main_App/progress.md` updated in the same commit
+   ([`../../CLAUDE.md`](../../CLAUDE.md) § 0).
