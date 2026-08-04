@@ -1210,6 +1210,39 @@ state before today's opacity work): `.main` alone at its earlier flat
 confirmed the revert landed clean. The actual fix — legibility via text
 color rather than backdrop opacity — is still open; not yet designed.
 
+## 2026-08-03 — the real fix: low fixed opacity, plus a bug nobody had found
+
+Designed the text-color approach: opacity on `.sidebar`/`.card`/`.main`/
+`.kiosk-*`/`.empty` dropped to a low, constant 0.2-0.3 (theme-tinted, not
+daypart-tinted) purely as a frosted-glass effect, sharing a new `--pane-rgb`
+variable. Legibility moved entirely to `--text`/`--text-dim`/`--text-faint`,
+first keyed to both `data-theme` and `data-daypart` (eight combinations,
+reasoned from the compositing math) before any of it touched real pixels.
+
+Screenshotting that first version on the live Pi surfaced something the
+math had missed entirely: the Home dashboard's tiles were *never* using any
+of this. `.dash-tile` is built by `dashboard.js` (`Dash.add()`), not the
+template, and never carried `class="card"` — so it had been sitting on a
+flat, opaque `var(--bg-raised)` from `dashboard.css` since the "Almanac"
+background was first introduced, regardless of anything tuned in
+`nh-scene.css` across this entire multi-day thread. The Displays page
+(plain `.card` divs, no dash-tile) always looked right; the actual
+most-viewed page in the house never did. Fixed by giving `.dash-tile` the
+same `--pane-rgb` glass treatment as `.card`.
+
+With the tiles actually translucent, re-screenshotted all eight
+(theme, daypart) pairs for real and three didn't match the predicted
+bucket — dark theme at noon and dawn, light theme at night — all three
+landing in a medium-brightness zone the compositing math called wrong.
+Rather than patch three cells, re-derived the rule from the screenshots
+themselves: at this low, fixed opacity the *theme's own tint* dominates
+every daypart — dark theme's near-black glass never gets bright enough to
+need dark text, light theme's near-white glass never gets dark enough to
+need light text. Daypart doesn't matter for text color at all; simplified
+from eight rules to two. Verified the full grid again after the
+simplification — all eight combinations legible, atmosphere visible
+throughout, no opacity increase anywhere.
+
 ---
 
 ## Next
