@@ -90,31 +90,6 @@
   background: var(--nh-600);
 }
 
-/* A small dish, angled off the mast — the detail that tips this from "robot
-   on wheels" to specifically a rover, transmitting something home. */
-.nh-bot__dish {
-  position: absolute;
-  left: 50%;
-  bottom: 62%;
-  width: 12px;
-  height: 3px;
-  margin-left: 2px;
-  border-radius: 2px;
-  background: var(--nh-500);
-  transform: rotate(-32deg);
-  transform-origin: 0 50%;
-}
-.nh-bot__dish::after {
-  content: "";
-  position: absolute;
-  right: -2px;
-  top: -2px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--nh-400);
-}
-
 /* The camera head at the top of the mast — a dark panel the "eyes" (lenses)
    sit inside, same idea as a rover's mastcam. */
 .nh-bot__head {
@@ -127,23 +102,49 @@
   margin-bottom: -1px;
   border-radius: 30%;
   background: #17100a;
-  box-shadow: 0 0 8px var(--nh-glow);
+  box-shadow: 0 0 4px var(--nh-glow);
 }
 .nh-bot__eyes {
   position: absolute;
-  inset: 0 4px;
+  inset: 0 5px;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 .nh-bot__eye {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: var(--nh-400);
-  box-shadow: 0 0 5px var(--nh-glow);
+  box-shadow: 0 0 2px var(--nh-glow);
   animation: nh-blink 5.6s infinite;
   transition: height 0.18s ease, transform 0.18s ease;
+}
+
+/* A short straight antenna off the top corner of the head — the detail that
+   tips this from "robot on wheels" to specifically a rover, transmitting
+   something home. A child of the head (not the mast) so it sits precisely
+   at one corner instead of floating loose beside it. */
+.nh-bot__dish {
+  position: absolute;
+  right: 3px;
+  top: -8px;
+  width: 2px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--nh-500);
+}
+.nh-bot__dish::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--nh-400);
+  box-shadow: 0 0 3px var(--nh-glow);
 }
 
 /* ── Moods ────────────────────────────────────────────────────────────────── */

@@ -50,8 +50,8 @@
       '<div class="nh-bot__eyes">' +
       '<span class="nh-bot__eye"></span><span class="nh-bot__eye"></span>' +
       "</div>" +
-      "</div>" +
       '<div class="nh-bot__dish"></div>' +
+      "</div>" +
       "</div>" +
       '<div class="nh-bot__chassis"></div>' +
       '<div class="nh-bot__wheels">' +
