@@ -80,12 +80,15 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):  # noqa: ARG0
     write("")
     write(BAR)
     write(" NORA HOME — test report")
+    # The settings module is named explicitly because getting it wrong is the
+    # failure this suite has actually hit — twice. On the Pi it silently resolved
+    # to the real MySQL, and the report is the only place that would show it.
     try:
         engine = settings.DATABASES["default"]["ENGINE"].rsplit(".", 1)[-1]
-        env = settings.NORA_HOME_ENV
+        module = settings.SETTINGS_MODULE.rsplit(".", 1)[-1]
     except Exception:  # settings may be unusable if collection itself failed
-        engine, env = "?", "?"
-    write(f" {time.strftime('%Y-%m-%d %H:%M:%S')} · {env} · {engine} · "
+        engine, module = "?", "?"
+    write(f" {time.strftime('%Y-%m-%d %H:%M:%S')} · {module} · {engine} · "
           f"python {sys.version.split()[0]}")
     write(BAR)
 

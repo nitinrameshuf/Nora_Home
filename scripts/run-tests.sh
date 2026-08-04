@@ -37,15 +37,18 @@ ARGS+=("$@")
 PYTHON="${PYTHON:-python}"
 command -v "${PYTHON}" >/dev/null 2>&1 || PYTHON=python3
 
-# Pin the settings explicitly. pytest-django's precedence is --ds, then the
-# DJANGO_SETTINGS_MODULE *environment variable*, then the ini file — so the ini
-# setting in pyproject.toml does NOT win inside the container, where the image
-# exports DJANGO_SETTINGS_MODULE=config.settings.pi. Without this, running the
-# suite on the Pi picked up the pi settings and every single test errored trying
-# to reach the real Redis and MySQL. --ds is the only level that beats the
-# environment. Override with NORA_HOME_TEST_SETTINGS to run against something
-# else deliberately.
-TEST_SETTINGS="${NORA_HOME_TEST_SETTINGS:-config.settings.dev}"
+# Pin the settings explicitly, for two separate reasons.
+#
+# 1. pytest-django's precedence is --ds, then the DJANGO_SETTINGS_MODULE
+#    *environment variable*, then the ini file — so pyproject.toml's setting
+#    loses inside the container, where the image exports config.settings.pi.
+#    --ds is the only level that beats the environment.
+# 2. config.settings.test is pinned rather than derived: dev.py still reads the
+#    database engine, cache, and house apps from .env, so on the Pi it resolved
+#    to the real MySQL and every database test errored on a missing grant.
+#
+# Override with NORA_HOME_TEST_SETTINGS to run against something else on purpose.
+TEST_SETTINGS="${NORA_HOME_TEST_SETTINGS:-config.settings.test}"
 
 # --tb=line keeps the file readable too: one line per failure rather than a
 # full stack. Swap to --tb=long by hand when a failure genuinely needs it.

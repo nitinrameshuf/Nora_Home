@@ -61,15 +61,24 @@ make test-pi        # the same thing, from the Pi's own checkout
 `pytest` and `pytest-django` are installed in the production image on purpose
 (`requirements/test.txt`) so this works on the machine the house actually runs on.
 
-The suite runs under `config.settings.dev` even there, so tests get their own
-SQLite database and never touch real MySQL data — the report header says
-`dev · sqlite3` on the Pi for that reason. **`run-tests.sh` pins that with
-`--ds`, and it has to.** pytest-django's precedence is `--ds`, then the
-`DJANGO_SETTINGS_MODULE` *environment variable*, then the ini file — so the
-setting in `pyproject.toml` loses inside the container, where the image exports
-`DJANGO_SETTINGS_MODULE=config.settings.pi`. Without `--ds`, all 496 tests error
-trying to reach the real Redis and MySQL. Found by running the suite in the
-built image rather than trusting the ini file, 2026-08-04.
+The suite runs under **`config.settings.test`**, which is pinned rather than
+derived — SQLite, locmem cache, in-memory channel layer, eager Celery, object
+storage and Mongo off, and the reference house app always installed. Nothing in
+it reads the environment. The report header names the module (`test · sqlite3`)
+because getting this wrong is the failure this suite has actually hit, twice:
+
+- **`dev.py` is not hermetic.** It layers on `base.py`, which reads the database
+  engine, cache, and house apps from `.env`. On the Pi that says MySQL, so the
+  suite tried to create `test_nora_home` and every database test errored on a
+  missing grant — while the identical command passed on a laptop. That is what
+  `config.settings.test` exists to stop.
+- **`run-tests.sh` has to pass `--ds`.** pytest-django's precedence is `--ds`,
+  then the `DJANGO_SETTINGS_MODULE` *environment variable*, then the ini file —
+  so `pyproject.toml` loses inside the container, where the image exports
+  `config.settings.pi`. `--ds` is the only level that beats the environment.
+
+Both were found by running the suite where it is meant to run rather than
+trusting the configuration, 2026-08-04.
 
 To run against different settings deliberately:
 
