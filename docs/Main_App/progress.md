@@ -1564,6 +1564,37 @@ to `/home/settings/`, both screen cards render online with correct Open targets
 (`/home/displays/kiosk/` and `/home/displays/wall/wall/`), and `manage.py check`
 is clean.
 
+## 2026-08-04 — Settings redesigned as grouped rows
+
+"What's this boxes of varying sizes, it just looks bad." Fair, and the cause was
+structural rather than cosmetic: the page was a `.card-grid`
+(`auto-fill, minmax(280px, 1fr)`) holding five panels whose content lengths had
+nothing in common — a seven-row profile card beside a two-line escalation card
+beside a three-input form, then two screen cards orphaned onto a second row.
+Cards of unequal height in an auto-fill grid always look ragged; no amount of
+padding tuning fixes the arrangement. The global `input { width: 100% }` made it
+worse, stretching both hour fields the full column width for a two-digit value.
+
+Replaced with the pattern every OS settings screen already uses: one readable
+column (max 780px), grouped sections, each setting a row with its label on the
+left and its control on the right. Heights stop mattering because nothing sits
+side by side, and it grows one row at a time without ever going ragged — which
+is the stated plan for this page, since settings get added one at a time.
+
+Three groups: **You** (profile, quiet hours, escalation chain, actions),
+**Screens** (each screen's status and Open), **Overnight** (the power schedule).
+New `.settings` / `.setting` classes in `nora-home.css`. The panel is a real
+`.card`, so it keeps the glass material and inherits any future change to it
+rather than forking the material. Rows collapse to one column under 620px so the
+control sits under its label on a phone and on the kiosk.
+
+Verified on the Pi: desktop renders as intended; the schedule form still saves
+and persists across a reload (changed a value, confirmed, restored it); the
+phone viewport stacks rows to a single column. One thing that looked like a bug
+was not — a full-page screenshot showed white below the fold, which is just how
+`position: fixed` backgrounds capture; scrolled to the bottom in a real viewport,
+the living background covers the page correctly.
+
 ---
 
 ## Next
