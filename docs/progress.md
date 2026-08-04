@@ -1345,6 +1345,31 @@ family app and it was removed a session ago. Points at `DEVELOPMENT.md`'s
 now genuinely reads as "nothing installed yet," not a broken or incomplete
 table.
 
+## 2026-08-03 — the home bot: now a robot, grounded, and just says "Hi"
+
+Three requested changes to `nh-bot.js`/`nh-bot.css`, done together:
+
+- **Look.** Rounded-square head instead of the organic blob shape, a small
+  antenna with a glowing tip, a dark visor panel housing two LED-style eyes,
+  and a flat mouth bar — reads as a robot rather than an orange smiley.
+  Existing mood animations (thinking/proud/concerned/sleepy/celebrate) still
+  target the same elements, unchanged.
+- **Movement.** `moveTo()` no longer takes a vertical position at all —
+  it's always computed internally as a fixed strip near the bottom of the
+  screen; only the horizontal position varies, whether from idle wandering
+  or sliding toward whatever was just clicked. This also retroactively
+  fixes the bot-overlapping-the-heading bug spotted a couple of sessions
+  back, since that could only happen when she was free to wander into the
+  upper portion of the screen.
+- **Click.** `onPoke()` now just says "Hi" — dropped the random greeting
+  pool, the server poke round-trip, and the celebrate spin. Deliberately
+  minimal; what she should actually do when poked is still open.
+
+Verified on the live Pi: screenshotted the robot look and the "Hi" bubble,
+and drove `NoraHome.wander()` six times in a row through the browser
+console — x varied freely (466-1271px), y stayed at exactly 810px every
+time.
+
 ---
 
 ## Next
