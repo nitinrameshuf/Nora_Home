@@ -3,6 +3,46 @@
 {% block content %}
   <div class="card-grid">
     <div class="card">
+      <div class="card-head"><h3 class="card-title">{{ member.name }}</h3>
+        <span class="pill">{{ member.get_role_display }}</span></div>
+      <ul class="item-list">
+        <li class="item"><div class="item-body">Username</div><code>{{ member.username }}</code></li>
+        <li class="item"><div class="item-body">Slack</div>
+          {{ member.slack_user_id|default:"not linked" }}</li>
+        <li class="item"><div class="item-body">Quiet hours</div>
+          {{ member.quiet_hours_start }}:00 – {{ member.quiet_hours_end }}:00</li>
+        <li class="item"><div class="item-body">Notifications</div>
+          {% if member.notifications_enabled %}<span class="pill ok">on</span>
+          {% else %}<span class="pill">off</span>{% endif %}</li>
+        <li class="item"><div class="item-body">On the wall display</div>
+          {% if member.is_on_wall_display %}yes{% else %}no{% endif %}</li>
+      </ul>
+      <p style="margin-top:1rem">
+        <a class="btn" href="{% url 'accounts:household' %}">The household</a>
+        <a class="btn btn-ghost" href="{% url 'accounts:logout' %}">Switch profile</a>
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3 class="card-title">Who hears about it</h3></div>
+      <p class="card-subtitle">
+        When you don't do something, the escalation ladder walks this list one rung at
+        a time before telling the whole house.
+      </p>
+      <ul class="item-list">
+        {% for contact in chain %}
+          <li class="item">
+            <div class="item-body"><div class="item-title">{{ contact.name }}</div></div>
+            <span class="pill">L{{ forloop.counter }}</span>
+          </li>
+        {% empty %}
+          <li class="item"><div class="item-body card-subtitle">
+            No chain set — escalations go to every adult.</div></li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="card">
       <div class="card-head">
         <h3 class="card-title">Wall display schedule</h3>
         {% if wall_schedule.enabled %}<span class="pill ok">on</span>

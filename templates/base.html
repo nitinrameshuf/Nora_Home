@@ -50,16 +50,16 @@ viewport measuring in JavaScript.
                {% if request.path == app.url %}aria-current="page"{% endif %}>{{ app.title }}</a>
           {% endif %}
         {% endfor %}
+        {% if group.key == 'house' %}
+          {# Apps/Status/Settings aren't app-registry entries — they're platform
+             pages the house always has, so they ride along in the same group
+             rather than getting their own "This house" header. #}
+          <a class="nav-link" href="{% url 'core:app_directory' %}">Apps</a>
+          <a class="nav-link" href="{% url 'core:system_status' %}">Status</a>
+          <a class="nav-link" href="{% url 'core:settings' %}">Settings</a>
+        {% endif %}
       </div>
     {% endfor %}
-
-    <div class="nav-group">
-      <div class="nav-group-label">This house</div>
-      <a class="nav-link" href="{% url 'core:app_directory' %}">Apps</a>
-      <a class="nav-link" href="{% url 'core:system_status' %}">Status</a>
-      <a class="nav-link" href="{% url 'core:settings' %}">Settings</a>
-      <a class="nav-link" href="{% url 'accounts:profile' %}">You</a>
-    </div>
   </nav>
 
   <main class="main">

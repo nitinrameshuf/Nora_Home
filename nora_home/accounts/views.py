@@ -64,11 +64,8 @@ def switch_away(request):
 
 @login_required
 def profile(request):
-    return render(request, "accounts/profile.html", {
-        "member": request.user,
-        "chain": request.user.escalation_chain(),
-        "page_title": "You",
-    })
+    """Folded into core:settings — kept as a redirect so old links still land."""
+    return redirect("core:settings")
 
 
 @login_required

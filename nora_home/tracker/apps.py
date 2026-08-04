@@ -14,6 +14,9 @@ class TrackerConfig(NoraAppConfig):
     nora_category = Category.SYSTEM
     nora_order = 5
     nora_url_prefix = "home/tracker/"
+    # No nav link — the Today/Overdue/Reliability cards it powers on the Home
+    # dashboard are how the house actually uses this, not a standalone page.
+    nora_nav = False
     nora_widgets = [
         "nora_home.tracker.widgets.TodayWidget",
         "nora_home.tracker.widgets.OverdueWidget",

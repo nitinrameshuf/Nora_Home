@@ -82,9 +82,11 @@ def system_status(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def settings_page(request):
-    """House-wide configuration. One setting today, more over time — each
-    new one is a form field here backed by a HouseSetting row, not a new
-    model, until there are enough to justify a registry of their own.
+    """House-wide configuration plus this member's own profile — merged onto
+    one page so the nav doesn't need a separate "You" entry. House settings
+    started as one setting (the wall schedule), backed by a HouseSetting row
+    rather than a new model, until there are enough to justify a registry of
+    their own; the profile half is what used to be accounts:profile.
     """
     from nora_home.core.settings_store import get_setting, set_setting
 
@@ -104,6 +106,8 @@ def settings_page(request):
     wall_schedule = get_setting(WALL_SCHEDULE_KEY, default=WALL_SCHEDULE_DEFAULT)
     return render(request, "core/settings.html", {
         "wall_schedule": wall_schedule,
+        "member": request.user,
+        "chain": request.user.escalation_chain(),
         "page_title": "Settings",
     })
 

@@ -10,6 +10,6 @@ class AIConfig(NoraAppConfig):
     nora_title = "Assistant"
     nora_description = "Claude, wired into the house's own data."
     nora_icon = "spark"
-    nora_category = Category.SYSTEM
+    nora_category = Category.HOUSE
     nora_order = 30
     nora_url_prefix = "home/ai/"

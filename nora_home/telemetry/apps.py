@@ -11,7 +11,7 @@ class TelemetryConfig(NoraAppConfig):
     nora_description = ("Every number the house tracks over time — body, robot, "
                         "sensors, money.")
     nora_icon = "chart"
-    nora_category = Category.SYSTEM
+    nora_category = Category.HOUSE
     nora_order = 35
     nora_url_prefix = "home/measurements/"
     nora_provides_mcp_tools = True
