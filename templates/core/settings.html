@@ -1,122 +1,158 @@
 {% extends "base.html" %}
 
+{% comment %}
+Everything the house lets you change, plus who you are and what the two screens
+are doing. Read down, in groups — not a grid of cards, which is what this was:
+five panels of very different lengths in a three-column auto-fill grid never
+lined up, and the grouping read as arbitrary. See .settings in nora-home.css.
+{% endcomment %}
+
 {% block content %}
-  <div class="card-grid">
-    <div class="card">
-      <div class="card-head"><h3 class="card-title">{{ member.name }}</h3>
-        <span class="pill">{{ member.get_role_display }}</span></div>
-      <ul class="item-list">
-        <li class="item"><div class="item-body">Username</div><code>{{ member.username }}</code></li>
-        <li class="item"><div class="item-body">Slack</div>
-          {{ member.slack_user_id|default:"not linked" }}</li>
-        <li class="item"><div class="item-body">Quiet hours</div>
-          {{ member.quiet_hours_start }}:00 – {{ member.quiet_hours_end }}:00</li>
-        <li class="item"><div class="item-body">Notifications</div>
-          {% if member.notifications_enabled %}<span class="pill ok">on</span>
-          {% else %}<span class="pill">off</span>{% endif %}</li>
-        <li class="item"><div class="item-body">On the wall display</div>
-          {% if member.is_on_wall_display %}yes{% else %}no{% endif %}</li>
-      </ul>
-      <p style="margin-top:1rem">
-        <a class="btn" href="{% url 'accounts:household' %}">The household</a>
-        <a class="btn btn-ghost" href="{% url 'accounts:logout' %}">Switch profile</a>
-      </p>
-    </div>
+  <div class="settings">
 
-    <div class="card">
-      <div class="card-head"><h3 class="card-title">Who hears about it</h3></div>
-      <p class="card-subtitle">
-        When you don't do something, the escalation ladder walks this list one rung at
-        a time before telling the whole house.
-      </p>
-      <ul class="item-list">
-        {% for contact in chain %}
-          <li class="item">
-            <div class="item-body"><div class="item-title">{{ contact.name }}</div></div>
-            <span class="pill">L{{ forloop.counter }}</span>
-          </li>
-        {% empty %}
-          <li class="item"><div class="item-body card-subtitle">
-            No chain set — escalations go to every adult.</div></li>
-        {% endfor %}
-      </ul>
-    </div>
-
-    <div class="card">
-      <div class="card-head">
-        <h3 class="card-title">Wall display schedule</h3>
-        {% if wall_schedule.enabled %}<span class="pill ok">on</span>
-        {% else %}<span class="pill">off</span>{% endif %}
+    <section class="settings__group">
+      <h2 class="settings__group-title">You</h2>
+      <div class="card settings__panel">
+        <div class="setting">
+          <div class="setting__label">Signed in as</div>
+          <div class="setting__control">
+            {{ member.name }} <span class="pill">{{ member.get_role_display }}</span>
+          </div>
+        </div>
+        <div class="setting">
+          <div class="setting__label">Username</div>
+          <div class="setting__control"><code>{{ member.username }}</code></div>
+        </div>
+        <div class="setting">
+          <div class="setting__label">Slack</div>
+          <div class="setting__control">{{ member.slack_user_id|default:"Not linked" }}</div>
+        </div>
+        <div class="setting">
+          <div class="setting__label">Quiet hours
+            <span class="setting__hint">Alerts and above still get through</span>
+          </div>
+          <div class="setting__control">
+            {{ member.quiet_hours_start }}:00 &ndash; {{ member.quiet_hours_end }}:00
+          </div>
+        </div>
+        <div class="setting">
+          <div class="setting__label">Notifications</div>
+          <div class="setting__control">
+            {% if member.notifications_enabled %}<span class="pill ok">On</span>
+            {% else %}<span class="pill">Off</span>{% endif %}
+          </div>
+        </div>
+        <div class="setting">
+          <div class="setting__label">Show me on the wall display</div>
+          <div class="setting__control">
+            {% if member.is_on_wall_display %}Yes{% else %}No{% endif %}
+          </div>
+        </div>
+        <div class="setting">
+          <div class="setting__label">Who hears about it
+            <span class="setting__hint">
+              When you don't do something, the escalation ladder walks this list one
+              rung at a time before telling the whole house.
+            </span>
+          </div>
+          <div class="setting__control">
+            {% for contact in chain %}
+              <span class="pill">L{{ forloop.counter }} {{ contact.name }}</span>
+            {% empty %}
+              No chain set &mdash; every adult
+            {% endfor %}
+          </div>
+        </div>
+        <div class="settings__actions">
+          <a class="btn" href="{% url 'accounts:household' %}">The household</a>
+          <a class="btn btn-ghost" href="{% url 'accounts:logout' %}">Switch profile</a>
+        </div>
       </div>
-      <p class="card-subtitle">
-        Power both physical screens off outside these hours (the wall and the
-        kiosk go together — the display hardware doesn't support turning off
-        just one). The platform itself keeps running either way; this only
-        affects the monitors.
-      </p>
-      <form method="post" style="display:grid;gap:0.9rem;margin-top:0.9rem">
-        {% csrf_token %}
-        <label style="display:flex;align-items:center;gap:0.6rem">
-          <input type="checkbox" name="wall_schedule_enabled"
-                 {% if wall_schedule.enabled %}checked{% endif %}>
-          <span>Enable schedule</span>
-        </label>
-        <label>
-          <span class="card-subtitle">Off from (hour, 0–23)</span>
-          <input type="number" name="wall_schedule_start" min="0" max="23"
-                 value="{{ wall_schedule.start_hour }}">
-        </label>
-        <label>
-          <span class="card-subtitle">On again from (hour, 0–23)</span>
-          <input type="number" name="wall_schedule_end" min="0" max="23"
-                 value="{{ wall_schedule.end_hour }}">
-        </label>
-        <button class="btn btn-primary" type="submit" style="justify-self:start">
-          Save
-        </button>
-      </form>
-    </div>
+    </section>
 
     {% comment %}
-    The two physical screens. These used to be a whole "Displays" nav entry;
-    two read-only status cards did not earn that much prominence, and they are
-    house configuration, so they live here now. /home/displays/ redirects here.
+    The screens. These were a whole "Displays" nav entry; two read-only status
+    rows did not earn that, and they belong next to the schedule that powers
+    them. /home/displays/ redirects here.
 
-    "Open" points this browser at the screen's own URL. There is deliberately
-    no Minimize or Close: Django runs in Docker with no access to the Pi's X
-    session, so nothing here can touch the physical Chromium windows — that
-    needs a host-side agent, the same way the power schedule below does.
+    There is deliberately no Minimize or Close: Django runs in Docker with no
+    access to the Pi's X session, so nothing served from here can touch the
+    physical Chromium windows. That needs a host-side agent, the same way the
+    overnight schedule below does.
     {% endcomment %}
-    {% for display in displays %}
-      <div class="card">
-        <div class="card-head">
-          <h3 class="card-title">{{ display.name }}</h3>
-          {% if display.is_online %}<span class="pill ok">online</span>
-          {% else %}<span class="pill alert">offline</span>{% endif %}
-        </div>
-        <ul class="item-list">
-          <li class="item"><div class="item-body">Slug</div><code>{{ display.slug }}</code></li>
-          <li class="item"><div class="item-body">Kind</div>{{ display.get_kind_display }}</li>
-          <li class="item"><div class="item-body">Last heartbeat</div>
-            {{ display.last_seen_at|default:"never" }}</li>
-        </ul>
-        <p style="margin-top:1rem">
-          {% if display.kind == "kiosk" %}
-            <a class="btn" href="{% url 'displays:kiosk' %}">Open</a>
-          {% else %}
-            <a class="btn" href="{% url 'displays:wall_named' display.slug %}">Open</a>
-          {% endif %}
-        </p>
+    <section class="settings__group">
+      <h2 class="settings__group-title">Screens</h2>
+      <div class="card settings__panel">
+        {% for display in displays %}
+          <div class="setting">
+            <div class="setting__label">{{ display.name }}
+              <span class="setting__hint">
+                {{ display.get_kind_display }} &middot;
+                {% if display.last_seen_at %}last seen {{ display.last_seen_at }}
+                {% else %}never seen{% endif %}
+              </span>
+            </div>
+            <div class="setting__control">
+              {% if display.is_online %}<span class="pill ok">Online</span>
+              {% else %}<span class="pill alert">Offline</span>{% endif %}
+              {% if display.kind == "kiosk" %}
+                <a class="btn" href="{% url 'displays:kiosk' %}">Open</a>
+              {% else %}
+                <a class="btn" href="{% url 'displays:wall_named' display.slug %}">Open</a>
+              {% endif %}
+            </div>
+          </div>
+        {% empty %}
+          <div class="setting">
+            <div class="setting__label">No screens registered yet
+              <span class="setting__hint">
+                Open <a href="{% url 'displays:wall' %}">the wall page</a> on the 24"
+                screen and it will register itself.
+              </span>
+            </div>
+            <div class="setting__control"></div>
+          </div>
+        {% endfor %}
       </div>
-    {% empty %}
-      <div class="card">
-        <div class="card-head"><h3 class="card-title">Screens</h3></div>
-        <div class="empty">
-          No displays registered yet. Open
-          <a href="{% url 'displays:wall' %}">the wall page</a> on the 24" screen
-          and it will register itself.
+    </section>
+
+    <section class="settings__group">
+      <h2 class="settings__group-title">Overnight</h2>
+      <form method="post" class="card settings__panel">
+        {% csrf_token %}
+        <div class="setting">
+          <div class="setting__label">Power the screens off overnight
+            <span class="setting__hint">
+              Both screens go together &mdash; the hardware can't turn off just one.
+              The house keeps running either way; this only affects the monitors.
+            </span>
+          </div>
+          <div class="setting__control">
+            <input type="checkbox" name="wall_schedule_enabled" id="wall_schedule_enabled"
+                   {% if wall_schedule.enabled %}checked{% endif %}>
+          </div>
         </div>
-      </div>
-    {% endfor %}
+        <div class="setting">
+          <label class="setting__label" for="wall_schedule_start">Off from</label>
+          <div class="setting__control">
+            <input type="number" name="wall_schedule_start" id="wall_schedule_start"
+                   min="0" max="23" value="{{ wall_schedule.start_hour }}">
+            <span class="setting__hint">:00</span>
+          </div>
+        </div>
+        <div class="setting">
+          <label class="setting__label" for="wall_schedule_end">On again from</label>
+          <div class="setting__control">
+            <input type="number" name="wall_schedule_end" id="wall_schedule_end"
+                   min="0" max="23" value="{{ wall_schedule.end_hour }}">
+            <span class="setting__hint">:00</span>
+          </div>
+        </div>
+        <div class="settings__actions">
+          <button class="btn btn-primary" type="submit">Save</button>
+        </div>
+      </form>
+    </section>
+
   </div>
 {% endblock %}
