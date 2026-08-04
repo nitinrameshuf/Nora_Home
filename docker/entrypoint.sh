@@ -60,6 +60,14 @@ case "$ROLE" in
 
   beat)
     wait_for "${NORA_HOME_WEB_HOST:-web}" 8000 "the web service" 120
+
+    # DatabaseScheduler syncs beat_schedule into the database but never removes
+    # what was taken out of it, so a task deleted in a commit keeps firing
+    # forever. See the command's docstring for the day and a half of KeyErrors
+    # that proved it.
+    log "pruning periodic tasks that no longer exist in the code"
+    python manage.py prune_beat_schedule || log "prune reported a problem; continuing"
+
     log "starting celery beat"
     exec celery -A config beat \
         --loglevel="${NORA_HOME_LOG_LEVEL:-INFO}" \
