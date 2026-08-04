@@ -1521,6 +1521,49 @@ it being read.
 Verified: `manage.py check` clean, and a link-checker walked every markdown file
 including `CLAUDE.md` — all relative links resolve.
 
+## 2026-08-04 — Displays folded into Settings; window controls answered with a no
+
+Asked to move Displays into Settings and drop its nav tab, remove the duplicate
+kiosk link, and add **Minimize** and **Close** next to each screen's Open button
+— "if not possible, tell me."
+
+Done: the two screen cards now sit on the Settings page directly above the wall
+power schedule that configures them, `/home/displays/` redirects there so
+bookmarks land, and `DisplaysConfig` is `nora_nav = False`. The wall and kiosk
+pages themselves are untouched — they are what the physical screens load.
+`templates/displays/manage.html` deleted.
+
+The redundant "Kiosk / Open the kiosk controller" heading and button went too: the
+kiosk already had its own card with an Open button, so it was the same link twice.
+Fixed a latent bug in the process — a shared Open button would have sent the kiosk
+card to `wall_named` with the kiosk's slug, rendering a *wall view of the kiosk*.
+The card now branches on `display.kind`.
+
+**Minimize / Close: not possible, and worth writing down why.** Two separate
+walls, neither of them a matter of effort:
+
+1. *In the browser you are holding* — there is no JavaScript API to minimize a
+   window at all, and `window.close()` only works on windows a script opened
+   itself. So these cannot be real buttons for the current tab.
+2. *For the physical screens* — Django runs in Docker. Checked
+   `docker-compose.yml` directly rather than assuming: the `web` service has no
+   `DISPLAY`, no `/tmp/.X11-unix` mount, no host networking, no `privileged`. It
+   cannot see the Pi's X session, so it cannot touch the wall's or kiosk's
+   Chromium windows.
+
+The only bridge that exists runs the other way and polls: `~/.nora/wall-power.sh`
+calls `manage.py wall_power_state` on a 5-minute systemd timer and acts with
+`xset`. Window controls would need that same shape — a host-side agent polling for
+intent, at a few seconds rather than five minutes to feel like a button, plus
+`xdotool windowminimize` / `wmctrl -c`. That is a new permanently-running daemon
+on the Pi, so it was raised as a question rather than built unasked. Recorded in
+`subsystems/displays.md` § Known gaps.
+
+Verified on the Pi: sidebar no longer lists Displays, `/home/displays/` redirects
+to `/home/settings/`, both screen cards render online with correct Open targets
+(`/home/displays/kiosk/` and `/home/displays/wall/wall/`), and `manage.py check`
+is clean.
+
 ---
 
 ## Next

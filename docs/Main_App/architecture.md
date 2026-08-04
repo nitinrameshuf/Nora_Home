@@ -370,7 +370,7 @@ docker/ scripts/ docs/  entrypoint, provisioning, this folder
 /home/                  the home dashboard (per-person widget grid)
 /home/tracker/          the tracker
 /home/alerts/           notifications
-/home/displays/         wall + kiosk management
+/home/displays/         redirects to /home/settings/ (the screen cards live there)
 /home/displays/wall/    THE 24" SCREEN — iframe shell, shows real app pages remotely
 /home/displays/kiosk/   THE 10.1" SCREEN — button remote, never the app itself
 /home/ai/               assistant console
@@ -378,7 +378,7 @@ docker/ scripts/ docs/  entrypoint, provisioning, this folder
 /home/integrations/     integrations
 /home/apps/             app directory
 /home/system/           health and audit
-/home/settings/         house-wide configuration (HouseSetting-backed)
+/home/settings/         house-wide config, your profile, and the two screens
 /accounts/              switch (passwordless), profile, household
 /api/                   platform API (device-token auth)
 /mcp/                   MCP tools over HTTP

@@ -75,8 +75,22 @@ Screen power is a **host-side** concern, not this app's: a schedule in Settings 
 applied by `~/.nora/wall-power.sh` via `xset dpms` on a systemd timer, because
 Django runs in Docker and the monitors are on the Pi's own X session.
 
+## Where it appears
+
+No nav entry (`nora_nav = False`). The two screens' status cards live on the
+**Settings** page, directly above the wall power schedule that configures them;
+`/home/displays/` redirects there. `/home/displays/wall/` and
+`/home/displays/kiosk/` are unaffected — they are what the physical screens load.
+
 ## Known gaps
 
+- **Nothing served from this app can touch the physical Chromium windows.** Django
+  runs in Docker with no `DISPLAY`, no X socket mount, and no host networking, so
+  there is no way to minimize, close, move, or focus the wall/kiosk windows from a
+  web page. The only bridge that exists is host-side and polls: `~/.nora/wall-power.sh`
+  runs `manage.py wall_power_state` on a 5-minute systemd timer and acts with
+  `xset`. Any window control would need the same shape — a host agent polling for
+  intent — with a much shorter interval to feel like a button.
 - **DPMS blanks both screens together**, not just the wall. Confirmed on hardware
   and accepted — per-output `xrandr --off` had already proven fragile.
 - `Display.rotation_enabled` / `rotation_seconds` / `current_panel` still exist on
@@ -93,10 +107,11 @@ Django runs in Docker and the monitors are on the Pi's own X session.
 models.py      Display, DisplayCommand
 bus.py         send_to_display, broadcast
 consumers.py   DisplayConsumer (wall listens), KioskConsumer (kiosk sends)
-views.py       wall, kiosk, manage, command
+views.py       wall, kiosk, command (manage now redirects to core:settings)
 tasks.py       check_displays_online
 ```
 
 Templates: `displays/wall_live.html` (current), `displays/kiosk.html`,
-`displays/manage.html`, `displays/wall.html` (retired ambient view).
+`displays/wall.html` (retired ambient view). The screen cards now live in
+`core/settings.html`.
 Scripts: `static/nora_home/js/wall-live.js`, `kiosk.js`, `wall.js` (retired).
