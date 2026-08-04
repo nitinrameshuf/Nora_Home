@@ -204,88 +204,63 @@
 
 /* ── The glass pane material: charm outside, polish inside ──────────────── */
 /* Every surface that used to sit on a flat --bg-raised now sits on the scene
-   instead — translucent, blurred, so text stays perfectly legible no matter
-   what the sky is doing behind it, without ever hiding the atmosphere. */
+   instead — translucent, blurred, so the atmosphere behind it stays genuinely
+   visible. Two earlier attempts pushed this opacity way up (flat, then
+   daypart-scaled) to fix text legibility, and both were reverted — raising
+   opacity to fix contrast just re-hides the thing this design exists to
+   show. Opacity here stays low and fixed for one job only: turning a flat
+   surface into frosted glass. Legibility is handled entirely below, by
+   making the TEXT track how bright the glass actually reads right now. */
 .shell { position: relative; z-index: 1; background: transparent; }
 body { background: transparent; }
 
+:root {
+  --pane-rgb: 6, 8, 12;
+}
+:root[data-theme="light"] { --pane-rgb: 255, 255, 255; }
+
 .sidebar {
-  background: rgba(8, 10, 16, 0.34);
+  background: rgba(var(--pane-rgb), 0.24);
   backdrop-filter: blur(14px) saturate(140%);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .card {
-  background: rgba(8, 10, 16, 0.46);
+  background: rgba(var(--pane-rgb), 0.3);
   backdrop-filter: blur(16px) saturate(150%);
   -webkit-backdrop-filter: blur(16px) saturate(150%);
   border-color: rgba(255, 255, 255, 0.13);
 }
 
-:root[data-theme="light"] .sidebar {
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-  border-right-color: rgba(20, 24, 32, 0.08);
-}
-:root[data-theme="light"] .card {
-  background: rgba(255, 255, 255, 0.62);
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-  border-color: rgba(20, 24, 32, 0.1);
-}
+:root[data-theme="light"] .sidebar { border-right-color: rgba(20, 24, 32, 0.08); }
+:root[data-theme="light"] .card { border-color: rgba(20, 24, 32, 0.1); }
 
 /* Kiosk: same material, on its own fixed-purpose page (not base.html). */
 .kiosk { position: relative; z-index: 1; background: transparent; }
 .kiosk-header {
-  background: rgba(8, 10, 16, 0.34);
+  background: rgba(var(--pane-rgb), 0.24);
   backdrop-filter: blur(12px) saturate(140%);
   -webkit-backdrop-filter: blur(12px) saturate(140%);
   border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 .kiosk-tile {
-  background: rgba(8, 10, 16, 0.46);
+  background: rgba(var(--pane-rgb), 0.3);
   backdrop-filter: blur(14px) saturate(150%);
   -webkit-backdrop-filter: blur(14px) saturate(150%);
   border-color: rgba(255, 255, 255, 0.13);
 }
 .kiosk-controls {
-  background: rgba(8, 10, 16, 0.34);
+  background: rgba(var(--pane-rgb), 0.24);
   backdrop-filter: blur(12px) saturate(140%);
   -webkit-backdrop-filter: blur(12px) saturate(140%);
   border-top-color: rgba(255, 255, 255, 0.08);
 }
 
-/* ── Text that isn't inside a card at all ────────────────────────────────── */
-/* .card/.sidebar/.kiosk-tile solved legibility for anything sitting on their
-   own glass — but plenty of real pages (Tracker, Alerts, the 404/500 pages,
-   App Directory's table, every empty-state) put text directly on the scene,
-   with no card behind it at all. That text used --text/--text-faint colours
-   picked for contrast against a flat --bg, not against a sky that ranges
-   from near-black at night to near-white at noon.
-
-   Two font-rendering tricks were tried here first — a blurred text-shadow,
-   then -webkit-text-stroke — and both turned out DPI-dependent: fine in one
-   screenshot, visibly fuzzy/ghosted on a real 24" panel and worse again on
-   a MacBook's retina display, because how a sub-pixel stroke or a blurred
-   shadow rasterizes is at the mercy of each device's own font hinting and
-   pixel density, not something this stylesheet actually controls. Rather
-   than keep tuning a technique that depends on the renderer, .main gets the
-   exact same real, opaque-ish backdrop .card already relies on — plain
-   alpha compositing, which looks identical on every screen because it isn't
-   involved with font rasterization at all. Slightly less "open sky" shows
-   through outside the cards now, but the text sitting directly on it is
-   reliably legible everywhere, which a halo effect never fully was. */
 .main {
   position: relative;
   z-index: 1;
-  background: rgba(5, 8, 12, 0.54);
-  backdrop-filter: blur(13px) saturate(130%);
-  -webkit-backdrop-filter: blur(13px) saturate(130%);
-}
-:root[data-theme="light"] .main {
-  background: rgba(255, 255, 255, 0.56);
+  background: rgba(var(--pane-rgb), 0.24);
   backdrop-filter: blur(13px) saturate(130%);
   -webkit-backdrop-filter: blur(13px) saturate(130%);
 }
@@ -295,15 +270,41 @@ body { background: transparent; }
    filled, like a card, not like a shadow floating in an outline. */
 .empty,
 .dash__empty {
-  background: rgba(8, 10, 16, 0.4);
+  background: rgba(var(--pane-rgb), 0.2);
   backdrop-filter: blur(14px) saturate(140%);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
 }
-:root[data-theme="light"] .empty,
-:root[data-theme="light"] .dash__empty {
-  background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
+
+/* ── Text legibility: tracks the glass's actual brightness, not opacity ──── */
+/* At this low, constant opacity the glass's own composited brightness is
+   set jointly by the theme's tint (near-black vs near-white) *and* the
+   sky behind it (near-black at night, near-white at noon) — the two don't
+   move together. Dark theme at night is the darkest case; dark theme at
+   noon is meaningfully brighter than dark theme at dusk, because a bright
+   noon sky dominates a mostly-transparent dark tint. Light theme inverts:
+   its darkest case is night (a near-black sky under a mostly-transparent
+   white tint), not noon. Worked through the composited luminance for all
+   eight (theme, daypart) pairs and grouped them into "glass reads dark,
+   use light text" vs "glass reads bright, use dark text" — the same
+   variables (--text/--text-dim/--text-faint) everything on the scene
+   already reads from, so no template or component needs to know this
+   exists. */
+:root[data-theme="dark"][data-daypart="night"],
+:root[data-theme="dark"][data-daypart="dusk"],
+:root[data-theme="light"][data-daypart="night"] {
+  --text: var(--ink-000);
+  --text-dim: var(--ink-200);
+  --text-faint: var(--ink-300);
+}
+
+:root[data-theme="dark"][data-daypart="dawn"],
+:root[data-theme="dark"][data-daypart="noon"],
+:root[data-theme="light"][data-daypart="dusk"],
+:root[data-theme="light"][data-daypart="dawn"],
+:root[data-theme="light"][data-daypart="noon"] {
+  --text: #05070c;
+  --text-dim: var(--ink-700);
+  --text-faint: var(--ink-600);
 }
 
 @media (prefers-reduced-motion: reduce) {
