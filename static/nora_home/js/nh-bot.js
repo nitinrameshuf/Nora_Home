@@ -22,16 +22,22 @@
   var MARGIN = 24;
   var GROUND_MARGIN = 28; // how far above the very bottom edge the strip sits
 
-  var NoraHome = {
-    el: null,
-    bubble: null,
-    socket: null,
-    idleTimer: null,
-    bubbleTimer: null,
-    reconnectDelay: 1000,
-    position: { x: 0, y: 0 },
-    enabled: true
-  };
+  // nh-app.js (loaded first, see base.html) already put post()/csrfToken()
+  // on window.NoraHome — this has to extend that same object, not replace
+  // it. It used to do `window.NoraHome = NoraHome` at the bottom of this
+  // file, which silently wiped both of those out on every page that loads
+  // the bot, breaking anything that used them — the widget picker's save
+  // request among them, which needs csrfToken() for its CSRF header and
+  // was failing its POST with a 403 that nothing surfaced.
+  var NoraHome = window.NoraHome = window.NoraHome || {};
+  NoraHome.el = null;
+  NoraHome.bubble = null;
+  NoraHome.socket = null;
+  NoraHome.idleTimer = null;
+  NoraHome.bubbleTimer = null;
+  NoraHome.reconnectDelay = 1000;
+  NoraHome.position = { x: 0, y: 0 };
+  NoraHome.enabled = true;
 
   /* ── Construction ───────────────────────────────────────────────────────── */
   NoraHome.mount = function () {
@@ -289,8 +295,6 @@
       bell.hidden = false;
     }
   };
-
-  window.NoraHome = NoraHome;
 
   document.addEventListener("DOMContentLoaded", function () {
     if (document.documentElement.getAttribute("data-nh-bot") === "off") return;

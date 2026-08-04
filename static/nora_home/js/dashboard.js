@@ -467,10 +467,17 @@
         "X-CSRFToken": (window.NoraHome && window.NoraHome.csrfToken) ? window.NoraHome.csrfToken() : ""
       },
       body: JSON.stringify({ items: items })
-    }).catch(function () {
+    }).then(function (response) {
+      // fetch() only rejects on a network failure, not on a non-2xx status —
+      // an unnoticed 403 (e.g. a missing CSRF token) would otherwise resolve
+      // fine here and let Dash.add()'s reload fire as if it had saved.
+      if (!response.ok) throw new Error("Save failed: " + response.status);
+      return response;
+    }).catch(function (error) {
       if (window.NoraHome && window.NoraHome.say) {
         window.NoraHome.say("I couldn't save that layout.", { mood: "concerned" });
       }
+      throw error;
     });
   };
 
