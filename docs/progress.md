@@ -1370,6 +1370,34 @@ and drove `NoraHome.wander()` six times in a row through the browser
 console — x varied freely (466-1271px), y stayed at exactly 810px every
 time.
 
+## 2026-08-03 — the bot, round two: a real bug, and a Mars rover
+
+Reported immediately after the robot redesign shipped: clicking a button
+made it slide diagonally from top-left to bottom-right. Root-caused rather
+than patched blind: this is a traditional multi-page Django app, so a
+button that navigates reloads the whole page, and `nh-bot.js`'s `mount()`
+runs fresh on every one of those loads. `.nh-bot` sits at its CSS default
+(`left:0, top:0` — top-left) until the first `moveTo()` call sets a real
+transform, and since `.nh-bot` always carries `transition: transform`,
+*that first positioning animated too* — reading as a slide in from the
+corner on every single navigation, not just once on initial page load.
+Fixed by disabling the transition for that one call and forcing a layout
+flush before turning it back on, so only genuine subsequent moves animate.
+
+Separately, asked to make it look like a Mars rover instead of the robot
+head from last round. Rebuilt `.nh-bot__body`'s contents as stacked pieces
+— three wheels, a chassis, a thin mast, a camera head with two lensed
+"eyes," a short antenna off one corner — instead of the single face-on-a-
+blob shape. First pass had two real problems caught by zooming into an
+actual screenshot rather than trusting the code: the antenna (drawn as an
+angled dish off the mast) rendered as a stray floating ball, disconnected
+from anything, because it was positioned relative to the mast instead of
+the head it was meant to sit on; and the eye glow was strong enough to
+blur the two lenses into a single oval at the icon's real 62px size.
+Fixed by nesting the antenna inside `.nh-bot__head` (so it's unambiguously
+part of the head) and reducing the glow radius on both the eyes and the
+head panel. Re-screenshotted at 4x zoom to confirm before calling it done.
+
 ---
 
 ## Next
