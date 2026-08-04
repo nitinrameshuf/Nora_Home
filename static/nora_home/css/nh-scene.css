@@ -275,33 +275,24 @@ body { background: transparent; }
   -webkit-backdrop-filter: blur(14px) saturate(140%);
 }
 
-/* ── Text legibility: tracks the glass's actual brightness, not opacity ──── */
-/* At this low, constant opacity the glass's own composited brightness is
-   set jointly by the theme's tint (near-black vs near-white) *and* the
-   sky behind it (near-black at night, near-white at noon) — the two don't
-   move together. Dark theme at night is the darkest case; dark theme at
-   noon is meaningfully brighter than dark theme at dusk, because a bright
-   noon sky dominates a mostly-transparent dark tint. Light theme inverts:
-   its darkest case is night (a near-black sky under a mostly-transparent
-   white tint), not noon. Worked through the composited luminance for all
-   eight (theme, daypart) pairs and grouped them into "glass reads dark,
-   use light text" vs "glass reads bright, use dark text" — the same
-   variables (--text/--text-dim/--text-faint) everything on the scene
-   already reads from, so no template or component needs to know this
-   exists. */
-:root[data-theme="dark"][data-daypart="night"],
-:root[data-theme="dark"][data-daypart="dusk"],
-:root[data-theme="light"][data-daypart="night"] {
+/* ── Text legibility: tracks the glass's brightness, not opacity ─────────── */
+/* First attempt here keyed text color off both theme *and* daypart (8
+   combinations), reasoning that a bright noon sky could push dark theme's
+   glass bright enough to need dark text, and a dark night sky could push
+   light theme's glass dark enough to need light text. Checked all eight
+   against the real, now-actually-translucent panes (screenshotted on the
+   live Pi) and that reasoning didn't hold: at this low, fixed opacity the
+   pane's own tint dominates the composite in every daypart — dark theme's
+   glass never gets bright enough to need dark text, light theme's glass
+   never gets dark enough to need light text. Daypart turned out not to
+   matter here at all; only the theme does. */
+:root[data-theme="dark"] {
   --text: var(--ink-000);
   --text-dim: var(--ink-200);
   --text-faint: var(--ink-300);
 }
 
-:root[data-theme="dark"][data-daypart="dawn"],
-:root[data-theme="dark"][data-daypart="noon"],
-:root[data-theme="light"][data-daypart="dusk"],
-:root[data-theme="light"][data-daypart="dawn"],
-:root[data-theme="light"][data-daypart="noon"] {
+:root[data-theme="light"] {
   --text: #05070c;
   --text-dim: var(--ink-700);
   --text-faint: var(--ink-600);
