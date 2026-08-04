@@ -2,7 +2,7 @@
 
 The narrative record. Newest entries at the bottom. Every session that changes code
 adds an entry here, and the story dashboard
-([`dashboard/nora_home_dashboard.html`](dashboard/nora_home_dashboard.html)) is
+([`dashboard/nora_home_dashboard.html`](../User/dashboard/nora_home_dashboard.html)) is
 updated to match in the same commit.
 
 Status vocabulary, used consistently in both files:
@@ -1429,6 +1429,97 @@ UI — opened the picker, added "Disk," and confirmed the tile count went
 from 5 to 6 *after a reload* (persisted server-side, not just added to the
 in-memory list) — then removed it again the same way to leave the
 dashboard as it was.
+
+## 2026-08-04 — docs restructured, and three dead things found behind the "stale buttons"
+
+A batch of documentation work, plus a UI fix — and the documentation pass turned
+up real dead code, which is the point of doing it.
+
+### The dropdown
+
+The profile menu is a native `<details>`, which only closes on a second click of
+its own `<summary>`. Added `wireProfileMenu()` in `nh-app.js` to close any open
+`.profile-menu` on a click outside it, which is what every other dropdown on the
+web does.
+
+### "Remove the stale buttons from the 10.1 display" — bigger than it looked
+
+The kiosk footer had **Dim** and **Wake**, sending `sleep` / `wake`. Checked
+`wall-live.js` rather than assuming: it implements `navigate` and `refresh` and
+nothing else. Both buttons had been doing literally nothing since the wall was
+rebuilt around an iframe. Screen power is a host-side concern anyway
+(`xset dpms` on a systemd timer, set from Settings), not a socket message.
+
+Tracing why they were dead surfaced two more things:
+
+- **The 24" wall had silently stopped showing alerts.** `display` is a real
+  notification channel — `notifications/channels/display.py` sends
+  `{"type": "banner", ...}` — and the old ambient `wall.js` rendered it. The
+  replacement `wall-live.js` never had a `banner` case and `wall_live.html` had no
+  banner element, so every alert routed to the wall was accepted by the bus and
+  dropped in the browser. The `.wall-banner` CSS was still sitting there unused.
+  Restored both.
+- **`rotate_wall_display` was still running every 45 seconds, forever.** It sent
+  `next` to advance the old panel rotation; the iframe wall has no `next` handler.
+  It was waking the Celery worker on a timer to send a message nothing listened
+  for. Removed the task and its beat entry.
+
+Also trimmed `KIOSK_ACTIONS` from ten actions to the three the wall actually
+implements, and removed the **Showing** and **Rotation** rows from the Displays
+page — both were rendering panel-rotation state that stopped meaning anything when
+the wall changed.
+
+**The pattern worth remembering:** the display bus relays anything, and the browser
+silently ignores what it has no handler for. A control wired to an unimplemented
+message type looks completely functional. Adding a message type means adding its
+handler in the same commit — this has now bitten twice.
+
+### docs/ restructured
+
+Reorganised by **who the document is for**, replacing a flat folder:
+
+```
+docs/User/         deployment.html, dashboard/ — people, not agents
+docs/Main_App/     DEVELOPMENT, cross-functionality, architecture, testing,
+                   progress, + subsystems/ (one file per platform subsystem)
+docs/House_Apps/   one folder per family app, holding that app's docs
+```
+
+New in this pass:
+
+- **`Main_App/cross-functionality.md`** — the index of every published cross-app
+  API, with signatures copied from the code rather than from memory: tracker,
+  notifications, telemetry, widgets, displays, AI, datastores, MCP, signals. Ends
+  with the rule about calling the spine directly and never importing a peer app.
+- **`Main_App/testing.md`** — how to verify work on the real hardware: Pi access,
+  the deploy loop, Playwright recipes, `scrot` on the physical screens, and an
+  explicit table of what this *cannot* catch. Records the Pi's SSH details on
+  purpose so an agent can check its own work without asking; there is no secret in
+  them (a private LAN address, a username, and the path to a key that stays on the
+  dev machine).
+- **`Main_App/subsystems/*.md`** — twelve files, one per platform app, each with
+  the same headings a house app uses. The *Known gaps* sections are the honest
+  ones: telemetry has exactly one series in this house, AI has never made a single
+  request, no backup has ever been restored.
+- **`House_Apps/`** — one folder per app. `install_app` now checks for
+  `docs/House_Apps/<name>/README.md` and warns when it is missing, so "required" is
+  enforced rather than merely stated. `example_habit/README.md` is the template.
+
+Deleted `capabilities.html` (and its `core:capabilities` route and view) and
+`design-options.html` — the first was an unmaintained parallel description of the
+platform, the second was mockups for a design decision made months ago.
+
+`DEVELOPMENT.md` gained a **five surfaces** section covering the 24" wall, the
+10.1" kiosk, phone, tablet and desktop — what `data-surface` each gets, how it is
+detected, what to design for, and the PWA/no-build constraints. Its checklist and
+Ten-minute start now include writing the app's docs.
+
+`CLAUDE.md` § 0 was rewritten around the new layout. It stays at the repo root
+deliberately — it is auto-loaded from there, and moving it into `docs/` would stop
+it being read.
+
+Verified: `manage.py check` clean, and a link-checker walked every markdown file
+including `CLAUDE.md` — all relative links resolve.
 
 ---
 

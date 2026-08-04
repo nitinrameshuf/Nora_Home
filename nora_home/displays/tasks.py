@@ -5,33 +5,16 @@ import logging
 from celery import shared_task
 from django.utils import timezone
 
-from nora_home.displays.bus import send_to_display
 from nora_home.displays.models import Display
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(queue="platform", expires=40)
-def rotate_wall_display():
-    """Advance every rotating display one panel.
-
-    Deliberately server-driven rather than a browser timer: it means the kiosk can
-    pin a panel and have every screen agree, and it keeps two wall screens in sync
-    if the house ever grows a second one. `expires` stops a backed-up queue from
-    firing a burst of stale rotations at once.
-    """
-    advanced = 0
-    for display in Display.objects.filter(is_active=True, rotation_enabled=True):
-        if display.is_pinned:
-            continue
-        if display.in_night_mode():
-            send_to_display(display.slug, {"type": "night"})
-            continue
-        if not display.is_online:
-            continue
-        if send_to_display(display.slug, {"type": "next"}):
-            advanced += 1
-    return {"advanced": advanced}
+# rotate_wall_display() lived here: every 45 seconds it sent "next" to advance
+# the ambient wall's panel rotation. That wall was replaced by one that mirrors
+# a real page of the app, chosen from the kiosk, and wall-live.js has no "next"
+# case at all — so the task woke the worker on a timer forever to send a message
+# nothing listened for. Removed along with its Celery beat entry.
 
 
 @shared_task(queue="platform")

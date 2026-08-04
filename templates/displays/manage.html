@@ -3,10 +3,16 @@
 {% block content %}
   <p class="card-subtitle">
     The Pi 5 drives two screens: the 24" wall display on HDMI-0 and the 10.1" kiosk on
-    HDMI-1. Any browser that opens a wall URL registers itself here, so a spare tablet
-    can join the rotation.
+    HDMI-1. The kiosk is the remote control — tapping an app on it sends the wall to
+    that app. Any browser that opens a wall URL registers itself here.
   </p>
 
+  {% comment %}
+  "Showing" and "Rotation" used to live here, from when the wall cycled through
+  pre-rendered ambient panels. The wall now mirrors a real page of the app,
+  chosen from the kiosk, so neither means anything — they were showing a stale
+  panel key and a rotation interval that nothing honoured.
+  {% endcomment %}
   <div class="card-grid">
     {% for display in displays %}
       <div class="card">
@@ -18,12 +24,6 @@
         <ul class="item-list">
           <li class="item"><div class="item-body">Slug</div><code>{{ display.slug }}</code></li>
           <li class="item"><div class="item-body">Kind</div>{{ display.get_kind_display }}</li>
-          <li class="item"><div class="item-body">Showing</div>
-            <code>{{ display.current_panel|default:"—" }}</code></li>
-          <li class="item"><div class="item-body">Rotation</div>
-            {% if display.is_pinned %}<span class="pill warn">pinned</span>
-            {% elif display.rotation_enabled %}every {{ display.rotation_seconds }}s
-            {% else %}off{% endif %}</li>
           <li class="item"><div class="item-body">Last heartbeat</div>
             {{ display.last_seen_at|default:"never" }}</li>
         </ul>

@@ -9,7 +9,7 @@ Three layers, deliberately separate:
 
 House apps do not need their own reminder logic. They create a Trackable pointing
 back at their own record via (source_app, source_ref) and let the platform handle
-due dates, nudges, escalation, and streaks. See DEVELOPMENT.md.
+due dates, nudges, escalation, and streaks. See docs/Main_App/DEVELOPMENT.md.
 """
 
 from __future__ import annotations

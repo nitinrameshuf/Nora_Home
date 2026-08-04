@@ -16,7 +16,6 @@ app_name = "core"
 urlpatterns = [
     path("", dashboard_views.home, name="dashboard"),
     path("apps/", views.app_directory, name="app_directory"),
-    path("capabilities/", views.capabilities, name="capabilities"),
     path("system/", views.system_status, name="system_status"),
     path("settings/", views.settings_page, name="settings"),
     path("health/", views.health, name="health"),

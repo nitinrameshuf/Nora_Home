@@ -68,8 +68,52 @@
       case "refresh":
         window.location.reload();
         break;
+      case "banner":
+        WallLive.banner(data);
+        break;
       default:
         break;
+    }
+  };
+
+  /* An alert takes over the top of the wall for a while, then hands it back.
+     A critical one (hold_seconds 0) stays until something replaces it.
+
+     This is the whole reason the "display" notification channel exists
+     (nora_home/notifications/channels/display.py). The ambient wall this page
+     replaced handled it; this one didn't, so every alert routed to the wall
+     was accepted by the bus and then silently dropped in the browser. */
+  WallLive.banner = function (data) {
+    var banner = document.querySelector("[data-wall-banner]");
+    if (!banner) return;
+
+    banner.className = "wall-banner is-visible severity-" + (data.severity || "info");
+    banner.innerHTML = "";
+
+    var title = document.createElement("div");
+    title.className = "wall-banner__title";
+    title.textContent = data.title || "";
+    banner.appendChild(title);
+
+    if (data.body) {
+      var body = document.createElement("div");
+      body.className = "wall-banner__body";
+      body.textContent = data.body;
+      banner.appendChild(body);
+    }
+    if (data.recipient) {
+      var who = document.createElement("div");
+      who.className = "wall-banner__who";
+      who.textContent = data.recipient;
+      banner.appendChild(who);
+    }
+
+    window.clearTimeout(WallLive.bannerTimer);
+    var hold = data.hold_seconds;
+    if (hold && hold > 0) {
+      WallLive.bannerTimer = window.setTimeout(function () {
+        banner.classList.remove("is-visible");
+      }, hold * 1000);
     }
   };
 

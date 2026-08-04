@@ -5,8 +5,12 @@ things are the way they are, and what to do next. If you are an AI agent picking
 repo up on a fresh machine, everything you need is here or linked from here.
 
 Companion documents:
-- [`DEVELOPMENT.md`](DEVELOPMENT.md) — how to **write an app** for this system. Point
-  a family member's agent at that file, not this one.
+- [`docs/Main_App/DEVELOPMENT.md`](docs/Main_App/DEVELOPMENT.md) — how to **write an
+  app** for this system. Point a family member's agent at that file, not this one.
+- [`docs/Main_App/cross-functionality.md`](docs/Main_App/cross-functionality.md) —
+  the index of what every app can call from every other app.
+- [`docs/Main_App/testing.md`](docs/Main_App/testing.md) — **how to verify your own
+  work on the real hardware**, including SSH access to the Pi.
 - [`docs/`](docs/) — the project's record of itself. See §0 below: **updating it is
   part of every change, not a separate chore.**
 
@@ -19,19 +23,41 @@ different machine, by a different agent, weeks later. **Documentation changes sh
 the same commit as the code they describe.** A commit that changes behaviour and
 leaves the docs stale is an incomplete commit.
 
+### How `docs/` is organised
+
+Three folders, by **who the document is for**. See [`docs/README.md`](docs/README.md).
+
+| Folder | For | Holds |
+|---|---|---|
+| [`docs/User/`](docs/User/) | People, not agents | `deployment.html`, and `dashboard/` — the story board |
+| [`docs/Main_App/`](docs/Main_App/) | The Django platform and its infrastructure | `DEVELOPMENT.md`, `cross-functionality.md`, `architecture.md`, `testing.md`, `progress.md`, and `subsystems/` — one file per platform subsystem |
+| [`docs/House_Apps/`](docs/House_Apps/) | The family's own apps | One folder per app, named after its module, holding all of that app's docs |
+
+**Every house app is required to have a folder under `docs/House_Apps/` with a
+`README.md`.** `install_app` warns when one is missing, so it is enforced rather
+than merely stated.
+
+### What to update, when
+
 | You changed… | Update, in the same commit |
 |---|---|
-| A story's status, or added one | [`docs/dashboard/nora_home_dashboard.html`](docs/dashboard/nora_home_dashboard.html) — the `STORIES` object, the summary counts, and the phase bars |
-| Anything at all, in a working session | [`docs/progress.md`](docs/progress.md) — a dated entry, newest at the bottom |
-| A component, boundary, or data flow | [`docs/architecture.md`](docs/architecture.md) — including the Mermaid diagrams |
-| Something the family can now *do* | [`docs/capabilities.html`](docs/capabilities.html) — plain language, no jargon |
-| A deployment, install, or uninstall step | [`docs/deployment.html`](docs/deployment.html) — for people, not agents; keep it in sync with `scripts/install-pi.sh`, the `Makefile`, `install_app`, and `uninstall_app` |
-| The design language | [`docs/design-options.html`](docs/design-options.html) |
+| A story's status, or added one | [`docs/User/dashboard/nora_home_dashboard.html`](docs/User/dashboard/nora_home_dashboard.html) — the `STORIES` object, the summary counts, and the phase bars |
+| Anything at all, in a working session | [`docs/Main_App/progress.md`](docs/Main_App/progress.md) — a dated entry, newest at the bottom |
+| A component, boundary, or data flow | [`docs/Main_App/architecture.md`](docs/Main_App/architecture.md) — including the Mermaid diagrams |
+| One subsystem's models, API, tasks, or gaps | The matching file in [`docs/Main_App/subsystems/`](docs/Main_App/subsystems/) |
+| A published cross-app function | [`docs/Main_App/cross-functionality.md`](docs/Main_App/cross-functionality.md) — signatures are copied from the code, so keep them true |
+| The app contract, or anything about the five surfaces | [`docs/Main_App/DEVELOPMENT.md`](docs/Main_App/DEVELOPMENT.md) |
+| How you verify work on the Pi | [`docs/Main_App/testing.md`](docs/Main_App/testing.md) |
+| A house app | That app's folder in [`docs/House_Apps/`](docs/House_Apps/) |
+| A deployment, install, or uninstall step | [`docs/User/deployment.html`](docs/User/deployment.html) — for people, not agents; keep it in sync with `scripts/install-pi.sh`, the `Makefile`, `install_app`, and `uninstall_app` |
 | A decision worth not re-litigating | §4 here, **and** the Decisions tab of the dashboard |
 
 The dashboard is the main view — the same shape as the Nora robot project's, so both
 read alike. Its story data lives in one `STORIES` object near the bottom of the file;
 edit that and the cards follow.
+
+`CLAUDE.md` stays at the repo root, not in `docs/`: it is loaded automatically from
+there by agent tooling, and moving it would stop it being read.
 
 **Status vocabulary**, used identically in the dashboard and `progress.md`:
 
@@ -68,7 +94,7 @@ the wall display for free.
 > would actually mislead a person.
 >
 > The two systems meet at **exactly two touchpoints**, both in
-> [`docs/architecture.md`](docs/architecture.md) § Boundaries: the robot may
+> [`docs/Main_App/architecture.md`](docs/Main_App/architecture.md) § Boundaries: the robot may
 > `POST /api/homebot/say/` to put a line on the house screens, and it may read the
 > MCP tools with a scoped device token. Nothing else is shared.
 
@@ -166,7 +192,7 @@ taken — not dug into further, worth checking next time someone's on the Pi.
 The 24" was repointed from the old passive ambient view to the real app, and the
 10.1" kiosk was rebuilt into a context-sensitive remote for it — tapping an app's
 tile switches what the wall shows *and* swaps the kiosk to that app's own control
-buttons, declared per app via `nora_kiosk_controls` (see `DEVELOPMENT.md`). A
+buttons, declared per app via `nora_kiosk_controls` (see `docs/Main_App/DEVELOPMENT.md`). A
 Settings tab was added, its first setting a schedule for powering both screens off
 overnight. Deployed and checked directly against the physical hardware, not just
 `manage.py check`: simulated touch (`xdotool`) confirmed tapping a kiosk tile
@@ -253,7 +279,7 @@ screen (`--ignore-certificate-errors` did its job).
 
 ### Not done — pick up here
 1. **Design system chosen: "Almanac" — engine shipped and seen live on the Pi.**
-   See §4's new decision entry and `docs/design-options.html`. The living
+   See §4's new decision entry and the design-options mockups (deleted 2026-08-03; see progress.md). The living
    background (season/day-night/weather composited behind the real app, never
    replacing it) is wired into `base.html` and `kiosk.html`, backed by a real
    weather integration (Open-Meteo, no API key). Verified locally (real fetch
@@ -282,7 +308,7 @@ screen (`--ignore-certificate-errors` did its job).
    the Pi.** The 24" wall now serves an iframe shell (`wall_live.html`)
    instead of pre-rendered ambient panels, and the 10.1" kiosk got
    context-sensitive per-app button screens (`nora_kiosk_controls` on
-   `NoraAppConfig` — see `DEVELOPMENT.md`). A `Settings` page
+   `NoraAppConfig` — see `docs/Main_App/DEVELOPMENT.md`). A `Settings` page
    (`core:settings`) holds house-wide config, starting with a wall power
    schedule applied by a new host-side script + systemd timer via
    `xset dpms force`. All verified locally with Django's test client and
@@ -317,7 +343,7 @@ make deploy    # every update after that
 `make up` now also generates a self-signed TLS cert on first run (idempotent
 — see §4, "HTTPS via nginx"). The house serves on **https://<address>/home/**,
 port 443, not `:8000` — nginx is the only published entry point. Your browser
-warns once per device on first visit; see `docs/deployment.html`.
+warns once per device on first visit; see `docs/User/deployment.html`.
 
 ### First time on a new machine
 ```bash
@@ -396,7 +422,7 @@ member a superuser regardless of role — harmless while a password gated `/admi
 not once it doesn't.
 
 **Design system: "Almanac" — a living, seasonal background, not a themed
-dashboard.** Two rounds of dashboard-shaped mockups (`docs/design-options.html`)
+dashboard.** Two rounds of dashboard-shaped mockups (kept in `docs/design-options.html` until it was deleted 2026-08-03)
 were rejected as generic — recognizable as "an AI-generated dashboard" no
 matter the palette, because a sidebar-plus-card-grid is that template
 regardless of colour. The direction that stuck instead: the actual season,
@@ -523,7 +549,11 @@ templates/         platform templates
 static/nora_home/       css, js, vendor
 docker/            entrypoint
 scripts/           install-pi.sh
-docs/              capabilities.html, design-options.html, deployment.html
+docs/
+  User/            deployment.html, dashboard/ — for people, not agents
+  Main_App/        DEVELOPMENT, cross-functionality, architecture, testing,
+                   progress, and subsystems/ — one file per platform subsystem
+  House_Apps/      one folder per family app, holding that app's docs
 ```
 
 ---
@@ -540,7 +570,7 @@ Append here. Newest last. Keep entries short and factual.
 - Home screen is now a per-person grid of widgets from any app, with ECharts and
   Gridstack vendored for offline use.
 - Migrations generated and applied; ran end to end on SQLite.
-- Four design directions rendered in `docs/design-options.html` — awaiting a choice.
+- Four design directions rendered in `docs/design-options.html` (since deleted) — awaiting a choice.
 
 Two bugs worth remembering, both found only by actually running it:
 - **The registry was silently empty.** Django picks an app's config by inspecting
@@ -555,7 +585,7 @@ Two bugs worth remembering, both found only by actually running it:
 ### 2026-07-31 — renamed away from the robot, and docs made first-class
 - `nora` → `nora_home` everywhere: package, settings prefix, static path, CSS classes,
   JS globals, websocket routes, and the AI system prompt. See §1 and
-  `docs/progress.md` for the full table of what moved.
+  `docs/Main_App/progress.md` for the full table of what moved.
 - `docs/` established with a story dashboard (same shape as the robot project's),
   architecture diagrams, and a progress log. Documentation duty written into §0.
 - First set of design directions rejected as too task-list-focused; a second,
@@ -564,7 +594,7 @@ Two bugs worth remembering, both found only by actually running it:
 ### 2026-07-31 — the third-party app-building path, actually tried
 Asked "is this ready to hand to others to build apps inside it?" — rather than
 answer from the code, actually played a new house-app author: cloned fresh,
-followed `DEVELOPMENT.md`'s "Ten-minute start" literally, and hit two real bugs
+followed `docs/Main_App/DEVELOPMENT.md`'s "Ten-minute start" literally, and hit two real bugs
 that only showed up by doing it.
 
 - **`install_app` couldn't generate migrations for the very first app added in a
@@ -583,7 +613,7 @@ that only showed up by doing it.
   — `AlreadyRegistered: The model Habit is already registered with
   'example_habit.HabitAdmin'` — the first time the new app's `admin.py` runs,
   because seven files still say `from houseapps.example_habit import ...` and the
-  templates live in a directory named after the old app. `DEVELOPMENT.md`'s
+  templates live in a directory named after the old app. `docs/Main_App/DEVELOPMENT.md`'s
   "Ten-minute start" now opens with the actual mechanical fix (`grep -rl
   example_habit | xargs sed -i ...` plus the templates-directory rename) instead
   of leaving it to be discovered as a stack trace.
@@ -618,7 +648,7 @@ widgets and its own generated migration applied.
 Ask before assuming.
 
 1. **Which design direction?** Blocking any real UI work (Story 23). See
-   `docs/design-options.html` — the second, visualization-led set. The first set was
+   `docs/design-options.html` (since deleted) — the second, visualization-led set. The first set was
    rejected for looking like a todo app.
 2. **Slack: bot token or webhook?** A bot token gives DMs and threading, which the
    escalation ladder is designed around. A webhook is one channel and zero setup.

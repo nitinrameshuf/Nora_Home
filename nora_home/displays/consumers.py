@@ -25,10 +25,14 @@ logger = logging.getLogger(__name__)
 
 # Commands the kiosk is allowed to issue. Anything else is ignored and logged.
 # "navigate" sends the wall to a page of the real app (path rides along in the
-# payload unparsed — see KioskConsumer.receive_json) rather than switching
-# between pre-rendered ambient panels like the others in this set.
-KIOSK_ACTIONS = {"show", "pin", "unpin", "next", "previous", "refresh",
-                 "brightness", "sleep", "wake", "say", "navigate"}
+# payload unparsed — see KioskConsumer.receive_json).
+#
+# This list is deliberately only what wall-live.js actually implements. It used
+# to also carry show/pin/unpin/next/previous/brightness/sleep/wake, all of which
+# belonged to the pre-rendered ambient wall that the iframe wall replaced — the
+# server happily relayed them and the wall silently ignored every one, so a
+# kiosk button wired to any of them looked functional and did nothing.
+KIOSK_ACTIONS = {"navigate", "refresh", "say"}
 
 
 class DisplayConsumer(AsyncJsonWebsocketConsumer):
@@ -131,9 +135,6 @@ class KioskConsumer(AsyncJsonWebsocketConsumer):
         target = content.get("display") or settings.NORA_HOME_MAIN_DISPLAY_SLUG
         payload = {"type": action, **{k: v for k, v in content.items()
                                       if k not in {"action", "display"}}}
-
-        if action in {"show", "pin"}:
-            await self._persist_show(target, content)
 
         await self.channel_layer.group_send(
             group_for(target), {"type": "display.message", "payload": payload})

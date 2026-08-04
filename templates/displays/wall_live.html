@@ -18,6 +18,13 @@ the old ambient wall used — see wall-live.js.
   <iframe data-wall-frame src="{{ default_path }}" title="{{ house_name }}"></iframe>
   <span class="wall-status wall-live-dot" data-wall-status></span>
 
+  {% comment %}
+  Alerts routed to the "display" notification channel land here, on top of
+  the iframe. Without this element the wall is a notification channel that
+  silently drops everything sent to it — see wall-live.js's "banner" case.
+  {% endcomment %}
+  <div class="wall-banner" data-wall-banner role="status" aria-live="polite"></div>
+
   <script src="{% static 'nora_home/js/wall-live.js' %}" defer></script>
 </body>
 </html>

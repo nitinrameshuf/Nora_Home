@@ -97,10 +97,22 @@
     });
   }
 
+  /* The profile menu is a native <details>, which only closes again on a
+     second click on its own <summary> — not on a click anywhere else, which
+     is what every other dropdown/menu convention on the web actually does. */
+  function wireProfileMenu() {
+    document.addEventListener("click", function (event) {
+      document.querySelectorAll(".profile-menu[open]").forEach(function (menu) {
+        if (!menu.contains(event.target)) menu.removeAttribute("open");
+      });
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     wireTicks();
     wireCardRefresh();
     wireTheme();
+    wireProfileMenu();
   });
 
   window.NoraHome = window.NoraHome || {};

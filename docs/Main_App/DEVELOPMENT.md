@@ -4,7 +4,12 @@
 whether you are a person or an AI agent working on their behalf. Read it start to
 finish before writing code. It is short on purpose.
 
-If you want to know what Nora Home *is*, read [`CLAUDE.md`](CLAUDE.md) instead.
+| Also read | For |
+|---|---|
+| [`cross-functionality.md`](cross-functionality.md) | The full index of what every app can call from every other app — signatures, arguments, and the rule about never importing a peer app |
+| [`../CLAUDE.md`](../../CLAUDE.md) | What Nora Home *is*, and why it is built this way |
+| [`testing.md`](testing.md) | How to actually verify your app on the real hardware |
+| [`architecture.md`](architecture.md) | How the pieces fit together, with diagrams |
 
 ---
 
@@ -65,7 +70,20 @@ Then, in your new directory:
    the tracker registration call is a separate string from the URL slug; change it
    too.
 4. `views.py` / `urls.py` — your pages. They mount at `/workout/` automatically.
-5. Register it and migrate:
+5. **Write your app's docs.** Every house app is required to have a folder under
+   `docs/House_Apps/` — `install_app` warns without it:
+
+```bash
+mkdir -p docs/House_Apps/workout
+cp docs/House_Apps/example_habit/README.md docs/House_Apps/workout/README.md
+# then edit it: what it is, where it appears, what it owns, what it offers
+```
+
+   The required sections are listed in
+   [`../House_Apps/README.md`](../House_Apps/README.md). The *Known gaps* section is
+   the one people actually thank you for.
+
+6. Register it and migrate:
 
 ```bash
 python manage.py install_app houseapps.workout
@@ -253,28 +271,80 @@ respects them.
 
 ---
 
-## The 24" wall and the 10.1" touchscreen
+## The five surfaces
 
-Two physical screens in the house work together, and most apps get useful
-behaviour on both without any extra code:
+The same pages have to work on a phone in a pocket, an iPad on the counter, a
+laptop, the 24" wall across the room, and the 10.1" kiosk under someone's thumb.
+**You write one set of templates.** The platform names the surface server-side
+(`nora_home/ui/middleware.py`) and puts it on `<html data-surface="...">`, so CSS
+and templates can respond without measuring viewports in JavaScript.
 
-- The **24" wall** shows the real app — whatever page is currently open,
-  full-size, for anyone in the room to read. It has no touch or mouse.
-- The **10.1" kiosk** is the remote control for it. It never shows your
-  app's pages itself — it's a fixed grid of buttons. Tapping one switches
-  what the wall is showing.
+| `data-surface` | Device | Detected by | Design for |
+|---|---|---|---|
+| `wall` | 24" 1080p on HDMI-0, always on, wall-mounted | URL (`/home/displays/wall`) | **Read at ~3 metres.** Big type, high contrast, no controls — nobody can touch it |
+| `kiosk` | 10.1" 1024×600 touchscreen on HDMI-1 | URL (`/home/displays/kiosk`) | **One thumb.** Big targets, no keyboard, no scrolling if avoidable |
+| `phone` | iPhone / Android | User-Agent | One column, thumb-reachable, offline-tolerant |
+| `tablet` | iPad | User-Agent | Two columns, touch targets |
+| `desktop` | laptop or monitor | fallback | Full density, hover states, pointer |
 
-Every app with `nora_nav = True` already gets one kiosk button for free — it
-switches the wall to your app's front page (`nora_url_prefix`). If your app
-has more than one place worth jumping straight to, declare
-`nora_kiosk_controls` in `apps.py` (shown above) and the kiosk grows a
-whole screen of buttons for your app — tapping any of them still switches
-the wall, just to that specific page instead of the front page. No websocket
-code, no JavaScript, nothing else to wire up; the platform's existing
-display bus (`nora_home/displays/`) carries the command.
+A `nh_surface` cookie overrides detection, so you can force a mode to test one.
+`request.nh_surface` and `request.nh_is_touch` are available in every view.
 
-Paths are plain strings, the same convention `nora_url_prefix` already uses
-— not Django URL names needing `reverse()`.
+```css
+/* Wall: read from across the room. */
+:root[data-surface="wall"] .card { padding: 1.6rem 1.8rem; font-size: 1.3rem; }
+
+/* Kiosk: thumbs, not cursors. */
+:root[data-surface="kiosk"] .btn { min-height: 64px; font-size: 1.15rem; }
+```
+
+Sizing tokens already scale per surface — if you use `.card`, `.btn`, `.item-list`
+and the `--step-*` type scale, you get most of this for free and should not need
+surface-specific CSS at all. Reach for it only when the *layout* genuinely differs,
+not to nudge a font size.
+
+### How the two screens work together
+
+- The **24" wall** shows the real app — whatever page is currently open, full-size,
+  for anyone in the room to read. It has no touch and no mouse.
+- The **10.1" kiosk** is the remote control for it. It never shows your app's pages
+  itself; it is a fixed grid of buttons. Tapping one switches what the wall shows.
+
+Every app with `nora_nav = True` already gets one kiosk button for free — it sends
+the wall to your app's front page (`nora_url_prefix`). If your app has more than
+one place worth jumping straight to, declare `nora_kiosk_controls` in `apps.py` and
+the kiosk grows a whole screen of buttons for your app:
+
+```python
+nora_kiosk_controls = [
+    {"title": "Log a set", "path": "/workout/log/"},
+    {"title": "This week", "path": "/workout/week/"},
+]
+```
+
+Paths are plain strings, the same convention `nora_url_prefix` uses — not Django
+URL names needing `reverse()`. No websocket code and no JavaScript: the display bus
+(`nora_home/displays/`) carries the command.
+
+**What the wall actually implements** is `navigate`, `refresh` and `banner`
+(`static/nora_home/js/wall-live.js`). The bus will happily relay anything else and
+the browser will silently ignore it — if you invent a new message type, add the
+handler in the same commit or you are shipping a button that does nothing.
+
+### Phones: PWA, not a native app
+
+Phones and iPads hit the same server over the LAN. There is deliberately no native
+app — see [`../CLAUDE.md`](../../CLAUDE.md) § 5. The one real gap is background push on
+iOS, which is why notifications are channel-agnostic and Slack carries anything
+urgent. Do not build around a phone-only capability (Bluetooth, background
+location, on-device ML) without raising it first.
+
+### Everything must survive a dead network
+
+The Pi has to work with the internet down. ECharts and Gridstack are **vendored**
+into `static/nora_home/vendor/` for exactly this reason. **No npm, no bundler, no
+framework, no CDN.** A family member's agent should be able to add a chart without
+a toolchain, and the Pi should never run a build step.
 
 ---
 
@@ -602,12 +672,17 @@ Your pages must work on a phone, an iPad, a laptop, and the 24" wall display. Te
 ## Checklist before you call it done
 
 - [ ] `apps.py` subclasses `NoraAppConfig` with a slug, title, description, category
+- [ ] **`docs/House_Apps/<yourapp>/README.md` written** — required, and
+      `install_app` warns without it. See
+      [`../House_Apps/README.md`](../House_Apps/README.md) for the sections
 - [ ] Migrations generated and committed
-- [ ] Renders correctly at 375px and 1920px
+- [ ] Renders correctly at 375px **and** 1920px, and is readable on the 24" wall
 - [ ] At least one widget offered to the home dashboard
+- [ ] Kiosk controls declared if the app has more than one place worth jumping to
 - [ ] Anything with a deadline registers a trackable rather than reminding people itself
 - [ ] Anything numeric and time-varying goes to telemetry
 - [ ] An MCP tool for the data an agent would want, with a "call this when…" description
 - [ ] No secrets outside `.env`; no direct imports of other apps' models
 - [ ] Failures log and degrade rather than 500
 - [ ] `python manage.py check` is clean
+- [ ] Actually seen working — see [`testing.md`](testing.md), not just a diff

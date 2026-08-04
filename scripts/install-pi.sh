@@ -26,7 +26,7 @@ NORA_HOME_HTTPS_PORT="${NORA_HOME_HTTPS_PORT:-443}"
 # The 24" shows the full navigable app — but through a thin iframe shell
 # (/home/displays/wall/), not pointed at /home/ directly, so the 10.1" kiosk
 # can drive it remotely (see wall-live.js and the kiosk_controls contract in
-# DEVELOPMENT.md). The kiosk itself never shows the app — it's a fixed
+# docs/Main_App/DEVELOPMENT.md). The kiosk itself never shows the app — it's a fixed
 # button grid built from the same nav structure the sidebar uses.
 WALL_URL="https://localhost:${NORA_HOME_HTTPS_PORT}/home/displays/wall/"
 KIOSK_URL="https://localhost:${NORA_HOME_HTTPS_PORT}/home/displays/kiosk/"

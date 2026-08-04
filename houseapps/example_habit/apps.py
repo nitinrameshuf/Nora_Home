@@ -1,7 +1,7 @@
 """
 The reference house app: habits with streaks.
 
-Read this alongside DEVELOPMENT.md. It is deliberately small but touches every part
+Read this alongside docs/Main_App/DEVELOPMENT.md. It is deliberately small but touches every part
 of the platform an app is likely to need — registry, tracker, notifications,
 telemetry, cards, a wall panel, an MCP tool, and a Celery task.
 

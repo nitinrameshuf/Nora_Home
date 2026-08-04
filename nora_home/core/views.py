@@ -1,10 +1,10 @@
-"""Dashboard, health, capabilities, and error pages."""
+"""Dashboard, app directory, settings, health, and error pages."""
 
 from __future__ import annotations
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.cache import never_cache
@@ -36,19 +36,6 @@ def app_directory(request):
         "apps": [a for a in house_apps(include_disabled=True) if a.has_page],
         "page_title": "Apps",
     })
-
-
-def capabilities(request):
-    """Serve docs/capabilities.html — the living record of what the platform does.
-
-    Served from disk rather than duplicated into a template so that there is exactly
-    one copy: editing the file updates this page, and the file is still openable on
-    its own by anyone who has the repo.
-    """
-    path = settings.BASE_DIR / "docs" / "capabilities.html"
-    if not path.exists():
-        return render(request, "core/404.html", status=404)
-    return HttpResponse(path.read_text(encoding="utf-8"))
 
 
 @never_cache

@@ -73,10 +73,14 @@ house has grown enough apps that they don't fit on one 10" panel.
     </main>
   {% endfor %}
 
+  {% comment %}
+  Only actions wall-live.js actually implements belong here. "Dim"/"Wake"
+  (sleep/wake) were left over from the old ambient wall and did nothing on
+  the iframe wall that replaced it — the screens are powered down by the
+  host-side schedule in Settings (xset dpms), not from this footer.
+  {% endcomment %}
   <footer class="kiosk-controls">
     <button class="btn kiosk-control" data-kiosk-action="show-menu" type="button">Apps</button>
-    <button class="btn kiosk-control" data-kiosk-action="sleep" type="button">Dim</button>
-    <button class="btn kiosk-control" data-kiosk-action="wake" type="button">Wake</button>
     <button class="btn kiosk-control" data-kiosk-action="refresh" type="button">Reload</button>
   </footer>
 

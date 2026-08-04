@@ -2,7 +2,7 @@
 Widgets this app offers the home screen.
 
 Two of the four kinds, to show the shape: a list, and a chart. Read them next to
-DEVELOPMENT.md — between them they cover most of what a house app will ever need.
+docs/Main_App/DEVELOPMENT.md — between them they cover most of what a house app will ever need.
 """
 
 from __future__ import annotations

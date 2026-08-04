@@ -118,14 +118,33 @@ class Command(BaseCommand):
         if not apps_py.exists():
             raise CommandError(
                 f"{module} has no apps.py. Every house app must declare a "
-                "NoraAppConfig — see DEVELOPMENT.md."
+                "NoraAppConfig — see docs/Main_App/DEVELOPMENT.md."
             )
         if "NoraAppConfig" not in apps_py.read_text(encoding="utf-8"):
             raise CommandError(
                 f"{module}/apps.py does not subclass NoraAppConfig, so the platform "
-                "cannot place it. See DEVELOPMENT.md."
+                "cannot place it. See docs/Main_App/DEVELOPMENT.md."
             )
         self.stdout.write("  apps.py declares a NoraAppConfig [ok]")
+
+        # Every house app is required to document itself, in its own folder
+        # under docs/House_Apps/. Warned rather than fatal: a missing doc is a
+        # documentation problem, and refusing to install working code over it
+        # would just teach people to commit an empty file.
+        name = module.rsplit(".", 1)[-1]
+        app_docs = base / "docs" / "House_Apps" / name
+        if (app_docs / "README.md").exists():
+            self.stdout.write(f"  docs/House_Apps/{name}/README.md present [ok]")
+        else:
+            self.stdout.write(self.style.WARNING(
+                f"  {module} has no docs. Every house app needs "
+                f"docs/House_Apps/{name}/README.md — what it is for, where it "
+                "appears on each screen, what it owns, and what it exposes to "
+                "other apps. See docs/House_Apps/README.md for the required "
+                "sections, and copy docs/House_Apps/example_habit/README.md."
+            ))
+            if app_docs.exists():
+                self.stdout.write(f"    (docs/House_Apps/{name}/ exists but has no README.md)")
 
     def _register(self, base: Path, module: str):
         """Add the module to NORA_HOME_HOUSE_APPS in .env, creating the line if needed."""

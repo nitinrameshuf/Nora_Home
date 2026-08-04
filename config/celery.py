@@ -36,7 +36,7 @@ def configure_logging(**_kwargs):
 
 
 # Platform heartbeat schedule. Anything a house app needs on a schedule should be
-# registered as a PeriodicTask row instead (see DEVELOPMENT.md), not added here.
+# registered as a PeriodicTask row instead (see docs/Main_App/DEVELOPMENT.md), not added here.
 app.conf.beat_schedule = {
     "tracker.sweep-due": {
         "task": "nora_home.tracker.tasks.sweep_due_items",
@@ -58,11 +58,11 @@ app.conf.beat_schedule = {
         "schedule": crontab(minute="*/10"),
         "options": {"queue": "platform"},
     },
-    "displays.rotate": {
-        "task": "nora_home.displays.tasks.rotate_wall_display",
-        "schedule": 45.0,
-        "options": {"queue": "platform", "expires": 40},
-    },
+    # "displays.rotate" used to fire every 45s to advance the ambient wall's
+    # panel rotation. The wall now mirrors a real page chosen from the kiosk
+    # and ignores "next" entirely, so the task was waking the worker every 45
+    # seconds, forever, to send a message nothing listened for. Removed with
+    # the task itself.
     "integrations.poll": {
         "task": "nora_home.integrations.tasks.poll_due_integrations",
         "schedule": crontab(minute="*/5"),
