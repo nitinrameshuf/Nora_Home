@@ -45,13 +45,19 @@
     bot.setAttribute("aria-label", "Nora Home. Press to say hello.");
     bot.innerHTML =
       '<div class="nh-bot__body">' +
-      '<div class="nh-bot__antenna"></div>' +
-      '<div class="nh-bot__visor">' +
+      '<div class="nh-bot__mast">' +
+      '<div class="nh-bot__head">' +
       '<div class="nh-bot__eyes">' +
       '<span class="nh-bot__eye"></span><span class="nh-bot__eye"></span>' +
       "</div>" +
       "</div>" +
-      '<div class="nh-bot__mouth"></div>' +
+      '<div class="nh-bot__dish"></div>' +
+      "</div>" +
+      '<div class="nh-bot__chassis"></div>' +
+      '<div class="nh-bot__wheels">' +
+      '<span class="nh-bot__wheel"></span><span class="nh-bot__wheel"></span>' +
+      '<span class="nh-bot__wheel"></span>' +
+      "</div>" +
       "</div>";
 
     var bubble = document.createElement("div");
@@ -64,7 +70,16 @@
     NoraHome.el = bot;
     NoraHome.bubble = bubble;
 
+    // Every button that navigates reloads the page in this multi-page app,
+    // so mount() runs fresh each time — without this, the CSS transition
+    // (meant for later moves) would also animate this very first
+    // positioning, reading as a slide in from the CSS default (top-left)
+    // to wherever she actually belongs, on every single navigation.
+    bot.style.transition = "none";
     NoraHome.moveTo(window.innerWidth - 110);
+    void bot.offsetWidth; // flush the layout before transitions come back on
+    bot.style.transition = "";
+
     bot.addEventListener("click", NoraHome.onPoke);
     bot.addEventListener("keydown", function (event) {
       if (event.key === "Enter" || event.key === " ") {
