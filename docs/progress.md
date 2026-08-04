@@ -1243,6 +1243,54 @@ from eight rules to two. Verified the full grid again after the
 simplification — all eight combinations legible, atmosphere visible
 throughout, no opacity increase anywhere.
 
+## 2026-08-03 — sidebar simplified: Habits and Tracker out of nav, House/System/You merged
+
+Three requested nav changes, done together:
+
+- **Habits gone.** `houseapps.example_habit` (the reference app used throughout
+  `DEVELOPMENT.md`'s onboarding flow) is no longer part of this house's running
+  app set. Disabled the same way `uninstall_app`'s default mode does —
+  non-destructively, via `NORA_HOME_HOUSE_APPS=` in the Pi's `.env` — code and
+  any data stay on disk; `install_app` would bring it back exactly as it was.
+- **House, System, and the hardcoded "This house" block collapsed into one
+  "House" group.** Assistant and Measurements moved from `Category.SYSTEM` to
+  `Category.HOUSE` so they land in the same nav-registry loop iteration as
+  Displays; Apps/Status/Settings now render inside that same group's div
+  instead of a separate "This house" header. Notifications' category moved
+  too, only so it doesn't leave a stray empty "System" header behind — it
+  still renders manually as "Alerts" above the loop, unchanged.
+- **Tracker dropped from nav** (`nora_nav = False`). The app itself and the
+  Today/Overdue/Reliability cards it powers on the Home dashboard are
+  unaffected — only the standalone nav link is gone.
+- **"You" and "Settings" merged into one page.** `core:settings` now also
+  renders the member profile and escalation-chain cards that used to live at
+  `accounts:profile`, which just redirects there now. One nav link instead
+  of two.
+
+Two real bugs found deploying this, both fixed in the same pass:
+
+- **`env_list()` silently ignored an explicitly empty override.** It read
+  through the shared `env()` helper, which treats `""` the same as "not set"
+  — correct for scalars (an accidentally-blank secret shouldn't vanish
+  silently) but wrong for a list, where an explicit empty value is a real,
+  meaningful config. `NORA_HOME_HOUSE_APPS=` (the exact line both my manual
+  edit and `uninstall_app` itself would write after removing the only house
+  app) was falling back to the default `["houseapps.example_habit"]` instead
+  of actually being empty — so the documented uninstall workflow would have
+  silently un-done itself on every restart, for anyone, not just this
+  session. `env_list()` now checks `os.environ` presence directly instead of
+  going through `env()`'s scalar-oriented fallback.
+- **Another multi-line `{# #}` template comment rendered as visible text** in
+  the new House nav-group markup — the exact bug class already documented in
+  this log from 2026-07-31, missed again writing new code. Fixed with
+  `{% comment %}`.
+
+Verified on the live Pi with Playwright: the sidebar now reads Home, Alerts,
+House (Displays/Assistant/Measurements/Apps/Status/Settings), Integrations —
+no Self Improvement, no Tracker, no separate This house/You — and
+`/home/settings/` shows the profile card, escalation chain card, and wall
+schedule card together on one page.
+
 ---
 
 ## Next
