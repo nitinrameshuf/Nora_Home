@@ -1791,6 +1791,69 @@ enforced by `install_app` and the contract tests:
 
 ---
 
+## 2026-08-04 — the reference app stops teaching the wrong thing, and Slack goes live
+
+Asked whether the platform was ready for house apps. Rather than answer from the
+code, copied the reference app into a scratch house app and ran the contract
+tests against it — which is the path a family member's agent will actually walk.
+It failed immediately on
+`test_the_app_does_not_import_another_apps_models[plants]`.
+
+That confirmed the debt recorded earlier was not cosmetic. `example_habit`
+imported `nora_home.tracker.models` in five files, and it is the app
+DEVELOPMENT.md tells everyone to copy — so **every new house app would have
+started with a failing suite, on a rule the reference app itself broke.**
+
+The rule was fine; the API was incomplete. `nora_home.tracker.api` now answers
+what those files were reaching into models for:
+
+| Function | For |
+|---|---|
+| `streak_for(app_slug, source_ref)` | Consecutive completions on your record |
+| `is_done_today(app_slug, source_ref)` | What greys out a "done" button |
+| `history_for(app_slug, source_ref, limit)` | A detail page or chart |
+| `completion_stats(app_slug, members, since, until)` | `{done, missed, total, rate}` |
+| `trackable_for(app_slug, source_ref)` | The escape hatch, read-only |
+
+`completion_stats` returns `rate=None` rather than `0` when nothing was due — a
+gap in a chart is honest, a zero says "you failed" when there was nothing to do —
+and ignores still-pending work, so a week in progress does not read as a week
+half-missed. `KNOWN_MODEL_IMPORT_DEBT` is now empty, with a comment saying that if
+you are about to add an entry, add the API function instead. Re-ran the scratch
+app afterwards: clean.
+
+### Slack, end to end
+
+A bot token was supplied. `auth.test` succeeds — team *Puffin Robotics*, bot
+`nora_home`. Two environment traps before it got that far, both now documented in
+`.env.example`:
+
+- the token was **quoted** in `.env`, and Compose passes `env_file` values
+  through literally, so the app saw a token starting with `"`;
+- the container had not been recreated since the edit, so it saw an empty string.
+
+Delivery still fails, and the remaining two blockers are in the Slack workspace
+rather than in this code: the token carries only `commands`, `chat:write`,
+`app_mentions:read` — posting to a channel the bot has not joined needs
+`chat:write.public` (or an `/invite`), and the escalation ladder's DMs need
+`im:write` — and no `HouseMember` has `slack_user_id` set.
+
+Worth its own note: **Slack's error strings are accurate and useless.**
+`channel_not_found` is what it returns both when the channel does not exist and
+when the bot was simply never invited to it. A valid token, a live workspace, and
+that bare string pointed at nothing. `SlackChannel` now maps the common codes to
+the action that fixes them, keeping the raw code alongside.
+
+### Also
+
+Fixed two stale entries that claimed work was unverified after it had been
+verified on the Pi — CLAUDE.md §2 item 7 (kiosk redesign and Settings) and the
+matching note in testing.md.
+
+557 tests, green on the laptop and on the Pi.
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**

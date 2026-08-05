@@ -321,7 +321,27 @@ screen (`--ignore-certificate-errors` did its job).
    end to end: **279 health snapshots in the database, newest 5.5 minutes old**,
    which is beat → worker → DB working. All nine services now report healthy.
    The beat log did expose a real bug, though — see item 8.
-3. **Slack, AI, MCP untested against live services.** No API keys were available.
+3. **Slack: token verified live, delivery blocked in the workspace.** A bot token
+   was supplied 2026-08-04 and `auth.test` succeeds — team *Puffin Robotics*, bot
+   `nora_home`. The house loads it correctly and `SlackChannel.is_configured()`
+   returns True. Delivery still fails with `channel_not_found`, for two reasons
+   that are both **in Slack, not in this code**:
+   - the token carries only `commands`, `chat:write`, `app_mentions:read`. Posting
+     to a channel the bot has not joined needs **`chat:write.public`** (or an
+     `/invite @nora_home` in `#nora-home` and `#nora-home-alerts`), and the
+     escalation ladder's DMs need **`im:write`**;
+   - no `HouseMember` has `slack_user_id` set, so personal notifications have no
+     DM target and fall back to the channel anyway.
+
+   Two traps found doing this, both now guarded: the token was **quoted** in
+   `.env`, and Compose passes `env_file` values through literally, so the app saw
+   a token beginning with `"`; and the container had not been recreated since the
+   edit, so it saw nothing at all. `.env.example` now documents both, plus the
+   scopes. Slack's own error strings are useless for diagnosis
+   (`channel_not_found` means both "no such channel" and "never invited"), so
+   `SlackChannel` now maps the common codes to the actual fix.
+
+   **AI and MCP remain untested against live services** — no keys supplied.
 4. **Tests: ~500, one file per subsystem, green.** `./scripts/run-tests.sh` (or
    `make test`; `make test-pi` runs it inside the container on the Pi). Runs in
    ~2s with no containers, no network, and no credentials — SQLite, in-memory
