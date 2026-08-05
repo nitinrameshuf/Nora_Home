@@ -382,3 +382,22 @@ body { background: transparent; }
 .kiosk-header .card-subtitle {
   color: var(--text-dim);
 }
+
+/* ...and the kiosk's glass is thicker than the app's, which is the one place
+ * this file breaks its own rule, deliberately.
+ *
+ * Promoting the token was not enough: at noon the sky's lower half is nearly
+ * white, so a 0.30 pane over it composites light, and the tile *titles* then
+ * failed too (3.65:1). No text colour fixes that without inverting the dark
+ * theme at midday.
+ *
+ * The exception is scoped to the kiosk because the kiosk is not the ambient
+ * screen. The 24" wall is the one that carries the atmosphere; the 10.1" panel
+ * is a remote control on a hallway wall, and a button you cannot read is a
+ * broken button. Swept against real contrast: 0.42 leaves the worst case at
+ * 4.83, too close to the 4.5 floor to trust across seasons and weather; 0.52
+ * puts it at 6.17 and still reads as glass rather than as a solid slab.
+ */
+.kiosk-tile { background: rgba(var(--pane-rgb), 0.52); }
+.kiosk-header,
+.kiosk-controls { background: rgba(var(--pane-rgb), 0.44); }
