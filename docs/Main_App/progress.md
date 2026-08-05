@@ -1989,6 +1989,61 @@ requires `./nora qa` green as well as `./nora test`.
 
 ---
 
+## 2026-08-04 — the light theme, fixed rather than parked
+
+The QA suite's first run found the light theme unreadable and I parked it,
+calling it a design decision. Told to implement the fix instead — correctly, it
+was shipping and reachable from the profile menu, so "known broken" was not a
+resting state.
+
+Three separate causes, all found by measuring rather than by eye.
+
+**The sky.** `nh-scene.css` drives it from `data-daypart` alone with no
+`data-theme` branch, so three of the four dayparts are dark whatever the theme
+says. And the page heading sits directly on the sky with no pane under it, so no
+amount of pane tuning could ever have reached it — which is why the earlier
+opacity experiments would not have helped here either.
+
+The scene is now **veiled** in light mode rather than switched off or faked into
+midday: season, weather, orb and horizon still read through, the way a landscape
+reads through haze, but the ground under the text is light. That respects the
+rule already written into that file and paid for by two earlier reverts —
+legibility is not bought by hiding the scene.
+
+**The veil value was measured, not chosen.** The first attempt used 0.86. It
+passed contrast comfortably and washed the living background away almost
+entirely — a plain light dashboard with no weather in it. Sweeping the value
+against real rendered contrast:
+
+| veil | dawn | noon | dusk | night | worst |
+|---|---|---|---|---|---|
+| 0.30 | 6.67 | 9.44 | 1.97 | 2.34 | **1.97** |
+| 0.38 | 7.53 | 10.36 | 6.54 | 1.92 | **1.92** |
+| 0.46 | 8.76 | 10.66 | 7.77 | 6.90 | 6.90 |
+| 0.54 | 9.91 | 11.58 | 9.05 | 8.19 | 8.19 |
+| 0.86 | 13.38 | 14.27 | 13.15 | 12.86 | 12.86 |
+
+A sharp cliff between 0.38 and 0.46, and a wide safe shelf above it. 0.54 buys
+most of the scene back while leaving the worst case at nearly double the 4.5
+floor. Neither the cliff nor the headroom was visible by eye.
+
+**The brand.** "Nora Home" is a bare `<a>`, so it inherited the apricot accent —
+fine on dark glass, 2.13:1 in the light theme and 3.81:1 over the noon sky. It is
+text, so it now uses `--text`, which already tracks the theme. The apricot
+identity is carried by `.brand-mark` beside it, which is decorative and needs no
+contrast. That one fix cleared a failure in *both* themes.
+
+**The accent as a link colour.** Tuned for dark glass and never checked against
+light: 1.93:1. The light theme now deepens the same hue to 5.1:1. `--nh-500`
+itself is untouched, so the brand mark, chart series and glow keep their warmth.
+
+All 32 theme x daypart x element combinations now measure 6.30:1 or better, and
+the QA suite is 117 green with no skips. The method — sweep the value, print the
+table — is written up in testing.md, because it turns a taste argument into
+something checkable.
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**

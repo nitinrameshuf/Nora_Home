@@ -310,7 +310,7 @@ screen (`--ignore-certificate-errors` did its job).
    codebase treats object storage as optional. **Not yet built**: a full type
    scale and per-component restyle across all five surfaces (this pass only
    retrofit `.card`/`.sidebar`/`.kiosk-tile` to the glass material), and
-   unverified: the light theme on real hardware, and whether continuous
+   unverified: whether continuous
    animation plus backdrop blur holds up over hours rather than minutes.
 2. ~~**Celery worker/beat health unconfirmed.**~~ **Resolved 2026-08-04.** Celery
    was never broken. `worker` and `beat` inherited the Dockerfile's HEALTHCHECK,
@@ -360,10 +360,11 @@ screen (`--ignore-certificate-errors` did its job).
    errors, the journeys clicked through, both screens open at once so a kiosk tap
    can be seen moving the wall, and contrast measured from pixels. ~4 minutes,
    run from a laptop, deliberately separate from the fast suite. It found two
-   real bugs on its first run (a checkbox with no label; the light theme
-   unreadable at dusk) and one about the tools: axe's colour-contrast rule is
-   unusable against `backdrop-filter` over a living gradient, and believing it
-   would have meant degrading readable text.
+   real bugs on its first run — a checkbox with no accessible name, and the
+   light theme unreadable at dusk (2.06:1); **both fixed** — plus one about the
+   tools: axe's colour-contrast rule is unusable against `backdrop-filter` over a
+   living gradient, and believing it would have meant degrading readable text.
+   Contrast is measured from pixels instead.
 5. **PWA manifest and service worker** — decided (§5) but not written.
 6. **No favicon** — the logs show steady `/favicon.ico` 404s.
 7. ~~**Kiosk-drives-wall redesign and the Settings tab — built, unverified.**~~

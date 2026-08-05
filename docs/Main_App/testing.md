@@ -189,6 +189,19 @@ deliberately breaking a colour and confirming it caught it: 18.25 as shipped,
 2.81 when broken. Every other axe rule stays on — they read the DOM, which axe
 is good at, and one of them found a checkbox with no label.
 
+### Tuning a colour: measure, do not eyeball
+
+The light theme was fixed this way and the method is worth copying. The veil over
+the scene started at 0.86 — it passed contrast comfortably and washed the whole
+living background away, which defeats the point of having one. Sweeping the value
+against real rendered contrast found a sharp cliff between 0.38 and 0.46 (night
+collapses to 1.92:1) and a wide safe shelf above it, so 0.54 buys most of the
+scene back at 8.19:1.
+
+Neither the cliff nor the headroom was visible by eye. Drive the page with
+`page.add_style_tag()`, sweep the value, and print the measurements — a dozen
+lines, and it turns a taste argument into a table.
+
 ### Writing QA tests
 
 Fixtures in `tests/qa/conftest.py`: `signed_in`, `console_errors`,
@@ -208,11 +221,6 @@ broken.
 
 ### Known QA gaps
 
-- **The light theme is broken and the check is parked.** Near-black text on the
-  evening sky, 2.06:1. `nh-scene.css` drives the sky from `data-daypart` alone
-  with no `data-theme` branch, so three of four dayparts are dark whatever the
-  theme says. Skipped with a written reason in `test_accessibility.py`; fixing it
-  is a design decision about the Almanac direction.
 - **Chromium only.** WebKit cannot reach this Pi (see above).
 - **Nothing here judges how it looks.** Contrast is not legibility at three
   metres, and no tool has an opinion on whether a design is any good.

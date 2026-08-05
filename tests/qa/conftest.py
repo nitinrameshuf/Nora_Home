@@ -215,7 +215,9 @@ def measure_text_contrast(page, selector: str, index: int = 0) -> float | None:
         return None
 
     image = Image.open(BytesIO(page.screenshot(clip=box))).convert("RGB")
-    pixels = list(image.getdata())
+    # getdata() is deprecated in Pillow 14; list(image) would give rows.
+    pixels = list(image.convert("RGB").tobytes())
+    pixels = [tuple(pixels[i:i + 3]) for i in range(0, len(pixels), 3)]
     if len(pixels) < 16:
         return None
 
