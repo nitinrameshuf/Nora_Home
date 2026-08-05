@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# Run once, via sudo, before install-pi.sh:
+# Run once, via sudo, before `./nora install`:
 #
-#     sudo ./scripts/pre-install-pi.sh
+#     sudo ./scripts/lib/pre-provision-pi.sh
 #
 # Removes the sudo password prompt for the rest of setup, every future
-# `make deploy`, and anything else run on this Pi from here on.
+# `./nora upgrade`, and anything else run on this Pi from here on.
 #
 # This does NOT grant any new capability. The target account is already a
 # full sudoer — standard for the default user on Raspberry Pi OS — and can
@@ -21,8 +21,8 @@ set -euo pipefail
 TARGET_USER="${SUDO_USER:-${1:-}}"
 if [[ -z "$TARGET_USER" ]]; then
     echo "Could not work out which user to grant this to."
-    echo "Run it as:  sudo ./scripts/pre-install-pi.sh          (from that user's own login)"
-    echo "or:         sudo ./scripts/pre-install-pi.sh <username>"
+    echo "Run it as:  sudo ./scripts/lib/pre-provision-pi.sh   (from that user's own login)"
+    echo "or:         sudo ./scripts/lib/pre-provision-pi.sh <username>"
     exit 1
 fi
 
@@ -38,7 +38,7 @@ if visudo -c -f "$TMP_FILE" >/dev/null; then
     chmod 440 "$TMP_FILE"
     mv "$TMP_FILE" "$SUDOERS_FILE"
     echo "Done. $TARGET_USER can now run sudo without a password on this machine."
-    echo "Next:  ./scripts/install-pi.sh"
+    echo "Next:  ./nora install"
 else
     echo "Generated sudoers file failed validation — nothing was changed." >&2
     rm -f "$TMP_FILE"

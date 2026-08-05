@@ -46,6 +46,7 @@ person rather than an agent — the HTML views — goes in `User/`.
 | Build an app inside it | [`Main_App/DEVELOPMENT.md`](Main_App/DEVELOPMENT.md) |
 | Use another app's capabilities | [`Main_App/cross-functionality.md`](Main_App/cross-functionality.md) |
 | Understand one subsystem | [`Main_App/subsystems/`](Main_App/subsystems/) |
+| Run the house — install, start, update, back up, apps | `./nora help`, and [`User/deployment.html`](User/deployment.html) |
 | Run the tests, or verify your change actually works | [`Main_App/testing.md`](Main_App/testing.md) |
 | Know what happened and when | [`Main_App/progress.md`](Main_App/progress.md) |
 | Read about an installed family app | [`House_Apps/`](House_Apps/) |

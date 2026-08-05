@@ -152,28 +152,32 @@
   One script takes a bare Raspberry Pi 5 to a running house: Docker, the repo, both
   HDMI displays in kiosk mode, and a service that starts the house on boot.
 </p>
-<pre><code><span class="c"># on the Pi itself</span>
-export NORA_HOME_REPO=&lt;your git url&gt;
-curl -fsSL https://raw.githubusercontent.com/&lt;you&gt;/nora-home/main/scripts/install-pi.sh | bash</code></pre>
-<p>or, from a clone already on the Pi:</p>
-<pre><code>NORA_HOME_DIR=$HOME/&lt;your-clone-dir&gt; ./scripts/install-pi.sh</code></pre>
+<pre><code><span class="c"># on the Pi itself, from a clone of the repo</span>
+git clone &lt;your git url&gt; ~/nora-home
+cd ~/nora-home
+./nora install</code></pre>
+<div class="note">
+  <p><strong>Everything is <code>./nora</code>.</strong> One command runs the
+  house: installing, starting, updating, backups, apps, and both screens. Run
+  <code>./nora help</code> at any point to see the whole list — it is the one
+  piece of documentation guaranteed to be in front of you when you need it.</p>
+</div>
 <div class="note">
   <p><strong>Optional, run first if you don't want to be asked for your password
   partway through:</strong></p>
 </div>
-<pre><code>sudo ./scripts/pre-install-pi.sh</code></pre>
+<pre><code>sudo ./scripts/lib/pre-provision-pi.sh</code></pre>
 <div class="note">
-  <p><strong>If you already cloned the repo by hand</strong> (rather than letting the
-  script clone it), set <code>NORA_HOME_DIR</code> to that folder as shown above —
-  otherwise the script tries to clone a second copy next to it and stops, asking for
-  <code>NORA_HOME_REPO</code> it doesn't need.</p>
+  <p><strong>Installing into a folder other than <code>~/nora-home</code>?</strong>
+  Set <code>NORA_HOME_DIR</code> to it, or the install tries to clone a second copy
+  beside it and stops, asking for a <code>NORA_HOME_REPO</code> it does not need.</p>
   <p><strong>If Docker was already installed</strong> before you ran the script, your
   user may not be in the <code>docker</code> group yet, and the build will fail with
   <code>permission denied … docker.sock</code>. Fix once:</p>
 </div>
 <pre><code>sudo usermod -aG docker $USER
 newgrp docker   <span class="c"># applies it to this shell immediately, no logout needed</span></code></pre>
-<p>What the script does, in order:</p>
+<p>What <code>./nora install</code> does, in order:</p>
 <div class="grid">
   <div class="box"><h4>1. Packages</h4><p>Docker (if missing), git, make, Chromium, and the kiosk helper tools.</p></div>
   <div class="box"><h4>2. The repo &amp; .env</h4><p>Clones if needed, creates <code>.env</code> with a fresh secret key and Pi-specific settings.</p></div>
@@ -183,9 +187,9 @@ newgrp docker   <span class="c"># applies it to this shell immediately, no logou
   <div class="box"><h4>6. Both displays</h4><p>HDMI-0 (24" wall) and HDMI-1 (10.1" kiosk) each auto-start Chromium in kiosk mode, pointed at the right URL.</p></div>
 </div>
 <p>Once it finishes:</p>
-<pre><code>cd ~/nora-home &amp;&amp; make member NAME=&lt;you&gt;   <span class="c"># create your login</span>
+<pre><code>cd ~/nora-home &amp;&amp; ./nora member &lt;you&gt; admin   <span class="c"># create your login</span>
 <span class="c"># sign in once on the wall and kiosk screens — they stay signed in</span>
-sudo reboot                                  <span class="c"># both screens now come up on their own</span></code></pre>
+sudo reboot                                     <span class="c"># both screens come up on their own</span></code></pre>
 
 <h2 id="https">Accessing the house securely (HTTPS)</h2>
 <p class="section-lede">
@@ -198,7 +202,7 @@ sudo reboot                                  <span class="c"># both screens now 
   <p><strong>Your browser will warn you once per device.</strong> This house has
   no public domain name — it's a Raspberry Pi on your own LAN — so there's no
   certificate authority that could ever issue it a certificate a browser
-  already trusts. The install script generates its own ("self-signed") cert
+  already trusts. The install generates its own ("self-signed") cert
   instead. It still fully encrypts the connection; the warning just means your
   browser can't independently vouch for who's on the other end, which on a
   device you're looking at directly, on your own network, is fine.</p>
@@ -217,20 +221,47 @@ nothing is there to click it on an unattended boot.</p>
   encrypted — but your browser will flag the mismatch as a second, separate
   warning to click through. To make it match again: delete the two files in
   <code>nginx/certs/</code> on the Pi and run
-  <code>./scripts/gen-self-signed-cert.sh</code>, then
-  <code>docker compose restart nginx</code>.</p>
+  <code>./nora cert</code>, which regenerates it and reloads nginx.</p>
 </div>
 
 <h2 id="updating">Updating the house</h2>
 <p class="section-lede">From here on, every update to the platform itself is one command.</p>
-<pre><code>cd ~/nora-home &amp;&amp; make deploy</code></pre>
+<pre><code>cd ~/nora-home &amp;&amp; ./nora upgrade</code></pre>
 <div class="box" style="max-width:640px">
-  <h4>What <code>make deploy</code> actually runs</h4>
-  <p><code>git pull --ff-only</code> → <code>docker compose build</code> → <code>docker compose up -d</code>.
-  Migrations run automatically inside the container on start — there is no separate
-  migration step to remember. Your data lives in Docker's own volumes (MariaDB,
-  Mongo, MinIO), which none of this touches.</p>
+  <h4>What <code>./nora upgrade</code> actually runs</h4>
+  <p>A backup first, then <code>git pull --ff-only</code> →
+  <code>docker compose build</code> → <code>migrate</code> →
+  <code>docker compose up -d</code>. Migrations run here rather than only on
+  container start, so a failed migration stops the upgrade instead of leaving a
+  half-started house. Your data lives in Docker's own volumes (MariaDB, Mongo,
+  MinIO), which none of this touches.</p>
 </div>
+
+<div class="note">
+  <p><strong>The one that catches people:</strong> if you edit
+  <code>.env</code>, a <code>restart</code> will <em>not</em> pick up the change.
+  A running container keeps the environment it started with, so the container has
+  to be replaced:</p>
+</div>
+<pre><code>./nora recreate</code></pre>
+
+<h3>Everyday commands</h3>
+<table>
+  <thead><tr><th>Command</th><th>Does</th></tr></thead>
+  <tbody>
+    <tr><td><code>./nora status</code></td><td>What is running, plus a health check</td></tr>
+    <tr><td><code>./nora logs</code></td><td>Follow the logs</td></tr>
+    <tr><td><code>./nora restart</code></td><td>Restart the app, leaving the databases alone</td></tr>
+    <tr><td><code>./nora recreate</code></td><td>Replace containers after editing <code>.env</code></td></tr>
+    <tr><td><code>./nora upgrade</code></td><td>The routine update</td></tr>
+    <tr><td><code>./nora backup</code></td><td>Take a full backup right now</td></tr>
+    <tr><td><code>./nora restore &lt;file&gt;</code></td><td>Restore one (asks first)</td></tr>
+    <tr><td><code>./nora screens</code></td><td>Reload the wall and kiosk after a change</td></tr>
+    <tr><td><code>./nora member &lt;name&gt;</code></td><td>Add someone to the household</td></tr>
+    <tr><td><code>./nora uninstall</code></td><td>Remove the house, backing up first (asks first)</td></tr>
+    <tr><td><code>./nora help</code></td><td>All of it</td></tr>
+  </tbody>
+</table>
 
 <h2 id="installing-apps">Installing a house app</h2>
 <p class="section-lede">

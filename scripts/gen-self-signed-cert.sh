@@ -5,7 +5,7 @@
 # issue it a "real" cert. Self-signed means every browser shows a one-time
 # warning to click through per device (see docs/deployment.html); the
 # wall/kiosk Chromium instances bypass it with --ignore-certificate-errors
-# (see scripts/install-pi.sh).
+# (see scripts/lib/provision-pi.sh, run via `./nora install`).
 #
 # Idempotent: does nothing if a cert already exists. Delete nginx/certs/ and
 # re-run (or just re-run after deleting the two files) to regenerate — e.g.

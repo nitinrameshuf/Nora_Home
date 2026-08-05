@@ -63,7 +63,7 @@ than merely stated.
 | Anything at all — add or update a test | `tests/test_<subsystem>.py`, and a house app's own `tests/test_<app>.py` |
 | How you verify work on the Pi, or what the suite covers | [`docs/Main_App/testing.md`](docs/Main_App/testing.md) |
 | A house app | That app's folder in [`docs/House_Apps/`](docs/House_Apps/) |
-| A deployment, install, or uninstall step | [`docs/User/deployment.html`](docs/User/deployment.html) — for people, not agents; keep it in sync with `scripts/install-pi.sh`, the `Makefile`, `install_app`, and `uninstall_app` |
+| A deployment, install, or uninstall step | [`docs/User/deployment.html`](docs/User/deployment.html) — for people, not agents; keep it in sync with `./nora`, `scripts/lib/provision-pi.sh`, `install_app`, and `uninstall_app` |
 | A decision worth not re-litigating | §4 here, **and** the Decisions tab of the dashboard |
 
 The dashboard is the main view — the same shape as the Nora robot project's, so both
@@ -164,7 +164,8 @@ reference implementation.
 - **Integrations** (`nora/integrations/`) — framework with scheduling, backoff, and
   failure alerting. No concrete integrations written yet.
 - **Dashboard** (`nora/dashboard/`) — widget registry and per-member draggable layouts.
-- **Deployment** — `docker-compose.yml`, `Makefile`, `scripts/install-pi.sh`. An
+- **Deployment** — `./nora` (the runner: install, up, upgrade, backup, restore,
+  apps, screens, uninstall), `docker-compose.yml`, `scripts/lib/provision-pi.sh`. An
   `nginx` service terminates TLS on `:443` (self-signed — see §4) and is the only
   published entry point; Daphne's `:8000` is internal-only.
 - **Reference app** — `houseapps/example_habit/`.
@@ -192,8 +193,8 @@ session (`labwc`, Wayland) refuses to let anything reposition a fullscreen
 window once placed, so both kiosk instances always ended up on the same
 monitor regardless of any flag or tool. Switched the Pi to the X11 session
 (`sudo raspi-config nonint do_wayland W1`, then reboot) instead, which honors
-window placement the way `scripts/install-pi.sh` was written assuming, and the
-whole problem disappeared. `install-pi.sh` now does this switch itself (§6 in
+window placement the way `scripts/lib/provision-pi.sh` was written assuming, and the
+whole problem disappeared. `provision-pi.sh` now does this switch itself (§6 in
 the script), so a reinstalled or fresh Pi picks it up automatically — no need
 to rediscover it. One side effect worth knowing: Raspberry Pi Connect's
 screen-share (Remote Desktop) only works on Wayland (it's built on `wayvnc`),
@@ -217,13 +218,13 @@ screens together, not just the wall — confirmed with the user and accepted, si
 per-output control (`xrandr --off`) had already proven fragile earlier in this
 project; the Pi's `.env` still carried `.env.example`'s placeholder timezone
 (`America/Los_Angeles` instead of the real `America/New_York`), now fixed and
-auto-detected by `install-pi.sh` via `timedatectl`; and a CSS specificity bug
+auto-detected by `provision-pi.sh` via `timedatectl`; and a CSS specificity bug
 (`.kiosk-grid` vs. the browser's own `[hidden]` rule) let a tapped app's control
 screen render on top of the main menu instead of replacing it, fixed in
 `static/nora_home/css/displays.css`.
 
 Re-verified the same day on a second, freshly-imaged Pi (the first one's
-reliability had become suspect) — `install-pi.sh` hit **zero bugs** end to
+reliability had become suspect) — `provision-pi.sh` hit **zero bugs** end to
 end, confirming the fixes above actually held. One new thing found:
 auto-login's "Unlock Login Keyring" dialog can appear more than once — a
 second `gcr-prompter` instance blocked the kiosk's Chromium independently of
@@ -237,9 +238,9 @@ stops Chromium from touching the keyring at all — confirmed with a genuinely
 fresh throwaway profile producing no dialog and no `gcr-prompter` process,
 not just reasoned through.
 
-Two more one-click gaps closed the same day: `scripts/pre-install-pi.sh`
+Two more one-click gaps closed the same day: `scripts/lib/pre-provision-pi.sh`
 (run once via `sudo`, grants a validated `NOPASSWD` sudoers entry so nothing
-in `install-pi.sh` prompts for a password afterward — no new capability, the
+in `provision-pi.sh` prompts for a password afterward — no new capability, the
 account already has full sudo, this just removes the prompt), and the
 Docker-install step no longer exits asking for a manual re-login — it
 re-execs itself under `sg docker -c` and continues in the same run instead
@@ -253,7 +254,7 @@ nothing at all beforehand), and once detected, X11 needed an explicit
 `TransformationMatrix` to map its touch coordinates onto just the kiosk's own
 output — otherwise touch scales across the whole combined multi-monitor
 desktop, since (unlike Wayland) X11 has no automatic per-output touch
-mapping. Both are now permanent: `install-pi.sh` §8 writes
+mapping. Both are now permanent: `provision-pi.sh` §8 writes
 `/etc/X11/xorg.conf.d/40-touchscreen.conf` itself.
 
 ### Verified on the Pi (2026-08-03) — HTTPS on :443, via nginx
@@ -280,9 +281,9 @@ the Pi. Then deployed for real: cert generated on the Pi itself (its SAN
 picked up the Pi's actual LAN IP automatically), the same checks repeated
 directly on the Pi, and — the part that actually mattered — the wall and
 kiosk's Chromium launch scripts, generated by an *earlier* run of
-`install-pi.sh` before this change, still pointed at the old
+`provision-pi.sh` before this change, still pointed at the old
 `http://localhost:8000` and had to be regenerated (re-running just
-`install-pi.sh`'s `launch_script()` function, not the whole script, to avoid
+`provision-pi.sh`'s `launch_script()` function, not the whole script, to avoid
 sudo prompts over a non-interactive session for already-satisfied steps).
 Killed and relaunched both Chromium instances by exact PID, then
 screenshotted both physical screens: the wall shows the real authenticated
@@ -391,10 +392,21 @@ Then http://localhost:8000/home/ — no password anywhere; tap `nitin`, `partner
 
 ### On the Pi
 ```bash
-make up        # first run: builds, migrates, bootstraps
-make deploy    # every update after that
+./nora install   # first time on a fresh Pi: Docker, both screens, systemd
+./nora up        # start the house
+./nora upgrade   # every update after that
+./nora help      # everything else
 ```
-`make up` now also generates a self-signed TLS cert on first run (idempotent
+Everything operational goes through **`./nora`** — one command, one help text.
+It replaced `scripts/install-pi.sh` as the entry point; that provisioning still
+exists unchanged at `scripts/lib/provision-pi.sh` and `./nora install` runs it.
+`make` targets still work as thin aliases that delegate to it.
+
+**The one that catches people:** editing `.env` and running `restart` does
+nothing, because a container keeps the environment it started with. Use
+`./nora recreate`.
+
+`./nora up` also generates a self-signed TLS cert on first run (idempotent
 — see §4, "HTTPS via nginx"). The house serves on **https://<address>/home/**,
 port 443, not `:8000` — nginx is the only published entry point. Your browser
 warns once per device on first visit; see `docs/User/deployment.html`.
@@ -402,9 +414,9 @@ warns once per device on first visit; see `docs/User/deployment.html`.
 ### First time on a new machine
 ```bash
 git clone <repo> && cd nora-home
-make up
+./nora up
 ```
-`make up` creates `.env` from the example with a fresh secret key if it is missing.
+`./nora up` creates `.env` from the example with a fresh secret key if it is missing.
 `.env` is gitignored — secrets never enter the repo.
 
 ---
@@ -529,7 +541,7 @@ itself the same session — see §2's "Verified on the Pi (2026-08-03)" note.
 ## 5. Web app vs native kiosk app — answered
 
 **Build it as a web app served locally, displayed full-screen by Chromium in kiosk
-mode, and installable as a PWA on phones.** That is what `scripts/install-pi.sh`
+mode, and installable as a PWA on phones.** That is what `scripts/lib/provision-pi.sh`
 configures.
 
 Reasoning:
@@ -602,7 +614,9 @@ houseapps/         family apps live here (example_habit is the reference)
 templates/         platform templates
 static/nora_home/       css, js, vendor
 docker/            entrypoint
-scripts/           install-pi.sh
+nora               the runner — install, up, upgrade, backup, apps, screens
+scripts/           run-tests.sh, gen-self-signed-cert.sh, vendor.sh
+  lib/             provision-pi.sh, pre-provision-pi.sh
 docs/
   User/            deployment.html, dashboard/ — for people, not agents
   Main_App/        DEVELOPMENT, cross-functionality, architecture, testing,
@@ -710,4 +724,4 @@ Ask before assuming.
 3. **Which app first?** The skeleton needs one real app to prove itself. House
    maintenance is the best candidate — it exercises long cadences, escalation, and
    the wall display without needing anyone's health data.
-4. **Repo hosting and remote?** `scripts/install-pi.sh` needs `NORA_HOME_REPO` set.
+4. **Repo hosting and remote?** `scripts/lib/provision-pi.sh` needs `NORA_HOME_REPO` set.

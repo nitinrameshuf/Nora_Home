@@ -2,18 +2,24 @@
 #
 # One-time provisioning for the Raspberry Pi 5.
 #
-#     curl -fsSL https://raw.githubusercontent.com/<you>/nora-home/main/scripts/install-pi.sh | bash
+# **Not the entry point.** Run it through the house's runner:
 #
-# or, from a clone:  ./scripts/install-pi.sh
+#     ./nora install
+#
+# It lives under scripts/lib/ because everything operational goes through
+# ./nora now — one command surface, one help text. This file keeps the
+# hardware-specific knowledge that was expensive to learn (X11 over Wayland,
+# the touchscreen transformation matrix, per-output Chromium placement), so it
+# is deliberately left as one linear script rather than folded into the runner.
 #
 # Optional first step, avoids every sudo prompt below:
 #
-#     sudo ./scripts/pre-install-pi.sh
+#     sudo ./scripts/lib/pre-provision-pi.sh
 #
 # Installs Docker, brings the house up, and configures both displays: the 24"
 # wall screen on HDMI-0 and the 10.1" kiosk on HDMI-1, each auto-starting
 # Chromium in kiosk mode pointed at the right URL. After this, updating is
-# `make deploy` and nothing else.
+# `./nora upgrade` and nothing else.
 #
 set -euo pipefail
 
@@ -338,10 +344,11 @@ cat <<SUMMARY
   Kiosk controller   ${KIOSK_URL}
 
   Next:
-    1. cd $REPO_DIR && make member NAME=<you>     create your login
+    1. cd $REPO_DIR && ./nora member <you> admin    create your login
     2. Sign in on the wall and kiosk screens once — they stay signed in
     3. sudo reboot                                 both screens come up on their own
 
-  From now on, updating is:  cd $REPO_DIR && make deploy
+  From now on, updating is:  cd $REPO_DIR && ./nora upgrade
+  Everything else:           ./nora help
 
 SUMMARY

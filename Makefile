@@ -1,102 +1,106 @@
-# Nora Home — every routine operation is one word.
+# Nora Home.
 #
-#     make up        bring the whole house up (first run included)
-#     make deploy    pull, rebuild, migrate, restart — the update command
-#     make logs      follow everything
-#     make backup    full backup now
-#     make app       install a new house app
+# The real command is ./nora — run `./nora help` for the full list.
 #
-# Ops should never take more than one of these.
+# These targets are thin aliases kept because muscle memory and older docs still
+# reach for `make`. Every one of them delegates, so there is a single
+# implementation and the two cannot drift apart.
 
 .DEFAULT_GOAL := help
-COMPOSE := docker compose
-MANAGE := $(COMPOSE) run --rm web
+NORA := ./nora
 
 .PHONY: help
-help:
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
-	  | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
+help: ## Show the runner's help
+	@$(NORA) help
 
 # ── everyday ─────────────────────────────────────────────────────────────────
 .PHONY: up
-up: .env nginx/certs/nora-home.crt ## Start the house (builds on first run, migrates automatically)
-	$(COMPOSE) up -d --build
-	@echo "\nNora Home is coming up. Watch it with: make logs"
-	@echo "Then open https://localhost:$${NORA_HOME_HTTPS_PORT:-443}/home/"
-	@echo "(self-signed cert — your browser will warn once; see docs/deployment.html)"
+up: ## Start the house
+	@$(NORA) up
 
 .PHONY: down
 down: ## Stop everything (data volumes are kept)
-	$(COMPOSE) down
+	@$(NORA) down
 
 .PHONY: deploy
-deploy: ## Update to the latest commit and restart cleanly
-	git pull --ff-only
-	$(COMPOSE) build
-	$(COMPOSE) up -d
-	@echo "Deployed. Migrations ran automatically."
+deploy: ## Backup, pull, rebuild, migrate, restart
+	@$(NORA) upgrade
+
+.PHONY: upgrade
+upgrade: ## Same as deploy
+	@$(NORA) upgrade
 
 .PHONY: restart
 restart: ## Restart the app without touching the databases
-	$(COMPOSE) restart web worker beat
+	@$(NORA) restart
+
+.PHONY: recreate
+recreate: ## Replace containers so an edited .env takes effect
+	@$(NORA) recreate
 
 .PHONY: logs
-logs: ## Follow logs from the app services
-	$(COMPOSE) logs -f web worker beat nginx
+logs: ## Follow logs
+	@$(NORA) logs
 
 .PHONY: ps
-ps: ## What is running
-	$(COMPOSE) ps
+ps: ## What is running, plus health
+	@$(NORA) status
+
+.PHONY: status
+status: ## What is running, plus health
+	@$(NORA) status
+
+.PHONY: screens
+screens: ## Hard-reload the wall and kiosk browsers
+	@$(NORA) screens
 
 # ── data ─────────────────────────────────────────────────────────────────────
 .PHONY: backup
-backup: ## Full backup (SQL + Mongo + media + portable fixtures)
-	$(MANAGE) nora_backup --compress
+backup: ## Full backup now
+	@$(NORA) backup
 
 .PHONY: restore
 restore: ## Restore a backup: make restore FROM=/var/backups/nora/nora-....tar.gz
 	@test -n "$(FROM)" || (echo "Set FROM=/path/to/backup"; exit 1)
-	$(MANAGE) nora_restore "$(FROM)" --yes
+	@$(NORA) restore "$(FROM)"
 
 .PHONY: migrate
 migrate: ## Apply migrations by hand (normally automatic on start)
-	$(MANAGE) migrate
+	@$(NORA) manage migrate
 
 .PHONY: makemigrations
 makemigrations: ## Generate migrations for changed models
-	$(MANAGE) makemigrations
+	@$(NORA) manage makemigrations
 
 # ── apps ─────────────────────────────────────────────────────────────────────
 .PHONY: app
 app: ## Install a house app: make app SRC=https://github.com/you/nora-workout
 	@test -n "$(SRC)" || (echo "Set SRC=<git url or local path>"; exit 1)
-	$(MANAGE) install_app "$(SRC)"
-	$(COMPOSE) up -d --build
+	@$(NORA) app install "$(SRC)"
 
 .PHONY: apps
 apps: ## List installed apps
-	$(MANAGE) list_apps
+	@$(NORA) app list
 
 .PHONY: uninstall
 uninstall: ## Unregister a house app (code+data kept): make uninstall NAME=workout
 	@test -n "$(NAME)" || (echo "Set NAME=<app name>"; exit 1)
-	$(MANAGE) uninstall_app "$(NAME)"
-	$(COMPOSE) up -d
+	@$(NORA) app uninstall "$(NAME)"
 
 # ── people ───────────────────────────────────────────────────────────────────
 .PHONY: member
 member: ## Add a household member: make member NAME=alex [ROLE=member|adult|admin]
 	@test -n "$(NAME)" || (echo "Set NAME=<username>"; exit 1)
-	$(MANAGE) add_member "$(NAME)" --role "$(or $(ROLE),member)"
+	@$(NORA) member "$(NAME)" "$(or $(ROLE),member)"
 
 .PHONY: token
 token: ## Issue a device token: make token NAME="Nora robot"
 	@test -n "$(NAME)" || (echo "Set NAME=\"device name\""; exit 1)
-	$(MANAGE) issue_device_token "$(NAME)"
+	@$(NORA) token "$(NAME)"
 
 # ── development ──────────────────────────────────────────────────────────────
 .PHONY: vendor
-vendor: ## Download ECharts and Gridstack into static/nora_home/vendor/ (commit them)
+vendor: ## Download ECharts and Gridstack into static/nora_home/vendor/
 	./scripts/vendor.sh
 
 .PHONY: dev
@@ -107,7 +111,7 @@ dev: ## Run locally with SQLite and no containers
 
 .PHONY: shell
 shell: ## Django shell inside the container
-	$(MANAGE) shell
+	@$(NORA) shell
 
 .PHONY: test
 test: ## Run the test suite and print the short report
@@ -115,17 +119,8 @@ test: ## Run the test suite and print the short report
 
 .PHONY: test-pi
 test-pi: ## Run the test suite inside the container, as the Pi runs it
-	$(COMPOSE) exec -T web ./scripts/run-tests.sh
+	@$(NORA) test
 
 .PHONY: lint
 lint: ## Ruff
 	ruff check . && ruff format --check .
-
-.env:
-	@cp .env.example .env
-	@python -c "import secrets;print('DJANGO_SECRET_KEY='+secrets.token_urlsafe(50))" >> .env
-	@echo "Created .env from the example, with a fresh secret key."
-	@echo "Fill in Slack and Anthropic keys when you have them, then re-run."
-
-nginx/certs/nora-home.crt:
-	./scripts/gen-self-signed-cert.sh

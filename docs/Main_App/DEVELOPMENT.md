@@ -65,14 +65,14 @@ vocabulary in [`../../CLAUDE.md`](../../CLAUDE.md) § 0. Deploy it and confirm i
 using the access and commands in [`testing.md`](testing.md):
 
 ```bash
-# on the Pi
-cd ~/Nora_Home && git pull --ff-only
-docker compose build web && docker compose up -d --force-recreate web
+# on the Pi — everything operational goes through ./nora
+cd ~/Nora_Home && ./nora upgrade
 
 # then confirm, over SSH — do not assume
-docker compose exec -T web python manage.py check
-docker compose exec -T web ./scripts/run-tests.sh          # the suite, on the Pi
-docker compose exec -T web python manage.py list_apps      # your app is registered
+./nora manage check
+./nora test                    # the suite, on the Pi
+./nora app list                # your app is registered
+./nora status                  # services and health
 curl -sk https://localhost/<yourapp>/ -o /dev/null -w '%{http_code}\n'
 ```
 
@@ -162,7 +162,7 @@ cp docs/House_Apps/example_habit/testing.md docs/House_Apps/workout/testing.md
 6. Register it and migrate:
 
 ```bash
-python manage.py install_app houseapps.workout
+./nora app install houseapps.workout
 ```
 
 That adds it to `NORA_HOME_HOUSE_APPS` in `.env`, generates and applies migrations, and

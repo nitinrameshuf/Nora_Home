@@ -22,7 +22,7 @@ cd ~/Nora_Home                                      # the checkout, on the Pi
 | Key | `~/.ssh/nora_pi` on the dev machine |
 | Repo on the Pi | `~/Nora_Home` |
 | App | `https://192.168.1.253/` — self-signed cert, so pass `-k` / `ignore_https_errors` |
-| Sudo | passwordless (`scripts/pre-install-pi.sh` installed a validated NOPASSWD entry) |
+| Sudo | passwordless (`scripts/lib/pre-provision-pi.sh` installed a validated NOPASSWD entry) |
 | App login | none — passwordless by design; tap a name at `/accounts/switch/` |
 
 **On these being written down.** There is no secret here: a private RFC1918 address,
@@ -52,10 +52,7 @@ On the Pi, run it inside the container so it uses the same Python and settings t
 house actually runs on:
 
 ```bash
-ssh -i ~/.ssh/nora_pi ckstation@192.168.1.253 \
-  "cd ~/Nora_Home && docker compose exec -T web ./scripts/run-tests.sh"
-
-make test-pi        # the same thing, from the Pi's own checkout
+ssh -i ~/.ssh/nora_pi ckstation@192.168.1.253 "cd ~/Nora_Home && ./nora test"
 ```
 
 `pytest` and `pytest-django` are installed in the production image on purpose
@@ -187,15 +184,24 @@ static files are collected into the image.
 # on the dev machine
 git add -A && git commit -m "..." && git push origin main
 
-# on the Pi
-ssh -i ~/.ssh/nora_pi ckstation@192.168.1.253 \
-  "cd ~/Nora_Home && git pull --ff-only && \
-   docker compose build web && docker compose up -d --force-recreate web"
-
-sleep 8   # give the entrypoint time to migrate and boot Daphne
-ssh -i ~/.ssh/nora_pi ckstation@192.168.1.253 \
-  "cd ~/Nora_Home && docker compose ps web && docker compose exec -T web python manage.py check"
+# on the Pi — everything operational goes through ./nora
+ssh -i ~/.ssh/nora_pi ckstation@192.168.1.253 "cd ~/Nora_Home && ./nora upgrade"
 ```
+
+`./nora upgrade` backs up, pulls, rebuilds, migrates, restarts, and waits for the
+health endpoint before returning — so a failure stops there rather than leaving a
+half-started house. `./nora help` lists the rest.
+
+The ones worth knowing while debugging:
+
+| Command | For |
+|---|---|
+| `./nora recreate` | **After editing `.env`.** A restart will not do it — a running container keeps the environment it started with. This has cost a session |
+| `./nora status` | Services and the health endpoint in one |
+| `./nora logs [service]` | Follow logs |
+| `./nora test` | The suite, inside the container |
+| `./nora manage <cmd>` | Any management command |
+| `./nora screens` | Hard-reload the wall and kiosk after a template change |
 
 > **Never hot-copy a file into the container to "test quickly".** Django serves
 > content-hashed static filenames (`nh-scene.2c282e12.css`). Editing the unhashed
@@ -258,15 +264,19 @@ ssh -i ~/.ssh/nora_pi ckstation@192.168.1.253 "DISPLAY=:0 scrot -o /tmp/screens.
 scp -i ~/.ssh/nora_pi ckstation@192.168.1.253:/tmp/screens.png /tmp/screens.png
 ```
 
-The two Chromium instances are launched by scripts `install-pi.sh` generated:
+The two Chromium instances are launched by scripts `provision-pi.sh` generated:
 
 ```bash
 ~/.nora/start-wall.sh     # HDMI-0, 1920x1080 at 0,0      -> the 24" wall
 ~/.nora/start-kiosk.sh    # HDMI-1, 1024x600 at 1920,0    -> the 10.1" touchscreen
 ```
 
-To pick up a change that alters the *launch* (a URL change, a new flag), the running
-Chromium must be killed and relaunched — a page reload is not enough:
+After a template or static change, the screens hold the old page until reloaded —
+`./nora screens` does both. (It searches by window *title*: searching by class
+matches Chromium's helper windows, not the pages, and silently reloads nothing.)
+
+To pick up a change that alters the *launch* itself (a URL change, a new flag),
+the running Chromium must be killed and relaunched — a reload is not enough:
 
 ```bash
 ssh -i ~/.ssh/nora_pi ckstation@192.168.1.253 \
@@ -282,7 +292,7 @@ ssh -i ~/.ssh/nora_pi ckstation@192.168.1.253 \
   "DISPLAY=:0 xdotool mousemove 2200 300 click 1"
 ```
 
-> The Pi runs the **X11** session, not Wayland (`install-pi.sh` §6 switches it).
+> The Pi runs the **X11** session, not Wayland (`provision-pi.sh` §6 switches it).
 > That is what makes `xdotool`, `scrot` and per-output window placement work at
 > all. Side effect: Raspberry Pi Connect's screen sharing is Wayland-only and stays
 > broken; Remote Shell and plain SSH are unaffected.
@@ -333,8 +343,8 @@ rather than *Complete*.
 1. `./scripts/run-tests.sh` green, and **a new test covering the change** — a fix
    with no test is a fix that gets re-broken.
 2. `manage.py check` clean, locally **and** on the Pi.
-3. Deployed — actually rebuilt, not hot-copied.
-4. The suite run again *on the Pi*, inside the container.
+3. Deployed with `./nora upgrade` — actually rebuilt, not hot-copied.
+4. `./nora test` run again *on the Pi*, inside the container.
 5. Seen working: a screenshot, a measured value, or a shell query. Not a diff.
 6. The *reported symptom* re-tested, not just the code path you believed was wrong.
 7. `docs/Main_App/progress.md` updated in the same commit

@@ -1,0 +1,439 @@
+#!/usr/bin/env bash
+#
+# nora — the one command for running this house.
+#
+#     ./nora help
+#
+# Everything operational lives here: first-time provisioning, starting and
+# stopping, deploying an update, backups, house apps, and the two screens. It
+# replaced scripts/install-pi.sh as the entry point — that provisioning still
+# exists, unchanged, at scripts/lib/provision-pi.sh, and `nora install` runs it.
+#
+# Three rules this script tries to keep:
+#
+#   * Anything destructive takes a backup first and asks before acting.
+#   * Anything that needs the app running says so rather than failing obscurely.
+#   * Every subcommand explains what it is about to do, so a log is readable
+#     afterwards by someone who was not here.
+#
+set -euo pipefail
+
+cd "$(dirname "$0")"
+
+COMPOSE="docker compose"
+APP_SERVICES="web worker beat"
+# `run --rm` rather than `exec`: management commands must work when the house is
+# down, which is exactly when someone reaches for restore or backup.
+MANAGE_RUN="$COMPOSE run --rm --no-deps web"
+
+# ── output ────────────────────────────────────────────────────────────────────
+if [ -t 1 ]; then
+    C_HEAD=$'\033[1;36m'; C_OK=$'\033[1;32m'; C_WARN=$'\033[1;33m'
+    C_ERR=$'\033[1;31m'; C_DIM=$'\033[2m'; C_OFF=$'\033[0m'
+else
+    C_HEAD=""; C_OK=""; C_WARN=""; C_ERR=""; C_DIM=""; C_OFF=""
+fi
+
+step() { printf '\n%s==>%s %s\n' "$C_HEAD" "$C_OFF" "$*"; }
+ok()   { printf '%s  ok%s %s\n' "$C_OK" "$C_OFF" "$*"; }
+warn() { printf '%swarning:%s %s\n' "$C_WARN" "$C_OFF" "$*" >&2; }
+die()  { printf '%serror:%s %s\n' "$C_ERR" "$C_OFF" "$*" >&2; exit 1; }
+hint() { printf '%s       %s%s\n' "$C_DIM" "$*" "$C_OFF"; }
+
+confirm() {
+    # Destructive things ask, unless --yes was passed or nobody is watching.
+    [ "${ASSUME_YES:-0}" = "1" ] && return 0
+    [ -t 0 ] || die "$1 (refusing in a non-interactive shell; pass --yes if you mean it)"
+    printf '%s%s%s [y/N] ' "$C_WARN" "$1" "$C_OFF"
+    read -r reply
+    case "$reply" in [yY]|[yY][eE][sS]) return 0 ;; *) echo "Cancelled."; exit 1 ;; esac
+}
+
+need_docker() {
+    command -v docker >/dev/null 2>&1 || die "Docker is not installed. Run: ./nora install"
+    docker info >/dev/null 2>&1 || die "Docker is installed but not running or not permitted for $USER."
+}
+
+running() { [ -n "$($COMPOSE ps -q web 2>/dev/null)" ]; }
+
+require_running() {
+    running || die "The house is not running. Start it with: ./nora up"
+}
+
+ensure_env() {
+    [ -f .env ] && return 0
+    step "Creating .env from the example (with a fresh secret key)"
+    cp .env.example .env
+    python3 -c "import secrets;print('DJANGO_SECRET_KEY='+secrets.token_urlsafe(50))" >> .env
+    ok ".env created — fill in Slack and Anthropic keys when you have them."
+}
+
+ensure_cert() {
+    [ -f nginx/certs/nora-home.crt ] && return 0
+    step "Generating a self-signed TLS cert for nginx"
+    ./scripts/gen-self-signed-cert.sh
+}
+
+house_url() {
+    local ip
+    ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
+    printf 'https://%s:%s/home/' "${ip:-localhost}" "${NORA_HOME_HTTPS_PORT:-443}"
+}
+
+wait_for_health() {
+    local tries="${1:-40}"
+    printf '     waiting for the house to answer'
+    while [ "$tries" -gt 0 ]; do
+        if curl -sk -o /dev/null -w '%{http_code}' \
+            "https://localhost:${NORA_HOME_HTTPS_PORT:-443}/home/health/" 2>/dev/null \
+            | grep -q 200; then
+            printf '\n'; ok "healthy"; return 0
+        fi
+        printf '.'; sleep 3; tries=$((tries - 1))
+    done
+    printf '\n'
+    warn "the house did not report healthy in time — check: ./nora logs"
+    return 1
+}
+
+# ── commands ──────────────────────────────────────────────────────────────────
+
+cmd_install() {
+    step "Provisioning this machine"
+    hint "This is the one-time Raspberry Pi setup: Docker, both screens, systemd,"
+    hint "touchscreen mapping, and the wall power schedule."
+    exec ./scripts/lib/provision-pi.sh "$@"
+}
+
+cmd_up() {
+    need_docker; ensure_env; ensure_cert
+    step "Starting the house"
+    $COMPOSE up -d --build
+    wait_for_health || true
+    ok "The house is at $(house_url)"
+    hint "Self-signed cert — your browser warns once per device."
+}
+
+cmd_down() {
+    need_docker
+    step "Stopping the house (data volumes are kept)"
+    $COMPOSE down
+    ok "Stopped. Start it again with: ./nora up"
+}
+
+cmd_restart() {
+    need_docker
+    local services="${*:-$APP_SERVICES}"
+    step "Restarting: $services"
+    hint "Databases are left alone. For a config change, use ./nora recreate."
+    # shellcheck disable=SC2086
+    $COMPOSE restart $services
+    wait_for_health || true
+}
+
+cmd_recreate() {
+    need_docker
+    local services="${*:-$APP_SERVICES}"
+    step "Recreating containers: $services"
+    hint "A running container keeps the environment it started with, so editing"
+    hint ".env does nothing until the container is replaced — restart is not"
+    hint "enough. This is that replacement."
+    # shellcheck disable=SC2086
+    $COMPOSE up -d --force-recreate $services
+    wait_for_health || true
+    ok "Containers recreated with the current .env"
+}
+
+cmd_upgrade() {
+    need_docker; ensure_env; ensure_cert
+    step "Backing up before upgrading"
+    if running; then
+        cmd_backup --quiet || warn "backup failed; continuing is your call"
+    else
+        hint "house is down — skipping the pre-upgrade backup"
+    fi
+
+    step "Fetching the latest commit"
+    if [ -n "$(git status --porcelain)" ]; then
+        warn "This checkout has local changes; git pull may refuse."
+    fi
+    git pull --ff-only
+
+    step "Rebuilding the image"
+    $COMPOSE build
+
+    step "Applying migrations"
+    hint "The entrypoint migrates on start too; doing it here means a failure"
+    hint "stops the upgrade instead of leaving a half-started house."
+    $MANAGE_RUN python manage.py migrate --noinput
+
+    step "Restarting into the new image"
+    $COMPOSE up -d
+    wait_for_health || true
+    ok "Upgraded. $(git log --oneline -1)"
+}
+
+cmd_backup() {
+    need_docker
+    local quiet=0
+    [ "${1:-}" = "--quiet" ] && quiet=1 && shift
+    [ "$quiet" = "1" ] || step "Taking a full backup (SQL, Mongo, media, fixtures)"
+    if running; then
+        $COMPOSE exec -T web python manage.py nora_backup --compress "$@"
+    else
+        $MANAGE_RUN python manage.py nora_backup --compress "$@"
+    fi
+    ok "Backup written under ${NORA_HOME_BACKUP_DIR:-/var/backups/nora}"
+}
+
+cmd_restore() {
+    need_docker
+    local archive="${1:-}"
+    [ -n "$archive" ] || die "Which backup? ./nora restore /var/backups/nora/nora-….tar.gz"
+    confirm "Restoring $archive will overwrite the current database. Continue?"
+    step "Restoring from $archive"
+    $MANAGE_RUN python manage.py nora_restore "$archive" --yes
+    cmd_recreate
+}
+
+cmd_status() {
+    need_docker
+    step "Services"
+    $COMPOSE ps --format 'table {{.Service}}\t{{.Status}}'
+    if running; then
+        step "Health"
+        curl -sk "https://localhost:${NORA_HOME_HTTPS_PORT:-443}/home/health/" \
+            | python3 -m json.tool 2>/dev/null || warn "health endpoint did not answer"
+        echo
+        ok "The house is at $(house_url)"
+    fi
+}
+
+cmd_logs() {
+    need_docker
+    # shellcheck disable=SC2086
+    $COMPOSE logs -f --tail 100 ${*:-web worker beat nginx}
+}
+
+cmd_test() {
+    need_docker
+    if running; then
+        $COMPOSE exec -T web ./scripts/run-tests.sh "$@"
+    else
+        hint "house is down — running the suite in a throwaway container"
+        $MANAGE_RUN ./scripts/run-tests.sh "$@"
+    fi
+}
+
+cmd_manage() {
+    need_docker
+    [ "$#" -gt 0 ] || die "Which management command? e.g. ./nora manage list_apps"
+    if running; then
+        $COMPOSE exec -T web python manage.py "$@"
+    else
+        $MANAGE_RUN python manage.py "$@"
+    fi
+}
+
+cmd_shell()  { cmd_manage shell "$@"; }
+cmd_member() {
+    [ "$#" -gt 0 ] || die "Who? ./nora member alex [adult|admin|member]"
+    cmd_manage add_member "$1" --role "${2:-member}"
+}
+cmd_token()  {
+    [ "$#" -gt 0 ] || die "What device? ./nora token \"Nora robot\""
+    cmd_manage issue_device_token "$@"
+}
+
+cmd_app() {
+    local action="${1:-list}"; shift || true
+    case "$action" in
+        list) cmd_manage list_apps ;;
+        install)
+            [ "$#" -gt 0 ] || die "From where? ./nora app install <git url|path|module>"
+            cmd_manage install_app "$1"
+            step "Rebuilding so the new app is mounted"
+            $COMPOSE up -d --build
+            wait_for_health || true
+            ;;
+        uninstall)
+            [ "$#" -gt 0 ] || die "Which app? ./nora app uninstall <name>"
+            confirm "Uninstall the house app '$1'? A backup is taken first; its data is kept."
+            cmd_backup --quiet
+            cmd_manage uninstall_app "$1"
+            step "Restarting without it"
+            $COMPOSE up -d
+            ok "Uninstalled $1. Its data and code are still here; reinstall to get it back."
+            ;;
+        *) die "Unknown: ./nora app $action. Try: list, install, uninstall" ;;
+    esac
+}
+
+cmd_screens() {
+    # The wall and kiosk hold a page until they are told otherwise, so a deploy
+    # that changes a template leaves them showing the old one. This is that
+    # nudge. Hard-reload, because a soft one can serve the cached page.
+    step "Reloading the wall and kiosk browsers"
+    command -v xdotool >/dev/null 2>&1 || die "xdotool is not installed — run ./nora install, or reload the screens by hand."
+    local found=0
+    for name in "wall - Chromium" "kiosk - Chromium"; do
+        local window
+        window="$(DISPLAY=:0 xdotool search --name "$name" 2>/dev/null | head -1 || true)"
+        if [ -n "$window" ]; then
+            DISPLAY=:0 xdotool windowactivate --sync "$window"
+            sleep 1
+            DISPLAY=:0 xdotool key --clearmodifiers ctrl+shift+R
+            ok "reloaded ${name%% - *}"
+            found=$((found + 1))
+            sleep 2
+        else
+            warn "no window called '$name' — is that screen running?"
+        fi
+    done
+    [ "$found" -gt 0 ] || hint "Searching by class instead of name matches Chromium's helper windows, not the pages — that is why this looks for the titles."
+}
+
+cmd_cert() {
+    step "Regenerating the self-signed TLS cert"
+    hint "The cert's SAN is keyed to this machine's LAN IP, so regenerate after"
+    hint "the Pi's address changes. Browsers will warn once more per device."
+    rm -f nginx/certs/nora-home.crt nginx/certs/nora-home.key
+    ./scripts/gen-self-signed-cert.sh
+    running && $COMPOSE restart nginx && ok "nginx reloaded with the new cert"
+}
+
+cmd_uninstall() {
+    need_docker
+    printf '\n%sThis removes the whole house from this machine.%s\n' "$C_WARN" "$C_OFF"
+    hint "A full backup is taken first, and the checkout at $(pwd) is left alone."
+    hint "Containers, images and data volumes go — that includes the database."
+    confirm "Remove Nora Home and delete its data volumes?"
+
+    if running; then
+        step "Taking a final backup before anything is removed"
+        cmd_backup --quiet || warn "backup failed — stopping here rather than deleting data"
+        running && [ "${ASSUME_YES:-0}" != "1" ] && confirm "Backup done. Still remove everything?"
+    fi
+
+    step "Stopping and removing containers, networks and volumes"
+    $COMPOSE down --volumes --remove-orphans
+
+    step "Removing host-side units and launchers"
+    for unit in nora-home.service nora-wall-power.timer nora-wall-power.service; do
+        if systemctl list-unit-files 2>/dev/null | grep -q "^$unit"; then
+            sudo systemctl disable --now "$unit" 2>/dev/null || true
+            sudo rm -f "/etc/systemd/system/$unit"
+            ok "removed $unit"
+        fi
+    done
+    sudo systemctl daemon-reload 2>/dev/null || true
+    rm -f "$HOME/.config/autostart/nora-wall.desktop" \
+          "$HOME/.config/autostart/nora-kiosk.desktop" \
+          "$HOME/.config/autostart/nora-no-blank.desktop" 2>/dev/null || true
+
+    ok "Nora Home is removed."
+    hint "Kept on purpose: this checkout, ~/.nora (Chromium profiles and scripts),"
+    hint "and the backup under ${NORA_HOME_BACKUP_DIR:-/var/backups/nora}."
+    hint "To come back: ./nora up, then ./nora restore <that backup>."
+}
+
+cmd_help() {
+    cat <<'HELP'
+nora — the one command for running this house.
+
+  ./nora <command> [arguments]
+
+Getting going
+  install              One-time setup for a fresh Raspberry Pi: Docker, both
+                       screens, systemd, touchscreen mapping, power schedule
+  up                   Start the house (builds on first run, creates .env and a
+                       TLS cert if missing)
+  down                 Stop everything; data volumes are kept
+
+Day to day
+  status               What is running, plus the health endpoint
+  logs [service...]    Follow logs (default: web worker beat nginx)
+  restart [service...] Restart app services without touching the databases
+  recreate [service...] Replace containers so an edited .env takes effect —
+                       a plain restart will NOT pick up config changes
+  upgrade              Backup, pull, rebuild, migrate, restart. The update command
+  screens              Hard-reload the wall and kiosk browsers after a deploy
+
+Data
+  backup               Full backup now (SQL, Mongo, media, fixtures)
+  restore <archive>    Restore a backup, then recreate the containers
+
+House apps
+  app list             What is installed
+  app install <src>    Install from a git URL, a local path, or a module
+  app uninstall <name> Remove one, taking a backup first; its data is kept
+
+People and devices
+  member <name> [role] Add a household member (member | adult | admin)
+  token "<device>"     Issue a device token for the robot, a phone shortcut, …
+
+Development
+  test [args]          Run the test suite and print the short report
+  manage <cmd> [args]  Any management command, e.g. manage slack_members --auto
+  shell                A Django shell inside the app
+
+Maintenance
+  cert                 Regenerate the self-signed TLS cert (after an IP change)
+  uninstall            Remove the house from this machine, backing up first
+
+Options
+  --yes                Do not ask before destructive actions
+  help                 This text
+
+Examples
+  ./nora up
+  ./nora recreate                     # after editing .env
+  ./nora upgrade                      # the normal update
+  ./nora manage slack_members --auto
+  ./nora app install https://github.com/you/nora-workout
+  ./nora backup
+HELP
+}
+
+# ── dispatch ──────────────────────────────────────────────────────────────────
+
+ASSUME_YES=0
+ARGS=()
+for arg in "$@"; do
+    case "$arg" in
+        --yes|-y) ASSUME_YES=1 ;;
+        *) ARGS+=("$arg") ;;
+    esac
+done
+set -- ${ARGS[@]+"${ARGS[@]}"}
+
+COMMAND="${1:-help}"
+shift || true
+
+case "$COMMAND" in
+    install)            cmd_install "$@" ;;
+    up|start)           cmd_up "$@" ;;
+    down|stop)          cmd_down "$@" ;;
+    restart)            cmd_restart "$@" ;;
+    recreate)           cmd_recreate "$@" ;;
+    upgrade|deploy)     cmd_upgrade "$@" ;;
+    backup)             cmd_backup "$@" ;;
+    restore)            cmd_restore "$@" ;;
+    status|ps)          cmd_status "$@" ;;
+    logs)               cmd_logs "$@" ;;
+    test)               cmd_test "$@" ;;
+    manage)             cmd_manage "$@" ;;
+    shell)              cmd_shell "$@" ;;
+    member)             cmd_member "$@" ;;
+    token)              cmd_token "$@" ;;
+    app)                cmd_app "$@" ;;
+    screens)            cmd_screens "$@" ;;
+    cert)               cmd_cert "$@" ;;
+    uninstall)          cmd_uninstall "$@" ;;
+    help|--help|-h)     cmd_help ;;
+    *)
+        printf '%serror:%s unknown command %s\n\n' "$C_ERR" "$C_OFF" "$COMMAND" >&2
+        cmd_help >&2
+        exit 1
+        ;;
+esac
