@@ -326,7 +326,14 @@ body { background: transparent; }
   content: "";
   position: absolute;
   inset: 0;
-  background: rgba(246, 248, 251, 0.86);
+  /* 0.54, chosen by measuring rather than by eye. The first attempt used 0.86,
+     which passed comfortably and washed the scene away almost completely —
+     a light dashboard with no weather in it, which defeats the point. Sweeping
+     the value against real rendered contrast found a sharp cliff between 0.38
+     and 0.46 (night falls to 1.92:1), and a wide safe shelf above it. 0.54
+     leaves the worst case at 8.19:1 — most of the way to double the 4.5 floor —
+     while letting far more of the sky, horizon and weather through. */
+  background: rgba(246, 248, 251, 0.54);
   pointer-events: none;
 }
 
