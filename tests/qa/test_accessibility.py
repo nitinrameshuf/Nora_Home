@@ -171,30 +171,36 @@ def test_the_wall_is_readable_at_its_own_size(signed_in):
     assert ratio >= WCAG_AA_LARGE, f"the wall measures {ratio:.2f}:1"
 
 
-def test_the_kiosk_tiles_are_readable(signed_in):
-    """1024x600 — the real panel. These are touch targets read at arm's length
-    in a hallway, so they get the large-text threshold."""
+# The kiosk is checked at every daypart, not just whichever one is live when the
+# suite runs. That is not hypothetical caution: the tile hints failed at noon
+# (1.94:1) and passed at night (7.79:1), so the bug was invisible for a whole
+# run and only appeared when the suite happened to be run again in daylight. A
+# check on a surface whose background changes all day has to pin the background.
+@pytest.mark.parametrize("theme", ["dark", "light"])
+@pytest.mark.parametrize("daypart", ["dawn", "noon", "dusk", "night"])
+@pytest.mark.parametrize("what,selector", [
+    ("tile titles", ".kiosk-tile__title"),
+    ("tile hints", ".kiosk-tile__hint"),
+    ("the header", ".kiosk-header strong"),
+])
+def test_the_kiosk_is_readable_at_every_hour(signed_in, theme, daypart,
+                                             what, selector):
+    """1024x600 — the real panel. A wall-mounted control surface read at arm's
+    length in a hallway, and daylight is when someone is standing at it."""
     signed_in.set_viewport_size({"width": 1024, "height": 600})
     visit(signed_in, "/home/displays/kiosk/")
+    signed_in.evaluate(f"""() => {{
+        document.documentElement.setAttribute('data-theme', '{theme}');
+        document.documentElement.setAttribute('data-daypart', '{daypart}');
+    }}""")
+    signed_in.wait_for_timeout(600)
 
-    ratio = measure_text_contrast(signed_in, ".kiosk-tile__title")
+    ratio = measure_text_contrast(signed_in, selector)
     if ratio is None:
-        pytest.skip("no kiosk tiles")
+        pytest.skip(f"no {what} on the kiosk")
 
-    assert ratio >= WCAG_AA_NORMAL, f"kiosk tiles measure {ratio:.2f}:1"
-
-
-def test_the_kiosk_hint_text_is_readable(signed_in):
-    """The smaller second line under each tile — the first thing to fail when a
-    palette is nudged."""
-    signed_in.set_viewport_size({"width": 1024, "height": 600})
-    visit(signed_in, "/home/displays/kiosk/")
-
-    ratio = measure_text_contrast(signed_in, ".kiosk-tile__hint")
-    if ratio is None:
-        pytest.skip("no kiosk hint text")
-
-    assert ratio >= WCAG_AA_NORMAL, f"kiosk hint text measures {ratio:.2f}:1"
+    assert ratio >= WCAG_AA_NORMAL, (
+        f"{what} on the kiosk, {theme} theme at {daypart}: {ratio:.2f}:1")
 
 
 def test_the_settings_labels_are_readable(signed_in):

@@ -2037,10 +2037,42 @@ contrast. That one fix cleared a failure in *both* themes.
 light: 1.93:1. The light theme now deepens the same hue to 5.1:1. `--nh-500`
 itself is untouched, so the brand mark, chart series and glow keep their warmth.
 
-All 32 theme x daypart x element combinations now measure 6.30:1 or better, and
-the QA suite is 117 green with no skips. The method — sweep the value, print the
-table — is written up in testing.md, because it turns a taste argument into
-something checkable.
+All 32 theme x daypart x element combinations now measure 6.30:1 or better.
+
+### And then the kiosk, found by running the suite an hour later
+
+The run that confirmed the light theme was green. The next run, an hour on, was
+not — `.kiosk-tile__hint` at 1.94:1. Nothing had changed but the sky: the check
+had been passing against the night sky (7.79:1) and failed the moment the real
+daypart moved to noon.
+
+Two real problems under it, both the same oversight in different clothes. The
+comment in `nh-scene.css` claiming the daypart does not matter — that the glass's
+own tint dominates — was verified against `--text`, which is near-white and has
+enormous headroom. It was never checked against `--text-faint`, a soft grey
+chosen to recede, which is exactly the token the kiosk uses for the line telling
+you which app a button belongs to. Promoted to `--text-dim`; on that surface it
+is a label, not decoration.
+
+That was not enough. At noon the sky's lower half is nearly white, so a 0.30
+pane over it composites light and the tile *titles* then failed too (3.65:1) —
+and no text colour fixes that without inverting the dark theme at midday. So the
+kiosk's glass is now thicker than the app's (0.52 against 0.30), the one place
+this file deliberately breaks its own rule. Scoped there because the kiosk is
+not the ambient screen: the 24" wall carries the atmosphere, the 10.1" panel is
+a remote control on a hallway wall, and a button you cannot read is a broken
+button. Swept again — 0.42 leaves the worst case at 4.83, too close to the floor
+to trust across seasons and weather; 0.52 puts it at 6.17 and still reads as
+glass rather than a slab.
+
+**The test was then pinned to every daypart**, because the failure had been
+invisible for a whole run purely by the hour it was run at. A check on a surface
+whose background changes all day has to pin the background — otherwise it is a
+test that passes six hours out of twenty-four.
+
+Worst case anywhere on the kiosk, any theme, any hour: 6.17:1. QA is 117 green
+with no skips. The method — sweep the value, print the table — is written up in
+testing.md, because it turns a taste argument into something checkable.
 
 ---
 
