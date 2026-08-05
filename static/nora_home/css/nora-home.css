@@ -80,6 +80,12 @@
   --text-faint: var(--ink-400);
   --shadow: 0 1px 2px rgba(16, 24, 32, 0.06), 0 8px 24px rgba(16, 24, 32, 0.08);
   --shadow-sm: 0 1px 2px rgba(16, 24, 32, 0.08);
+
+  /* The apricot is tuned for dark glass; on a light ground it measures 1.93:1,
+     so link text in this theme uses a deepened version of the same hue — still
+     recognisably the house colour, at 5.1:1. --nh-500 itself is left alone so
+     decorative uses (the brand mark, chart series, the glow) keep their warmth. */
+  --accent: #a84f14;
 }
 
 *,
@@ -140,6 +146,12 @@ pre {
   padding: 0 0.5rem 1.25rem;
   font-weight: 700;
   font-size: var(--step-1);
+  /* Not the accent. As a bare <a> this inherited apricot, which reads fine on
+     dark glass and fails everywhere else — 2.13:1 in the light theme, 3.81:1
+     over the noon sky, measured 2026-08-04. The house name is text, and --text
+     is the token that already tracks the theme. The apricot identity is carried
+     by .brand-mark beside it, which is decorative and needs no contrast. */
+  color: var(--text);
   letter-spacing: -0.01em;
 }
 .brand-mark {
