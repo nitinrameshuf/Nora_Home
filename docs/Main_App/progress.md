@@ -1916,6 +1916,79 @@ Verified on the Pi by running it: `status`, `backup` (a real archive),
 
 ---
 
+## 2026-08-04 — QA: a real browser, and what it found in four minutes
+
+Asked whether the unit tests were QA. They are not: 579 tests that check Python
+and never render a page, run a line of the 1,381 lines of shipped JavaScript, or
+look at a pixel. Every user-visible bug in this project has lived in that gap
+while the suite stayed green — "Add a widget" broken for a day, alert banners
+never appearing, the kiosk showing deleted buttons, text nobody could read. The
+QA layer was a person taking screenshots.
+
+Then asked, fairly, why build it when open-source tools exist. That was the
+better instinct and it changed the shape of the work: **most of the value is
+off-the-shelf.** axe-core is somebody else's rule engine; console-error and
+failed-request checks are a few lines of Playwright. Only the kiosk-drives-wall
+flow is genuinely bespoke, because no tool knows this house has a 10" screen
+that drives a 24" one.
+
+`./nora qa` — 106 checks, ~4 minutes, from a laptop against the running house.
+
+### Three findings on the first real run
+
+- **A checkbox with no label.** The overnight schedule's toggle used a `<div>`,
+  not a `<label for>`, so it had no accessible name and tapping its text did not
+  toggle it — on a touchscreen that is the entire interaction. Mine, from the
+  Settings redesign. Fixed.
+- **The light theme is unreadable at dusk.** Near-black text on the evening sky,
+  measured 2.06:1 against a floor of 3.0. Not a stray colour: `nh-scene.css`
+  drives the sky from `data-daypart` alone with no `data-theme` branch, so three
+  of the four dayparts are dark whatever the theme says. Anyone tapping "Theme"
+  in the profile menu gets it. **Parked with a written explanation rather than
+  quietly patched** — resolving it is a design decision about the Almanac
+  direction (force a daylight sky, drop the living background in light mode, or
+  drop the toggle), and that belongs to whoever owns the design.
+- **axe's own contrast rule is unusable here** — and it took a pixel measurement
+  to establish that rather than assume it. axe composites translucent panes onto
+  the nearest opaque ancestor; this app paints a living gradient behind
+  everything with `backdrop-filter` over it. So axe reported perfectly readable
+  kiosk tiles at 1.95:1 against `#b4b5b6`, a grey that appears nowhere on screen.
+  Measured from the rendering: 18:1.
+
+That last one is the one worth remembering. **Believing the tool would have
+meant "fixing" readable text and making it worse** — the same trap as the earlier
+"reduce transparency" theory, and avoided the same way, by measuring what is
+actually on screen. Contrast is now measured from screenshots, and the measurer
+was validated by deliberately breaking a colour and confirming it caught it:
+18.25 as shipped, 2.81 when broken.
+
+### Four failures that were the tests' own fault
+
+Worth recording because they are the standard traps:
+
+- **`networkidle` never fires here.** The wall and kiosk hold a websocket open
+  for their whole life and poll the weather, so the network is never idle. Every
+  wait timed out after 30s, which is what made the first run take 5m25s and
+  report failures that were nothing but a bad wait condition. `visit()` replaced
+  it everywhere.
+- **Page actions live inside the profile dropdown.** "Add a widget" is in the
+  DOM but invisible until the menu is opened, so the click timed out. Not a bug —
+  worth knowing before concluding a button is broken.
+- **Already-added widgets render `disabled`**, so clicking the first item in the
+  picker did nothing.
+
+### Also
+
+The reporter had a real gap: a skip raised inside a test body was invisible,
+counted as neither pass nor skip — which would have let a deliberately parked
+failure look like a pass. Now counted.
+
+DEVELOPMENT.md tells house apps to write browser tests too, with the fixtures
+they inherit and the `networkidle` warning, and gate 2 of the workflow now
+requires `./nora qa` green as well as `./nora test`.
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**

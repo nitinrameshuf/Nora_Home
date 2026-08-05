@@ -148,6 +148,75 @@ reports `NOT OK` rather than `ALL PASSED`. If it says `ALL PASSED`, it ran.
   at 22:00 — it was caught while writing this suite, not in production.
 - **Nothing reaches the network.** Integrations are driven with recorded payloads.
 
+---
+
+## The QA suite — a real browser
+
+`./nora qa`. 106 checks, ~4 minutes, run **from a laptop against a running
+house** (not inside the Pi's container — no browser there, and testing the house
+from outside is how anyone actually uses it).
+
+```bash
+./nora qa                        # the Pi
+./nora qa https://localhost      # a house running here
+./nora qa -k kiosk               # one area
+```
+
+This is the layer `./nora test` cannot reach. The fast suite never renders a
+page, never runs a line of the 1,381 lines of JavaScript that ship to browsers,
+and never looks at a pixel — which is where every user-visible bug in this
+project has lived while the unit tests stayed green.
+
+| File | Checks |
+|---|---|
+| `test_smoke.py` | Every page opened for real: console errors, failed requests, blank renders, sideways scroll, unrendered template syntax, `window.NoraHome` intact |
+| `test_journeys.py` | Add a widget **and reload**, save Settings, the profile menu, every nav link resolving, the five surface sizes |
+| `test_screens.py` | The wall and kiosk open **at once** — a kiosk tap moving the wall's iframe, the kiosk staying on its own buttons, no dead controls, no error toast |
+| `test_accessibility.py` | axe-core on every page, plus contrast measured from pixels across themes, dayparts, seasons and both screen sizes |
+
+### Contrast is measured from pixels, not from the DOM
+
+axe's own `color-contrast` rule is **switched off deliberately**. It composites
+translucent panes onto the nearest opaque ancestor, and this app paints a living
+gradient behind everything with `backdrop-filter` over it — so axe reported the
+kiosk tiles at 1.95:1 against `#b4b5b6`, a grey that appears nowhere on screen.
+Measured from the actual rendering, the same text is 18:1.
+
+**Taking axe at its word would have meant "fixing" readable text and making it
+worse.** `measure_text_contrast()` in `tests/qa/conftest.py` screenshots the
+element and compares the glyphs to their background. It was validated by
+deliberately breaking a colour and confirming it caught it: 18.25 as shipped,
+2.81 when broken. Every other axe rule stays on — they read the DOM, which axe
+is good at, and one of them found a checkbox with no label.
+
+### Writing QA tests
+
+Fixtures in `tests/qa/conftest.py`: `signed_in`, `console_errors`,
+`visit(page, path)`, `open_actions_menu(page)`, `measure_text_contrast(...)`,
+`house_url`.
+
+**Never wait on `networkidle`.** The wall and kiosk hold a websocket open for
+their whole life and poll the weather every few minutes, so the network is never
+idle and the wait times out after 30s. `visit()` exists for this; using
+`networkidle` is what made the first run take five and a half minutes and report
+failures that were nothing but a bad wait condition.
+
+Page actions — "Add a widget", "Rearrange", the switcher — live inside the
+profile dropdown, so they are in the DOM but not visible until it is opened.
+`open_actions_menu()` does that. Worth knowing before concluding a button is
+broken.
+
+### Known QA gaps
+
+- **The light theme is broken and the check is parked.** Near-black text on the
+  evening sky, 2.06:1. `nh-scene.css` drives the sky from `data-daypart` alone
+  with no `data-theme` branch, so three of four dayparts are dark whatever the
+  theme says. Skipped with a written reason in `test_accessibility.py`; fixing it
+  is a design decision about the Almanac direction.
+- **Chromium only.** WebKit cannot reach this Pi (see above).
+- **Nothing here judges how it looks.** Contrast is not legibility at three
+  metres, and no tool has an opinion on whether a design is any good.
+
 ### Known gaps
 
 Be honest about these rather than implying the suite proves more than it does.

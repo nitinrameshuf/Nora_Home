@@ -355,6 +355,15 @@ screen (`--ignore-certificate-errors` did its job).
    beat actually firing, Slack/AI/MCP against live services, Mongo/MinIO, and
    the websocket consumers. See
    [`docs/Main_App/testing.md`](docs/Main_App/testing.md) § Known gaps.
+   **`./nora qa`** is the second layer: 106 checks driving a real Chromium
+   against the running house — every page rendered and checked for console
+   errors, the journeys clicked through, both screens open at once so a kiosk tap
+   can be seen moving the wall, and contrast measured from pixels. ~4 minutes,
+   run from a laptop, deliberately separate from the fast suite. It found two
+   real bugs on its first run (a checkbox with no label; the light theme
+   unreadable at dusk) and one about the tools: axe's colour-contrast rule is
+   unusable against `backdrop-filter` over a living gradient, and believing it
+   would have meant degrading readable text.
 5. **PWA manifest and service worker** — decided (§5) but not written.
 6. **No favicon** — the logs show steady `/favicon.ico` 404s.
 7. ~~**Kiosk-drives-wall redesign and the Settings tab — built, unverified.**~~
