@@ -192,3 +192,31 @@ def test_running_a_plain_script_offline_bypasses_the_entrypoint(source):
     body = body[:body.index("\n")]
 
     assert "--entrypoint" in body, "raw_offline does not bypass the entrypoint"
+
+
+def test_upgrade_hands_over_when_it_updates_itself(source):
+    """`upgrade` pulls, and the pull can replace this very script. Bash has
+    already parsed the version it started with — and reads scripts incrementally,
+    so editing one mid-run can make it jump into the middle of a line. The fix
+    that shipped in a commit therefore would not apply to the upgrade installing
+    it, which is exactly what happened on the Pi."""
+    body = source[source.index("cmd_upgrade() {"):]
+    body = body[:body.index("\n}\n")]
+
+    assert "HEAD:nora" in body, "upgrade does not notice the runner changing"
+    assert "exec \"$0\"" in body, "upgrade does not hand over to the new runner"
+    assert "NORA_RESUMED" in body, "nothing stops the handover looping"
+
+
+def test_the_handover_cannot_loop(source):
+    """A re-exec with no guard is an infinite loop on a machine nobody is
+    watching."""
+    body = source[source.index("cmd_upgrade() {"):]
+    body = body[:body.index("\n}\n")]
+
+    guard_line = next(line for line in body.splitlines() if 'exec "$0"' in line)
+    condition = next(line for line in body.splitlines()
+                     if "runner_before" in line and "!=" in line)
+
+    assert "NORA_RESUMED" in condition, "the handover is not guarded"
+    assert "NORA_RESUMED=1" in guard_line, "the handover does not set the guard"

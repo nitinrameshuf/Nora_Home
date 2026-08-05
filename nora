@@ -157,7 +157,9 @@ cmd_recreate() {
 cmd_upgrade() {
     need_docker; ensure_env; ensure_cert
     step "Backing up before upgrading"
-    if running; then
+    if [ "${NORA_RESUMED:-0}" = "1" ]; then
+        hint "already backed up before the runner handed over"
+    elif running; then
         cmd_backup --quiet || warn "backup failed; continuing is your call"
     else
         hint "house is down — skipping the pre-upgrade backup"
@@ -167,7 +169,21 @@ cmd_upgrade() {
     if [ -n "$(git status --porcelain)" ]; then
         warn "This checkout has local changes; git pull may refuse."
     fi
+    local runner_before runner_after
+    runner_before="$(git rev-parse HEAD:nora 2>/dev/null || echo none)"
     git pull --ff-only
+    runner_after="$(git rev-parse HEAD:nora 2>/dev/null || echo none)"
+
+    # The pull may have replaced this very script. Bash has already parsed the
+    # version it started with, so the rest of this upgrade would run the old
+    # logic — and worse, bash reads scripts incrementally, so editing one
+    # mid-run can make it jump into the middle of a line. Hand over to the new
+    # copy instead. NORA_RESUMED stops the handover repeating and skips the
+    # second backup; the pull is a no-op by then, so this cannot loop.
+    if [ "$runner_before" != "$runner_after" ] && [ "${NORA_RESUMED:-0}" != "1" ]; then
+        step "The runner itself changed in this update — continuing under the new one"
+        NORA_RESUMED=1 exec "$0" upgrade ${ASSUME_YES:+--yes}
+    fi
 
     step "Rebuilding the image"
     $COMPOSE build
