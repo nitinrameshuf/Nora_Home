@@ -21,7 +21,13 @@ from nora_home.notifications.channels import BaseChannel, ChannelError
 logger = logging.getLogger(__name__)
 
 SLACK_API = "https://slack.com/api/chat.postMessage"
+SLACK_CONVERSATIONS_OPEN = "https://slack.com/api/conversations.open"
 TIMEOUT = 10
+
+# Slack user IDs start with U (people) or W (Enterprise Grid people). Channel
+# names start with #, and channel IDs with C/G — so this is enough to tell "DM a
+# person" from "post in a room" without asking Slack which it is.
+_USER_ID_PREFIXES = ("U", "W")
 
 # Slack's error strings are accurate and useless — "channel_not_found" is what it
 # says whether the channel does not exist, or exists and the bot was never invited
@@ -40,9 +46,16 @@ SLACK_ERROR_HELP = {
         "{target} is archived. Point NORA_HOME_SLACK_DEFAULT_CHANNEL / "
         "_ESCALATION_CHANNEL at a live channel.",
     "missing_scope":
-        "The bot token is missing a scope this call needs. Escalation DMs need "
+        "The bot token is missing a scope this call needs. DMs to a person need "
         "`im:write`; posting to a channel it has not joined needs "
-        "`chat:write.public`. Add them in the Slack app config and reinstall.",
+        "`chat:write.public`; looking members up needs `users:read`. Add them in "
+        "the Slack app config and reinstall the app.",
+    "users_not_found":
+        "Slack does not recognise {target} as a member of this workspace. Check "
+        "the member's slack_user_id in /admin/ — `manage.py slack_members` lists "
+        "the real ones.",
+    "cannot_dm_bot":
+        "{target} is a bot, not a person. Only people can be DMed.",
     "invalid_auth":
         "Slack rejected the token. Check NORA_HOME_SLACK_BOT_TOKEN in .env — it "
         "must start with `xoxb-` and carry no surrounding quotes.",
@@ -75,6 +88,7 @@ class SlackChannel(BaseChannel):
         text = f"{notification.title} — {notification.body}".strip(" —")
 
         if settings.NORA_HOME_SLACK_BOT_TOKEN:
+            target = self._resolve_dm(target, notification.recipient)
             return self._send_via_api(target, text, blocks)
         return self._send_via_webhook(text, blocks)
 
@@ -88,6 +102,46 @@ class SlackChannel(BaseChannel):
             if dm:
                 return dm
         return settings.NORA_HOME_SLACK_DEFAULT_CHANNEL
+
+    def _resolve_dm(self, target: str, recipient) -> str:
+        """Turn a Slack *user* id into a DM conversation id.
+
+        `chat.postMessage` does accept a bare user id, but only once an IM with
+        that person exists — otherwise it answers `channel_not_found`, which
+        looks identical to a missing channel and sends you hunting in the wrong
+        place. Opening the conversation explicitly is what makes the escalation
+        ladder's DMs reliable on first contact.
+
+        The result is cached on the member so this costs one extra API call per
+        person, ever, rather than one per notification.
+        """
+        if not target.startswith(_USER_ID_PREFIXES):
+            return target  # a #channel or an already-resolved D… conversation
+
+        try:
+            response = requests.post(
+                SLACK_CONVERSATIONS_OPEN,
+                headers={"Authorization": f"Bearer {settings.NORA_HOME_SLACK_BOT_TOKEN}"},
+                json={"users": target},
+                timeout=TIMEOUT,
+            )
+            payload = response.json() if response.content else {}
+        except requests.RequestException as exc:
+            raise ChannelError(f"Could not open a Slack DM: {exc}") from exc
+
+        if not payload.get("ok"):
+            code = payload.get("error", "?")
+            help_text = SLACK_ERROR_HELP.get(code, "")
+            detail = f" {help_text.format(target=target)}" if help_text else ""
+            raise ChannelError(
+                f"Could not open a Slack DM with {target} ({code}).{detail}")
+
+        channel_id = payload.get("channel", {}).get("id", "")
+        if channel_id and recipient is not None and not recipient.slack_dm_channel:
+            # Remember it, so the next notification skips this round trip.
+            type(recipient).objects.filter(pk=recipient.pk).update(
+                slack_dm_channel=channel_id)
+        return channel_id or target
 
     # ── rendering ──────────────────────────────────────────────────────────────
     def _blocks(self, notification) -> list[dict]:

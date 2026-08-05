@@ -451,3 +451,104 @@ def test_a_personal_nudge_goes_to_the_members_dm(make_member, settings, monkeypa
            channels=["slack"], sync=True)
 
     assert seen["channel"] == "U01ABCDEF"
+
+
+# ── direct messages ──────────────────────────────────────────────────────────
+
+def _fake_slack(monkeypatch, responses):
+    """Route each Slack endpoint to a canned response, and record the calls."""
+    import nora_home.notifications.channels.slack as slack_channel
+
+    calls = []
+
+    class FakeResponse:
+        content = b"{}"
+
+        def __init__(self, payload):
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    def post(url, **kwargs):
+        calls.append((url, kwargs.get("json", {})))
+        for fragment, payload in responses.items():
+            if fragment in url:
+                return FakeResponse(payload)
+        return FakeResponse({"ok": True, "ts": "1.0"})
+
+    monkeypatch.setattr(slack_channel.requests, "post", post)
+    return calls
+
+
+def test_a_dm_opens_a_conversation_before_posting(make_member, settings,
+                                                  monkeypatch):
+    """chat.postMessage accepts a bare user id, but only once an IM exists —
+    otherwise it answers channel_not_found, which looks exactly like a missing
+    channel and sends you hunting in the wrong place."""
+    settings.NORA_HOME_SLACK_BOT_TOKEN = "xoxb-test"
+    person = make_member("kid", slack_user_id="U01ABCDEF")
+    calls = _fake_slack(monkeypatch, {
+        "conversations.open": {"ok": True, "channel": {"id": "D0FEED"}},
+    })
+
+    notify(person, title="Vitamins", channels=["slack"], sync=True)
+
+    urls = [url for url, _ in calls]
+    assert any("conversations.open" in u for u in urls), "no DM was opened"
+    posted = [body for url, body in calls if "chat.postMessage" in url]
+    assert posted[0]["channel"] == "D0FEED", "posted to the user id, not the DM"
+
+
+def test_the_dm_conversation_is_cached_on_the_member(make_member, settings,
+                                                     monkeypatch):
+    """One extra API call per person ever, rather than one per notification."""
+    settings.NORA_HOME_SLACK_BOT_TOKEN = "xoxb-test"
+    person = make_member("kid", slack_user_id="U01ABCDEF")
+    _fake_slack(monkeypatch, {
+        "conversations.open": {"ok": True, "channel": {"id": "D0FEED"}},
+    })
+
+    notify(person, title="Vitamins", channels=["slack"], sync=True)
+
+    person.refresh_from_db()
+    assert person.slack_dm_channel == "D0FEED"
+
+
+def test_a_cached_dm_channel_skips_the_extra_call(make_member, settings,
+                                                  monkeypatch):
+    settings.NORA_HOME_SLACK_BOT_TOKEN = "xoxb-test"
+    person = make_member("kid", slack_user_id="U01ABCDEF",
+                         slack_dm_channel="D0CACHED")
+    calls = _fake_slack(monkeypatch, {})
+
+    notify(person, title="Vitamins", channels=["slack"], sync=True)
+
+    assert not any("conversations.open" in url for url, _ in calls)
+    assert calls[0][1]["channel"] == "D0CACHED"
+
+
+def test_a_channel_target_is_never_treated_as_a_dm(member, settings, monkeypatch):
+    """House-wide messages go to #a-channel; opening a DM for those would be
+    both wrong and an extra round trip."""
+    settings.NORA_HOME_SLACK_BOT_TOKEN = "xoxb-test"
+    settings.NORA_HOME_SLACK_DEFAULT_CHANNEL = "#nora-home"
+    calls = _fake_slack(monkeypatch, {})
+
+    notify_house(title="Power cut", channels=["slack"], sync=True)
+
+    assert not any("conversations.open" in url for url, _ in calls)
+
+
+def test_failing_to_open_a_dm_explains_the_missing_scope(make_member, settings,
+                                                         monkeypatch):
+    settings.NORA_HOME_SLACK_BOT_TOKEN = "xoxb-test"
+    person = make_member("kid", slack_user_id="U01ABCDEF")
+    _fake_slack(monkeypatch, {
+        "conversations.open": {"ok": False, "error": "missing_scope"},
+    })
+
+    notification = notify(person, title="Vitamins", channels=["slack"], sync=True)
+
+    error = notification.deliveries.get().error
+    assert "im:write" in error, f"no actionable hint: {error!r}"
