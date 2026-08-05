@@ -360,3 +360,25 @@ body { background: transparent; }
 :root[data-theme="light"] .kiosk-controls {
   border-color: rgba(20, 24, 32, 0.12);
 }
+
+/* ── The kiosk's own legibility ──────────────────────────────────────────────
+ *
+ * The reasoning above — that at this pane opacity the glass's own tint
+ * dominates, so only the theme matters and the daypart does not — was checked
+ * against --text, which is near-white and has enormous headroom. It does not
+ * hold for --text-faint, which is a soft grey chosen to recede.
+ *
+ * Measured on the real kiosk, 2026-08-04: the second line under each tile runs
+ * 7.79:1 against the night sky and 1.94:1 against the noon one. The 10.1" panel
+ * is a wall-mounted control surface read at arm's length in a hallway, and
+ * daylight is exactly when someone is standing at it — so the one daypart it
+ * failed is the one that matters most.
+ *
+ * Fixed by promoting the token rather than by thickening the glass, which is
+ * the rule this file has followed twice already. On this surface the hint is
+ * not decoration: it is the label telling you which app a button belongs to.
+ */
+.kiosk-tile__hint,
+.kiosk-header .card-subtitle {
+  color: var(--text-dim);
+}
