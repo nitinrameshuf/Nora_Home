@@ -33,9 +33,22 @@ Three folders, by **who the document is for**. See [`docs/README.md`](docs/READM
 | [`docs/Main_App/`](docs/Main_App/) | The Django platform and its infrastructure | `DEVELOPMENT.md`, `cross-functionality.md`, `architecture.md`, `testing.md`, `progress.md`, and `subsystems/` — one file per platform subsystem |
 | [`docs/House_Apps/`](docs/House_Apps/) | The family's own apps | One folder per app, named after its module, holding all of that app's docs |
 
-**Every house app is required to have a folder under `docs/House_Apps/` with a
-`README.md`.** `install_app` warns when one is missing, so it is enforced rather
+**Every house app is required to have a folder under `docs/House_Apps/` holding
+`requirements.md`, `README.md`, and `testing.md`.** `install_app` warns when any is
+missing and `tests/test_house_apps.py` fails without them, so it is enforced rather
 than merely stated.
+
+**Building a house app has three gates**, in order — see
+[`docs/Main_App/DEVELOPMENT.md`](docs/Main_App/DEVELOPMENT.md#the-workflow--three-gates-in-order):
+
+1. **Requirements first.** `requirements.md` describes what the app does in plain
+   language, and **the user approves that functionality before any code is
+   written.** Do not start with code.
+2. **Development is not done until it is tested and integrated.** Unit tests for
+   the app's own logic, plus verified integration with the platform (tracker,
+   notifications, telemetry, widgets, nav, kiosk), with the whole suite green.
+3. **Deployed to the Pi and confirmed over SSH.** Until then it is *built,
+   unproven*, never Complete.
 
 ### What to update, when
 

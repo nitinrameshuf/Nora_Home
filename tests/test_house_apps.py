@@ -265,6 +265,18 @@ def test_the_app_has_a_docs_folder(app):
     assert readme.exists(), f"missing docs/House_Apps/{name}/README.md"
 
 
+def test_the_app_has_approved_requirements(app):
+    """Gate 1 of the workflow in DEVELOPMENT.md: what the app does, written in
+    plain language and approved by the user before any code was written. An app
+    without one is an app whose functionality was never agreed."""
+    name = app.module.rsplit(".", 1)[-1]
+    requirements = Path(settings.BASE_DIR) / "docs" / "House_Apps" / name / "requirements.md"
+
+    assert requirements.exists(), (
+        f"missing docs/House_Apps/{name}/requirements.md — see DEVELOPMENT.md "
+        "section 'The workflow'")
+
+
 def test_the_app_documents_how_to_test_it(app):
     """Each house app carries its own testing.md, the same way the base app
     does — so the next person knows what "verified" means for this app."""

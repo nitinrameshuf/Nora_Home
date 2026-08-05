@@ -146,6 +146,20 @@ class Command(BaseCommand):
             if app_docs.exists():
                 self.stdout.write(f"    (docs/House_Apps/{name}/ exists but has no README.md)")
 
+        # requirements.md is gate 1 of the workflow in DEVELOPMENT.md: what the
+        # app does, agreed with the user before any code was written. An app
+        # arriving without one means that conversation never happened.
+        if (app_docs / "requirements.md").exists():
+            self.stdout.write(f"  docs/House_Apps/{name}/requirements.md present [ok]")
+        else:
+            self.stdout.write(self.style.WARNING(
+                f"  {module} has no requirements.md. Every house app needs "
+                f"docs/House_Apps/{name}/requirements.md — what it does, in plain "
+                "language, approved by the user BEFORE the code was written. See "
+                "docs/Main_App/DEVELOPMENT.md section 'The workflow', and copy "
+                "docs/House_Apps/example_habit/requirements.md."
+            ))
+
         # Same rule for testing.md: how the next person verifies this app, rather
         # than guessing. tests/test_house_apps.py fails without it, so warning
         # here is the friendly early notice, not the enforcement.

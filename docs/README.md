@@ -27,6 +27,7 @@ docs/
 └── House_Apps/        the family's own apps
     ├── README.md                  the index, and the required sections
     └── <app-name>/                one folder per app, holding its docs
+        ├── requirements.md        what it does — approved before any code
         ├── README.md              what it is and where it appears
         └── testing.md             what its tests cover, and what needs a screen
 ```

@@ -7,16 +7,29 @@ live in [`../Main_App/subsystems/`](../Main_App/subsystems/).
 House_Apps/
 ├── README.md            you are here — the index and the required sections
 └── <app-name>/          one folder per app
+    ├── requirements.md  what it does, approved BEFORE any code was written
     ├── README.md        the app's main doc; diagrams and notes go here too
     └── testing.md       what its own tests cover, and what still needs a screen
 ```
 
-**Both files are required.** `install_app` warns when either is missing, and
-`tests/test_house_apps.py` fails without them. Copy
-[`example_habit/README.md`](example_habit/README.md) and
-[`example_habit/testing.md`](example_habit/testing.md) — the second is written as
-the template, and explains which checks the platform already runs for you so you
-do not write them again.
+**All three are required.** `install_app` warns when any is missing, and
+`tests/test_house_apps.py` fails without them. Copy the reference app's:
+[`requirements.md`](example_habit/requirements.md),
+[`README.md`](example_habit/README.md), and
+[`testing.md`](example_habit/testing.md) — each is written as its template.
+
+`requirements.md` comes **first, before any code**, and the user approves the
+functionality in it before development starts. That is gate 1 of the three-gate
+workflow in
+[`../Main_App/DEVELOPMENT.md`](../Main_App/DEVELOPMENT.md#the-workflow--three-gates-in-order):
+
+1. **Requirements, approved.** Write `requirements.md`, get a yes on *what the app
+   does*, then start coding.
+2. **Tested and integrated.** Unit tests for your own logic, plus verified
+   integration with the platform — tracker, notifications, telemetry, widgets, nav
+   and kiosk. The whole suite green, not just your file.
+3. **Deployed to the Pi and checked over SSH.** An app that has never run on the
+   hardware is *built, unproven*, not Complete.
 
 An app's folder is named after its module (`houseapps.workout` → `workout/`) and is
 the place for **all** of that app's documentation — not only the README.

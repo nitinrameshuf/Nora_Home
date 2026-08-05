@@ -13,6 +13,75 @@ finish before writing code. It is short on purpose.
 
 ---
 
+## The workflow — three gates, in order
+
+**Do not start with code.** Building a house app has three mandatory gates. Each one
+has to be passed before the next begins, and gate 1 ends with a human saying yes.
+
+### Gate 1 — Requirements, approved before any code is written
+
+Write **`docs/House_Apps/<yourapp>/requirements.md`** first, describing what the app
+*does* — not how it is built. Copy
+[`../House_Apps/example_habit/requirements.md`](../House_Apps/example_habit/requirements.md),
+which is the template and lists the required sections.
+
+It has to answer, in plain language a family member can check:
+
+- What problem this solves, and who in the house it is for.
+- What someone can actually do with it — the concrete list of actions.
+- What it tracks, reminds about, or escalates, and on what cadence.
+- What it shows on each of the five surfaces (24" wall, 10.1" kiosk, phone,
+  tablet, laptop) — including "nothing" where that is the answer.
+- What it deliberately does **not** do.
+- What data it owns, and what it needs from other apps.
+
+Then **stop and get approval on the functionality from the user.** Not on the
+design, not on the schema — on whether the app should do these things. Writing an
+app nobody wanted is the most expensive mistake available here, and it is entirely
+avoidable by asking first. Coding begins only after that yes.
+
+### Gate 2 — Development is not finished until it is tested and integrated
+
+"It runs on my machine" is not the end of development. Before calling the app done,
+both of these must hold:
+
+1. **Unit tests for the app's own logic**, in `tests/test_<yourapp>.py`. The platform
+   already contract-tests every installed app for you (see
+   [Testing your app](#testing-your-app)) — what you add is the behaviour only your
+   app knows about.
+2. **Integration with the home app is verified**, not assumed. That means checking
+   the seams your app actually uses:
+   - Its trackables materialize and escalate (`tracker`).
+   - Its notifications route and deliver (`notifications`).
+   - Its readings land and its thresholds fire (`telemetry`).
+   - Its widgets appear in the "Add a widget" picker and render on the home screen.
+   - Its nav entry, kiosk tile, and any kiosk controls appear and go somewhere real.
+   - `./scripts/run-tests.sh` is green — the whole suite, not only your file.
+
+### Gate 3 — Deployed to the Pi, and checked over SSH
+
+An app that has never run on the hardware is *built, unproven* — see the status
+vocabulary in [`../../CLAUDE.md`](../../CLAUDE.md) § 0. Deploy it and confirm it,
+using the access and commands in [`testing.md`](testing.md):
+
+```bash
+# on the Pi
+cd ~/Nora_Home && git pull --ff-only
+docker compose build web && docker compose up -d --force-recreate web
+
+# then confirm, over SSH — do not assume
+docker compose exec -T web python manage.py check
+docker compose exec -T web ./scripts/run-tests.sh          # the suite, on the Pi
+docker compose exec -T web python manage.py list_apps      # your app is registered
+curl -sk https://localhost/<yourapp>/ -o /dev/null -w '%{http_code}\n'
+```
+
+Then look at the screens. Screenshot the wall and the kiosk (`testing.md`
+§ Checking the real hardware) and confirm your app's tile is there and drives the
+wall. **Only after that is the app Complete rather than built, unproven.**
+
+---
+
 ## The one idea
 
 Nora Home is a platform. Your app should be **small**, because the platform already
@@ -39,6 +108,9 @@ show up on the wall display and in the family's Slack without extra work.
 ---
 
 ## Ten-minute start
+
+> **This starts at gate 2.** Gate 1 — `requirements.md`, approved by the user —
+> comes before any of it. See [The workflow](#the-workflow--three-gates-in-order).
 
 The reference app refers to itself by name in more places than you'd guess — its
 own module path is imported in seven files, and its templates live in a directory
@@ -70,13 +142,17 @@ Then, in your new directory:
    the tracker registration call is a separate string from the URL slug; change it
    too.
 4. `views.py` / `urls.py` — your pages. They mount at `/workout/` automatically.
-5. **Write your app's docs.** Every house app is required to have a folder under
-   `docs/House_Apps/` — `install_app` warns without it:
+5. **Write your app's docs.** Every house app needs three files under
+   `docs/House_Apps/<app>/` — `install_app` warns without them and the contract
+   tests fail:
 
 ```bash
 mkdir -p docs/House_Apps/workout
-cp docs/House_Apps/example_habit/README.md docs/House_Apps/workout/README.md
-# then edit it: what it is, where it appears, what it owns, what it offers
+# requirements.md should already exist from gate 1; the other two now:
+cp docs/House_Apps/example_habit/README.md  docs/House_Apps/workout/README.md
+cp docs/House_Apps/example_habit/testing.md docs/House_Apps/workout/testing.md
+# then edit them: what it is, where it appears, what it owns, what it offers,
+# and what its own tests cover
 ```
 
    The required sections are listed in
@@ -721,9 +797,16 @@ and what it deliberately does not cover, is in [`testing.md`](testing.md).
 
 ## Checklist before you call it done
 
+**Gate 1 — agreed before any of this was written**
+
+- [ ] **`docs/House_Apps/<yourapp>/requirements.md` written and approved by the
+      user** — what the app does, in plain language, before the code existed
+
+**Gate 2 — development**
+
 - [ ] `apps.py` subclasses `NoraAppConfig` with a slug, title, description, category
-- [ ] **`docs/House_Apps/<yourapp>/README.md` written** — required, and
-      `install_app` warns without it. See
+- [ ] **`docs/House_Apps/<yourapp>/README.md` and `testing.md` written** — required;
+      `install_app` warns and the contract tests fail without them. See
       [`../House_Apps/README.md`](../House_Apps/README.md) for the sections
 - [ ] Migrations generated and committed
 - [ ] Renders correctly at 375px **and** 1920px, and is readable on the 24" wall
@@ -739,4 +822,14 @@ and what it deliberately does not cover, is in [`testing.md`](testing.md).
       in `tests/test_house_apps.py`, which run against your app automatically
 - [ ] Tests written for your app's own logic, in `tests/test_<yourapp>.py`
 - [ ] `docs/House_Apps/<yourapp>/README.md` **and** `testing.md` exist
-- [ ] Actually seen working — see [`testing.md`](testing.md), not just a diff
+- [ ] Integration with the platform verified, not assumed: trackables materialize
+      and escalate, notifications deliver, readings land, widgets appear in the
+      picker, and the nav entry and kiosk tile go somewhere real
+
+**Gate 3 — the hardware**
+
+- [ ] Deployed to the Pi and confirmed over SSH: `manage.py check`, the suite run
+      *on the Pi*, `list_apps` showing your app, and its page returning 200
+- [ ] Both screens screenshotted — your tile is on the kiosk and drives the wall
+- [ ] Actually seen working — see [`testing.md`](testing.md), not just a diff.
+      Until this is done the app is *built, unproven*, not Complete

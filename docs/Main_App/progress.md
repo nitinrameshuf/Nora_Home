@@ -1700,6 +1700,97 @@ makes the third time fail in CI instead of on the wall.
 
 ---
 
+## 2026-08-04 — the suite on real hardware, and what it flushed out
+
+Running the new suite on the Pi, then cleaning the 10.1" kiosk and auditing for
+dead code. Almost everything below was found by looking at the thing rather than
+reading it.
+
+### The suite on the Pi
+
+428 of 496 tests failed the first time, for a reason no laptop run could show:
+`config.settings.dev` is not hermetic. It layers on `base.py`, which reads the
+database engine, cache, and installed house apps from `.env` — so on the Pi it
+resolved to the real MySQL and tried to create `test_nora_home`, which the
+`nora` user has no grant for. `config/settings/test.py` now pins all of it and
+reads no environment at all. **536 passing on the Pi**, ~20s.
+
+### Celery was never broken; the healthcheck was
+
+`worker` and `beat` had shown `unhealthy` for days — CLAUDE.md §2 carried it as
+an open question. Both inherit the Dockerfile's HEALTHCHECK, which curls
+`localhost:8000`, the *web* role's port. Neither runs an HTTP server, so it could
+never pass: a 473-long failing streak against a worker that pongs instantly.
+Confirmed end to end instead — **279 health snapshots in the database, newest 5.5
+minutes old**. All nine services now report healthy, for the first time.
+
+The beat log did expose a real bug. `displays.rotate` was deleted from
+`config/celery.py` on 2026-08-03, but beat runs django_celery_beat's
+DatabaseScheduler, which syncs `beat_schedule` into the database and never
+removes what was taken out of it. The row survived every rebuild; beat kept
+dispatching it every 45 seconds and the worker logged `Received unregistered
+task ... KeyError` each time, for a day and a half, silently.
+`prune_beat_schedule` now runs before beat starts.
+
+### The kiosk
+
+Screenshotting the physical panel showed Dim/Wake, a Displays tile, Tracker, and
+a duplicate Alerts — none of which the current code produces. The page was
+simply stale; Chromium had not reloaded since those changes shipped. But three
+real bugs were underneath it:
+
+- **The HTTP fallback had never worked.** `kiosk.js` posted to
+  `/displays/<slug>/command/`, missing the `/home/` prefix the platform is
+  mounted under. That 404 is what put "Couldn't reach the wall display." on the
+  panel.
+- **And the endpoint was unreachable anyway.** Django resolves in order, so
+  `/home/displays/wall/command/` matched `wall/<slug:slug>/` as
+  `wall_named(slug="command")` — the command view could not be hit for the one
+  display the kiosk targets. Now `command/<slug>/`, so the literal segment comes
+  first and the ambiguity is gone rather than depending on line order. Worth
+  noting the obvious test was not enough: the *old* URL resolves perfectly well,
+  just to the wrong view, so the test asserts `url_name == "command"`.
+- **`command` accepted seven actions the wall ignores** — show/pin/unpin/wake/
+  sleep/next/previous, all from the ambient wall. Callers got `{"ok": true}` for
+  nothing.
+
+Plus the duplicate Alerts tile: one hardcoded in the view, one from the
+notifications app's nav entry.
+
+Verified after: kiosk shows 7 tiles and a two-button footer, no error toast, and
+a simulated tap on Measurements moved the wall to that page with real telemetry
+on it (22.2°C from the weather integration).
+
+### Dead code audit
+
+No TODOs, FIXMEs, or HACKs anywhere; no unreferenced templates or assets once
+`wall.html`/`wall.js` went. The real find was the Display model. Keeping
+`rotation_enabled` / `rotation_seconds` / `current_panel` "in case a passive view
+is wanted again" was the trap, not the safety net — they kept admin columns and
+a websocket connect payload alive reporting values nothing set and
+`wall-live.js` had never read. `pinned_until`, `night_mode_start`/`_end` and
+`brightness` went the same way, screen power having been host-side since the
+Settings work. Migration `0002` drops all seven; the connect payload is now just
+the slug. Git history is the archive.
+
+Also removed: `_persist_show` (zero callers), `show_panel` (only that and the
+dead command action), and `kiosk.js`'s `data-panel`/`markActive` branches.
+
+### House apps now have a three-gate workflow
+
+Written into DEVELOPMENT.md, CLAUDE.md §0, and `docs/House_Apps/README.md`, and
+enforced by `install_app` and the contract tests:
+
+1. **`requirements.md` first**, in plain language, **approved by the user before
+   any code is written**. `example_habit/requirements.md` is the template.
+2. **Development is not done until tested and integrated** — unit tests for the
+   app's own logic, plus verified integration with tracker, notifications,
+   telemetry, widgets, nav and kiosk, with the whole suite green.
+3. **Deployed to the Pi and confirmed over SSH**, screens screenshotted. Until
+   then the app is *built, unproven*, never Complete.
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**

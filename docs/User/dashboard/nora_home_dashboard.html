@@ -219,12 +219,14 @@
     Docker Compose brought up MySQL, Mongo, Redis, RabbitMQ and MinIO cleanly on a
     real Raspberry Pi 5, and the 24" wall and 10.1" touchscreen kiosk both render
     real app content, authenticated, with the kiosk driving the wall as a context-
-    sensitive remote control. What's still unverified: Slack, Claude AI, and MCP
-    have never seen live credentials; Celery worker/beat showed <em>unhealthy</em>
-    at least once and no scheduled task has been confirmed to actually fire; and
-    the suite, while green, deliberately does not cover Celery beat, live
-    third-party services, Mongo/MinIO, or the websocket consumers. Five stories
-    remain <em>built, unproven</em> for these reasons.
+    sensitive remote control. All nine services now report healthy, and Celery is
+    confirmed working end to end &mdash; 279 health snapshots written by beat via
+    the worker. The long-standing <em>unhealthy</em> worker/beat turned out to be
+    the wrong healthcheck, not broken Celery. What's still unverified: Slack,
+    Claude AI, and MCP have never seen live credentials, and the test suite,
+    while green on the Pi itself, deliberately does not cover live third-party
+    services, Mongo/MinIO, or the websocket consumers. Four stories remain
+    <em>built, unproven</em> for these reasons.
   </div>
 
   <div class="phase-label">Phase 1 — Foundation</div>
@@ -489,9 +491,9 @@ const STORIES = {
   "21": { num:"Story 21", title:"Test Suite", status:"complete", phase:6, time:"~6 hours", readiness:"indep", deps:[],
     what:"496 tests across tests/, one file per subsystem: registry, core, accounts, scheduling, escalation, tracker, notifications, telemetry, displays, integrations, scene, dashboard, ui, every page requested for real, and a contract file that walks every installed house app. Runs in ~2 seconds with no containers, no network and no credentials - SQLite, in-memory channel layer, eager Celery - so it gives the same answer on a laptop and on the Pi.",
     how:"The brief was explicitly that it run on the Pi and report pass/fail compactly, to reduce token usage, and that constraint shaped the design more than the tests did. The root conftest.py replaces pytest's output with a fixed-size report: one line per subsystem, one line per failure carrying only its assertion. A green run is ~20 lines however many tests there are; full tracebacks go to logs/test-full.txt so the detail is one file read away rather than paid for every run. pytest and pytest-django went into the production image (requirements/test.txt) so `make test-pi` works on the machine the house actually runs on.",
-    files:["tests/ (15 files)","conftest.py (the compact reporter)","scripts/run-tests.sh","requirements/test.txt","docs/Main_App/testing.md","docs/House_Apps/example_habit/testing.md"],
-    notes:"Found three real bugs while being written. notify_house() accepted a dedupe_key and ignored it, so every threshold on a stuck sensor and every failing integration put a fresh banner on the wall on each cycle - personal alerts were suppressed, house-wide ones were not. current_scene() could 500 every screen at once, since it runs in a context processor and read a HouseSetting a person can edit in the admin. And the suite caught its own flakiness: two routing tests failed only because the run happened inside the default 22:00-07:00 quiet-hours window. The reporter itself was also hardened after printing ALL PASSED on a run where a file failed to import - it now reports BROKEN for collection errors and NOT OK for any other non-zero exit, because a report trusted without reading the raw output has to earn that.",
-    warn:"Deliberately does not cover: Celery beat actually firing, Slack/AI/MCP against live services, Mongo/MinIO, or the websocket consumers. It also says nothing about how the house looks - visual and hardware verification is still the screenshot loop in testing.md. A green suite is not a deployed, seen-working feature. Separately, it recorded existing debt rather than hiding it: example_habit imports nora_home.tracker.models in five files, which CLAUDE.md forbids, and it is the app DEVELOPMENT.md tells people to copy. Clearing it needs query helpers on nora_home.tracker.api that do not exist yet." },
+    files:["tests/ (16 files)","conftest.py (the compact reporter)","config/settings/test.py","scripts/run-tests.sh","requirements/test.txt","docs/Main_App/testing.md","docs/House_Apps/example_habit/testing.md"],
+    notes:"537 passing, and verified on the Pi itself (~20s) as well as on a laptop. Running it there is what exposed the biggest bug: config.settings.dev is not hermetic - it reads the database engine, cache and house apps from .env, so on the Pi it resolved to the real MySQL and 428 of 496 tests errored on a missing grant, while the identical command passed on a laptop. config/settings/test.py now pins everything and reads no environment at all. Found three more bugs while being written. notify_house() accepted a dedupe_key and ignored it, so every threshold on a stuck sensor and every failing integration put a fresh banner on the wall on each cycle - personal alerts were suppressed, house-wide ones were not. current_scene() could 500 every screen at once, since it runs in a context processor and read a HouseSetting a person can edit in the admin. And the suite caught its own flakiness: two routing tests failed only because the run happened inside the default 22:00-07:00 quiet-hours window. The reporter itself was also hardened after printing ALL PASSED on a run where a file failed to import - it now reports BROKEN for collection errors and NOT OK for any other non-zero exit, because a report trusted without reading the raw output has to earn that.",
+    warn:"Deliberately does not cover: Slack/AI/MCP against live services, Mongo/MinIO, or the websocket consumers. It also says nothing about how the house looks - visual and hardware verification is still the screenshot loop in testing.md. A green suite is not a deployed, seen-working feature. Separately, it recorded existing debt rather than hiding it: example_habit imports nora_home.tracker.models in five files, which CLAUDE.md forbids, and it is the app DEVELOPMENT.md tells people to copy. Clearing it needs query helpers on nora_home.tracker.api that do not exist yet." },
 
   "22": { num:"Story 22", title:"PWA — Install & Offline", status:"planned", phase:6, time:"~3 hours", readiness:"blocked", deps:["Story 23 ▶"],
     what:"A web app manifest and a service worker, so phones get a home-screen icon, full-screen chrome without browser UI, and offline-tolerant reads of the last known state.",
