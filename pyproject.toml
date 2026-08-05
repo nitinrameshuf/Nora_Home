@@ -16,4 +16,9 @@ ignore = ["E501"]
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"
 python_files = ["test_*.py", "tests.py"]
-addopts = "--reuse-db"
+# QA tests drive a real browser against a running house — minutes, not seconds,
+# and they need something to point at. They are opt-in via ./nora qa.
+addopts = "--reuse-db --ignore=tests/qa"
+markers = [
+    "qa: drives a real browser against a running house (./nora qa)",
+]

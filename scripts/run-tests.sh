@@ -55,6 +55,7 @@ TEST_SETTINGS="${NORA_HOME_TEST_SETTINGS:-config.settings.test}"
 set +e
 "${PYTHON}" -m pytest \
     --ds="${TEST_SETTINGS}" \
+    --ignore=tests/qa \
     --tb=line \
     -q \
     --no-header \

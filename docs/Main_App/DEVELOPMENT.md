@@ -771,6 +771,71 @@ building people and trackables by hand.
 ./scripts/run-tests.sh              # everything, before you push
 ```
 
+### Two layers, and yours needs both
+
+`./nora test` runs Python only. It never renders a page, never runs a line of
+your JavaScript, and never looks at a pixel — which is precisely where this
+project's most user-visible bugs have lived. "Add a widget" was broken for a day
+with every unit test green.
+
+So there is a second layer: **`./nora qa`**, which drives a real Chromium against
+a running house. Put your app's browser tests in `tests/qa/test_<yourapp>_qa.py`:
+
+```python
+"""Workout — in a real browser."""
+
+import pytest
+
+from tests.qa.conftest import measure_text_contrast, open_actions_menu, visit
+
+pytestmark = pytest.mark.qa
+
+
+def test_logging_a_set_updates_the_page_without_a_reload(signed_in, console_errors):
+    visit(signed_in, "/workout/")
+
+    signed_in.locator("[data-log-set]").first.click()
+    signed_in.wait_for_timeout(800)
+
+    assert not console_errors, "logging a set threw: " + "; ".join(console_errors)
+    assert "1 set" in signed_in.locator(".workout-today").inner_text()
+
+
+def test_the_page_is_readable_on_the_kiosk(signed_in):
+    signed_in.set_viewport_size({"width": 1024, "height": 600})
+    visit(signed_in, "/workout/")
+
+    assert measure_text_contrast(signed_in, ".card p") >= 4.5
+```
+
+Fixtures you get for free, from `tests/qa/conftest.py`:
+
+| Fixture / helper | Gives you |
+|---|---|
+| `signed_in` | A page already signed in as a household member |
+| `console_errors` | Everything the browser logged — assert it stays empty |
+| `visit(page, path)` | Navigate and settle. **Use this, not `networkidle`** — the wall and kiosk hold websockets open, so the network is never idle and the wait times out |
+| `open_actions_menu(page)` | Opens the profile dropdown, where page actions live |
+| `measure_text_contrast(page, selector)` | Real contrast, measured from pixels |
+| `house_url` | Whatever house the run is pointed at |
+
+Run yours with `./nora qa` (add `-k workout` for just yours). It needs a running
+house and takes minutes, not seconds — that is why it is a separate command.
+
+**On contrast: measure pixels, not the DOM.** axe's own `color-contrast` rule is
+switched off here, deliberately. It composites translucent panes onto the nearest
+opaque ancestor, and this app paints a living gradient behind everything — so it
+reported readable kiosk tiles as 1.95:1 against a grey that appears nowhere on
+screen. Measured from the rendering, the same text is 18:1. Every *other* axe
+rule is enforced, and they will check your pages automatically: a form field
+with no label, an icon-only button, a link with no text.
+
+**What neither layer can tell you:** whether the wall is legible from three
+metres, whether the touchscreen is calibrated, or whether your app looks good.
+Those are gate 3 — see [`testing.md`](testing.md) § Checking the real hardware.
+
+---
+
 Two house rules worth copying: **a test name is a sentence**
 (`test_a_miss_breaks_the_streak`, not `test_streak_2`), and **nothing may depend on
 the wall clock** — use fixed dates, because a test that passes all day and fails at
@@ -818,9 +883,11 @@ and what it deliberately does not cover, is in [`testing.md`](testing.md).
 - [ ] No secrets outside `.env`; no direct imports of other apps' models
 - [ ] Failures log and degrade rather than 500
 - [ ] `python manage.py check` is clean
-- [ ] `./scripts/run-tests.sh` is green — including the house-app contract checks
-      in `tests/test_house_apps.py`, which run against your app automatically
+- [ ] `./nora test` is green — including the house-app contract checks in
+      `tests/test_house_apps.py`, which run against your app automatically
 - [ ] Tests written for your app's own logic, in `tests/test_<yourapp>.py`
+- [ ] Browser tests in `tests/qa/test_<yourapp>_qa.py`, and `./nora qa` green —
+      the unit tests never run your JavaScript or render your page
 - [ ] `docs/House_Apps/<yourapp>/README.md` **and** `testing.md` exist
 - [ ] Integration with the platform verified, not assumed: trackables materialize
       and escalate, notifications deliver, readings land, widgets appear in the

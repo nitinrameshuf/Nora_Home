@@ -9,3 +9,11 @@ pytest-cov>=5.0
 factory-boy>=3.3
 ruff>=0.7
 django-debug-toolbar>=4.4
+
+# QA: a real browser, driven against a running house (./nora qa). Not in the
+# Pi's image — QA runs from a laptop *at* the house, which is also how anyone
+# actually uses it. After installing, fetch the browser itself once:
+#     python -m playwright install chromium
+pytest-playwright>=0.7
+axe-playwright-python>=0.1.8
+pillow>=10.0                # pixel-level contrast measurement

@@ -251,6 +251,30 @@ cmd_test() {
     fi
 }
 
+cmd_qa() {
+    # QA runs a real browser, so it runs from wherever you are — a laptop with
+    # Playwright installed — and points at a running house over the network.
+    # It is deliberately not run inside the Pi's container: no browser there, and
+    # testing the house from outside is closer to how anyone actually uses it.
+    local url="${1:-${NORA_HOME_QA_URL:-https://192.168.1.253}}"
+    step "QA: driving a real browser against $url"
+    hint "This is the layer ./nora test cannot reach — rendered pages, the"
+    hint "JavaScript, both screens together, and contrast. Minutes, not seconds."
+
+    local python="${PYTHON:-python3}"
+    command -v "$python" >/dev/null 2>&1 || python=python
+    if ! "$python" -c "import playwright" >/dev/null 2>&1; then
+        die "Playwright is not installed here. Run:
+       pip install -r requirements/dev.txt && $python -m playwright install chromium"
+    fi
+
+    "$python" -m pytest tests/qa \
+        --house-url "$url" \
+        --ds=config.settings.test \
+        -p no:cacheprovider \
+        --tb=short -q "${@:2}"
+}
+
 cmd_manage() {
     need_docker
     [ "$#" -gt 0 ] || die "Which management command? e.g. ./nora manage list_apps"
@@ -399,7 +423,10 @@ People and devices
   token "<device>"     Issue a device token for the robot, a phone shortcut, …
 
 Development
-  test [args]          Run the test suite and print the short report
+  test [args]          Run the fast suite (Python only) and print the report
+  qa [url]             Drive a real browser against a running house: every page
+                       rendered, the JavaScript, both screens together, and
+                       contrast. Needs Playwright locally; minutes, not seconds
   manage <cmd> [args]  Any management command, e.g. manage slack_members --auto
   shell                A Django shell inside the app
 
@@ -415,6 +442,8 @@ Examples
   ./nora up
   ./nora recreate                     # after editing .env
   ./nora upgrade                      # the normal update
+  ./nora qa                           # against the Pi
+  ./nora qa https://localhost         # against a house running here
   ./nora manage slack_members --auto
   ./nora app install https://github.com/you/nora-workout
   ./nora backup
@@ -448,6 +477,7 @@ case "$COMMAND" in
     status|ps)          cmd_status "$@" ;;
     logs)               cmd_logs "$@" ;;
     test)               cmd_test "$@" ;;
+    qa)                 cmd_qa "$@" ;;
     manage)             cmd_manage "$@" ;;
     shell)              cmd_shell "$@" ;;
     member)             cmd_member "$@" ;;

@@ -55,6 +55,22 @@ output shape.
 
 ---
 
+## Two layers: unit and browser
+
+`./nora test` is Python only — it never renders your page or runs your
+JavaScript. `./nora qa` drives a real Chromium against a running house. **Your
+app needs both**, because this project's most user-visible bugs have all lived in
+the second layer while the first stayed green.
+
+| Layer | File | Catches |
+|---|---|---|
+| Unit | `tests/test_<app>.py` | Your logic, your models, your API calls |
+| Browser | `tests/qa/test_<app>_qa.py` | Console errors, clicks that do nothing, unreadable text, broken layout on the five surfaces |
+
+See [`../../Main_App/DEVELOPMENT.md`](../../Main_App/DEVELOPMENT.md#two-layers-and-yours-needs-both)
+for the fixtures you get free — `signed_in`, `console_errors`, `visit()`,
+`measure_text_contrast()`.
+
 ## How to add tests for your own app
 
 Put them next to the platform's, as `tests/test_<yourapp>.py`, so they appear as

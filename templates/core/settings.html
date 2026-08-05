@@ -121,12 +121,18 @@ lined up, and the grouping read as arbitrary. See .settings in nora-home.css.
       <form method="post" class="card settings__panel">
         {% csrf_token %}
         <div class="setting">
-          <div class="setting__label">Power the screens off overnight
+          {% comment %}
+          A real <label for>, not a div: without it the checkbox has no
+          accessible name, and — the part anyone notices — tapping the text does
+          not toggle it, which on a 10" touchscreen is the whole interaction.
+          Caught by the QA suite's axe scan, 2026-08-04.
+          {% endcomment %}
+          <label class="setting__label" for="wall_schedule_enabled">Power the screens off overnight
             <span class="setting__hint">
               Both screens go together &mdash; the hardware can't turn off just one.
               The house keeps running either way; this only affects the monitors.
             </span>
-          </div>
+          </label>
           <div class="setting__control">
             <input type="checkbox" name="wall_schedule_enabled" id="wall_schedule_enabled"
                    {% if wall_schedule.enabled %}checked{% endif %}>

@@ -56,7 +56,12 @@ def _one_line_reason(report) -> str:
 
 def pytest_runtest_logreport(report):
     if report.when == "call":
-        if report.passed:
+        if report.skipped:
+            # A skip raised inside the test body, not at setup. These were
+            # invisible in the report until 2026-08-04 — which would have let a
+            # deliberately-parked failure look like a pass.
+            _results[_subsystem(report.nodeid)]["skipped"] += 1
+        elif report.passed:
             _results[_subsystem(report.nodeid)]["passed"] += 1
         elif report.failed:
             _results[_subsystem(report.nodeid)]["failed"] += 1
