@@ -346,3 +346,108 @@ def test_slack_reports_itself_configured_with_a_webhook(settings):
     settings.NORA_HOME_SLACK_WEBHOOK_URL = "https://hooks.slack.com/services/x"
 
     assert get_channel("slack").is_configured() is True
+
+
+# ── Slack failures should say what to do ─────────────────────────────────────
+
+def _slack_error(code):
+    """Drive the real channel against a fake Slack response."""
+    import nora_home.notifications.channels.slack as slack_channel
+
+    class FakeResponse:
+        content = b"{}"
+
+        @staticmethod
+        def json():
+            return {"ok": False, "error": code}
+
+    return slack_channel, FakeResponse
+
+
+@pytest.mark.parametrize("code,expected_hint", [
+    ("channel_not_found", "/invite"),
+    ("not_in_channel", "/invite"),
+    ("missing_scope", "im:write"),
+    ("invalid_auth", "xoxb-"),
+])
+def test_slack_errors_explain_the_fix(member, settings, monkeypatch, code,
+                                      expected_hint):
+    """Slack's own error strings are accurate and useless: "channel_not_found" is
+    what it says both when the channel does not exist and when the bot was simply
+    never invited. The fix is always a specific action in Slack's UI, so the
+    message names it. A live token produced exactly this bare error on
+    2026-08-04 with nothing pointing at the cause."""
+    slack_channel, FakeResponse = _slack_error(code)
+    settings.NORA_HOME_SLACK_BOT_TOKEN = "xoxb-test"
+    monkeypatch.setattr(slack_channel.requests, "post",
+                        lambda *a, **kw: FakeResponse())
+
+    notification = notify(member, title="x", channels=["slack"], sync=True)
+
+    error = notification.deliveries.get().error
+    assert code in error, "the raw Slack code should still be there"
+    assert expected_hint in error, f"no actionable hint for {code}: {error!r}"
+
+
+def test_an_unmapped_slack_error_still_reports_the_code(member, settings,
+                                                        monkeypatch):
+    slack_channel, FakeResponse = _slack_error("ratelimited")
+    settings.NORA_HOME_SLACK_BOT_TOKEN = "xoxb-test"
+    monkeypatch.setattr(slack_channel.requests, "post",
+                        lambda *a, **kw: FakeResponse())
+
+    notification = notify(member, title="x", channels=["slack"], sync=True)
+
+    assert "ratelimited" in notification.deliveries.get().error
+
+
+def test_alerts_go_to_the_escalation_channel(member, settings, monkeypatch):
+    """Severity decides the target: an alert belongs where the house is watching,
+    not in someone's DMs alone."""
+    import nora_home.notifications.channels.slack as slack_channel
+
+    settings.NORA_HOME_SLACK_BOT_TOKEN = "xoxb-test"
+    settings.NORA_HOME_SLACK_ESCALATION_CHANNEL = "#house-alerts"
+    seen = {}
+
+    class FakeResponse:
+        content = b"{}"
+
+        @staticmethod
+        def json():
+            return {"ok": True, "ts": "1.0"}
+
+    def capture(url, **kwargs):
+        seen.update(kwargs.get("json", {}))
+        return FakeResponse()
+
+    monkeypatch.setattr(slack_channel.requests, "post", capture)
+
+    notify(member, title="Smoke alarm", severity=Severity.CRITICAL,
+           channels=["slack"], sync=True)
+
+    assert seen["channel"] == "#house-alerts"
+
+
+def test_a_personal_nudge_goes_to_the_members_dm(make_member, settings, monkeypatch):
+    import nora_home.notifications.channels.slack as slack_channel
+
+    settings.NORA_HOME_SLACK_BOT_TOKEN = "xoxb-test"
+    person = make_member("kid", slack_user_id="U01ABCDEF")
+    seen = {}
+
+    class FakeResponse:
+        content = b"{}"
+
+        @staticmethod
+        def json():
+            return {"ok": True, "ts": "1.0"}
+
+    monkeypatch.setattr(slack_channel.requests, "post",
+                        lambda url, **kw: (seen.update(kw.get("json", {})),
+                                           FakeResponse())[1])
+
+    notify(person, title="Vitamins", severity=Severity.NUDGE,
+           channels=["slack"], sync=True)
+
+    assert seen["channel"] == "U01ABCDEF"

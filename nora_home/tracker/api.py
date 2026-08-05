@@ -105,6 +105,81 @@ def open_items_for(member, limit: int = 50):
             .order_by("due_at")[:limit])
 
 
+# ── reading back what happened ───────────────────────────────────────────────
+#
+# These exist so a house app never has to import nora_home.tracker.models. That
+# rule (CLAUDE.md §6) is what lets an app be uninstalled without breaking the
+# house — but until 2026-08-04 the API had no way to answer "what is the streak
+# on this record", so the reference app reached into the models directly and
+# every app copied from it inherited the violation.
+
+
+def streak_for(*, app_slug: str, source_ref: str) -> int:
+    """Consecutive completions on an app's record, newest first, until a miss.
+
+        streak_for(app_slug="habits", source_ref=str(habit.pk))
+    """
+    trackable = trackable_for(app_slug=app_slug, source_ref=source_ref)
+    return trackable.current_streak() if trackable else 0
+
+
+def trackable_for(*, app_slug: str, source_ref: str):
+    """The Trackable behind one of your records, or None.
+
+    Prefer the other helpers here; reach for this only when you need something
+    they do not expose, and treat what comes back as read-only.
+    """
+    return Trackable.objects.filter(app_slug=app_slug, source_ref=source_ref).first()
+
+
+def is_done_today(*, app_slug: str, source_ref: str) -> bool:
+    """Was this record completed today, in house-local time?"""
+    from django.utils import timezone
+
+    return Occurrence.objects.filter(
+        trackable__app_slug=app_slug,
+        trackable__source_ref=source_ref,
+        status=Occurrence.Status.DONE,
+        completed_at__date=timezone.localdate(),
+    ).exists()
+
+
+def history_for(*, app_slug: str, source_ref: str, limit: int = 60):
+    """This record's occurrences, newest first — for a detail page or a chart."""
+    return (Occurrence.objects
+            .filter(trackable__app_slug=app_slug, trackable__source_ref=source_ref)
+            .order_by("-due_at")[:limit])
+
+
+def completion_stats(*, app_slug: str, members=None, since=None, until=None) -> dict:
+    """How much of what was due actually got done.
+
+    Returns {"done", "missed", "total", "rate"} — `rate` is a percentage, or None
+    when nothing was due in the window. None rather than 0 on purpose: a gap is
+    honest, a zero says "you failed" when there was nothing to do.
+
+        completion_stats(app_slug="habits", members=[request.user],
+                         since=last_monday, until=this_monday)
+    """
+    occurrences = Occurrence.objects.filter(trackable__app_slug=app_slug)
+    if members is not None:
+        occurrences = occurrences.filter(trackable__owner__in=members)
+    if since is not None:
+        occurrences = occurrences.filter(due_at__gte=since)
+    if until is not None:
+        occurrences = occurrences.filter(due_at__lt=until)
+
+    done = occurrences.filter(status=Occurrence.Status.DONE).count()
+    missed = occurrences.filter(status=Occurrence.Status.MISSED).count()
+    total = done + missed
+    return {
+        "done": done,
+        "missed": missed,
+        "total": total,
+        "rate": round(done / total * 100, 1) if total else None,
+    }
+
+
 def _resolve_policy(value) -> EscalationPolicy | None:
     if value is None:
         return EscalationPolicy.get_default()

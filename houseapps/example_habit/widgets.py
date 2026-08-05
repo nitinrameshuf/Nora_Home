@@ -11,7 +11,7 @@ from django.utils import timezone
 
 from nora_home.core.registry import scope_members
 from nora_home.dashboard.widgets import ChartWidget, ListWidget
-from nora_home.tracker.models import Occurrence, Trackable
+from nora_home.tracker.api import completion_stats, is_done_today, streak_for
 
 
 class StreakWidget(ListWidget):
@@ -33,17 +33,13 @@ class StreakWidget(ListWidget):
     def rows(self, request):
         from houseapps.example_habit.models import Habit
 
-        today = timezone.localdate()
         rows = []
 
         for habit in Habit.objects.filter(owner__in=scope_members(request),
                                           is_active=True):
-            trackable = Trackable.objects.filter(app_slug="habits",
-                                                 source_ref=str(habit.pk)).first()
-            streak = trackable.current_streak() if trackable else 0
-            done_today = Occurrence.objects.filter(
-                trackable=trackable, status=Occurrence.Status.DONE,
-                completed_at__date=today).exists() if trackable else False
+            ref = str(habit.pk)
+            streak = streak_for(app_slug="habits", source_ref=ref)
+            done_today = is_done_today(app_slug="habits", source_ref=ref)
 
             rows.append({
                 "title": habit.title,
@@ -76,19 +72,14 @@ class ConsistencyWidget(ChartWidget):
         for offset in range(7, -1, -1):
             start = today - timezone.timedelta(days=today.weekday() + offset * 7)
             end = start + timezone.timedelta(days=7)
-            window = Occurrence.objects.filter(
-                trackable__app_slug="habits",
-                trackable__owner__in=scope_members(request),
-                due_at__date__gte=start, due_at__date__lt=end)
-
-            done = window.filter(status=Occurrence.Status.DONE).count()
-            missed = window.filter(status=Occurrence.Status.MISSED).count()
-            total = done + missed
+            stats = completion_stats(app_slug="habits",
+                                     members=scope_members(request),
+                                     since=start, until=end)
 
             weeks.append(start.strftime("%d %b"))
-            # None rather than 0 for a week with nothing scheduled: a gap in the
-            # line is honest, a zero says "you failed" when nothing was due.
-            rates.append(round(done / total * 100) if total else None)
+            # `rate` is None for a week with nothing scheduled: a gap in the line
+            # is honest, a zero says "you failed" when nothing was due.
+            rates.append(stats["rate"])
 
         return {
             "xAxis": {"type": "category", "data": weeks},

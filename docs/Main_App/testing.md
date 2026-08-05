@@ -155,21 +155,23 @@ reports `NOT OK` rather than `ALL PASSED`. If it says `ALL PASSED`, it ran.
 
 Be honest about these rather than implying the suite proves more than it does.
 
-- **No Celery beat / worker test.** Tasks are called directly. Whether `beat`
-  actually fires them on the Pi is still unconfirmed (CLAUDE.md §2, item 2).
+- **No Celery beat / worker test.** Tasks are called directly, and
+  `test_scheduled_work.py` checks that every scheduled entry imports, is
+  registered, and is routed to a queue the worker consumes — but nothing here
+  drives a real broker. Beat firing on the Pi is confirmed separately (279 health
+  snapshots), not by this suite.
 - **No Slack, AI, or MCP round-trip.** No credentials exist. The Slack channel is
   tested through its `is_configured()` gate only.
 - **No Mongo or MinIO.** `nora_home.datastores` is untested; both are optional
   dependencies the house degrades without.
 - **No websocket consumer tests.** The bus is tested, and the message-type contract
   between kiosk and wall is tested, but the consumers themselves are not driven.
-- **`example_habit` imports `nora_home.tracker.models` directly**, which CLAUDE.md §6
-  forbids — in `views.py`, `widgets.py`, `cards.py`, `tasks.py`, and `mcp_tools.py`.
-  It is the app DEVELOPMENT.md tells people to copy, so it currently teaches the
-  forbidden pattern. Recorded as `KNOWN_MODEL_IMPORT_DEBT` in `test_house_apps.py`
-  so new apps are held to the rule while the debt stays visible. Clearing it needs
-  query helpers on `nora_home.tracker.api` that do not exist yet: streaks for a
-  `source_ref`, completion history, and the open occurrence for a record.
+- ~~**`example_habit` imports `nora_home.tracker.models` directly**~~ — **fixed
+  2026-08-04.** The helpers it needed now exist on `nora_home.tracker.api`
+  (`streak_for`, `is_done_today`, `history_for`, `completion_stats`,
+  `trackable_for`), all five files use them, and `KNOWN_MODEL_IMPORT_DEBT` is
+  empty. Confirmed by copying the reference app into a scratch app and running the
+  contract tests against it — clean.
 - **None of it says anything about how the house looks.** See "What this cannot
   catch" below. A green suite is not a deployed, seen-working feature.
 

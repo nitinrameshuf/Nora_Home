@@ -15,7 +15,7 @@ from celery import shared_task
 from django.utils import timezone
 
 from nora_home.telemetry.api import record_reading
-from nora_home.tracker.models import Occurrence
+from nora_home.tracker.api import completion_stats
 
 logger = logging.getLogger(__name__)
 
@@ -33,14 +33,11 @@ def record_weekly_completion_rate():
     recorded = 0
 
     for member in HouseMember.objects.filter(is_active=True):
-        window = Occurrence.objects.filter(
-            trackable__app_slug="habits", trackable__owner=member, due_at__gte=since)
-        done = window.filter(status=Occurrence.Status.DONE).count()
-        total = done + window.filter(status=Occurrence.Status.MISSED).count()
-        if not total:
+        stats = completion_stats(app_slug="habits", members=[member], since=since)
+        if stats["rate"] is None:
             continue
 
-        record_reading("habits.completion_rate", round(done / total * 100, 1),
+        record_reading("habits.completion_rate", stats["rate"],
                        member=member, source="derived", app_slug="habits")
         recorded += 1
 

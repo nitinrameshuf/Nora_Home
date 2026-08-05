@@ -23,6 +23,34 @@ logger = logging.getLogger(__name__)
 SLACK_API = "https://slack.com/api/chat.postMessage"
 TIMEOUT = 10
 
+# Slack's error strings are accurate and useless — "channel_not_found" is what it
+# says whether the channel does not exist, or exists and the bot was never invited
+# to it. Since the fix is always a specific action in Slack's own UI, the message
+# says which one. This cost a session on 2026-08-04: a valid token, a live
+# workspace, and a bare "channel_not_found" with nothing pointing at the cause.
+SLACK_ERROR_HELP = {
+    "channel_not_found":
+        "Slack cannot see {target}. Either the channel does not exist, or the bot "
+        "was never invited to it — run `/invite @nora_home` in that channel, or "
+        "grant the app the `chat:write.public` scope so it can post without "
+        "joining.",
+    "not_in_channel":
+        "The bot is not a member of {target}. Run `/invite @nora_home` there.",
+    "channel_is_archived":
+        "{target} is archived. Point NORA_HOME_SLACK_DEFAULT_CHANNEL / "
+        "_ESCALATION_CHANNEL at a live channel.",
+    "missing_scope":
+        "The bot token is missing a scope this call needs. Escalation DMs need "
+        "`im:write`; posting to a channel it has not joined needs "
+        "`chat:write.public`. Add them in the Slack app config and reinstall.",
+    "invalid_auth":
+        "Slack rejected the token. Check NORA_HOME_SLACK_BOT_TOKEN in .env — it "
+        "must start with `xoxb-` and carry no surrounding quotes.",
+    "account_inactive":
+        "The bot's Slack account is deactivated or the app was uninstalled.",
+    "is_archived": "{target} is archived.",
+}
+
 SEVERITY_STYLE = {
     "info": (":information_source:", "#60a5fa"),
     "nudge": (":wave:", "#a78bfa"),
@@ -107,7 +135,10 @@ class SlackChannel(BaseChannel):
 
         payload = response.json() if response.content else {}
         if not payload.get("ok"):
-            raise ChannelError(f"Slack rejected the message: {payload.get('error', '?')}")
+            code = payload.get("error", "?")
+            help_text = SLACK_ERROR_HELP.get(code, "")
+            detail = f" {help_text.format(target=target)}" if help_text else ""
+            raise ChannelError(f"Slack rejected the message ({code}).{detail}")
         return {"target": target, "ref": payload.get("ts", "")}
 
     def _send_via_webhook(self, text: str, blocks: list[dict]) -> dict:

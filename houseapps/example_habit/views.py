@@ -7,8 +7,7 @@ from django.views.decorators.http import require_POST
 
 from houseapps.example_habit.models import Habit
 from nora_home.core.audit import record
-from nora_home.tracker.api import complete_source, open_items_for
-from nora_home.tracker.models import Occurrence
+from nora_home.tracker.api import complete_source, history_for, open_items_for
 
 
 @login_required
@@ -30,10 +29,7 @@ def index(request):
 @login_required
 def detail(request, uuid):
     habit = get_object_or_404(Habit, uuid=uuid, owner=request.user)
-    occurrences = (Occurrence.objects
-                   .filter(trackable__app_slug="habits",
-                           trackable__source_ref=str(habit.pk))
-                   .order_by("-due_at")[:60])
+    occurrences = history_for(app_slug="habits", source_ref=str(habit.pk))
     return render(request, "example_habit/detail.html", {
         "habit": habit,
         "occurrences": occurrences,

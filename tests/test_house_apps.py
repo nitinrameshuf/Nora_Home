@@ -143,20 +143,16 @@ def test_kiosk_control_paths_resolve(app):
 
 # ── the platform's own rules ─────────────────────────────────────────────────
 
-# Existing violations of the "never import another app's models" rule, recorded
-# rather than hidden. New apps get the rule enforced strictly; this list is the
-# debt that predates the test, and it should only ever shrink.
+# Recorded exceptions to the "never import another app's models" rule.
 #
-# example_habit reads nora_home.tracker.models directly in five files to build
-# streaks and completion history. It is the *reference* app — the one
-# DEVELOPMENT.md tells every family member to copy — so it currently teaches the
-# pattern the platform forbids. Clearing it needs query functions on
-# nora_home.tracker.api that do not exist yet (streaks for a source_ref,
-# completion history, the open occurrence for a record). See
-# docs/Main_App/testing.md § Known gaps.
-KNOWN_MODEL_IMPORT_DEBT = {
-    "habits": {"nora_home.tracker.models"},
-}
+# Deliberately empty, and it should stay that way. It briefly held example_habit,
+# which read nora_home.tracker.models in five files — a problem precisely because
+# it is the app DEVELOPMENT.md tells people to copy, so every new app inherited
+# the violation and started with a failing suite. Cleared 2026-08-04 by adding
+# the missing query helpers to nora_home.tracker.api (streak_for, is_done_today,
+# history_for, completion_stats). If you are about to add an entry here, add the
+# API function instead.
+KNOWN_MODEL_IMPORT_DEBT: dict[str, set[str]] = {}
 
 
 def test_the_app_does_not_import_another_apps_models(app):
@@ -195,9 +191,10 @@ def test_the_app_does_not_import_another_apps_models(app):
 
 
 def test_recorded_debt_is_still_real():
-    """Stops the exemption list above from rotting. Once an app is cleaned up,
-    its entry has to go — otherwise the list quietly re-permits the rule it was
-    meant to be a temporary exception to."""
+    """Stops the exemption list from rotting. Once an app is cleaned up, its
+    entry has to go — otherwise the list quietly re-permits the rule it was
+    meant to be a temporary exception to. Passes vacuously while the list is
+    empty, which is the intended resting state."""
     for slug, modules in KNOWN_MODEL_IMPORT_DEBT.items():
         meta = next((m for m in INSTALLED if m.slug == slug), None)
         if meta is None:

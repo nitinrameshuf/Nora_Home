@@ -65,6 +65,20 @@ tracker.register_trackable(
 | `complete_source(*, app_slug, source_ref, member=None, note="", ...)` | Mark done from your side (e.g. the user ticked it in *your* UI, not the tracker's) |
 | `open_items_for(member, limit=50)` | What this person currently owes the house |
 
+**Reading back what happened.** These exist so you never have to import
+`nora_home.tracker.models` — see [The rule](#the-rule). If you find yourself
+wanting a query these do not cover, add a function here rather than reaching into
+the models; that is what was done on 2026-08-04, when the reference app was still
+importing them in five files and every app copied from it inherited the violation.
+
+| Function | Does |
+|---|---|
+| `streak_for(*, app_slug, source_ref) -> int` | Consecutive completions on your record, until a miss. `0` for a record the tracker has never seen |
+| `is_done_today(*, app_slug, source_ref) -> bool` | Completed today, in house-local time — what greys out your "done" button |
+| `history_for(*, app_slug, source_ref, limit=60)` | That record's occurrences, newest first, for a detail page or chart |
+| `completion_stats(*, app_slug, members=None, since=None, until=None) -> dict` | `{"done", "missed", "total", "rate"}`. `rate` is a percentage, or **`None`** when nothing was due — a gap in a chart is honest, a zero says "you failed" when there was nothing to do. Ignores still-pending work |
+| `trackable_for(*, app_slug, source_ref)` | The `Trackable` itself, read-only. Prefer the others; this is the escape hatch |
+
 **Cadences:** `once`, `daily`, `weekdays`, `weekly`, `monthly`, `quarterly`,
 `yearly`, `interval` (+`interval_days`), `cron` (+`cron_expression`).
 

@@ -28,7 +28,7 @@ from nora_home.mcpserver.registry import mcp_tool
 )
 def habit_streaks(member: str = "", **_):
     from houseapps.example_habit.models import Habit
-    from nora_home.tracker.models import Trackable
+    from nora_home.tracker.api import streak_for
 
     habits = Habit.objects.filter(is_active=True).select_related("owner")
     if member:
@@ -36,13 +36,11 @@ def habit_streaks(member: str = "", **_):
 
     results = []
     for habit in habits:
-        trackable = Trackable.objects.filter(app_slug="habits",
-                                             source_ref=str(habit.pk)).first()
         results.append({
             "member": habit.owner.get_username(),
             "habit": habit.title,
             "why": habit.why,
             "cadence": habit.cadence,
-            "streak_days": trackable.current_streak() if trackable else 0,
+            "streak_days": streak_for(app_slug="habits", source_ref=str(habit.pk)),
         })
     return sorted(results, key=lambda r: -r["streak_days"])

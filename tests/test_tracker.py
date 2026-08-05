@@ -341,3 +341,154 @@ def test_a_future_occurrence_is_not_overdue(make_trackable, make_occurrence, mem
 def test_is_recurring_distinguishes_one_offs(make_trackable, member):
     assert make_trackable(member, cadence=Cadence.DAILY).is_recurring is True
     assert make_trackable(member, cadence=Cadence.ONCE).is_recurring is False
+
+
+# ── reading back what happened ───────────────────────────────────────────────
+#
+# These exist so a house app never has to import nora_home.tracker.models. The
+# reference app did exactly that in five files until 2026-08-04, which meant
+# every app copied from it inherited a rule violation and a failing suite.
+
+def test_streak_for_reads_an_apps_record_without_its_models(member, make_trackable):
+    trackable = make_trackable(member, app_slug="habits", source_ref="7")
+    for days_ago in range(3, 0, -1):
+        Occurrence.objects.create(
+            trackable=trackable, due_at=timezone.now() - timedelta(days=days_ago),
+            status=Occurrence.Status.DONE)
+
+    from nora_home.tracker.api import streak_for
+
+    assert streak_for(app_slug="habits", source_ref="7") == 3
+
+
+def test_streak_for_an_unknown_record_is_zero_not_an_error(db):
+    """A house app asking about a record the tracker has never seen should get a
+    number, not an exception on someone's home screen."""
+    from nora_home.tracker.api import streak_for
+
+    assert streak_for(app_slug="habits", source_ref="nope") == 0
+
+
+def test_is_done_today_sees_a_completion(member, make_trackable, make_occurrence):
+    trackable = make_trackable(member, app_slug="habits", source_ref="7")
+    make_occurrence(trackable).complete(member)
+
+    from nora_home.tracker.api import is_done_today
+
+    assert is_done_today(app_slug="habits", source_ref="7") is True
+
+
+def test_is_done_today_is_false_before_it_is_done(member, make_trackable,
+                                                  make_occurrence):
+    trackable = make_trackable(member, app_slug="habits", source_ref="7")
+    make_occurrence(trackable)
+
+    from nora_home.tracker.api import is_done_today
+
+    assert is_done_today(app_slug="habits", source_ref="7") is False
+
+
+def test_is_done_today_ignores_yesterdays_completion(member, make_trackable):
+    """The streak is the long view; "done today" is what greys out the button."""
+    trackable = make_trackable(member, app_slug="habits", source_ref="7")
+    occurrence = Occurrence.objects.create(
+        trackable=trackable, due_at=timezone.now() - timedelta(days=1))
+    occurrence.complete(member)
+    Occurrence.objects.filter(pk=occurrence.pk).update(
+        completed_at=timezone.now() - timedelta(days=1))
+
+    from nora_home.tracker.api import is_done_today
+
+    assert is_done_today(app_slug="habits", source_ref="7") is False
+
+
+def test_history_is_newest_first_and_bounded(member, make_trackable):
+    trackable = make_trackable(member, app_slug="habits", source_ref="7")
+    for days_ago in range(5):
+        Occurrence.objects.create(
+            trackable=trackable, due_at=timezone.now() - timedelta(days=days_ago))
+
+    from nora_home.tracker.api import history_for
+
+    history = list(history_for(app_slug="habits", source_ref="7", limit=3))
+
+    assert len(history) == 3
+    assert history[0].due_at > history[1].due_at
+
+
+def test_completion_stats_counts_done_and_missed(member, make_trackable):
+    trackable = make_trackable(member, app_slug="habits", source_ref="7")
+    # Distinct due_at values: (trackable, due_at) is unique.
+    for offset, status in enumerate([Occurrence.Status.DONE, Occurrence.Status.DONE,
+                                     Occurrence.Status.MISSED], start=1):
+        Occurrence.objects.create(trackable=trackable, status=status,
+                                  due_at=timezone.now() - timedelta(days=offset))
+
+    from nora_home.tracker.api import completion_stats
+
+    stats = completion_stats(app_slug="habits")
+
+    assert stats["done"] == 2
+    assert stats["missed"] == 1
+    assert stats["total"] == 3
+    assert stats["rate"] == 66.7
+
+
+def test_completion_stats_rate_is_none_when_nothing_was_due(db):
+    """None rather than 0: a gap in the chart is honest, a zero says "you
+    failed" when there was nothing to do."""
+    from nora_home.tracker.api import completion_stats
+
+    assert completion_stats(app_slug="habits")["rate"] is None
+
+
+def test_completion_stats_ignores_still_pending_work(member, make_trackable,
+                                                     make_occurrence):
+    """A week still in progress must not read as a week half-missed."""
+    trackable = make_trackable(member, app_slug="habits", source_ref="7")
+    make_occurrence(trackable, minutes_overdue=-60)
+
+    from nora_home.tracker.api import completion_stats
+
+    assert completion_stats(app_slug="habits")["total"] == 0
+
+
+def test_completion_stats_can_be_scoped_to_members(member, adult, make_trackable):
+    for owner in (member, adult):
+        trackable = make_trackable(owner, app_slug="habits", source_ref=str(owner.pk))
+        Occurrence.objects.create(trackable=trackable, status=Occurrence.Status.DONE,
+                                  due_at=timezone.now() - timedelta(hours=1))
+
+    from nora_home.tracker.api import completion_stats
+
+    assert completion_stats(app_slug="habits", members=[member])["done"] == 1
+    assert completion_stats(app_slug="habits")["done"] == 2
+
+
+def test_completion_stats_respects_the_window(member, make_trackable):
+    trackable = make_trackable(member, app_slug="habits", source_ref="7")
+    Occurrence.objects.create(trackable=trackable, status=Occurrence.Status.DONE,
+                              due_at=timezone.now() - timedelta(days=30))
+    Occurrence.objects.create(trackable=trackable, status=Occurrence.Status.DONE,
+                              due_at=timezone.now() - timedelta(hours=2))
+
+    from nora_home.tracker.api import completion_stats
+
+    recent = completion_stats(app_slug="habits",
+                              since=timezone.now() - timedelta(days=7))
+
+    assert recent["done"] == 1
+
+
+def test_trackable_for_finds_an_apps_record(member, make_trackable):
+    make_trackable(member, app_slug="habits", source_ref="7", title="Vitamins")
+
+    from nora_home.tracker.api import trackable_for
+
+    assert trackable_for(app_slug="habits", source_ref="7").title == "Vitamins"
+
+
+def test_trackable_for_an_unknown_record_is_none(db):
+    from nora_home.tracker.api import trackable_for
+
+    assert trackable_for(app_slug="habits", source_ref="nope") is None

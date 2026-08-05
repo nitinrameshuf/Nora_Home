@@ -336,19 +336,21 @@ screen (`--ignore-certificate-errors` did its job).
    [`docs/Main_App/testing.md`](docs/Main_App/testing.md) § Known gaps.
 5. **PWA manifest and service worker** — decided (§5) but not written.
 6. **No favicon** — the logs show steady `/favicon.ico` 404s.
-7. **Kiosk-drives-wall redesign and the Settings tab — built, unverified on
-   the Pi.** The 24" wall now serves an iframe shell (`wall_live.html`)
-   instead of pre-rendered ambient panels, and the 10.1" kiosk got
-   context-sensitive per-app button screens (`nora_kiosk_controls` on
-   `NoraAppConfig` — see `docs/Main_App/DEVELOPMENT.md`). A `Settings` page
-   (`core:settings`) holds house-wide config, starting with a wall power
-   schedule applied by a new host-side script + systemd timer via
-   `xset dpms force`. All verified locally with Django's test client and
-   direct logic tests, none of it seen on the physical screens yet.
-   Specifically unconfirmed: whether `xset dpms force off` actually powers
-   the panel down, and whether it's per-output or would blank the kiosk too
-   — if the latter, the mechanism needs rethinking, since the kiosk has to
-   stay on as the control surface.
+7. ~~**Kiosk-drives-wall redesign and the Settings tab — built, unverified.**~~
+   **Resolved.** Both were verified on the physical screens — see §2's
+   "Verified on the Pi (2026-08-02, continued)" note, and again on 2026-08-04
+   when the kiosk was cleaned up. `xset dpms force off` does power the panel
+   down, and it *is* session-wide rather than per-output: it blanks the kiosk
+   too. That was confirmed with the user and accepted, since per-output
+   `xrandr --off` had already proven fragile earlier in this project.
+8. **The reference app taught the pattern the platform forbids** — `example_habit`
+   imported `nora_home.tracker.models` in five files. **Fixed 2026-08-04**: the
+   missing query helpers now exist on `nora_home.tracker.api` (`streak_for`,
+   `is_done_today`, `history_for`, `completion_stats`, `trackable_for`), the five
+   files use them, and `KNOWN_MODEL_IMPORT_DEBT` in `tests/test_house_apps.py` is
+   empty. Verified by actually copying the reference app into a scratch house app
+   and running the contract tests against it: clean. If you are ever tempted to
+   add an entry to that debt list, add the API function instead.
 
 ---
 
