@@ -85,34 +85,12 @@ TEXT_TARGETS = [
 ]
 
 
-# Found by this suite on its first real run, 2026-08-04, and parked rather than
-# quietly "fixed": the light theme puts near-black text (#05070c) on a living
-# background that is still the evening sky, measuring 2.06:1 where 3.0 is the
-# floor. It is not a stray colour — `nh-scene.css` drives the sky from
-# `data-daypart` alone and has no `data-theme` branch, so three of the four
-# dayparts are dark skies whatever the theme says. Anyone tapping "Theme" in the
-# profile menu at dusk gets an unreadable screen.
-#
-# Resolving it is a design decision, not a bug fix, and it belongs to whoever
-# owns the Almanac direction: either the light theme forces a daylight sky
-# (which contradicts "the background is the real time of day"), or it drops the
-# living background for a plain surface, or the toggle goes. Skipped with this
-# note so the suite stays honest and the finding stays visible.
-LIGHT_THEME_IS_BROKEN = (
-    "known: the light theme leaves near-black text on the evening sky "
-    "(measured 2.06:1). nh-scene.css has no data-theme branch — see the comment "
-    "above this line. A design decision, not a stray colour."
-)
-
-
 @pytest.mark.parametrize("theme", ["dark", "light"])
 @pytest.mark.parametrize("what,selector,threshold",
                          TEXT_TARGETS, ids=[t[0] for t in TEXT_TARGETS])
 def test_text_is_readable_in_both_themes(signed_in, theme, what, selector, threshold):
     """The light theme has never been checked on real hardware (CLAUDE.md §2).
     Contrast is the part that can be checked without a person looking."""
-    if theme == "light":
-        pytest.skip(LIGHT_THEME_IS_BROKEN)
     visit(signed_in, "/home/")
     signed_in.evaluate(f"document.documentElement.setAttribute('data-theme', '{theme}')")
     signed_in.wait_for_timeout(500)  # let the transition settle before measuring
@@ -123,6 +101,27 @@ def test_text_is_readable_in_both_themes(signed_in, theme, what, selector, thres
 
     assert ratio >= threshold, (
         f"{what} in the {theme} theme measures {ratio:.2f}:1, below {threshold}:1")
+
+
+@pytest.mark.parametrize("theme", ["dark", "light"])
+@pytest.mark.parametrize("daypart", ["dawn", "noon", "dusk", "night"])
+def test_the_page_heading_is_readable_on_the_bare_sky(signed_in, theme, daypart):
+    """The heading sits directly on the scene with no pane beneath it, which is
+    what made the light theme unreadable: pane tuning could never reach it. Every
+    theme x daypart combination, because the sky changes under it all day."""
+    visit(signed_in, "/home/")
+    signed_in.evaluate(f"""() => {{
+        document.documentElement.setAttribute('data-theme', '{theme}');
+        document.documentElement.setAttribute('data-daypart', '{daypart}');
+    }}""")
+    signed_in.wait_for_timeout(600)
+
+    ratio = measure_text_contrast(signed_in, "h1")
+    if ratio is None:
+        pytest.skip("no heading on this page")
+
+    assert ratio >= WCAG_AA_LARGE, (
+        f"the heading in the {theme} theme at {daypart} measures {ratio:.2f}:1")
 
 
 @pytest.mark.parametrize("daypart", ["dawn", "noon", "dusk", "night"])

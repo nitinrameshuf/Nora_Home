@@ -303,3 +303,53 @@ body { background: transparent; }
   .nh-scene__precip i,
   .nh-scene__clouds i { animation: none; }
 }
+
+/* ── Light theme: the same scene, in daylight ────────────────────────────────
+ *
+ * The light theme was unreadable until 2026-08-04 — near-black text on the
+ * evening sky, measured at 2.06:1 by the QA suite. It was never a stray colour:
+ * everything above drives the sky from data-daypart alone, so three of the four
+ * dayparts are dark whatever the theme says, and the page heading sits directly
+ * on the sky with no pane under it at all. No amount of pane tuning reaches it.
+ *
+ * The fix has to respect the rule established higher up this file, and by the
+ * two reverted attempts before it: legibility is not bought by hiding the
+ * scene. So the scene is not switched off here and the sky is not faked into
+ * midday — it is *veiled*. Season, weather, orb and horizon all still read
+ * through, the way a landscape reads through haze; what changes is that the
+ * ground under the text becomes light, which is what a light theme means.
+ *
+ * The veil is on .nh-scene rather than on the panes for exactly the reason the
+ * bug existed: text outside a pane needs it too.
+ */
+:root[data-theme="light"] .nh-scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(246, 248, 251, 0.86);
+  pointer-events: none;
+}
+
+/* The vignette is a dark radial wash — correct for a dark UI, and the single
+   biggest contributor to the failure in light mode, since it is heaviest at the
+   bottom where the content sits. Inverted rather than removed, so the frame
+   still reads. */
+:root[data-theme="light"] .nh-scene__vignette {
+  background: radial-gradient(120% 90% at 50% 100%,
+                              rgba(255, 255, 255, 0.55), transparent 62%);
+}
+
+/* White stars vanish against a pale sky; give them a body so a light-theme
+   night still reads as night. */
+:root[data-theme="light"] .nh-scene__stars i {
+  background: #55607a;
+  box-shadow: 0 0 3px rgba(85, 96, 122, 0.5);
+}
+
+/* Panes sit on a light ground now, so their hairlines have to be dark to show
+   at all — a white border on white is an invisible edge. */
+:root[data-theme="light"] .kiosk-tile,
+:root[data-theme="light"] .kiosk-header,
+:root[data-theme="light"] .kiosk-controls {
+  border-color: rgba(20, 24, 32, 0.12);
+}
