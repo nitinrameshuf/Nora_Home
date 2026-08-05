@@ -318,7 +318,6 @@ NORA_HOME_MCP_TOKEN = env("NORA_HOME_MCP_TOKEN", "")
 # ── Displays ───────────────────────────────────────────────────────────────────
 NORA_HOME_MAIN_DISPLAY_SLUG = env("NORA_HOME_MAIN_DISPLAY_SLUG", "wall")
 NORA_HOME_KIOSK_DISPLAY_SLUG = env("NORA_HOME_KIOSK_DISPLAY_SLUG", "kiosk")
-NORA_HOME_DISPLAY_ROTATE_SECONDS = env_int("NORA_HOME_DISPLAY_ROTATE_SECONDS", 45)
 
 
 # ── Location ───────────────────────────────────────────────────────────────────

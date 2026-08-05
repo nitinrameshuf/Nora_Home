@@ -5,9 +5,8 @@ from nora_home.displays.models import Display, DisplayCommand
 
 @admin.register(Display)
 class DisplayAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug", "kind", "is_online", "current_panel",
-                    "rotation_enabled", "last_seen_at")
-    list_filter = ("kind", "rotation_enabled", "is_active")
+    list_display = ("name", "slug", "kind", "is_online", "location", "last_seen_at")
+    list_filter = ("kind", "is_active")
 
 
 @admin.register(DisplayCommand)

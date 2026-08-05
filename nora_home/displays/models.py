@@ -35,20 +35,12 @@ class Display(TimeStampedModel):
     width = models.PositiveIntegerField(default=1920)
     height = models.PositiveIntegerField(default=1080)
 
-    # What it is showing, and whether it moves on by itself.
-    current_panel = models.CharField(max_length=120, blank=True)
-    rotation_enabled = models.BooleanField(default=True)
-    rotation_seconds = models.PositiveIntegerField(default=45)
-    pinned_until = models.DateTimeField(
-        null=True, blank=True,
-        help_text="Rotation pauses until this time — the kiosk sets it when someone "
-                  "pins a panel to look at it.")
-
-    # Screen behaviour.
-    night_mode_start = models.PositiveSmallIntegerField(default=23)
-    night_mode_end = models.PositiveSmallIntegerField(default=6)
-    brightness = models.PositiveSmallIntegerField(default=100)
-
+    # No rotation, panel, pin, or night-mode fields: they belonged to the
+    # pre-rendered ambient wall that the iframe wall replaced. They were kept
+    # "in case a passive view is wanted again" and became a trap instead —
+    # admin columns and a websocket payload reporting values nothing set and
+    # nothing read. Screen power is host-side (see the wall schedule in
+    # Settings); what the wall shows is whatever page the kiosk sent it to.
     last_seen_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
@@ -64,15 +56,6 @@ class Display(TimeStampedModel):
             return False
         age = (timezone.now() - self.last_seen_at).total_seconds()
         return age < HEARTBEAT_GRACE_SECONDS
-
-    @property
-    def is_pinned(self) -> bool:
-        return self.pinned_until is not None and self.pinned_until > timezone.now()
-
-    def in_night_mode(self) -> bool:
-        hour = timezone.localtime().hour
-        start, end = self.night_mode_start, self.night_mode_end
-        return start <= hour or hour < end if start > end else start <= hour < end
 
     def touch(self):
         Display.objects.filter(pk=self.pk).update(last_seen_at=timezone.now())

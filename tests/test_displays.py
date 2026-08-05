@@ -128,42 +128,39 @@ def test_an_old_heartbeat_means_offline(wall_display):
 
 def test_touch_does_not_disturb_anything_else(wall_display):
     """`touch()` runs on every heartbeat, twice a minute, forever. Writing the
-    whole row each time would clobber a command applied in between."""
-    wall_display.current_panel = "something"
+    whole row each time would clobber an edit made in between."""
+    wall_display.location = "living room"
     wall_display.save()
 
     wall_display.touch()
 
     wall_display.refresh_from_db()
-    assert wall_display.current_panel == "something"
+    assert wall_display.location == "living room"
 
 
-@pytest.mark.parametrize("hour,expected", [(23, True), (2, True), (6, False), (12, False)])
-def test_night_mode_wraps_midnight(wall_display, monkeypatch, hour, expected):
-    import nora_home.displays.models as models
-
-    class FakeTz:
-        @staticmethod
-        def localtime():
-            return timezone.localtime().replace(hour=hour)
-
-        now = timezone.now
-
-    monkeypatch.setattr(models, "timezone", FakeTz)
-
-    assert wall_display.in_night_mode() is expected
+@pytest.mark.parametrize("field", [
+    "current_panel", "rotation_enabled", "rotation_seconds", "pinned_until",
+    "night_mode_start", "night_mode_end", "brightness",
+])
+def test_the_ambient_walls_fields_are_gone(field):
+    """These described a rotating pre-rendered wall that no longer exists. They
+    were kept "in case a passive view is wanted again" and turned into a trap:
+    admin columns and a websocket payload reporting values nothing set and
+    nothing read."""
+    assert not hasattr(Display, field), f"Display.{field} is back"
 
 
-def test_pinning_expires(wall_display):
-    wall_display.pinned_until = timezone.now() - timedelta(minutes=1)
-    assert wall_display.is_pinned is False
+def test_the_connect_payload_carries_only_what_the_wall_reads():
+    """The payload used to include panel/rotation/night_mode. wall-live.js has
+    never read any of it."""
+    import inspect
 
-    wall_display.pinned_until = timezone.now() + timedelta(minutes=1)
-    assert wall_display.is_pinned is True
+    from nora_home.displays import consumers
 
+    source = inspect.getsource(consumers.DisplayConsumer)
 
-def test_an_unpinned_display_is_not_pinned(wall_display):
-    assert wall_display.is_pinned is False
+    for gone in ["current_panel", "rotation_enabled", "in_night_mode"]:
+        assert gone not in source, f"the connect payload still sends {gone}"
 
 
 # ── the command endpoint tells the truth ────────────────────────────────────

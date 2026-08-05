@@ -93,13 +93,14 @@ No nav entry (`nora_nav = False`). The two screens' status cards live on the
   intent — with a much shorter interval to feel like a button.
 - **DPMS blanks both screens together**, not just the wall. Confirmed on hardware
   and accepted — per-output `xrandr --off` had already proven fragile.
-- `Display.rotation_enabled` / `rotation_seconds` / `current_panel` still exist on
-  the model but mean nothing now the wall mirrors a real page. They were removed
-  from the Displays page UI, which was showing a stale panel key and a rotation
-  interval nothing honoured. The fields were left in place rather than migrating
-  them away.
-- The old ambient wall (`wall.html`, `wall.js`) is kept, unused, in case a passive
-  view is ever wanted again.
+- ~~`Display.rotation_enabled` / `rotation_seconds` / `current_panel` still exist~~
+  **Removed 2026-08-04** (migration `0002`), along with `pinned_until`,
+  `night_mode_start`/`_end`, and `brightness`. Leaving them "in case a passive
+  view is wanted again" turned out to be the trap, not the safety net: they kept
+  admin columns and a websocket connect payload alive that reported values
+  nothing set and `wall-live.js` had never read. The old ambient wall
+  (`wall.html`, `wall.js`) went with them — nothing rendered either file. Git
+  history is the archive if a passive view is ever wanted.
 
 ## Files
 
@@ -111,7 +112,11 @@ views.py       wall, kiosk, command (manage now redirects to core:settings)
 tasks.py       check_displays_online
 ```
 
-Templates: `displays/wall_live.html` (current), `displays/kiosk.html`,
-`displays/wall.html` (retired ambient view). The screen cards now live in
-`core/settings.html`.
-Scripts: `static/nora_home/js/wall-live.js`, `kiosk.js`, `wall.js` (retired).
+`command` is mounted at `command/<slug>/`, not `<slug>/command/`: the latter is
+ambiguous with `wall/<slug>/` and Django resolves in order, so
+`/home/displays/wall/command/` matched `wall_named(slug="command")` and the
+endpoint was unreachable for the one display the kiosk targets.
+
+Templates: `displays/wall_live.html` (current) and `displays/kiosk.html`. The
+screen cards live in `core/settings.html`.
+Scripts: `static/nora_home/js/wall-live.js` and `kiosk.js`.

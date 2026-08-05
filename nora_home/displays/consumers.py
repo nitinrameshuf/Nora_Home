@@ -83,13 +83,10 @@ class DisplayConsumer(AsyncJsonWebsocketConsumer):
         if created:
             logger.info("Registered new display %s", self.slug)
         display.touch()
-        return {
-            "slug": display.slug,
-            "panel": display.current_panel,
-            "rotation": display.rotation_enabled and not display.is_pinned,
-            "rotation_seconds": display.rotation_seconds,
-            "night_mode": display.in_night_mode(),
-        }
+        # Just the identity. This used to also send panel/rotation/night_mode,
+        # which wall-live.js has never read — the iframe wall shows whatever
+        # page it was sent to, and screen power is host-side.
+        return {"slug": display.slug}
 
     @database_sync_to_async
     def _touch(self):

@@ -88,9 +88,7 @@ class Command(BaseCommand):
             _, created = Display.objects.get_or_create(
                 slug=slug,
                 defaults={"name": name, "kind": kind,
-                          "width": size[0], "height": size[1],
-                          "rotation_seconds": settings.NORA_HOME_DISPLAY_ROTATE_SECONDS,
-                          "rotation_enabled": kind == Display.Kind.WALL},
+                          "width": size[0], "height": size[1]},
             )
             self.stdout.write(f"  display {slug}: "
                               f"{'created' if created else 'already there'}")
