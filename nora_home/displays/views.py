@@ -9,7 +9,8 @@ from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_POST
 
 from nora_home.core.registry import navigation
-from nora_home.displays.bus import send_to_display, show_panel
+from nora_home.displays.consumers import KIOSK_ACTIONS
+from nora_home.displays.bus import send_to_display
 from nora_home.displays.models import Display
 
 
@@ -46,12 +47,10 @@ def kiosk(request):
         if app.kiosk_controls
     }
     return render(request, "displays/kiosk.html", {
-        "displays": Display.objects.filter(is_active=True),
         "target": settings.NORA_HOME_MAIN_DISPLAY_SLUG,
         "nav": nav,
         "apps_with_controls": apps_with_controls,
         "home_url": reverse("core:dashboard"),
-        "alerts_url": reverse("notifications:inbox"),
         "house_links": [
             {"title": "Apps", "url": reverse("core:app_directory")},
             {"title": "Status", "url": reverse("core:system_status")},
@@ -74,21 +73,22 @@ def manage(request):
 @login_required
 @require_POST
 def command(request, slug: str):
-    """HTTP fallback for the websocket bus — used by phones and by curl."""
+    """HTTP fallback for the websocket bus — used by phones and by curl.
+
+    Deliberately accepts exactly what KIOSK_ACTIONS allows and what wall-live.js
+    implements, and nothing else. It used to also take show/pin/unpin/wake/
+    sleep/next/previous, all left over from the ambient wall the iframe wall
+    replaced: the server relayed them, the wall silently ignored every one, and
+    a caller got `{"ok": true}` for a command that did nothing. A 400 naming the
+    action is more honest than a success that isn't.
+    """
     display = get_object_or_404(Display, slug=slug)
     action = request.POST.get("action", "")
 
-    if action == "show":
-        ok = show_panel(display.slug, request.POST.get("panel", ""),
-                        pin_seconds=int(request.POST.get("pin_seconds", 0) or 0),
-                        issued_by=request.user.get_username())
-    elif action == "navigate":
+    if action == "navigate":
         ok = send_to_display(display.slug, {"type": "navigate",
                                             "path": request.POST.get("path", "")})
-    elif action in {"refresh", "wake", "sleep", "next", "previous", "unpin"}:
-        if action == "unpin":
-            display.pinned_until = None
-            display.save(update_fields=["pinned_until", "updated_at"])
+    elif action in KIOSK_ACTIONS:
         ok = send_to_display(display.slug, {"type": action})
     else:
         return JsonResponse({"ok": False, "error": f"unknown action {action}"},
@@ -99,10 +99,12 @@ def command(request, slug: str):
 
 @login_required
 def status(request):
+    # No panel/pinned here: both belong to the rotating ambient wall, and the
+    # iframe wall mirrors a real page instead. Reporting them would be reporting
+    # fields nothing sets.
     return JsonResponse({
         "displays": [
             {"slug": d.slug, "name": d.name, "kind": d.kind, "online": d.is_online,
-             "panel": d.current_panel, "pinned": d.is_pinned,
              "last_seen": d.last_seen_at.isoformat() if d.last_seen_at else None}
             for d in Display.objects.filter(is_active=True)
         ]

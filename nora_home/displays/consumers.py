@@ -143,14 +143,6 @@ class KioskConsumer(AsyncJsonWebsocketConsumer):
     async def display_message(self, event):
         await self.send_json(event["payload"])
 
-    @database_sync_to_async
-    def _persist_show(self, target: str, content: dict):
-        from nora_home.displays.bus import show_panel
-
-        show_panel(target, str(content.get("panel", ""))[:120],
-                   pin_seconds=int(content.get("pin_seconds", 0) or 0),
-                   issued_by=self.username)
-
     # ── db ─────────────────────────────────────────────────────────────────────
     # The kiosk is a Display row too (kind=KIOSK) — without these, nothing ever
     # marks it online: it only sends commands, never listens on the wall's group,

@@ -21,11 +21,12 @@ from django.utils import timezone
 
 from nora_home.displays.bus import ALL_DISPLAYS_GROUP, broadcast, group_for, send_to_display
 from nora_home.displays.consumers import KIOSK_ACTIONS
-from nora_home.displays.models import HEARTBEAT_GRACE_SECONDS, Display, DisplayCommand
+from nora_home.displays.models import HEARTBEAT_GRACE_SECONDS, Display
 
 pytestmark = pytest.mark.django_db
 
 WALL_LIVE_JS = Path(settings.BASE_DIR) / "static" / "nora_home" / "js" / "wall-live.js"
+KIOSK_JS = Path(settings.BASE_DIR) / "static" / "nora_home" / "js" / "kiosk.js"
 
 
 # ── every command the kiosk may send must be implemented ─────────────────────
@@ -165,33 +166,120 @@ def test_an_unpinned_display_is_not_pinned(wall_display):
     assert wall_display.is_pinned is False
 
 
-# ── commands are auditable ───────────────────────────────────────────────────
+# ── the command endpoint tells the truth ────────────────────────────────────
 
-def test_showing_a_panel_records_what_was_asked_and_by_whom(wall_display):
-    """"Why did the wall show the grocery list at 2am" has to be answerable."""
-    from nora_home.displays.bus import show_panel
+def test_the_command_endpoint_relays_a_navigate(client, adult, wall_display):
+    client.force_login(adult)
 
-    show_panel("wall", "tracker.WallAgendaPanel", pin_seconds=60, issued_by="kiosk")
+    response = client.post(f"/home/displays/command/{wall_display.slug}/",
+                           {"action": "navigate", "path": "/home/"})
 
-    command = DisplayCommand.objects.get()
-    assert command.action == "show"
-    assert command.issued_by == "kiosk"
-    assert command.payload["panel"] == "tracker.WallAgendaPanel"
+    assert response.status_code == 200
+    assert response.json()["ok"] is True
 
 
-def test_showing_a_panel_on_an_unknown_display_is_survivable():
-    from nora_home.displays.bus import show_panel
+def test_the_command_endpoint_records_nothing_it_cannot_do(client, adult,
+                                                           wall_display):
+    """It used to accept show/pin/unpin/wake/sleep/next/previous — all left over
+    from the ambient wall. The server relayed them, the wall ignored every one,
+    and the caller got {"ok": true} for a command that did nothing."""
+    client.force_login(adult)
 
-    assert show_panel("garage", "some.Panel") is False
+    for dead in ["show", "pin", "unpin", "wake", "sleep", "next", "previous"]:
+        response = client.post(f"/home/displays/command/{wall_display.slug}/",
+                               {"action": dead})
+        assert response.status_code == 400, f"{dead!r} is still accepted"
+        assert response.json()["ok"] is False
 
 
-def test_showing_a_panel_on_an_inactive_display_is_refused(wall_display):
-    from nora_home.displays.bus import show_panel
+def test_the_command_endpoint_accepts_exactly_the_kiosk_actions(client, adult,
+                                                                wall_display):
+    client.force_login(adult)
 
-    wall_display.is_active = False
-    wall_display.save()
+    for action in KIOSK_ACTIONS:
+        response = client.post(f"/home/displays/command/{wall_display.slug}/",
+                               {"action": action, "path": "/home/"})
+        assert response.status_code == 200, f"{action!r} should be accepted"
 
-    assert show_panel("wall", "some.Panel") is False
+
+def test_the_command_endpoint_404s_for_an_unknown_display(client, adult):
+    client.force_login(adult)
+
+    response = client.post("/home/displays/command/garage/", {"action": "refresh"})
+
+    assert response.status_code == 404
+
+
+def test_the_command_endpoint_requires_post(client, adult, wall_display):
+    client.force_login(adult)
+
+    assert client.get(f"/home/displays/command/{wall_display.slug}/").status_code == 405
+
+
+def test_the_kiosks_http_fallback_url_actually_resolves():
+    """kiosk.js falls back to this endpoint when the websocket is down. It
+    posted to /displays/<slug>/command/ for as long as it existed — missing the
+    /home/ prefix the platform is mounted under — so every fallback 404'd and
+    surfaced on the panel as "Couldn't reach the wall display."."""
+    from django.urls import resolve
+
+    source = KIOSK_JS.read_text()
+    # Rebuild the concatenated URL expression: take the whole first argument to
+    # post(), keep its string literals, and substitute a real slug for the
+    # variable pieces.
+    calls = re.findall(r"NoraHome\.post\((.+?),\s*payload\)", source, re.S)
+
+    assert calls, "kiosk.js no longer posts anywhere; update this test"
+    for call in calls:
+        concrete = "".join(re.findall(r'"([^"]*)"', call))
+        concrete = concrete.replace("//", "/wall/") if "//" in concrete else concrete
+        match = resolve(concrete)
+        # Asserting it merely resolves is not enough: the old broken URL
+        # (/home/displays/wall/command/) resolved perfectly well — to
+        # wall_named(slug="command"), which renders the wall page in response to
+        # a command. It has to reach the command view specifically.
+        assert match.url_name == "command", (
+            f"kiosk.js posts to {concrete}, which resolves to "
+            f"{match.url_name!r}, not the command endpoint")
+
+
+def test_the_status_endpoint_reports_only_live_fields(client, adult, wall_display):
+    """panel and pinned belonged to the rotating ambient wall; nothing sets them
+    now, so reporting them was reporting fiction."""
+    client.force_login(adult)
+
+    payload = client.get("/home/displays/status/").json()
+
+    assert payload["displays"], "no displays reported"
+    for entry in payload["displays"]:
+        assert set(entry) == {"slug", "name", "kind", "online", "last_seen"}
+
+
+# ── the retired ambient wall is really gone ─────────────────────────────────
+
+def test_the_ambient_wall_files_are_removed():
+    """wall.html and wall.js drove the pre-rendered rotating panels. Nothing
+    rendered them after the iframe wall replaced them, so they sat as
+    scaffolding that read like a live alternative."""
+    base = Path(settings.BASE_DIR)
+
+    assert not (base / "templates" / "displays" / "wall.html").exists()
+    assert not (base / "static" / "nora_home" / "js" / "wall.js").exists()
+
+
+def test_no_template_or_script_still_references_the_ambient_wall():
+    base = Path(settings.BASE_DIR)
+    offenders = []
+
+    for folder in ["templates", "static/nora_home/js", "nora_home"]:
+        for path in (base / folder).rglob("*"):
+            if path.suffix not in {".html", ".js", ".py"} or "vendor" in path.parts:
+                continue
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            if "js/wall.js" in text or "displays/wall.html" in text:
+                offenders.append(str(path.relative_to(base)))
+
+    assert not offenders, f"still referencing the removed ambient wall: {offenders}"
 
 
 # ── the pages the physical screens load ──────────────────────────────────────

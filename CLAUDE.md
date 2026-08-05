@@ -298,9 +298,16 @@ screen (`--ignore-certificate-errors` did its job).
    retrofit `.card`/`.sidebar`/`.kiosk-tile` to the glass material), and
    unverified: the light theme on real hardware, and whether continuous
    animation plus backdrop blur holds up over hours rather than minutes.
-2. **Celery worker/beat health unconfirmed.** Containers start, but showed
-   `unhealthy` in `docker compose ps` at least once on the Pi — never confirmed a
-   scheduled task (escalation sweep, backup) actually ran end to end.
+2. ~~**Celery worker/beat health unconfirmed.**~~ **Resolved 2026-08-04.** Celery
+   was never broken. `worker` and `beat` inherited the Dockerfile's HEALTHCHECK,
+   which curls `localhost:8000` — the *web* role's port — so the check could
+   never pass for a process that runs no HTTP server; it sat `unhealthy` with a
+   473-long failing streak while the worker pongs instantly and beat dispatches
+   on time. Both now have honest checks (`celery inspect ping`, and
+   `/proc/1/cmdline` for beat, since `pgrep` is not in the slim image). Confirmed
+   end to end: **279 health snapshots in the database, newest 5.5 minutes old**,
+   which is beat → worker → DB working. All nine services now report healthy.
+   The beat log did expose a real bug, though — see item 8.
 3. **Slack, AI, MCP untested against live services.** No API keys were available.
 4. **Tests: ~500, one file per subsystem, green.** `./scripts/run-tests.sh` (or
    `make test`; `make test-pi` runs it inside the container on the Pi). Runs in

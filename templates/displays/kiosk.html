@@ -31,13 +31,16 @@ house has grown enough apps that they don't fit on one 10" panel.
   </header>
 
   <main class="kiosk-grid" data-kiosk-screen="menu">
+    {% comment %}
+    Home is hardcoded because the nav has no entry for it — it is the app's
+    root, not an app. Everything else comes from the registry, so a new house
+    app appears here on its own. Alerts is deliberately *not* hardcoded: the
+    notifications app already supplies it, and pinning it here as well produced
+    two identical "Alerts" tiles on a 10" screen.
+    {% endcomment %}
     <button class="kiosk-tile" data-kiosk-action="navigate"
             data-path="{{ home_url }}" type="button">
       <span class="kiosk-tile__title">Home</span>
-    </button>
-    <button class="kiosk-tile" data-kiosk-action="navigate"
-            data-path="{{ alerts_url }}" type="button">
-      <span class="kiosk-tile__title">Alerts</span>
     </button>
     {% for group in nav %}
       {% for app in group.apps %}

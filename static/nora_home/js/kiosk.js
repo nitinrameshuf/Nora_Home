@@ -46,17 +46,10 @@
         action: action,
         display: button.getAttribute("data-display") || Kiosk.target
       };
-      if (button.hasAttribute("data-panel")) {
-        payload.panel = button.getAttribute("data-panel");
-        payload.pin_seconds = parseInt(
-          button.getAttribute("data-pin-seconds") || "120", 10
-        );
-      }
       if (button.hasAttribute("data-path")) {
         payload.path = button.getAttribute("data-path");
       }
       Kiosk.send(payload);
-      Kiosk.markActive(button);
     });
 
     // No accidental pinch-zoom or text selection on a wall-mounted panel.
@@ -72,13 +65,6 @@
   Kiosk.flash = function (button) {
     button.classList.add("is-pressed");
     window.setTimeout(function () { button.classList.remove("is-pressed"); }, 180);
-  };
-
-  Kiosk.markActive = function (button) {
-    if (!button.hasAttribute("data-panel")) return;
-    document.querySelectorAll("[data-panel]").forEach(function (other) {
-      other.classList.toggle("is-active", other === button);
-    });
   };
 
   Kiosk.connect = function () {
@@ -123,9 +109,13 @@
       Kiosk.socket.send(JSON.stringify(payload));
       return;
     }
-    // Socket down: fall back to the HTTP command endpoint so the buttons still work.
+    // Socket down: fall back to the HTTP command endpoint so the buttons still
+    // work. The /home/ prefix matters — the platform is mounted there (see
+    // config/urls.py), and without it every fallback 404'd and surfaced as
+    // "Couldn't reach the wall display." That is exactly what the kiosk was
+    // showing on the physical panel on 2026-08-04.
     if (window.NoraHome && window.NoraHome.post) {
-      window.NoraHome.post("/displays/" + payload.display + "/command/", payload)
+      window.NoraHome.post("/home/displays/command/" + payload.display + "/", payload)
         .catch(function () { Kiosk.toast("Couldn't reach the wall display."); });
     }
   };
