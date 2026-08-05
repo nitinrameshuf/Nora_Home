@@ -167,3 +167,28 @@ def test_an_unknown_command_fails_loudly():
 
     assert result.returncode != 0
     assert "unknown command" in result.stderr
+
+
+def test_offline_management_commands_do_not_double_the_prefix(source):
+    """docker/entrypoint.sh treats an unrecognised argument list as a manage.py
+    command and prepends `python manage.py` itself. Passing the whole command
+    line therefore produces `manage.py python manage.py migrate`, which is
+    exactly what the first upgrade run on the Pi did."""
+    offenders = [
+        line.strip() for line in source.splitlines()
+        if "manage_offline" in line and "python manage.py" in line
+        and not line.strip().startswith("#")  # the comment explaining this
+    ]
+
+    assert not offenders, (
+        "manage_offline already runs manage.py; pass just the command:\n  "
+        + "\n  ".join(offenders))
+
+
+def test_running_a_plain_script_offline_bypasses_the_entrypoint(source):
+    """The mirror of the above: a script like run-tests.sh is *not* a management
+    command, so it needs the entrypoint out of the way."""
+    body = source[source.index("raw_offline()"):]
+    body = body[:body.index("\n")]
+
+    assert "--entrypoint" in body, "raw_offline does not bypass the entrypoint"

@@ -22,9 +22,19 @@ cd "$(dirname "$0")"
 
 COMPOSE="docker compose"
 APP_SERVICES="web worker beat"
-# `run --rm` rather than `exec`: management commands must work when the house is
-# down, which is exactly when someone reaches for restore or backup.
-MANAGE_RUN="$COMPOSE run --rm --no-deps web"
+# Two ways to run something in a throwaway container, because the entrypoint
+# treats an unrecognised argument list as a manage.py command and prepends
+# `python manage.py` itself. Passing the full command line therefore produces
+# `manage.py python manage.py migrate`, which is exactly what happened the first
+# time this script ran an upgrade on the Pi.
+#
+#   manage_offline migrate --noinput      -> python manage.py migrate --noinput
+#   raw_offline ./scripts/run-tests.sh    -> the command, entrypoint bypassed
+#
+# `run --rm` rather than `exec`: these must work when the house is down, which is
+# exactly when someone reaches for restore or backup.
+manage_offline() { $COMPOSE run --rm --no-deps web "$@"; }
+raw_offline()    { $COMPOSE run --rm --no-deps --entrypoint "$1" web "${@:2}"; }
 
 # ── output ────────────────────────────────────────────────────────────────────
 if [ -t 1 ]; then
@@ -165,7 +175,7 @@ cmd_upgrade() {
     step "Applying migrations"
     hint "The entrypoint migrates on start too; doing it here means a failure"
     hint "stops the upgrade instead of leaving a half-started house."
-    $MANAGE_RUN python manage.py migrate --noinput
+    manage_offline migrate --noinput
 
     step "Restarting into the new image"
     $COMPOSE up -d
@@ -181,7 +191,7 @@ cmd_backup() {
     if running; then
         $COMPOSE exec -T web python manage.py nora_backup --compress "$@"
     else
-        $MANAGE_RUN python manage.py nora_backup --compress "$@"
+        manage_offline nora_backup --compress "$@"
     fi
     ok "Backup written under ${NORA_HOME_BACKUP_DIR:-/var/backups/nora}"
 }
@@ -192,7 +202,7 @@ cmd_restore() {
     [ -n "$archive" ] || die "Which backup? ./nora restore /var/backups/nora/nora-….tar.gz"
     confirm "Restoring $archive will overwrite the current database. Continue?"
     step "Restoring from $archive"
-    $MANAGE_RUN python manage.py nora_restore "$archive" --yes
+    manage_offline nora_restore "$archive" --yes
     cmd_recreate
 }
 
@@ -221,7 +231,7 @@ cmd_test() {
         $COMPOSE exec -T web ./scripts/run-tests.sh "$@"
     else
         hint "house is down — running the suite in a throwaway container"
-        $MANAGE_RUN ./scripts/run-tests.sh "$@"
+        raw_offline ./scripts/run-tests.sh "$@"
     fi
 }
 
@@ -231,7 +241,7 @@ cmd_manage() {
     if running; then
         $COMPOSE exec -T web python manage.py "$@"
     else
-        $MANAGE_RUN python manage.py "$@"
+        manage_offline "$@"
     fi
 }
 
