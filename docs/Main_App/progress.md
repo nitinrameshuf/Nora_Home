@@ -1854,6 +1854,68 @@ matching note in testing.md.
 
 ---
 
+## 2026-08-04 — one runner, `./nora`
+
+Operations were spread across `scripts/install-pi.sh`, a Makefile, and a pile of
+remembered `docker compose` incantations. `./nora` is now the single entry point,
+and its `help` is the one piece of documentation guaranteed to be in front of
+whoever needs it: install, up, down, status, logs, restart, recreate, upgrade,
+screens, backup, restore, app install/list/uninstall, member, token, test,
+manage, shell, cert, uninstall.
+
+The Pi provisioning is unchanged and still hardware-verified — it moved to
+`scripts/lib/provision-pi.sh` and `nora install` runs it. It stays one linear
+script rather than being folded into the runner, because the knowledge in it
+(X11 over Wayland, the touchscreen transformation matrix, per-output Chromium
+placement) was expensive to learn and is easier to read in order. The Makefile
+survives as thin aliases that delegate, so there is one implementation.
+
+Three things it encodes that were tribal knowledge until now:
+
+- **`recreate`**, because editing `.env` and restarting does nothing — a running
+  container keeps the environment it started with. That cost a session with the
+  Slack token this week. The help text says so, and a test asserts the help text
+  says so.
+- **`upgrade` migrates explicitly** rather than leaning on the entrypoint, so a
+  failed migration stops the upgrade instead of leaving a half-started house.
+  It backs up first.
+- **`screens` searches Chromium by window title, not class.** Class matches
+  Chromium's helper windows and silently reloads nothing — which wasted a round
+  trip earlier the same day.
+
+Destructive commands back up and confirm before acting (`uninstall`, `app
+uninstall`, `restore`), with `--yes` to skip deliberately.
+
+### Two bugs, both found by running it rather than reading it
+
+- **`upgrade` doubled the manage.py prefix.** `docker/entrypoint.sh` treats an
+  unrecognised argument list as a management command and prepends
+  `python manage.py` itself, so passing the full command line produced
+  `manage.py python manage.py migrate`. Split into `manage_offline` (management
+  commands) and `raw_offline` (anything else — `run-tests.sh` needs the
+  entrypoint *out of the way*, not applied twice). The failure was clean: it had
+  backed up, pulled and built, then stopped without restarting anything, which
+  is exactly what the explicit migrate step is for.
+- **A self-updating script cannot fix itself mid-run.** The `git pull` inside
+  `upgrade` replaced `nora` itself, but bash had already parsed the old version
+  — so the commit fixing the bug above could not be applied by the upgrade
+  installing it. Worse, bash reads scripts incrementally, so rewriting one
+  mid-execution can make it jump into the middle of a line. `upgrade` now
+  compares the runner's blob hash across the pull and `exec`s the new copy to
+  finish, guarded by `NORA_RESUMED` so it cannot loop or back up twice.
+
+`tests/test_runner.py` guards the drift that actually bites — a dispatched
+command with no function, a working command missing from `help`, a destructive
+command that skips its backup, and any doc still telling someone to run the old
+install script. Same shape as the kiosk-action test: something that looks wired
+up and is not.
+
+Verified on the Pi by running it: `status`, `backup` (a real archive),
+`recreate`, `screens` (both browsers reloaded), `app list`, `test`, and a full
+`upgrade` including the self-handover. 579 tests green there.
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**
