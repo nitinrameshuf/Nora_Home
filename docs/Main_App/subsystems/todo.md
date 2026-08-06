@@ -550,6 +550,22 @@ folded in under this story's name.
 
 38 new tests, 971 green.
 
+**A second bug, found by looking at the deployed wall rather than by
+reading the diff:** the "House health" tile's value rendered clipped — the
+top of "OK" sheared off. Gridstack's own `cellHeight: 80` is a bare number,
+which it treats as a fixed pixel height, and it never saw the wall's 160%
+root font-size at all — so every tile stayed 80px per grid row while the
+stat value inside it (in `rem`, which does scale) grew past that fixed box.
+The CSS-only static fallback (used only if the vendored Gridstack script
+fails to load) had the identical bug for the identical reason:
+`calc(var(--h) * 80px)`. Gridstack supports a `cellHeightUnit` option
+specifically for this; `cellHeight: 5, cellHeightUnit: "rem"` resolves to
+exactly `80px` at the normal 16px root — nothing changes anywhere else —
+and now scales with the wall the same way everything else does. Not
+testable by the Python suite at all, since it is purely a browser layout
+fact; confirmed by rebuilding, redeploying and re-screenshotting the actual
+wall.
+
 ### The 10.1" kiosk
 
 Two levels, and both are required:

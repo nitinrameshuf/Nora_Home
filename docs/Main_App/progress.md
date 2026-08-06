@@ -2919,6 +2919,19 @@ work, no dependency on anything here.
 (Tracker Removal) and Story 24 (house maintenance, the first real app) are
 the two substantial pieces left.
 
+**A second bug surfaced by actually looking at the deployed wall**, not by
+reading the diff: the "House health" stat tile rendered with its value
+clipped, the top of "OK" sheared off by the tile's own `overflow: hidden`.
+Gridstack's `cellHeight: 80` is a bare number — a fixed pixel height that
+never saw the wall's 160% root font-size — so tiles stayed 80px per grid row
+while the stat value inside them grew past that fixed box. Fixed with
+Gridstack's own `cellHeightUnit: "rem"` option (`cellHeight: 5` resolves to
+exactly the same 80px at the normal root, nothing else changes) plus the
+matching fix in the CSS-only fallback used when the vendored script fails to
+load. Purely a browser layout fact, not something the Python suite could
+have caught — confirmed by rebuilding, redeploying, and re-screenshotting
+the real wall a second time.
+
 ---
 
 ## Next
