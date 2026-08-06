@@ -11,8 +11,6 @@ nginx/certs/
 __pycache__/
 .venv/
 venv/
-db.sqlite3
-db.sqlite3-journal
 /logs/
 /media/
 /staticfiles/
