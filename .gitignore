@@ -6,6 +6,14 @@
 .env.*
 !.env.example
 
+# A dev database is machine-local state, not source. Tracking it meant a
+# permanently dirty working tree, a fresh ~1.1MB blob in every commit that
+# touched it (sqlite does not delta-compress), and binary conflicts between
+# machines that can only be resolved by picking one. Same class of mistake as
+# tracking .env. The file itself stays on disk and keeps working.
+db.sqlite3
+db.sqlite3-journal
+
 nginx/certs/
 *.pyc
 __pycache__/
