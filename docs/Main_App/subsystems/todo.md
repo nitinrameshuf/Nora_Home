@@ -424,6 +424,60 @@ only ever offered labels that already existed.
 Nora Home's own tasks — the same board, same shape, filtered to `source=system`.
 It sits inside Todo, not in the platform sidebar.
 
+#### As built (Story 36, 2026-08-05)
+
+`nora_home/todo/system_tasks.py` is the bridge, and it is one-directional by
+construction, not just by convention: it listens to `threshold_crossed`
+(already fired by `nora_home.telemetry.api._raise_threshold`) and a new
+`integration_failing` signal (fired once per continuous-failure episode from
+`nora_home.integrations.tasks._record_failure`, the same point that already
+calls `notify_house`) and creates a `Task` from what it hears. Nothing reads a
+task back into telemetry or integrations — completing a system task does not
+clear a threshold or reset a failure count, which is what keeps the two
+subsystems from needing to agree on what "resolved" means.
+
+Wired as signal receivers, not an import of telemetry's or integrations'
+models — CLAUDE.md's "never import another app's models" rule, connected in
+`TodoConfig.ready()`.
+
+**The dedupe rule is the part that matters.** `_raise_threshold` fires on
+*every* off-threshold reading, and `threshold_crossed` with it — a sensor stuck
+over its bound for an hour would otherwise put a fresh task on the board every
+few minutes. `create_system_task()` checks for an open task with the same
+`origin_ref` (`Task.origin_ref`, added this story) before creating a new one,
+and reuses it. Once that task is completed or archived, the *next* breach
+starts a fresh one — a new occurrence of the problem, not a continuation of the
+old one that quietly got un-done.
+
+**Ownership.** `OwnedModel.owner` is required, not nullable, so a system task
+needs a real person on it even though the problem belongs to the whole house.
+The admin if there is one, otherwise the first active adult; every active adult
+is set as an assignee, so `doers()` (§4a) makes it "any adult's to pick up," not
+one person's alone. A house with no adult at all returns `None` rather than
+raising — a freshly provisioned house must not 500 on its first threshold
+breach.
+
+**The board itself is a refactor, not a new page.** `views.board()` and the new
+`views.system_board()` both call a shared `_board_context(request, *, source)`
+— the priority columns, the awaiting-approval strip, and the label/due-today
+filters are one implementation for both boards, exactly as this section says
+they should be. `board.html` is one template for both, switched on an
+`is_system` flag; the regression this invites — a label-filter link built with
+the wrong URL name silently bouncing someone from `/todo/system/` back to
+`/todo/` — has its own test.
+
+Verified against the real signals, not just a direct call to
+`create_system_task()`: a threshold-crossed and an integration-failing event
+each produce a task, a second breach of the same thing reuses it, and the third
+consecutive integration failure through the actual `integrations.tasks`
+machinery fires the bridge. Then against the Pi's real MySQL, migration
+applied and rolled back inside a transaction: the page renders, the dedupe
+holds there too, and the house's own data was confirmed untouched before and
+after. All five kiosk buttons now exist, and this one was seen on the physical
+wall and kiosk — tapped through Todo → System, the demo task showing in its
+priority column with no create button, and its default reminder actually
+firing a real alert on the wall.
+
 ### Reporting
 
 See §10.

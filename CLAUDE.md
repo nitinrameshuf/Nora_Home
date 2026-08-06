@@ -152,16 +152,20 @@ reference implementation.
   scheduling, reminders and escalation. Priority-column board, calendar, full-text
   search with saveable filters, labels, shared tasks with owner/assignee/approver,
   reminders and a ported escalation ladder, a Reporting page and tone presets,
-  all with a real front end at `/todo/` and a two-level kiosk screen. 9 of 15
-  Phase 7 stories built (28–35, plus 42 out of number order — see its own
-  warning). **Full design, decision log, and per-story "as built" notes**:
+  and a system-tasks board fed by telemetry thresholds and failing
+  integrations, all with a real front end at `/todo/` and a two-level kiosk
+  screen (all five documented buttons now exist). 10 of 15 Phase 7 stories
+  built (28–36, plus 42 out of number order — see its own warning). **Full
+  design, decision log, and per-story "as built" notes**:
   [`docs/Main_App/subsystems/todo.md`](docs/Main_App/subsystems/todo.md).
   Build order and what's left: [`docs/Main_App/subsystems/todo-build-brief.md`](docs/Main_App/subsystems/todo-build-brief.md).
-  Story-by-story status: the dashboard. **Story 35 is the first of these run on
-  the Pi against MySQL** — Reporting and settings rendered there, the
-  priority-mix query checked against MySQL specifically, and both physical
-  screens driven through the kiosk to see it. Stories 28–34 and 42 have still
-  only run against SQLite on a laptop.
+  Story-by-story status: the dashboard. **Stories 35 and 36 have run on the Pi
+  against MySQL** — Reporting, settings and the system board all rendered
+  there, the priority-mix query and the system-task dedupe both checked against
+  MySQL specifically, and each seen on the physical wall and kiosk through the
+  kiosk's own navigation. Stories 28–34 and 42 have still only run against
+  SQLite on a laptop. **Story 40 (Tracker Removal & House Log) is unblocked**
+  — its only dependencies were 35 and 36.
 - **Notifications** (`nora/notifications/`) — Slack (bot token *or* webhook), in-app,
   wall display, console. Delivery receipts and retries.
 - **AI** (`nora/ai/`) — Claude via the Anthropic SDK, three model tiers, prompt
@@ -307,30 +311,40 @@ button grid, connected, with no certificate-warning interstitial on either
 screen (`--ignore-certificate-errors` did its job).
 
 ### Not done — pick up here
-0. **Phase 7 — Todo, in progress. Next: Story 36 (System Tasks & Telemetry
-   Bridge), Sonnet, medium effort — small.** Stories 28–35 built and green
-   (**857 tests**), plus Story 42 (Shared Tasks & Approval, built out of number
-   order — see its own entry for why). Read
+0. **Phase 7 — Todo, 10 of 15 (67%). Three genuinely open next steps, not one
+   obvious pick — see the dashboard's next-box for the full comparison:**
+   **Story 40** (Tracker Removal & House Log, Opus, high effort, ~5h) just
+   unblocked, deletes `nora_home/tracker` entirely and is its own warning about
+   the house going non-functional mid-phase; **Story 24** (house maintenance,
+   the first real family app, unblocked since Story 27) is what actually proves
+   the platform was worth building rather than another platform story; **Story
+   39** (Wall Type Scale, Sonnet, ~2h) is small and independent. Stories 28–36
+   built and green (**881 tests**), plus Story 42 (Shared Tasks & Approval,
+   built out of number order — see its own entry for why). Read
    [`docs/Main_App/subsystems/todo.md`](docs/Main_App/subsystems/todo.md)
    before touching this app — it is the approved design and the record of every
    decision made building it; do not re-derive anything already settled there.
    [`docs/Main_App/subsystems/todo-build-brief.md`](docs/Main_App/subsystems/todo-build-brief.md)
    has the remaining phases in build order. **Three things a fresh session needs
    to know before doing anything else:**
-   - **`.env` is tracked in git, so `git pull` on the Pi destroys the house's
-     configuration.** See §4's decision entry — this is the single most
-     expensive trap in the repo right now, it bit twice in one session, and it
-     looks exactly like data loss without being it. Read that entry before you
-     pull, build, or recreate anything on the Pi.
-   - **Todo's schema is proven on MySQL; most of its behaviour is not.** All five
+   - **`.env` and `db.sqlite3` were both briefly tracked in git; both are fixed
+     now** (`.gitignore` reads `.env`/`.env.*` and `db.sqlite3`). While `.env`
+     was tracked, `git pull` on the Pi replaced the house's real configuration
+     with laptop defaults — see §4's decision entry for the diagnosis, which is
+     worth keeping even though the specific cause is closed: the failure shape
+     (a house that looks empty and has lost nothing) belongs to anything that
+     changes `.env`, and the first instinct it provokes — restore from backup —
+     would be the genuinely destructive move.
+   - **Todo's schema is proven on MySQL; most of its behaviour is not.** All six
      todo migrations are applied on the Pi, `migrate --check` reports nothing
      outstanding, and the constraints are really there — including Story 42's
      `todo_no_approver_on_recurring`, which this file previously listed as
-     unproven. Story 35 was additionally exercised *as an app* against MySQL
-     (Reporting, settings, the priority-mix query, and both physical screens
-     driven through the kiosk). Stories 28–34 and 42 have still only had their
-     **behaviour** run against SQLite on a laptop — the tables exist on MySQL,
-     but nobody has completed, skipped, approved or escalated anything there.
+     unproven. Stories 35 and 36 were additionally exercised *as an app* against
+     MySQL (Reporting, settings, the system board, the priority-mix query, the
+     system-task dedupe, and all seen on the physical wall and kiosk). Stories
+     28–34 and 42 have still only had their **behaviour** run against SQLite on
+     a laptop — the tables exist on MySQL, but nobody has completed, skipped,
+     approved or escalated anything there.
    - **Check `git status` before doing anything.** Stories were committed
      periodically through the session, not after every single one — confirm
      what has and hasn't landed before assuming the working tree matches HEAD.
@@ -384,7 +398,7 @@ screen (`--ignore-certificate-errors` did its job).
    `SlackChannel` now maps the common codes to the actual fix.
 
    **AI and MCP remain untested against live services** — no keys supplied.
-4. **Tests: 857, one file per subsystem, green.** `./scripts/run-tests.sh` (or
+4. **Tests: 881, one file per subsystem, green.** `./scripts/run-tests.sh` (or
    `make test`; `make test-pi` runs it inside the container on the Pi). Runs in
    ~30s with no containers, no network, and no credentials — SQLite, in-memory
    channel layer, eager Celery — so it gives the same answer on a laptop and on

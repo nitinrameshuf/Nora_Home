@@ -2644,6 +2644,59 @@ cause here: it only matters when the house is running on `dev` settings, which
 it should never be. Worth knowing if anyone ever points the Pi at SQLite
 deliberately — there is no volume, so that house has no persistence.
 
+### `db.sqlite3` was briefly tracked too, from a restore — now re-ignored
+
+Restoring `db.sqlite3` from an older machine (a laptop dev copy — three house
+members, ten Todo tasks, all test data, nothing real) re-added it to the repo
+and dropped its two `.gitignore` lines. Checked before doing anything: `pragma
+integrity_check` clean, all five Todo migrations present and matching what's on
+disk, and Django could query it — genuinely good data, not corruption. Copying
+it into the Pi's container and running `analytics.overview()` against it
+independently confirmed the Story 35 GROUP BY fix: priority mix came back
+14.3/71.4/14.3% across three tasks, which is exactly what the bug would have
+broken.
+
+Re-ignored the same day, same reasoning as `.env`: a dev database is
+machine-local state, not source. Tracking it meant a permanently dirty working
+tree, a fresh ~1.1MB blob in every commit that touched it (SQLite does not
+delta-compress), and binary conflicts between machines with no real merge. The
+file stays on disk and keeps working; git stopped following it.
+
+---
+
+## 2026-08-06 — Story 36, System Tasks & Telemetry Bridge
+
+`nora_home/todo/system_tasks.py` bridges telemetry and integrations into a
+`source=system` board at `/todo/system/`, one-directional by construction: it
+listens to `threshold_crossed` (already fired by
+`telemetry.api._raise_threshold`) and a new `integration_failing` signal (fired
+once per continuous-failure episode from `integrations.tasks._record_failure`,
+alongside the `notify_house` call already there), and creates a `Task` from
+what it hears. Nothing reads a task back into either subsystem. Full writeup:
+[`subsystems/todo.md`](subsystems/todo.md) §8 "As built".
+
+The dedupe rule is the load-bearing part: `_raise_threshold` fires on every
+off-threshold reading, so without it a stuck sensor would put a fresh task on
+the board every few minutes. `Task.origin_ref` (new field, migration 0006) plus
+a check for an already-open task with the same ref is what keeps a continuous
+problem as one task — completing it starts a fresh one on the next occurrence,
+correctly treating that as a new instance of the problem rather than a
+continuation.
+
+The board is a refactor, not a new page: `views.board()` and the new
+`views.system_board()` share one `_board_context()` and one template, switched
+on `is_system` — the shape §8 asks for ("the same board, same shape"). 22 new
+tests, **881 green on the Pi**. Verified against SQLite through the real
+signals (not a direct call to `create_system_task()`, so a dropped `.send()`
+would have been caught), then against the Pi's real MySQL with the migration
+applied and rolled back inside a transaction, then on the physical hardware —
+tapped the kiosk through Todo → System and watched a demo task appear on the
+wall, its default reminder firing a real alert, before being cleaned up. All
+five documented kiosk buttons now exist.
+
+**Story 40 (Tracker Removal & House Log) is unblocked** — its only two
+dependencies were Stories 35 and 36.
+
 ---
 
 ## Next

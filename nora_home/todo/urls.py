@@ -6,6 +6,7 @@ app_name = "todo"
 
 urlpatterns = [
     path("", views.board, name="board"),
+    path("system/", views.system_board, name="system_board"),
     path("calendar/", views.calendar_view, name="calendar"),
     path("search/", views.search, name="search"),
     path("search/save/", views.save_filter, name="save_filter"),

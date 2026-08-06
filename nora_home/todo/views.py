@@ -48,9 +48,26 @@ def board(request):
     Today, no Upcoming (§6) — a card sits in the column its priority puts it
     in, and stays there until someone edits it.
     """
+    context = _board_context(request, source=TaskSource.USER)
+    context["page_title"] = "Due today" if context["due_today"] else "Tasks"
+    return render(request, "todo/board.html", context)
+
+
+@login_required
+def system_board(request):
+    """§8: Nora Home's own tasks, filtered to `source=system` — "the same
+    board, same shape." A telemetry threshold breach or a repeatedly-failing
+    integration lands here (nora_home.todo.system_tasks); nothing else creates
+    one, so there is no create button and no label toolbar to manage."""
+    context = _board_context(request, source=TaskSource.SYSTEM)
+    context["page_title"] = "System"
+    context["is_system"] = True
+    return render(request, "todo/board.html", context)
+
+
+def _board_context(request, *, source: str) -> dict:
     members = scope_members(request)
-    tasks = (api.tasks_for(members, queryset=Task.objects.alive().filter(
-                source=TaskSource.USER))
+    tasks = (api.tasks_for(members, queryset=Task.objects.alive().filter(source=source))
              .exclude(state=TaskState.DONE)
              .prefetch_related("assignees", "labels")
              .select_related("owner", "approver"))
@@ -94,17 +111,17 @@ def board(request):
         else:
             columns[task.priority].append(task)
 
-    return render(request, "todo/board.html", {
+    return {
         "columns": [(p, Priority(p).label, columns[p]) for p in Priority.values],
         "archived": archived,
         "awaiting": awaiting,
         "labels": Label.objects.all(),
         "active_label": label_slug,
         "due_today": due_today,
-        "page_title": "Due today" if due_today else "Tasks",
+        "is_system": False,
         "nh_view_scope": request.session.get("nh_view_scope", "self"),
         "now": timezone.now(),
-    })
+    }
 
 
 @login_required

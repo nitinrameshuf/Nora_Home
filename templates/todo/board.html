@@ -5,25 +5,42 @@
   <link rel="stylesheet" href="{% static 'nora_home/css/todo.css' %}">
 {% endblock %}
 
-{% block heading %}Tasks{% endblock %}
+{% block heading %}{% if is_system %}System{% else %}Tasks{% endif %}{% endblock %}
 
 {% block actions %}
-  <a class="btn" href="{% url 'todo:search' %}">Search</a>
-  <a class="btn" href="{% url 'todo:labels' %}">Labels</a>
-  <a class="btn" href="{% url 'todo:calendar' %}">Calendar</a>
-  <a class="btn btn-primary" href="{% url 'todo:create' %}">+ New task</a>
+  {% if is_system %}
+    <a class="btn" href="{% url 'todo:board' %}">Tasks</a>
+  {% else %}
+    <a class="btn" href="{% url 'todo:search' %}">Search</a>
+    <a class="btn" href="{% url 'todo:labels' %}">Labels</a>
+    <a class="btn" href="{% url 'todo:calendar' %}">Calendar</a>
+    <a class="btn btn-primary" href="{% url 'todo:create' %}">+ New task</a>
+  {% endif %}
 {% endblock %}
 
 {% block content %}
+  {% comment %}
+  is_system decides which URL name every link on this page resolves through —
+  board.html is one template for both boards (§8: "the same board, same
+  shape"), so a label or due-today link on the system board must stay on the
+  system board rather than silently landing back on the user one.
+  {% endcomment %}
+  {% url 'todo:system_board' as system_url %}
+  {% url 'todo:board' as user_url %}
+
   <div class="todo-toolbar">
-    <a class="btn {% if not active_label and not due_today %}btn-primary{% endif %}" href="{% url 'todo:board' %}">All</a>
+    <a class="btn {% if not active_label and not due_today %}btn-primary{% endif %}"
+       href="{% if is_system %}{{ system_url }}{% else %}{{ user_url }}{% endif %}">All</a>
     {% for label in labels %}
       <a class="btn {% if active_label == label.name %}btn-primary{% endif %}"
-         href="{% url 'todo:board' %}?label={{ label.name }}">{{ label.name }}</a>
+         href="{% if is_system %}{{ system_url }}{% else %}{{ user_url }}{% endif %}?label={{ label.name }}">{{ label.name }}</a>
     {% endfor %}
-    <a class="btn {% if due_today %}btn-primary{% endif %}" href="{% url 'todo:board' %}?due=today">Due today</a>
+    <a class="btn {% if due_today %}btn-primary{% endif %}"
+       href="{% if is_system %}{{ system_url }}{% else %}{{ user_url }}{% endif %}?due=today">Due today</a>
     <div class="spacer"></div>
-    <a class="btn btn-primary" href="{% url 'todo:create' %}">+ New task</a>
+    {% if not is_system %}
+      <a class="btn btn-primary" href="{% url 'todo:create' %}">+ New task</a>
+    {% endif %}
   </div>
 
   {% if awaiting %}

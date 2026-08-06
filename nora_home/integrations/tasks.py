@@ -6,7 +6,7 @@ import time
 from celery import shared_task
 from django.utils import timezone
 
-from nora_home.core.signals import integration_synced
+from nora_home.core.signals import integration_failing, integration_synced
 from nora_home.integrations.base import IntegrationError, get_class
 from nora_home.integrations.models import Integration, IntegrationRun
 
@@ -84,6 +84,9 @@ def _record_failure(integration: Integration, message: str, started: float,
             severity="warning", app_slug="integrations",
             dedupe_key=f"integration-down:{integration.pk}",
         )
+        integration_failing.send(sender=Integration, integration=integration,
+                                 consecutive_failures=integration.consecutive_failures,
+                                 message=message)
 
     logger.warning("Integration %s failed (%s): %s", integration.slug,
                    "expected" if expected else "unexpected", message[:200])

@@ -25,5 +25,9 @@ threshold_crossed = Signal()   # series, value, threshold, direction
 # nora_home.integrations fires this after a successful poll.
 integration_synced = Signal()  # integration, records, duration_ms
 
+# nora_home.integrations fires this once per continuous-failure episode, at
+# the same point it notifies the house — not on every failed run after that.
+integration_failing = Signal()  # integration, consecutive_failures, message
+
 # Anything can fire this; the Nora bot listens and reacts on screen.
 home_should_react = Signal()   # mood, message, surface

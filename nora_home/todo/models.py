@@ -79,6 +79,12 @@ class Task(UUIDModel, OwnedModel, SoftDeleteModel):
 
     source = models.CharField(max_length=6, choices=TaskSource.choices,
                               default=TaskSource.USER)
+    # Set only on source=system tasks, e.g. "telemetry:pi.battery:alert" or
+    # "integration:14". What keeps a threshold that stays breached, or an
+    # integration that keeps failing, from filling the board with duplicates
+    # of the same problem — nora_home.todo.system_tasks checks for an open
+    # task with this ref before creating a new one (§8.2).
+    origin_ref = models.CharField(max_length=200, blank=True, db_index=True)
 
     due_on = models.DateField(null=True, blank=True)
     due_time = models.TimeField(null=True, blank=True)

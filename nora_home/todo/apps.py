@@ -22,9 +22,12 @@ class TodoConfig(NoraAppConfig):
     nora_order = 5
     nora_url_prefix = "todo/"
 
-    # Still to come: nora_provides_mcp_tools + ready() importing mcp_tools.
+    # Still to come: nora_provides_mcp_tools.
     nora_has_page = True
     nora_nav = True
+
+    def ready(self):
+        from nora_home.todo import system_tasks  # noqa: F401 — connects the signal receivers
 
     # §6: widgets are for the *home screen*, not how Todo presents itself —
     # deliberately a small chosen set, not one per chart on Reporting.
@@ -38,13 +41,12 @@ class TodoConfig(NoraAppConfig):
     ]
 
     # §6: "Two levels, and both are required" — this is the second, the
-    # buttons the kiosk shows once the wall has switched to Todo. Four of the
-    # design doc's five: Reporting joined when Story 35 gave it a page to point
-    # at. System tasks (Story 36) still has none, and a kiosk tile linking to a
-    # 404 on a wall-mounted touchscreen is worse than a tile that isn't there.
+    # buttons the kiosk shows once the wall has switched to Todo. All five of
+    # the design doc's, now that Story 36 gives System tasks a page to point at.
     nora_kiosk_controls = [
         {"title": "Tasks", "path": "/todo/"},
         {"title": "Due today", "path": "/todo/?due=today"},
         {"title": "Calendar", "path": "/todo/calendar/"},
         {"title": "Reporting", "path": "/todo/reporting/"},
+        {"title": "System", "path": "/todo/system/"},
     ]
