@@ -169,7 +169,7 @@ def test_throughput_counts_empty_days_as_real_zeros(done_on, member):
 
 def test_throughput_reports_a_median_not_a_mean(done_on, make_task, member):
     """One burst of twenty must not become "you typically do 2 a day"."""
-    for day in range(1, 11):
+    for day in range(10):
         done_on(day)
     burst = make_task(title="Burst day")
     for _ in range(20):
@@ -338,16 +338,25 @@ def test_cycle_time_stays_signed_so_early_reads_as_early(make_task, member):
 
 def test_priority_share_is_a_percentage_not_a_ratio(make_task, member):
     """§10's Visual discipline: "percentages are percentages". A 0-to-1 ratio
-    axis is one of the six failures this page exists not to repeat."""
+    axis is one of the six failures this page exists not to repeat.
+
+    Also the regression test for a GROUP BY bug this caught: `Task.Meta.ordering`
+    is ["priority", "-created_at"], and Django appends ordering fields to the
+    GROUP BY of a values().annotate(), so the query grouped one row per *task*
+    and every count came back as 1. More than one task per priority is what
+    makes it visible, which is why this uses three rather than one.
+    """
     make_task(title="One", priority=Priority.P1)
     for n in range(3):
         make_task(title=f"Two {n}", priority=Priority.P2)
 
-    rows = {row["priority"]: row["share"]
-            for row in analytics.priority_distribution(people(member))}
+    rows = {row["priority"]: row for row in
+            analytics.priority_distribution(people(member))}
 
-    assert rows[Priority.P1] == 25.0
-    assert rows[Priority.P2] == 75.0
+    assert rows[Priority.P1]["count"] == 1
+    assert rows[Priority.P2]["count"] == 3
+    assert rows[Priority.P1]["share"] == 25.0
+    assert rows[Priority.P2]["share"] == 75.0
 
 
 def test_aging_returns_the_uuid_the_archive_button_needs(make_task, member):

@@ -291,8 +291,16 @@ def priority_distribution(members) -> list[dict]:
     A current-state snapshot, not a history walk: the question is what the
     board looks like now.
     """
+    # `.order_by()` is load-bearing, not tidying. `Task.Meta.ordering` is
+    # ["priority", "-created_at"], and Django appends the ordering fields to the
+    # GROUP BY of a values().annotate() — so without clearing it this groups by
+    # (priority, created_at), which is one row per task, and every count comes
+    # back as 1. The page still rendered a perfectly plausible table; the
+    # numbers in it were simply wrong whenever two open tasks shared a
+    # priority, which is nearly always.
     counts = (tasks_of(members)
               .filter(state=TaskState.OPEN)
+              .order_by()
               .values("priority")
               .annotate(n=Count("id")))
     by_priority = {row["priority"]: row["n"] for row in counts}
