@@ -2784,6 +2784,53 @@ Also confirmed against Slack's live docs rather than this file's own claim
 payloads arriving on any of them. This house opens one, from one container —
 which is also why the socket must never run inside the worker.
 
+### The wall had been blanking every ten minutes, and my own activity hid it
+
+Noticed only because the user looked up and said both screens were off — at
+14:30 on a Thursday, which the house's own overnight schedule (01:00–08:00)
+cannot explain. `xset -q` gave it away: `Standby: 600  Suspend: 600  Off: 600`,
+`Monitor is Off`.
+
+**`provision-pi.sh` disabled the X screensaver but not DPMS.** They keep
+*separate* idle timers, and `xset s off; xset s noblank` only silences the
+first. DPMS's own 600-second defaults went on blanking both screens after ten
+minutes without input — which, on a wall-mounted display nobody touches, means
+every ten minutes forever. The provisioning comment was reasoning correctly
+about the *other* half of the problem (DPMS must stay enabled, or the overnight
+schedule's `dpms force off` becomes a no-op) and stopped one step short.
+
+**It stayed invisible because every screenshot I took today followed an
+`xdotool` click**, and any input resets the idle timer. The screens looked
+perfect for exactly as long as someone was poking at them — which is also why
+this survived the earlier hardware verification sessions.
+
+Fixed with `xset dpms 0 0 0` alongside the existing calls: zero means "never
+fire", so the idle timers stop while DPMS stays *enabled* and forced power-off
+still works. Both halves verified on the Pi rather than assumed — no blanking,
+and `dpms force off` / `force on` still drive the panels. Applied to the live
+autostart file and to `provision-pi.sh`, so a reprovisioned or fresh Pi gets it
+too.
+
+### Story 38 was not blocked either
+
+Asked what was blocking it and checked instead of repeating the label. Its only
+dependency (Story 32, Reminders) is complete; both HDMI audio devices exist
+(`vc4hdmi0` = the wall, `vc4hdmi1` = the kiosk); and `aplay`, `ffplay` and
+`speaker-test` are already installed, so no new packages are needed.
+
+**The 24"'s speakers are confirmed working** — a 440Hz tone was played through
+`plughw:0,0` and the user heard it clearly in the room. That is the one fact
+that could not be established from software alone (an HDMI audio *device*
+existing says nothing about whether the panel has speakers), and it is what
+makes Story 38 buildable exactly as written rather than needing an alternative
+output path.
+
+The "blocked" readiness was stale in the same way Story 37's had been — with
+**nothing in Phase 7 blocked any more**. One trap recorded for whoever builds
+it: playback must go through **`plughw:0,0`**, not `hw:0,0`. The raw device
+rejects the parameters outright — "Setting of hwparams failed: Invalid
+argument" — while `plughw` lets ALSA convert and plays fine.
+
 ---
 
 ## Next

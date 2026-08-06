@@ -248,11 +248,24 @@ launch_script "kiosk" "$KIOSK_URL" "1920,0" "1024,600"
 # Never blank on idle. DPMS itself stays ON (not disabled) — the wall power
 # schedule below (step 9) needs `xset dpms force` to actually do something,
 # and disabling DPMS entirely would make that a no-op.
+#
+# `xset s off` alone is NOT enough, and this is the bug it hid: the X
+# screensaver and DPMS keep *separate* idle timers, and `s off` only silences
+# the first. DPMS's own defaults (standby/suspend/off, 600s each) went on
+# blanking both screens after ten minutes of no input — which on a wall-mounted
+# always-on display is every ten minutes, forever. It stayed invisible for as
+# long as it did because any `xdotool` interaction resets the timer, so the
+# screens looked fine for exactly as long as someone was poking at them.
+#
+# `xset dpms 0 0 0` zeroes those three timeouts (0 = never fire) while leaving
+# DPMS *enabled*, so `dpms force off/on` still drives the overnight schedule.
+# Both halves verified on the Pi: no idle blanking, and forced off/on still
+# works.
 cat > "$HOME/.config/autostart/nora-no-blank.desktop" <<'DESKTOP'
 [Desktop Entry]
 Type=Application
 Name=Nora keep displays awake
-Exec=sh -c "xset s off; xset s noblank"
+Exec=sh -c "xset s off; xset s noblank; xset dpms 0 0 0"
 X-GNOME-Autostart-enabled=true
 DESKTOP
 
