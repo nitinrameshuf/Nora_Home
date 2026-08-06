@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block head %}
+  <link rel="stylesheet" href="{% static 'nora_home/css/todo.css' %}">
+{% endblock %}
+
+{% block heading %}Tasks{% endblock %}
+
+{% block actions %}
+  <a class="btn btn-primary" href="{% url 'todo:create' %}">+ New task</a>
+{% endblock %}
+
+{% block content %}
+  <div class="todo-toolbar">
+    <a class="btn {% if not active_label %}btn-primary{% endif %}" href="{% url 'todo:board' %}">All</a>
+    {% for label in labels %}
+      <a class="btn {% if active_label == label.name %}btn-primary{% endif %}"
+         href="{% url 'todo:board' %}?label={{ label.name }}">{{ label.name }}</a>
+    {% endfor %}
+    <div class="spacer"></div>
+    <a class="btn btn-primary" href="{% url 'todo:create' %}">+ New task</a>
+  </div>
+
+  {% if awaiting %}
+    <div class="todo-strip">
+      <div class="todo-strip__head">Awaiting approval</div>
+      {% for task in awaiting %}
+        {% include "todo/_card.html" with task=task compact=True %}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="todo-board">
+    {% for priority, label, tasks in columns %}
+      <div class="todo-col todo-col--p{{ priority }}">
+        <div class="todo-col__head"><b>{{ label }}</b><span class="n">{{ tasks|length }}</span></div>
+        <div class="todo-col__list">
+          {% for task in tasks %}
+            {% include "todo/_card.html" with task=task %}
+          {% empty %}
+            <div class="todo-empty">Nothing here.</div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+
+    <div class="todo-col todo-col--archived">
+      <div class="todo-col__head"><b>Archived</b><span class="n">{{ archived|length }}</span></div>
+      <div class="todo-col__list">
+        {% for task in archived %}
+          {% include "todo/_card.html" with task=task archived_column=True %}
+        {% empty %}
+          <div class="todo-empty">Nothing parked.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'nora_home/js/todo.js' %}" defer></script>
+{% endblock %}

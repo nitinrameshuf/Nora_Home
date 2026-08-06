@@ -6,6 +6,9 @@ class TrackerConfig(NoraAppConfig):
     label = "tracker"
     verbose_name = "Tracker"
 
+    # Level 1 — the base platform. See nora_home.core.registry.NoraAppConfig.
+    nora_level = 1
+
     nora_slug = "tracker"
     nora_title = "Tracker"
     nora_description = ("Anything that has to happen, when it has to happen, "
@@ -23,5 +26,8 @@ class TrackerConfig(NoraAppConfig):
         "nora_home.tracker.widgets.ReliabilityWidget",
         "nora_home.tracker.widgets.StreakWidget",
     ]
-    nora_wall_panels = ["nora_home.tracker.cards.WallAgendaPanel"]
+    # WallAgendaPanel (cards.py) is orphaned as of the nora_wall_panels removal
+    # (Story 28) — nothing has rendered a wall panel since the wall was
+    # repointed at the live app. Left in place; the whole tracker is deleted
+    # in Story 40 when Todo absorbs it.
     nora_provides_mcp_tools = True

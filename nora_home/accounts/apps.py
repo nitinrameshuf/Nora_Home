@@ -6,6 +6,9 @@ class AccountsConfig(NoraAppConfig):
     label = "accounts"
     verbose_name = "Household"
 
+    # Level 1 — the base platform. See nora_home.core.registry.NoraAppConfig.
+    nora_level = 1
+
     nora_slug = "household"
     nora_title = "Household"
     nora_description = "Who lives here, their roles, and how to reach each of them."

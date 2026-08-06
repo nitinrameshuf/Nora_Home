@@ -6,6 +6,9 @@ class AIConfig(NoraAppConfig):
     label = "ai"
     verbose_name = "Nora AI"
 
+    # Level 1 — the base platform. See nora_home.core.registry.NoraAppConfig.
+    nora_level = 1
+
     nora_slug = "ai"
     nora_title = "Assistant"
     nora_description = "Claude, wired into the house's own data."

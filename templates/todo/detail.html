@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block head %}
+  <link rel="stylesheet" href="{% static 'nora_home/css/todo.css' %}">
+{% endblock %}
+
+{% block heading %}{{ task.title }}{% endblock %}
+
+{% block actions %}
+  <a class="btn" href="{% url 'todo:edit' task.uuid %}">Edit</a>
+  {% if task.state == "archived" %}
+    <button class="btn" type="button" data-todo-action="restore"
+            data-url="{% url 'todo:restore' task.uuid %}">Restore</button>
+  {% elif task.state == "open" %}
+    <button class="btn btn-ghost" type="button" data-todo-action="archive"
+            data-url="{% url 'todo:archive' task.uuid %}">Not now</button>
+  {% endif %}
+  <form method="post" action="{% url 'todo:delete' task.uuid %}"
+        onsubmit="return confirm('Delete this task? This cannot be undone.')">
+    {% csrf_token %}
+    <button class="btn btn-danger" type="submit">Delete</button>
+  </form>
+{% endblock %}
+
+{% block content %}
+  {% if messages %}
+    {% for message in messages %}<div class="pill alert">{{ message }}</div>{% endfor %}
+  {% endif %}
+
+  <div class="todo-detail__meta">
+    <span class="pill">Priority {{ task.priority }}</span>
+    <span class="pill">{{ task.get_state_display }}</span>
+    {% if task.is_recurring %}<span class="pill info">Recurring</span>{% endif %}
+    {% for label in task.labels.all %}<span class="tag">{{ label.name }}</span>{% endfor %}
+  </div>
+
+  {% if task.description %}<p>{{ task.description|linebreaksbr }}</p>{% endif %}
+
+  <p>
+    Owner: {{ task.owner.name }}
+    {% if task.assignees.all %}
+      · Shared with {% for m in task.assignees.all %}{{ m.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+    {% endif %}
+    {% if task.approver %} · Needs {{ task.approver.name }}'s approval{% endif %}
+  </p>
+
+  {% if current %}
+    <h2>Current</h2>
+    <div class="todo-card" data-todo-card style="padding:0.9rem 0">
+      {% if current.outcome == "pending" %}
+        <button class="todo-card__tick" type="button" data-todo-action="complete"
+                data-url="{% url 'todo:complete' current.uuid %}"
+                aria-label="Mark done"></button>
+      {% else %}
+        <span class="todo-card__dot"></span>
+      {% endif %}
+      <div class="todo-card__body">
+        <div class="todo-card__meta">
+          Due {{ current.due_at|date:"D, M j · H:i" }}
+          <span class="todo-outcome">{{ current.get_outcome_display }}</span>
+        </div>
+        {% if current.outcome == "awaiting_approval" %}
+          <div class="todo-approve-actions">
+            <button class="btn btn-primary" type="button" data-todo-action="approve"
+                    data-url="{% url 'todo:approve' current.uuid %}">Approve</button>
+            <button class="btn btn-danger" type="button" data-todo-action="reject"
+                    data-url="{% url 'todo:reject' current.uuid %}">Reject</button>
+          </div>
+        {% elif current.outcome == "pending" %}
+          <div class="todo-approve-actions">
+            <button class="btn" type="button" data-todo-action="skip"
+                    data-url="{% url 'todo:skip' current.uuid %}">Skip</button>
+            {% if current.escalation_level and not current.acknowledged_at %}
+              <button class="btn" type="button" data-todo-action="acknowledge"
+                      data-url="{% url 'todo:acknowledge' current.uuid %}"
+                      title="Stops the escalation ladder without marking it done">Seen it</button>
+            {% endif %}
+          </div>
+        {% endif %}
+        {% if current.escalation_level %}
+          <div class="todo-card__meta">
+            {% if current.acknowledged_at %}
+              Acknowledged by {{ current.acknowledged_by.name }}
+            {% else %}
+              Escalated to level {{ current.escalation_level }}
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+
+  {% if approval_trail %}
+    <h2>Approval trail</h2>
+    <ul class="todo-history">
+      {% for event in approval_trail %}
+        <li>
+          <span>{{ event.to_value }}{% if event.reason %} — {{ event.reason }}{% endif %} ({{ event.actor.name }})</span>
+          <span>{{ event.created_at|date:"M j, H:i" }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <h2>History</h2>
+  {% if history %}
+    <ul class="todo-history">
+      {% for instance in history %}
+        <li>
+          <span>{{ instance.due_at|date:"D, M j" }}</span>
+          <span class="todo-outcome todo-outcome--{{ instance.outcome }}">{{ instance.get_outcome_display }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="card-subtitle">Nothing yet.</p>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'nora_home/js/todo.js' %}" defer></script>
+{% endblock %}

@@ -5,8 +5,8 @@ Set up a fresh house.
     python manage.py bootstrap_home --demo
 
 Creates the escalation policies, the two displays, and the object-storage bucket.
-With --demo it also creates a family, some habits, and a few measurements, so the
-dashboard and wall display have something real to render on the first run.
+With --demo it also creates a family and a few measurements, so the dashboard and
+wall display have something real to render on the first run.
 
 Safe to run repeatedly — everything is get_or_create.
 """
@@ -130,9 +130,6 @@ class Command(BaseCommand):
                           f"{'created' if created else 'already there'}")
 
     def _demo(self):
-        from datetime import time
-
-        from houseapps.example_habit.models import Habit
         from nora_home.accounts.models import EscalationContact, HouseMember
         from nora_home.telemetry.api import define_series, record_reading
 
@@ -163,20 +160,10 @@ class Command(BaseCommand):
             member=members["kid"], contact=members["nitin"],
             defaults={"level": 1, "note": "Parent"})
 
-        habits = [
-            ("nitin", "Twenty minutes of reading", "Because the phone wins otherwise",
-             time(21, 0)),
-            ("nitin", "Walk after lunch", "My back", time(13, 30)),
-            ("kid", "Practice piano", "Recital in March", time(17, 0)),
-        ]
-        for username, title, why, due in habits:
-            _, created = Habit.objects.get_or_create(
-                owner=members[username], title=title,
-                defaults={"why": why, "due_time": due, "cadence": Habit.Cadence.DAILY},
-            )
-            if created:
-                self.stdout.write(f"  habit {title}")
-
+        # Habit seeding lived here while houseapps.example_habit was the
+        # platform's reference app; removed with it (Story 28 — the reference
+        # app is deleted as part of the Levels/Todo work; Todo becomes the
+        # next thing seeded with demo data, once it exists).
         define_series("nora_home.battery", "Nora battery", unit="%", app_slug="robot",
                       alert_below=15, warn_below=30, direction="up",
                       show_on_wall=True)

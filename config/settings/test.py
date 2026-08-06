@@ -16,11 +16,16 @@ environment:
   * the local-memory cache, so the settings store cannot reach for Redis;
   * the in-memory channel layer, so the display bus and the home bot are
     exercised for real instead of being swallowed by a missing layer;
-  * eager Celery, so a queued task runs inline and its effects are assertable;
-  * the reference house app, always present, so the house-app contract tests
-    have something to check even on a machine with no family apps installed.
+  * eager Celery, so a queued task runs inline and its effects are assertable.
 
 Nothing here should ever read `os.environ`. That is the whole point.
+
+No house app is forced in here any more (there was one — houseapps.example_habit,
+the old reference app — removed as part of the Levels/Todo work; see
+docs/Main_App/subsystems/todo.md §1). Until a real family app exists
+(Story 24), `tests/test_house_apps.py`'s contract tests legitimately run against
+zero apps and its "at least one installed" guard skips rather than fails — see
+the comment there for why that is the correct behaviour and not a silent gap.
 """
 
 from __future__ import annotations
@@ -62,12 +67,7 @@ STORAGES = {
 NORA_HOME_MONGO_ENABLED = False
 NORA_HOME_S3_ENABLED = False
 
-# The reference app is always installed for tests, in addition to whatever this
-# machine happens to have. That keeps the house-app contract tests meaningful on
-# a Pi with no family apps yet, without hiding a family app that *is* installed.
-_TEST_HOUSE_APPS = list(dict.fromkeys([*NORA_HOME_HOUSE_APPS, "houseapps.example_habit"]))
-NORA_HOME_HOUSE_APPS = _TEST_HOUSE_APPS
-INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + NORA_HOME_PLATFORM_APPS + _TEST_HOUSE_APPS
+INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + NORA_HOME_PLATFORM_APPS + NORA_HOME_HOUSE_APPS
 
 # Fast and deterministic: the real hasher is deliberately slow, and no test here
 # depends on it. (The house has no passwords anyway — see CLAUDE.md §4.)

@@ -47,11 +47,6 @@ def test_platform_apps_are_all_present():
         assert expected in modules, f"{expected} is not registered"
 
 
-def test_reference_house_app_is_registered():
-    slugs = {meta.slug for meta in house_apps()}
-    assert "habits" in slugs
-
-
 def test_house_apps_excludes_platform_apps():
     """The Apps page shows the family's apps. A platform subsystem leaking into
     that list is the bug this project already fixed once by adding is_platform."""
@@ -167,10 +162,17 @@ def test_unknown_role_is_treated_as_the_least_privileged():
 # ── URL mounting ─────────────────────────────────────────────────────────────
 
 def test_house_apps_mount_at_the_url_root():
-    patterns = house_app_urlpatterns()
-    assert patterns, "no house app mounted"
-    prefixes = {str(p.pattern) for p in patterns}
-    assert "habits/" in prefixes
+    """Checked against whatever is actually installed rather than a hardcoded
+    slug, so this does not need editing every time the house app roster
+    changes. No house apps installed is the current, legitimate state (see
+    docs/Main_App/subsystems/todo.md §1) until Story 24."""
+    installed = house_apps()
+    if not installed:
+        pytest.skip("no house apps installed — expected until Story 24")
+
+    prefixes = {str(p.pattern) for p in house_app_urlpatterns()}
+    for meta in installed:
+        assert meta.url_prefix in prefixes, f"{meta.slug} did not mount at {meta.url_prefix}"
 
 
 def test_platform_apps_are_never_auto_mounted():

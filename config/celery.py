@@ -53,6 +53,29 @@ app.conf.beat_schedule = {
         "schedule": crontab(minute=5, hour="*"),
         "options": {"queue": "platform"},
     },
+    # Todo's own clock. `close-passed` is what makes a missed day exist at all
+    # — see nora_home/todo/tasks.py. `extend-windows` only has to outpace a
+    # 90-day horizon, so nightly is generous.
+    "todo.close-passed": {
+        "task": "nora_home.todo.tasks.close_passed",
+        "schedule": crontab(minute="*/5"),
+        "options": {"queue": "platform"},
+    },
+    "todo.extend-windows": {
+        "task": "nora_home.todo.tasks.extend_windows",
+        "schedule": crontab(minute=20, hour=3),
+        "options": {"queue": "platform"},
+    },
+    "todo.send-reminders": {
+        "task": "nora_home.todo.tasks.send_reminders",
+        "schedule": crontab(minute="*/5"),
+        "options": {"queue": "platform"},
+    },
+    "todo.run-escalations": {
+        "task": "nora_home.todo.tasks.run_escalations",
+        "schedule": crontab(minute="*/5"),
+        "options": {"queue": "alerts"},
+    },
     "core.health-check": {
         "task": "nora_home.core.tasks.record_health_snapshot",
         "schedule": crontab(minute="*/10"),

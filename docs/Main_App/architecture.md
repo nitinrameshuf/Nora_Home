@@ -355,7 +355,7 @@ nora_home/              THE PLATFORM
   telemetry/            series, readings, rollups, thresholds
   integrations/         polling framework
   ui/                   surface detection, home bot, theme
-houseapps/              WHAT THE FAMILY WRITES (example_habit is the reference)
+houseapps/              WHAT THE FAMILY WRITES (empty until Story 24)
 templates/              platform templates
 static/nora_home/       css, js, vendor
 docker/ scripts/ docs/  entrypoint, provisioning, this folder

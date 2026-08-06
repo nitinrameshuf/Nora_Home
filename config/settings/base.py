@@ -107,6 +107,7 @@ NORA_HOME_PLATFORM_APPS = [
     "nora_home.accounts",
     "nora_home.notifications",
     "nora_home.tracker",
+    "nora_home.todo",
     "nora_home.ai",
     "nora_home.mcpserver",
     "nora_home.datastores",
@@ -118,7 +119,10 @@ NORA_HOME_PLATFORM_APPS = [
 
 # House apps. Anything a family member deploys goes in houseapps/ and gets listed here
 # (or in NORA_HOME_HOUSE_APPS in the environment, so a new app needs no code change).
-NORA_HOME_HOUSE_APPS = env_list("NORA_HOME_HOUSE_APPS", ["houseapps.example_habit"])
+# Empty by default: houseapps.example_habit (the old reference app) was removed as
+# part of the Levels/Todo work (docs/Main_App/subsystems/todo.md §1) — the next
+# entry here will be the first real family app (Story 24).
+NORA_HOME_HOUSE_APPS = env_list("NORA_HOME_HOUSE_APPS", [])
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + NORA_HOME_PLATFORM_APPS + NORA_HOME_HOUSE_APPS
 

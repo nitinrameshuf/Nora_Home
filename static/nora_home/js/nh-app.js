@@ -17,9 +17,16 @@
 
   function post(url, data) {
     var body = new FormData();
-    Object.keys(data || {}).forEach(function (key) {
+    var keys = Object.keys(data || {});
+    keys.forEach(function (key) {
       body.append(key, data[key]);
     });
+    // A FormData with zero parts serializes to just the closing boundary, and
+    // this stack's ASGI request parsing rejects that outright with a bare 400
+    // before Django even runs — no view, no error body, nothing to debug from
+    // the response. Every zero-payload action (a tick with no note, an
+    // approve, a skip) hit this. One harmless field keeps the body non-empty.
+    if (!keys.length) body.append("_", "1");
     return fetch(url, {
       method: "POST",
       body: body,

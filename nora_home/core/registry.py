@@ -91,13 +91,21 @@ class NoraAppConfig(AppConfig):
     nora_category: str = Category.HOUSE
     nora_color: str = ""  # optional accent, e.g. "#7dd3fc"
 
+    # Levels — the dependency rule (docs/Main_App/subsystems/todo.md §1).
+    #   1  the base platform (nora_home/*) — nothing may depend downward on 3
+    #   2  apps the base leans on (e.g. Todo) — deliberately uninstallable,
+    #      and the base degrades without one
+    #   3  family apps (houseapps/*), the default — uninstall freely
+    # Platform apps must set this explicitly; nothing here infers it from the
+    # module path, because a Level 2 app also lives outside houseapps/.
+    nora_level: int = 3
+
     # Placement
     nora_nav: bool = True
     nora_order: int = 100
     nora_url_prefix: str = ""  # defaults to <slug>/ — apps live at the URL root
     nora_dashboard_cards: list[str] = []
     nora_widgets: list[str] = []  # visualizations selectable on the home dashboard
-    nora_wall_panels: list[str] = []  # panels eligible for the 24" rotation
     # Buttons the 10.1" kiosk shows once someone has switched the wall to this
     # app — e.g. [{"title": "Log a set", "path": "/workout/log/"}]. Optional:
     # an app with none just gets the default single tile that switches to it.
@@ -130,13 +138,13 @@ class NoraAppConfig(AppConfig):
             category=self.nora_category,
             color=self.nora_color,
             module=self.name,
+            level=self.nora_level,
             nav=self.nora_nav,
             has_page=self.nora_has_page,
             order=self.nora_order,
             url_prefix=self.nora_url_prefix or f"{self.nora_slug or self.label}/",
             dashboard_cards=list(self.nora_dashboard_cards),
             widgets=list(self.nora_widgets),
-            wall_panels=list(self.nora_wall_panels),
             kiosk_controls=list(self.nora_kiosk_controls),
             provides_mcp_tools=self.nora_provides_mcp_tools,
             telemetry_series=list(self.nora_owns_telemetry_series),
@@ -159,9 +167,9 @@ class AppMetadata:
     has_page: bool
     order: int
     url_prefix: str
+    level: int = 3
     dashboard_cards: list[str] = field(default_factory=list)
     widgets: list[str] = field(default_factory=list)
-    wall_panels: list[str] = field(default_factory=list)
     kiosk_controls: list[dict] = field(default_factory=list)
     provides_mcp_tools: bool = False
     telemetry_series: list[str] = field(default_factory=list)
@@ -275,20 +283,6 @@ def dashboard_cards(role: str = "member") -> list:
                 cards.append(card)
     cards.sort(key=lambda c: (c.order, c.title))
     return cards
-
-
-def wall_panels() -> list:
-    """Panels eligible for rotation on the always-on 24" display."""
-    from nora_home.core.cards import load_card
-
-    panels = []
-    for meta in registered_apps():
-        for dotted in meta.wall_panels:
-            card = load_card(dotted, meta)
-            if card is not None:
-                panels.append(card)
-    panels.sort(key=lambda c: (c.order, c.title))
-    return panels
 
 
 def all_widgets(role: str = "member") -> list:

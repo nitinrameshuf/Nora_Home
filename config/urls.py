@@ -30,6 +30,11 @@ urlpatterns = [
     path("home/integrations/", include("nora_home.integrations.urls")),
     path("home/dashboard/", include("nora_home.dashboard.urls")),
 
+    # Todo is Level 2 (docs/Main_App/subsystems/todo.md §1) — a platform app, so
+    # house_app_urlpatterns() below skips it, but it still lives at its own
+    # top-level slug like a house app would rather than under /home/.
+    path("todo/", include("nora_home.todo.urls")),
+
     # Cross-cutting surfaces, deliberately outside /home so their URLs stay short.
     path("accounts/", include("nora_home.accounts.urls")),
     path("api/", include("nora_home.core.api.urls")),

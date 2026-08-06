@@ -6,6 +6,9 @@ class DatastoresConfig(NoraAppConfig):
     label = "datastores"
     verbose_name = "Data"
 
+    # Level 1 — the base platform. See nora_home.core.registry.NoraAppConfig.
+    nora_level = 1
+
     nora_slug = "data"
     nora_title = "Data"
     nora_description = "MongoDB, object storage, backups, and migration."

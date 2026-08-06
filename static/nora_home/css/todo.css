@@ -1,0 +1,245 @@
+/*
+ * Todo's board and detail page. Priority columns, task cards, and the
+ * approval strip — everything else on the page (topbar, sidebar, buttons)
+ * comes from nora-home.css and nh-scene.css, which this only extends.
+ */
+
+.todo-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: var(--gap);
+}
+
+.todo-toolbar .spacer { flex: 1; }
+
+.todo-board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--gap);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .todo-board { grid-template-columns: 1fr; }
+}
+
+.todo-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-height: 0;
+}
+
+.todo-col__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0 0.2rem;
+}
+
+.todo-col__head b { font-size: var(--step-0); }
+.todo-col__head .n {
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+
+.todo-col--p1 .todo-col__head b { color: var(--coral-500); }
+.todo-col--p2 .todo-col__head b { color: var(--amber-500); }
+.todo-col--p3 .todo-col__head b { color: var(--sky-500); }
+.todo-col--archived .todo-col__head b { color: var(--text-faint); }
+
+.todo-col__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.todo-empty {
+  color: var(--text-faint);
+  font-size: 0.85rem;
+  padding: 0.6rem 0.2rem;
+}
+
+.todo-card {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  padding: 0.7rem 0.8rem;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: inherit;
+}
+
+.todo-card:hover { text-decoration: none; }
+
+.todo-card__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 0.4rem;
+}
+
+.todo-card--p1 .todo-card__dot { background: var(--coral-500); }
+.todo-card--p2 .todo-card__dot { background: var(--amber-500); }
+.todo-card--p3 .todo-card__dot { background: var(--sky-500); }
+.todo-card--archived .todo-card__dot { background: var(--text-faint); }
+.todo-card--archived { opacity: 0.62; }
+
+.todo-card__body { min-width: 0; flex: 1; }
+
+.todo-card__title {
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+
+.todo-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--text-faint);
+}
+
+.todo-card__meta .due--overdue { color: var(--alert); }
+
+.todo-card__meta .tag {
+  background: var(--bg-sunken);
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+}
+
+.todo-card__tick {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  margin-top: 0.15rem;
+}
+
+.todo-card__tick:hover { border-color: var(--ok); }
+.todo-card__tick.is-done { background: var(--ok); border-color: var(--ok); }
+
+.todo-strip {
+  border: 1px solid var(--nh-600);
+  background: rgba(255, 154, 92, 0.08);
+  border-radius: var(--radius);
+  padding: 0.8rem 1rem;
+  margin-bottom: var(--gap);
+}
+
+.todo-strip__head {
+  font-size: 0.8rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--nh-400);
+  margin-bottom: 0.5rem;
+}
+
+.todo-strip .todo-card { padding: 0.6rem 0.4rem; }
+
+.todo-approve-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.todo-detail__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.6rem 0 1.2rem;
+}
+
+.todo-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.todo-history li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  font-size: 0.85rem;
+}
+
+.todo-outcome {
+  font-size: 0.75rem;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+}
+
+.todo-outcome--done { background: rgba(79, 209, 165, 0.16); color: var(--ok); }
+.todo-outcome--missed { background: rgba(255, 107, 107, 0.16); color: var(--alert); }
+.todo-outcome--skipped { background: var(--bg-raised); color: var(--text-faint); }
+
+.todo-form fieldset {
+  border: none;
+  padding: 0;
+  margin: 0 0 1.2rem;
+}
+
+.todo-form label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-bottom: 0.3rem;
+}
+
+.todo-form .field { margin-bottom: 0.9rem; }
+
+.todo-form input[type="text"],
+.todo-form input[type="number"],
+.todo-form input[type="date"],
+.todo-form input[type="time"],
+.todo-form textarea,
+.todo-form select {
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 0.5rem 0.7rem;
+  font: inherit;
+}
+
+.todo-form .checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.todo-form .checks label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--text);
+  margin: 0;
+}
+
+.todo-form .errorlist {
+  list-style: none;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  color: var(--alert);
+  font-size: 0.82rem;
+}
+
+.todo-recurrence-fields[hidden] { display: none; }

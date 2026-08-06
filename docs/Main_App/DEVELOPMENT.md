@@ -21,9 +21,10 @@ has to be passed before the next begins, and gate 1 ends with a human saying yes
 ### Gate 1 — Requirements, approved before any code is written
 
 Write **`docs/House_Apps/<yourapp>/requirements.md`** first, describing what the app
-*does* — not how it is built. Copy
-[`../House_Apps/example_habit/requirements.md`](../House_Apps/example_habit/requirements.md),
-which is the template and lists the required sections.
+*does* — not how it is built. There is no example to copy right now — the old
+reference app was removed 2026-08-05 (see
+[`subsystems/todo.md`](subsystems/todo.md) §1) — so use the required-sections
+table in [`../House_Apps/README.md`](../House_Apps/README.md) directly.
 
 It has to answer, in plain language a family member can check:
 
@@ -112,10 +113,22 @@ show up on the wall display and in the family's Slack without extra work.
 > **This starts at gate 2.** Gate 1 — `requirements.md`, approved by the user —
 > comes before any of it. See [The workflow](#the-workflow--three-gates-in-order).
 
-The reference app refers to itself by name in more places than you'd guess — its
-own module path is imported in seven files, and its templates live in a directory
-named after it. Copy it, then do the rename in one mechanical pass rather than
-hunting file by file (skipping this step doesn't fail loudly — it fails as
+> **The copy-from-the-reference-app shortcut below is currently unavailable.**
+> `houseapps/example_habit` was removed 2026-08-05 as part of the Levels/Todo
+> work (see [`subsystems/todo.md`](subsystems/todo.md) §1) — there is nothing to
+> `cp -r` right now. Build from the `apps.py` contract above and
+> `nora_home/dashboard/widgets.py` / `nora_home/core/cards.py` directly instead;
+> the steps below (rename the pieces, register, migrate, write the three docs)
+> still apply, just starting from a blank `houseapps/<yourapp>/` rather than a
+> copy. This note goes away once a real family app exists to serve as the new
+> reference (Story 24 on the dashboard) — commands below are left as-written
+> for then.
+
+When a reference app exists again, it will refer to itself by name in more
+places than you'd guess — expect its own module path to be imported in several
+files, and its templates to live in a directory named after it. Copy it, then do
+the rename in one mechanical pass rather than hunting file by file (skipping
+this step doesn't fail loudly — it fails as
 `django.contrib.admin.exceptions.AlreadyRegistered` the first time the new app's
 `admin.py` runs, because it's still registering the *original* app's model class):
 
@@ -148,11 +161,9 @@ Then, in your new directory:
 
 ```bash
 mkdir -p docs/House_Apps/workout
-# requirements.md should already exist from gate 1; the other two now:
-cp docs/House_Apps/example_habit/README.md  docs/House_Apps/workout/README.md
-cp docs/House_Apps/example_habit/testing.md docs/House_Apps/workout/testing.md
-# then edit them: what it is, where it appears, what it owns, what it offers,
-# and what its own tests cover
+# requirements.md should already exist from gate 1; write the other two
+# against the Required sections table in ../House_Apps/README.md — what it
+# is, where it appears, what it owns, what it offers, what its own tests cover
 ```
 
    The required sections are listed in
@@ -225,7 +236,6 @@ class WorkoutConfig(NoraAppConfig):
 
     # What you contribute to shared screens.
     nora_widgets = ["houseapps.workout.widgets.WeeklyVolume"]
-    nora_wall_panels = ["houseapps.workout.widgets.WallSummary"]
     nora_dashboard_cards = []
 
     # Buttons the 10.1" kiosk shows once someone switches the 24" wall to
@@ -253,6 +263,13 @@ Categories: `SELF`, `AMBITION`, `FAMILY`, `ROBOT`, `HOUSE`, `INTEGRATIONS`, `SYS
 
 Your slug cannot be one of `home`, `admin`, `api`, `mcp`, `static`, `media`, `ws`,
 `accounts`, `app`, `health` — the platform owns those.
+
+Every house app is **Level 3** — `nora_level` defaults to `3` and you never need
+to set it. Levels are the platform's dependency rule (see
+[`subsystems/todo.md`](subsystems/todo.md) §1): the one thing that matters to
+you is that nothing at Level 1 (the base) or Level 2 (an app the base leans on,
+like Todo) is ever allowed to import your app back — you can be uninstalled at
+any time without anything above you breaking.
 
 ---
 

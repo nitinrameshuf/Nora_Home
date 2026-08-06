@@ -6,6 +6,9 @@ class DashboardConfig(NoraAppConfig):
     label = "dashboard"
     verbose_name = "Dashboard"
 
+    # Level 1 — the base platform. See nora_home.core.registry.NoraAppConfig.
+    nora_level = 1
+
     nora_slug = "dashboard"
     nora_title = "Dashboard"
     nora_description = "The home screen — visualizations picked from every app."

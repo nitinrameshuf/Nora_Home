@@ -12,6 +12,7 @@ docs/House_Apps/ and its testing.md. This file is the floor, not the ceiling.
 
 from __future__ import annotations
 
+import ast
 from importlib import import_module
 from importlib.util import find_spec
 from pathlib import Path
@@ -20,7 +21,7 @@ import pytest
 from django.conf import settings
 
 from nora_home.core.cards import Card, load_card
-from nora_home.core.registry import RESERVED_SLUGS, house_apps
+from nora_home.core.registry import RESERVED_SLUGS, house_apps, registered_apps
 from nora_home.dashboard.widgets import Widget, load_widget
 
 pytestmark = pytest.mark.django_db
@@ -36,8 +37,21 @@ def app(request):
 
 
 def test_at_least_one_house_app_is_installed():
-    """If this fails, every other test in this file passed vacuously."""
-    assert INSTALLED, "no house apps are installed; the contract tests proved nothing"
+    """Zero house apps is now the deliberate resting state, not a bug signal.
+
+    Until 2026-08-05 this hard-failed on an empty list, because the only way to
+    get there was the registry silently coming back empty (a real bug that
+    happened once — see registry.py). That guard stopped being sound the moment
+    houseapps.example_habit (the reference app) was removed as part of the
+    Levels/Todo work (docs/Main_App/subsystems/todo.md §1): there is now
+    legitimately no house app installed until Story 24 (the first real family
+    app) lands. Skip with the reason recorded, rather than force a fake app to
+    keep this green or delete the guard outright — a future silent-empty-
+    registry bug is still worth distinguishing from this expected state, and
+    the skip message is where that distinction is made by a human, not code."""
+    if not INSTALLED:
+        pytest.skip("no house apps installed — expected until Story 24; "
+                    "see docs/Main_App/subsystems/todo.md §1")
 
 
 # ── identity ─────────────────────────────────────────────────────────────────
@@ -109,15 +123,6 @@ def test_every_declared_card_loads(app):
         assert isinstance(card, Card)
 
 
-def test_every_declared_wall_panel_loads_and_is_wall_safe(app):
-    """The 24" runs unattended for days. A panel that is not wall-safe should not
-    be offered to it."""
-    for dotted in app.wall_panels:
-        panel = load_card(dotted, app)
-        assert panel is not None, f"{app.slug} declares wall panel {dotted}, which fails to load"
-        assert panel.wall_safe, f"{dotted} is on the wall but is not wall_safe"
-
-
 def test_kiosk_controls_are_well_formed(app):
     """The 10.1" kiosk renders these as buttons. A missing path is a button that
     does nothing; a Django URL name instead of a path is the same."""
@@ -142,6 +147,82 @@ def test_kiosk_control_paths_resolve(app):
 
 
 # ── the platform's own rules ─────────────────────────────────────────────────
+
+# Levels (docs/Main_App/subsystems/todo.md §1): 1 is the base platform, 2 is an
+# app the base leans on (Todo), 3 is a freely-uninstallable family app — the
+# default for anything that doesn't say otherwise. The one thing that must
+# never happen is a dependency pointing downward: nothing at Level 1 or 2 may
+# import a Level 3 app. (Level 1 -> Level 2 is fine and expected — that is the
+# whole point of Level 2 existing; see the module docstring at the top of
+# nora_home/core/registry.py.)
+#
+# This is deliberately a *separate* test from
+# test_the_app_does_not_import_another_apps_models below rather than a widening
+# of it. That test has real, pre-existing debt at the platform level (found
+# 2026-08-05: bootstrap_home.py, mcpserver/tools.py and others import other
+# platform apps' .models directly instead of their .api) — cleaning that up is
+# its own piece of work, unrelated to Levels, and out of scope here. This test
+# checks only the one new invariant Levels actually requires, and it holds
+# clean today with zero exceptions.
+LEVEL_BY_MODULE: dict[str, int] = {
+    meta.module: meta.level for meta in registered_apps(include_disabled=True)
+}
+
+
+def _resolve_level(imported_module: str) -> int | None:
+    """Longest-prefix match against every registered app's module path, so an
+    import of e.g. `houseapps.workout.models` resolves to `houseapps.workout`
+    even though only the app's top-level module is registered."""
+    best: tuple[str, int] | None = None
+    for module, level in LEVEL_BY_MODULE.items():
+        if imported_module == module or imported_module.startswith(module + "."):
+            if best is None or len(module) > len(best[0]):
+                best = (module, level)
+    return best[1] if best else None
+
+
+def _imported_modules(source: Path) -> set[str]:
+    """Every module named in an import statement anywhere in the file — a
+    plain AST walk, so it does not care whether the import is at module scope
+    or deferred inside a function (this codebase does both).
+
+    utf-8-sig, not utf-8: several platform apps.py files carry a leading BOM
+    (an editor artifact), which plain utf-8 decodes as a literal U+FEFF
+    character — invisible, but ast.parse rejects it outright."""
+    tree = ast.parse(source.read_text(encoding="utf-8-sig", errors="ignore"), filename=str(source))
+    modules: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            modules.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            modules.add(node.module)
+    return modules
+
+
+def test_level_1_or_2_never_imports_a_level_3_app():
+    """The one invariant Levels actually enforces. Runs over every registered
+    app, platform and house alike — not just house_apps() — because the
+    thing being protected is the base staying uninstallable-app-agnostic, and
+    that has to hold for nora_home/* too, not only for houseapps/*."""
+    offenders = []
+    for meta in registered_apps(include_disabled=True):
+        if meta.level not in (1, 2):
+            continue
+        package_dir = Path(import_module(meta.module).__file__).parent
+        for source in package_dir.rglob("*.py"):
+            if "migrations" in source.parts:
+                continue
+            for imported in _imported_modules(source):
+                level = _resolve_level(imported)
+                if level == 3:
+                    offenders.append(
+                        f"{meta.module} (level {meta.level}) imports {imported} "
+                        f"(level 3) in {source.relative_to(package_dir.parent)}")
+
+    assert not offenders, (
+        "Level 1/2 code importing a Level 3 app — this is the one dependency "
+        "direction Levels forbids:\n  " + "\n  ".join(offenders))
+
 
 # Recorded exceptions to the "never import another app's models" rule.
 #

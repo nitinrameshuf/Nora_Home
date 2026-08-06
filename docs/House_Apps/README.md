@@ -13,10 +13,12 @@ House_Apps/
 ```
 
 **All three are required.** `install_app` warns when any is missing, and
-`tests/test_house_apps.py` fails without them. Copy the reference app's:
-[`requirements.md`](example_habit/requirements.md),
-[`README.md`](example_habit/README.md), and
-[`testing.md`](example_habit/testing.md) — each is written as its template.
+`tests/test_house_apps.py` fails without them. There is no reference app to copy
+right now — `houseapps.example_habit` was removed 2026-08-05 as part of the
+Levels/Todo work (see [`../Main_App/subsystems/todo.md`](../Main_App/subsystems/todo.md)
+§1) and its own docs went with it. Until the first real family app lands
+(Story 24 on the dashboard), use the **Required sections** table below directly
+— it does not depend on having an example to copy from.
 
 `requirements.md` comes **first, before any code**, and the user approves the
 functionality in it before development starts. That is gate 1 of the three-gate
@@ -43,14 +45,8 @@ rather than loose in `docs/`.
 | _(none)_ | | | |
 
 `NORA_HOME_HOUSE_APPS` is currently empty, so the house has no family apps
-installed and the Apps page is deliberately blank.
-
-| Reference | Module | Docs |
-|---|---|---|
-| Habits | `houseapps.example_habit` | [`example_habit/`](example_habit/README.md) |
-
-The reference app is on disk to be **copied**, not run. It is also the template for
-this documentation.
+installed and the Apps page is deliberately blank. There is also no reference
+app on disk any more — see the note above.
 
 ## Enforced at install time
 
@@ -62,7 +58,7 @@ install over it would just teach people to commit an empty file.
 ## Required sections
 
 Every house app's README uses these headings, so any of them can be read the same
-way. Copy [`example_habit/README.md`](example_habit/README.md) as the shape.
+way.
 
 | Section | Answers |
 |---|---|

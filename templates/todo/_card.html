@@ -1,0 +1,54 @@
+{% comment %}
+One task card. Included from the board and the awaiting-approval strip.
+`task.current` is set by the view — the PENDING or AWAITING_APPROVAL instance
+this card should act on, or None for a task with nothing open right now.
+{% endcomment %}
+<div class="todo-card todo-card--p{{ task.priority }}{% if archived_column %} todo-card--archived{% endif %}"
+     data-todo-card>
+  {% if task.current and task.current.outcome == "pending" and not archived_column %}
+    <button class="todo-card__tick" type="button" data-todo-action="complete"
+            data-url="{% url 'todo:complete' task.current.uuid %}"
+            aria-label="Mark {{ task.title }} done"></button>
+  {% else %}
+    <span class="todo-card__dot"></span>
+  {% endif %}
+
+  <div class="todo-card__body">
+    <div class="todo-card__title"><a href="{% url 'todo:detail' task.uuid %}">{{ task.title }}</a></div>
+    <div class="todo-card__meta">
+      {% if task.current %}
+        <span class="{% if task.current.due_at < now and task.current.outcome == 'pending' %}due--overdue{% endif %}">
+          {{ task.current.due_at|date:"M j" }}{% if task.due_time %} · {{ task.current.due_at|date:"H:i" }}{% endif %}
+        </span>
+      {% elif task.due_on %}
+        <span>{{ task.due_on|date:"M j" }}</span>
+      {% endif %}
+      {% if task.is_recurring %}<span title="Recurring">&#8635;</span>{% endif %}
+      {% if task.needs_approval %}<span title="Needs {{ task.approver }}'s approval">&#10003;?</span>{% endif %}
+      {% for label in task.labels.all %}<span class="tag">{{ label.name }}</span>{% endfor %}
+      {% if task.planned_minutes %}<span>{{ task.planned_minutes }}m</span>{% endif %}
+      {% if task.assignees.all %}
+        <span title="Shared with {% for m in task.assignees.all %}{{ m.name }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+          &#128101; {{ task.assignees.all|length }}
+        </span>
+      {% endif %}
+    </div>
+
+    {% if task.current.outcome == "awaiting_approval" %}
+      <div class="todo-approve-actions">
+        <button class="btn btn-primary" type="button" data-todo-action="approve"
+                data-url="{% url 'todo:approve' task.current.uuid %}">Approve</button>
+        <button class="btn btn-danger" type="button" data-todo-action="reject"
+                data-url="{% url 'todo:reject' task.current.uuid %}">Reject</button>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if archived_column %}
+    <button class="btn" type="button" data-todo-action="restore"
+            data-url="{% url 'todo:restore' task.uuid %}">Restore</button>
+  {% elif task.current and task.current.outcome == "pending" %}
+    <button class="btn btn-ghost" type="button" data-todo-action="archive"
+            data-url="{% url 'todo:archive' task.uuid %}" title="Not now">&#128451;</button>
+  {% endif %}
+</div>

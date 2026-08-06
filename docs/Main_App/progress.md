@@ -2076,6 +2076,419 @@ testing.md, because it turns a taste argument into something checkable.
 
 ---
 
+## 2026-08-05 — Todo designed: it replaces the tracker, and Levels replaces the
+## "platform never depends on an app" rule
+
+A long design session, no code. Asked for a Todo app; what it turned into is the
+subsystem that **replaces `nora_home.tracker` entirely** — for the base app, for
+house apps, and for the family.
+
+Two decisions worth not re-litigating:
+
+**Levels.** The old rule — the platform never depends on a house app — is
+withdrawn. Level 1 is the base, Level 2 is what the base leans on (Todo), Level 3
+is family apps that uninstall freely. What is now forbidden is a dependency
+pointing *downward*: nothing at Level 1 or 2 may import Level 3. Needs
+`nora_level` on the app config plus a directional test, or it decays into a
+convention nobody enforces.
+
+**Todo absorbs the tracker rather than sitting beside it.** The tracker is an
+engine with no cockpit — `nora_nav = False`, four headless widgets, no page. Its
+scheduling and escalation code is good and carries over; its model and surfaces
+do not. `nora_home.tracker.api` becomes `nora_home.todo.api`, a clean cut with no
+shim since the only caller was `example_habit`, which is being deleted anyway.
+
+Three findings from reading the code during the design, all of them things that
+would have been discovered mid-build:
+
+- **`nora_wall_panels` is dead code.** The registry still collects wall panels and
+  offers `wall_panels()`, and a contract test still validates them — but nothing
+  has rendered one since the wall was repointed at the live app. The only two
+  declarers are the tracker and `example_habit`. Deleted as part of this work.
+- **`DashboardLayout.Surface.WALL` exists and is unused** — the same situation
+  `SHARED` was in before the Everyone view adopted it. That is what makes "the
+  wall is a widget collection the user picks" a small change rather than a new
+  subsystem.
+- **The audit log has four call sites and three are being deleted.** The
+  mechanism (`core.audit.record()`) is good; the habit of calling it does not
+  exist. A House log page and audit coverage have to ship together, or the page
+  renders an empty table.
+
+Also settled: Slack interactivity needs **Socket Mode**, not webhooks — the Pi is
+behind home NAT with a self-signed cert, so Slack can never reach it, and no scope
+changes that. Socket Mode dials outbound instead. Costs one small container.
+
+And the scheduling recommendations ("you added an exam, move these three") are
+**arithmetic, not AI** — deterministic, offline, free, and explainable, which is
+what a system that reshuffles someone's week has to be. AI is designed for as a
+judgement layer on top, and explicitly not built now; what is built now is the
+data discipline that makes adding it later cheap — changes recorded as dated
+events rather than counters, and every statistic computed from history on read.
+
+Design: `docs/Main_App/subsystems/todo.md`. Build order:
+`docs/Main_App/subsystems/todo-build-brief.md` (delete when built). Surface
+mockups for all four screens: `todo-mockups.html`.
+
+Broken into **Stories 28-41** on the dashboard as Phase 7, one per build phase,
+each carrying its model and effort level. Roughly 70% Sonnet; Opus on 30
+(recurrence — the correctness core), 35 (analytics), 37 (Slack Socket Mode) and
+40 (tracker removal). Stories 5 and 6 are annotated as superseded-but-still-live
+rather than retired, since the tracker keeps running until Story 40 deletes it.
+
+---
+
+## 2026-08-05 — Story 28: Levels, and clearing the ground for Todo
+
+First story of the Todo build (Phase 7). Introduced `nora_level` on
+`NoraAppConfig` (every platform `apps.py` now declares `nora_level = 1`
+explicitly; the default of 3 covers house apps without them needing to say
+anything), and a new test — `test_level_1_or_2_never_imports_a_level_3_app` —
+that walks every registered app's source with `ast`, not just house apps, and
+fails if anything at Level 1 or 2 imports a Level 3 module. It holds clean
+today with zero exceptions. `uninstall_app` now refuses with a named
+explanation ("this is a Level 2 app the base depends on, removing it would
+break...") instead of the generic "not in NORA_HOME_HOUSE_APPS" it would
+otherwise fail with.
+
+Also deleted `houseapps/example_habit` entirely, and its usage in
+`bootstrap_home.py`'s demo seeding — the platform now legitimately runs with
+zero house apps installed until Story 24.
+
+One deliberate scope decision, found by actually trying to widen the existing
+"never import another app's models" test to cover platform apps rather than
+just house apps: doing so would have surfaced real, pre-existing debt
+unrelated to Levels — `bootstrap_home.py` and `mcpserver/tools.py` both import
+`nora_home.tracker.models` directly instead of going through `.api`. Cleaning
+that up is its own piece of work. The new Levels test was kept separate and
+narrowly scoped to the one invariant Levels actually requires, rather than
+quietly expanding to fix unrelated debt mid-story.
+
+Zero-house-apps also broke three tests that had hardcoded assumptions about
+`example_habit` existing (`test_reference_house_app_is_registered`,
+`test_house_apps_mount_at_the_url_root`, `test_the_apps_page_lists_only_the_familys_apps`)
+and one that used to guard against a silently-empty registry
+(`test_at_least_one_house_app_is_installed`) — all fixed to treat zero house
+apps as the legitimate current state (skip with a reason) rather than a
+failure, since that guard's original purpose — catching an *accidentally*
+empty registry — is a different thing from the registry being *deliberately*
+empty right now. `test_house_apps_mount_at_the_url_root` also stopped
+hardcoding the `habits/` slug and now checks whatever house apps actually are
+installed, so it won't need editing again when Story 24 adds a real one.
+
+Also removed `nora_wall_panels` — the field, the `wall_panels()` function
+(confirmed zero callers before deleting), the contract test, and the dead
+declaration on `nora_home/tracker/apps.py`. And fixed three user-facing
+places still pointing at the deleted reference app that a pure code review
+would have missed: `install_app`'s own warning messages, the Apps directory's
+empty-state text, and `houseapps/__init__.py`'s docstring.
+
+`./scripts/run-tests.sh`: 557 passed, 0 failed, 21 skipped (19 are pytest's
+own empty-parametrize placeholders — expected and harmless until Story 24).
+`manage.py check`: clean. No migration needed (no model changes this story).
+
+Design: `docs/Main_App/subsystems/todo.md`. Build order:
+`docs/Main_App/subsystems/todo-build-brief.md`.
+
+---
+
+## 2026-08-05 — Story 29: Todo's ten models
+
+Second story of the Todo build. `nora_home/todo/` now exists with `apps.py`,
+`models.py`, `admin.py`, and `migrations/0001_initial.py`, registered in
+`NORA_HOME_PLATFORM_APPS`. Ten models, matching todo.md §3 field-for-field:
+Task, Instance, Event, Label, Comment, Attachment, Link, Reminder, ChangeEvent,
+TodoPreference.
+
+Verified beyond the brief's stated bar (migration applies, `manage.py check`
+clean) — every model was actually exercised against the ORM directly, not just
+schema-deployed: created a Task without a priority and confirmed it's rejected
+at the database level (no default, as designed); confirmed `Instance.clean()`
+rejects a `skipped_at` set after `due_at`; confirmed every "exactly one parent"
+CheckConstraint on Comment (task-or-instance), Attachment (task-or-instance-or-
+event), Link, and Reminder actually rejects both-set and neither-set inputs at
+the database level, not only in application code; confirmed `TodoPreference`'s
+two fields (`default_due_hour`, `tone`) take the right defaults; confirmed
+`Task.escalation_policy`'s string-reference FK into `tracker.EscalationPolicy`
+resolves and round-trips correctly with no Python-level import of tracker's
+models anywhere in the file.
+
+Two places where the approved design doc was ambiguous or self-contradictory,
+resolved and documented directly in the model code rather than guessed at
+silently:
+
+- §3 scopes Comment/Attachment/Link to "attach to either a task or an
+  instance," but Event's own description separately lists "attachments" as
+  something it holds, with no other model designated to carry them.
+  `Attachment` was extended to a three-way task/instance/event parent to
+  resolve this; `Comment` and `Link` were left at task/instance only, since
+  Event doesn't claim to need those.
+- Phase 1 of the build brief calls for copying `tracker/escalation.py` into
+  the new package now (its item 1.3) — but §3's own field list for `Instance`
+  has no escalation bookkeeping fields (no `escalation_level`,
+  `last_escalated_at`, `acknowledged_at` equivalent) for that copied logic to
+  operate on. Copying it now would produce code that imports cleanly but
+  cannot actually run. Deferred to Story 30, where Instance's full shape gets
+  settled as part of "Recurrence & Instances" — the more honest reading of
+  where that work belongs, rather than a literal same-story copy that
+  contradicts "no half-finished implementations."
+
+`./scripts/run-tests.sh`: 557 passed, 0 failed, 21 skipped — no regressions.
+`manage.py check`: clean. `makemigrations --check --dry-run`: clean.
+
+Design: `docs/Main_App/subsystems/todo.md`. Build order:
+`docs/Main_App/subsystems/todo-build-brief.md`.
+
+---
+
+## 2026-08-05 — Story 30: recurrence, materialisation, and how an occasion closes
+
+The correctness core. `nora_home/todo/recurrence.py` evaluates the two kinds of
+rule, `scheduling.py` materialises them into Instance rows, and two Celery jobs
+(`todo.extend-windows` nightly, `todo.close-passed` every 5 minutes) keep the
+board moving on its own. 51 tests for this story; 614 green overall.
+
+**The missed rule is derived, not stored**, and that turned out to be the
+design decision that made everything else fall into place. An instance is
+missed once a *later instance of the same task is already due* — its turn is
+over because the next turn has arrived. No `window_ends_at` column to keep in
+sync when a rule changes, and the right answer for all three kinds drops out of
+the one sentence: a daily task skipped for a week closes six and leaves today's
+current (exactly §5's "the board does not grow seven cards"); a one-shot task
+never has a later sibling, so an overdue todo sits on the board overdue rather
+than quietly becoming history, which is what a person expects of "buy grout"
+three months later; a rolling task only ever holds one open instance, so it
+stays put until actually done.
+
+**History is never backfilled.** A task created today whose rule anchors weeks
+ago must not conjure a fortnight of occasions nobody could have done —
+`close_passed` would immediately close every one as missed and invent a failure
+that never happened. Instances exist only from the moment the task did. This
+was not written down anywhere before; it is now, in the code and in a test.
+
+Instance also gained the escalation bookkeeping fields (`escalation_level`,
+`last_escalated_at`, `acknowledged_at`, `acknowledged_by`) that Story 29
+deferred here. Written by nothing and read by nothing until the escalation
+engine arrives with the notification routing it depends on — but the ladder
+walks per-occasion, so this is where that state has to live, and settling it
+now avoids touching Instance a third time.
+
+**Two real bugs found during the build**, worth recording because of how
+differently they surfaced:
+
+- An interval of 0 days silently became "every day". `spec.get("days") or 1`
+  treats 0 as absent, so the guard that was supposed to reject it never ran.
+  Caught by a parametrised test that deliberately fed in nonsense specs.
+- **Changing a task's due time wiped all 90 future instances and created
+  none.** Filling the horizon before clearing stale rows meant the scan's
+  starting point was computed from an instance that was about to be deleted:
+  nothing new was created, then every future occasion was dropped as stale,
+  leaving the board, the calendar and every reminder empty until the next
+  nightly run. This one had no failing test — the suite was fully green. It was
+  found by stopping to trace what actually happens when someone edits a due
+  time, then confirming it against the real ORM. Fixed by clearing first and
+  scanning from what survived; both now have regression tests.
+
+Design: `docs/Main_App/subsystems/todo.md`. Build order:
+`docs/Main_App/subsystems/todo-build-brief.md`.
+
+---
+
+## 2026-08-05 — Shared tasks and approval added to the design (Story 42)
+
+Requested after Stories 29 and 30 had already shipped, so it lands as a
+follow-up migration rather than a change to the original models. Recorded in
+todo.md §4a and as Phase 2a of the build brief; **built between Stories 30 and
+31**, not in number order, because the board renders it and building the board
+against the single-owner model would mean building it twice. Numbered 42 rather
+than inserted as 31 so the existing references in this log stay true.
+
+The shape, after the five questions that needed answering:
+
+- **`owner` survives alongside `assignees`.** Owner is who is *responsible*
+  and who escalation chases — keeping exactly one person there is what stops
+  the ladder becoming a group message nobody owns. Assignees are who *can do
+  it*, and any one of them closes it.
+- **An `approver` being set *is* the approval requirement.** The first sketch
+  had a separate `completion_mode` flag; the answer that "one person works on
+  it and if there is an approver, the approver approves it" removed the need
+  for one. Fewer states, nothing to keep in sync.
+- **Recurring tasks cannot have an approver**, enforced at the model *and*
+  database level rather than left as a convention. Every occurrence of a daily
+  task needing sign-off would be an approval queue nobody keeps up with, and
+  the first week of it would teach everyone to rubber-stamp.
+- **Rejection returns the task to open and the reason is required.** Stored as
+  a `ChangeEvent` (`field="approval"`), so it needs no new table and lands in
+  the same history as every other change.
+- **Effort splits across assignees, never multiplies.** A 60-minute task shared
+  by three contributes 20 minutes to each person's load. Counting it in full
+  three times would tell three people they each have a full day of what is
+  really one hour of house work — and Story 35's scheduling suggestions are
+  built directly on that number, so the distortion would propagate into advice.
+
+One thing that fell out for free: `/todo-approve` was already in Story 37's
+Slack plan, speculatively. It now has a real meaning — approving or rejecting
+from a phone, reason and all.
+
+Stories 31, 32, 35 and 37 updated with the knock-on effects.
+
+---
+
+### 2026-08-05 — Story 42: shared tasks and approval
+
+Built the design recorded earlier the same day. `nora_home/todo/api.py` is new —
+Todo's first published surface, holding one occasion's journey through its
+outcomes plus the two things sharing a task changes for everyone else. Migration
+`0003`: `Task.assignees`, `Task.approver`, `Instance.approved_at/approved_by`,
+`awaiting_approval` added to the outcome choices, and the
+`todo_no_approver_on_recurring` check constraint. **42 new tests, 656 green.**
+
+Three decisions the design had left open, settled by writing it:
+
+- **`tasks_for()` excludes soft-deleted tasks and keeps archived ones.**
+  `Task.objects` does no filtering of its own — `SoftDeleteModel` puts `.alive()`
+  behind an explicit call — so every board would have shown deleted tasks unless
+  it remembered. Archived stays visible, because "not now" is a column on the
+  board, not a deletion.
+- **Rejection keeps `note` and `actual_minutes`, clears `completed_at` and
+  `completed_by`.** Deleting what someone typed because a third party said no is
+  exactly the resentment §4a exists to avoid; but leaving `completed_at` set on a
+  row that is `pending` again is a lie some later query will trip over.
+- **`item_completed` fires once, on the transition into done** — not on
+  submission for approval, and not when someone amends an occasion that was
+  already finished.
+
+**Two problems found by tracing rather than by a failing test**, which is the
+lesson Story 30 had already taught in this subsystem:
+
+- An occasion waiting on its approver has no `pending` row. `_materialize_one_shot`
+  looks for exactly that to decide whether a task needs an instance — so the
+  nightly job had to be checked for whether it would read "no pending instance"
+  as "this task has never had one" and create a second card the doer would have
+  to finish twice. It does not (it falls through to an `instances.exists()`
+  check), but nothing had ever exercised that path, so there is now a test that
+  does.
+- `complete()` treated an amendment as a fresh completion. Correcting last
+  week's note is a legitimate retroactive edit (§4), but it re-fired
+  `item_completed` — Slack congratulating someone a second time for work they
+  finished days ago — *and* restamped `completed_at`/`completed_by` to now and
+  whoever was doing the correcting. The second half is the worse one: the
+  history every chart is drawn from would drift a little further from the truth
+  with each edit, silently. An amendment now leaves both alone and announces
+  nothing; `at=` remains the way to genuinely correct a completion time.
+
+Not yet run on the Pi: the migration alters an indexed column and adds a CHECK
+constraint, and MySQL is not SQLite about either.
+
+Next: **Story 31 — the board** (Sonnet, medium effort).
+
+---
+
+### 2026-08-05 — Story 31: the board
+
+Priority 1/2/3 + Archived, live counts, create/edit/detail, and every action
+from the design: complete, uncomplete, skip, archive, restore, delete, plus
+Story 42's approve/reject. `nora_home/todo/views.py`, `forms.py`, `urls.py`,
+`templates/todo/`, `static/nora_home/{css,js}/todo.*`. Mounted at `/todo/`
+explicitly in `config/urls.py` — Todo is Level 2, so `house_app_urlpatterns()`
+skips it (that helper only mounts Level 3 apps), the same as every other
+platform app. **19 new tests (13 through the real views, 6 covering the
+one-shot-task-state behaviour below), 685 green.**
+
+Two decisions made while building, both now recorded in `todo.md` §6:
+
+- **`awaiting_approval` gets its own strip above the board**, not a priority
+  column. §4a says it "leaves the board's open columns" — true, but it still
+  needs somewhere for the approver to see and act on it, so it renders above
+  the columns rather than being sorted into one it has already, in the sense
+  that matters, left.
+- **A one-shot task's `Task.state` now follows its instance.** Completing,
+  approving, or skipping the only instance a non-recurring task will ever have
+  moves the task itself to `done`, which is what actually makes it leave the
+  board (§4: "Done — finished, leaves the board, lives in history"). Nothing
+  before this story needed a one-shot task to actually leave anywhere.
+  `uncomplete()` reverses it. A recurring task's state never follows — it has
+  no "last" occasion. `nora_home/todo/api.py` gained `skip()` and
+  `uncomplete()` to hold this, alongside `complete()`/`approve()`/`reject()`.
+
+**A real platform bug, not a Todo one — found by clicking the actual board in
+a real browser instead of trusting the Django test client.** All 685 tests
+stayed green through this the entire time. `NoraHome.post()` (`nh-app.js`)
+builds a `FormData` for its POST body; for a zero-payload action — a tick, an
+approve, a skip — that FormData has no fields, and this stack's ASGI request
+handling rejects a *fully empty* multipart body outright with a bare, empty
+400, before Django's URL routing, before any view, before any log line.
+Chasing it meant going past `response.text()` (useless — the browser reports
+"navigated away from" for a response that never actually caused a navigation)
+down to intercepting the raw request with Playwright's `page.route()` and
+replaying it by hand with `requests` to see the wire format. Once isolated,
+checked whether it was Todo-specific — it was not: the **tracker's own
+completion tick** hits the identical code path and was reproduced broken the
+same way with a raw request, then confirmed fixed after. Fix is one line: a
+`FormData` with zero keys now gets one harmless placeholder field, so the body
+sent over the wire is never empty. Every existing zero-argument call through
+`NoraHome.post()` was affected; the unit suite never noticed because Django's
+test client does not build a real multipart body.
+
+Next: **Story 32 — Reminders** (Sonnet, high effort). No longer blocked —
+Story 30, its only real dependency, has been done since Story 30 itself
+shipped; the dashboard's stale "Story 30 ▶" on 32/33/35 is fixed in this
+commit too.
+
+---
+
+### 2026-08-05 — Story 32: reminders and escalation
+
+`nora_home/todo/reminders.py` and `nora_home/todo/escalation.py`, two new
+Celery beat entries (`todo.send-reminders`, `todo.run-escalations`, both every
+5 minutes), and `api.acknowledge()` plus a "Seen it" button on the detail page.
+**41 new tests (18 reminders, 23 escalation), 732 green.** Verified live in a
+real browser, not just the unit suite: created a P1 task with a due date and
+confirmed the default reminder actually exists in the database; hand-advanced
+an instance past its due moment, ran the escalation sweep for real, saw "Escalated
+to level 1" and a "Seen it" button render on the detail page, clicked it, and
+watched the page flip to "Acknowledged by" — zero console errors.
+
+**Reminders fan out to every assignee** (`api.doers()` — the same function the
+effort-split calculation already uses); **escalation chases the owner alone**,
+never the assignees, because a shared task still needs exactly one person the
+ladder holds accountable — the fan-out and the accountability are deliberately
+different mechanisms, not the same one reused twice. §8's "fire once, no
+snooze" rule needed no new schema: `notify()`'s existing `dedupe_key` window
+(30 days, keyed to the instance's own uuid) is what the build brief pointed at,
+so a reminder firing twice is prevented by infrastructure that already existed,
+not a new "sent" flag.
+
+**Escalation is a genuine port of the tracker's engine**, not a rewrite — same
+`EscalationPolicy` model, same ladder shape, same audience resolution
+(owner/chain/adults/house), same "falls back to the house default policy when
+none is set" resolution `register_trackable()` already uses. Two deliberate
+departures, both because Todo already had a better answer than copying the
+tracker's shape verbatim: no second `EscalationEvent` table (each rung fire is
+a `ChangeEvent`, the same history table §4a's approval trail already uses), and
+`acknowledge()` — new UI over `Instance.acknowledged_at/acknowledged_by`, which
+have existed unused since Story 30 waiting for exactly this to arrive.
+
+"Sound" is accepted as a `Reminder.channels` value and silently dropped before
+reaching `notify()` — no audio channel exists in the platform's notification
+backends yet (Story 38's job), and forwarding an unknown channel would have
+been the cascading-failure shape CLAUDE.md rules out. Event reminders are
+deliberately not evaluated yet either — a recurring event's next occurrence
+needs the same calendar arithmetic Story 33 is going to build, and writing a
+narrower version now just to unblock this story would be one more thing to
+keep in sync once Calendar actually lands.
+
+One test-fixture lesson, not a product bug: `tests/test_todo_escalation.py`'s
+first draft mixed the top-level `member` fixture (which creates a member named
+"kid") with the `household` fixture (which creates its own "kid") in the same
+test — a straight `IntegrityError` on the username's uniqueness. Fixed by
+giving `make_task` no `member` dependency of its own, taking `owner` as a
+required argument instead, matching how the tracker's own `make_trackable`
+fixture already avoids this.
+
+Next: **Story 33 — Calendar** (Sonnet, medium effort).
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**

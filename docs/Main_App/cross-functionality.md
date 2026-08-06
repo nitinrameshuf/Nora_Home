@@ -20,6 +20,8 @@ published function, change its row here in the same commit.
 | You want to… | Call | Lives in |
 |---|---|---|
 | Make something show up as due / overdue / escalating | `tracker.api.register_trackable()` | [Tracker](#tracker) |
+| Finish, approve or reject one occasion of a todo | `todo.api.complete()` / `approve()` / `reject()` | [Todo](#todo) |
+| Find the tasks that belong to some people | `todo.api.tasks_for()` | [Todo](#todo) |
 | Tell one person something | `notifications.api.notify()` | [Notifications](#notifications) |
 | Tell the whole house something | `notifications.api.notify_house()` | [Notifications](#notifications) |
 | Record a number over time, get charts + thresholds free | `telemetry.api.record_reading()` | [Telemetry](#telemetry) |
@@ -85,6 +87,71 @@ importing them in five files and every app copied from it inherited the violatio
 **Escalation** is a policy object, not code — `escalation_policy=` takes a name
 string or an `EscalationPolicy`. Three ship by default: *House default*, *Gentle*,
 *Safety critical*. They are editable in `/admin/` without a deploy.
+
+---
+
+## Todo
+
+`from nora_home.todo import api as todo`
+
+Todo is **Level 2** — an app the base platform deliberately leans on, and the one
+that replaces the Tracker (see
+[`subsystems/todo.md`](subsystems/todo.md) §1). Only the pieces that exist today
+are listed; the rest arrives with the phases that build it.
+
+What is here now is **one occasion's journey through its outcomes**, and the two
+things sharing a task with other people changes for everyone else:
+
+```
+pending --complete--> awaiting_approval --approve--> done
+                              |
+                              +--reject (reason required)--> pending
+```
+
+With no approver, `complete` goes straight to `done` — the same call either way,
+so a caller never has to ask which kind of task it is holding.
+
+| Function | Does |
+|---|---|
+| `complete(instance, *, member, actual_minutes=None, note=None, at=None)` | Finish one occasion. Lands on `done`, or `awaiting_approval` when the task has an approver. `at` is for retroactive corrections — ticking last Monday must not disturb today |
+| `approve(instance, *, member)` | The approver says yes; only now is it `done`. `PermissionDenied` for anyone else |
+| `reject(instance, *, member, reason)` | Back to `pending`. **The reason is required** and is stored as a `ChangeEvent`, not a new table |
+| `approval_history(instance)` | Every submit / approve / reject on that occasion — how a rejection's reason is retrieved |
+| `can_complete(task, member) -> bool` | Owner or any assignee. Any one of them closes it; there is no "everyone must tick it" |
+| `doers(task) -> list` | Who actually does it — the assignees, or the owner alone when it is unshared |
+| `tasks_for(members, *, queryset=None)` | Scope to people: `owner in members OR assignees intersects members`. Carries the `.distinct()` this needs, and excludes soft-deleted tasks (archived ones stay — "not now" is a column, not a deletion) |
+| `effort_share_minutes(instance, member=None) -> float \| None` | Minutes this occasion adds to **one** person's load. `None` when nobody estimated it, which is different from `0.0` |
+| `skip(instance, *, member, reason="", at=None)` | Deliberately not done, before the moment passes. Refused once `due_at` has gone — after that it's a miss (§5), not something still skippable |
+| `uncomplete(instance, *, member)` | Undo a tick, from `done` or `awaiting_approval` back to `pending`. Allowed for whoever could complete it, or the approver |
+| `acknowledge(instance, *, member)` | "Seen it, will get to it" — stops the escalation ladder without completing the task |
+
+A one-shot task whose only instance resolves — via `complete()`, `approve()`, or
+`skip()` — has its `Task.state` moved to `done` too, so it leaves the board
+entirely rather than sitting in a priority column with nothing left to show.
+`uncomplete()` reverses that. A recurring task's state never follows its
+instances; it has no "last" occasion to be finished by.
+
+**Two traps this API exists to stop you hitting.**
+
+Filtering a board on `owner` alone hides tasks from the people they were shared
+with — always go through `tasks_for()`. And **effort splits, it never
+multiplies**: a 60-minute task shared by three is 20 minutes each, because
+counting it in full three times tells three people they have a full day of what
+is one hour of house work, and the scheduling suggestions are built on that
+number.
+
+**Recurring tasks cannot have an approver.** Enforced in `Task.clean()` *and* as
+a database `CheckConstraint`, so a management command or a data import cannot
+quietly create one.
+
+**Two more modules, not re-exported through `api.py`** because they act on
+their own schedule rather than in response to a request:
+
+- `nora_home.todo.reminders` — `ensure_default_reminder(task)` and
+  `send_due_reminders()`. Fans reminders out to every assignee via `doers()`.
+- `nora_home.todo.escalation` — `escalate_due_instances()`, ported from
+  `nora_home.tracker.escalation` onto `Instance`. Chases the owner alone,
+  never the assignees — see `todo.md` §9.
 
 ---
 
@@ -320,8 +387,8 @@ How apps react to each other **without importing each other**.
 
 | Signal | Fired by | Arguments |
 |---|---|---|
-| `item_completed` | tracker | `item, member, completion` |
-| `item_missed` | tracker | `item, member, due_at` |
+| `item_completed` | tracker, todo | `item, member, completion` |
+| `item_missed` | tracker, todo | `item, member, due_at` |
 | `escalation_raised` | tracker | `item, level, notified` |
 | `threshold_crossed` | telemetry | `series, value, threshold, direction` |
 | `integration_synced` | integrations | `integration, records, duration_ms` |
@@ -335,6 +402,13 @@ from nora_home.core.signals import item_completed
 def celebrate(sender, item, member, **kwargs):
     ...
 ```
+
+**From Todo, `item` and `completion` are the same object** — the `Instance`,
+which already carries the note and the actual minutes a receiver would want, so
+there is no separate completion row as the tracker has. It fires **once**, at the
+moment the occasion genuinely becomes done: on `complete()` for an ordinary task,
+on `approve()` for one with an approver, and not at all when someone amends an
+occasion that was already finished.
 
 ---
 

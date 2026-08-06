@@ -6,6 +6,9 @@ class NotificationsConfig(NoraAppConfig):
     label = "notifications"
     verbose_name = "Notifications"
 
+    # Level 1 — the base platform. See nora_home.core.registry.NoraAppConfig.
+    nora_level = 1
+
     nora_slug = "notifications"
     nora_title = "Alerts"
     nora_description = "Slack, in-app, and on-screen alerts, with delivery receipts."

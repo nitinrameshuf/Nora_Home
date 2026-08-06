@@ -6,6 +6,9 @@ class TelemetryConfig(NoraAppConfig):
     label = "telemetry"
     verbose_name = "Telemetry"
 
+    # Level 1 — the base platform. See nora_home.core.registry.NoraAppConfig.
+    nora_level = 1
+
     nora_slug = "telemetry"
     nora_title = "Measurements"
     nora_description = ("Every number the house tracks over time — body, robot, "

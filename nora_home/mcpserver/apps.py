@@ -6,6 +6,9 @@ class MCPServerConfig(NoraAppConfig):
     label = "mcpserver"
     verbose_name = "MCP Server"
 
+    # Level 1 — the base platform. See nora_home.core.registry.NoraAppConfig.
+    nora_level = 1
+
     nora_slug = "mcp"
     nora_title = "MCP"
     nora_description = "Exposes the house to AI agents as MCP tools."

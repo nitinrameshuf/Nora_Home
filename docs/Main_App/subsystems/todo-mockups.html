@@ -1,0 +1,897 @@
+<meta charset="utf-8">
+<title>Todo — surface mockups</title>
+<style>
+  /* Without this, padding is added to every declared width and height — which
+     made the kiosk 632px tall inside a 600px screen. */
+  *, *::before, *::after { box-sizing: border-box; }
+
+  /* Tokens copied from static/nora_home/css/nora-home.css so these mockups
+     show the real house, not a new look invented for a mockup. */
+  :root {
+    --ink-900:#0c1015; --ink-800:#12181f; --ink-700:#1a222c; --ink-600:#253140;
+    --ink-500:#3a4a5c; --ink-400:#62778c; --ink-300:#93a5b8; --ink-200:#c3cfdb;
+    --ink-100:#e6ecf2;
+    --nh-500:#ff9a5c; --nh-400:#ffb381; --nh-600:#e87d3c;
+    --nh-glow:rgba(255,154,92,.35);
+    --mint:#4fd1a5; --sky:#5cb8ff; --amber:#f5c451; --coral:#ff6b6b; --violet:#a78bfa;
+    --text:var(--ink-100); --text-dim:var(--ink-300); --text-faint:var(--ink-400);
+    --accent:var(--nh-500); --border:var(--ink-600);
+    --pane-rgb:6,8,12;
+    --radius:14px; --radius-sm:9px; --radius-lg:22px;
+    --font:ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+  }
+
+  body {
+    margin:0; font-family:var(--font); background:var(--ink-900); color:var(--text);
+    line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  .page { max-width:1180px; margin:0 auto; padding:3rem 1.5rem 6rem; }
+
+  h1 { font-size:2.1rem; margin:0 0 .3rem; letter-spacing:-.02em; text-wrap:balance; }
+  h2 {
+    font-size:1.35rem; margin:3.5rem 0 .4rem; letter-spacing:-.01em;
+    padding-top:1.6rem; border-top:1px solid var(--ink-700);
+  }
+  h3 { font-size:1rem; margin:2rem 0 .5rem; color:var(--text); }
+  p  { color:var(--text-dim); max-width:68ch; margin:.5rem 0; }
+  .lede { color:var(--ink-200); font-size:1.05rem; max-width:68ch; }
+  .eyebrow {
+    font-size:.72rem; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent); font-weight:600; margin:0 0 .5rem;
+  }
+  code { font-family:var(--mono); font-size:.86em; color:var(--nh-400);
+         background:rgba(255,154,92,.09); padding:.1em .35em; border-radius:4px; }
+  .note {
+    border-left:2px solid var(--accent); padding:.1rem 0 .1rem 1rem;
+    margin:1.2rem 0; color:var(--ink-200); max-width:66ch;
+  }
+
+  /* ── Device frames ──────────────────────────────────────────────────── */
+  .device { margin:1.6rem 0 0; }
+  .device__meta {
+    display:flex; gap:.6rem; align-items:baseline; flex-wrap:wrap;
+    font-size:.8rem; color:var(--text-faint); margin-bottom:.6rem;
+  }
+  .device__meta b { color:var(--text-dim); font-weight:600; }
+  .stage { overflow-x:auto; padding-bottom:.5rem; }
+  .bezel {
+    border:1px solid var(--ink-600); border-radius:12px; padding:8px;
+    background:var(--ink-800); box-shadow:0 18px 50px rgba(0,0,0,.5);
+    display:inline-block;
+  }
+  .screen { position:relative; overflow:hidden; border-radius:6px;
+            transform-origin:top left; }
+
+  /* The living background, dusk — copied from nh-scene.css */
+  .scene { position:absolute; inset:0; }
+  .scene__sky { position:absolute; inset:0;
+    background:linear-gradient(180deg,#241b3a,#7a3b5e 55%,#e8845a); }
+  .scene__vignette { position:absolute; inset:0;
+    background:radial-gradient(120% 90% at 50% 100%,rgba(0,0,0,.42),transparent 62%); }
+  .scene__orb { position:absolute; left:84%; top:62%; width:8%; aspect-ratio:1;
+    border-radius:50%; transform:translate(-50%,-50%);
+    background:radial-gradient(circle at 35% 35%,#ffd8b0,#ff7a59 70%);
+    box-shadow:0 0 6vmin rgba(255,122,89,.55); }
+  .scene__hill { position:absolute; left:0; right:0; bottom:0; height:26%;
+    background:#3f6b4a; border-radius:50% 50% 0 0 / 26% 26% 0 0; opacity:.92; }
+
+  .ui { position:relative; height:100%; display:flex; min-height:0; }
+
+  /* Glass material */
+  .pane {
+    background:rgba(var(--pane-rgb),.30);
+    backdrop-filter:blur(16px) saturate(150%);
+    -webkit-backdrop-filter:blur(16px) saturate(150%);
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:18px;
+  }
+
+  /* ── App chrome ─────────────────────────────────────────────────────── */
+  .side {
+    width:190px; flex:none; padding:14px 12px; display:flex; flex-direction:column; gap:2px;
+    background:rgba(var(--pane-rgb),.24);
+    backdrop-filter:blur(14px) saturate(140%); -webkit-backdrop-filter:blur(14px) saturate(140%);
+    border-right:1px solid rgba(255,255,255,.08);
+  }
+  .brand { display:flex; align-items:center; gap:8px; margin-bottom:14px;
+           font-weight:650; font-size:.95rem; color:var(--text); }
+  .brand i { width:22px; height:22px; border-radius:7px; display:block;
+             background:linear-gradient(145deg,var(--nh-400),var(--nh-600));
+             box-shadow:0 0 14px var(--nh-glow); }
+  .nav-h { font-size:.62rem; letter-spacing:.13em; text-transform:uppercase;
+           color:var(--text-faint); margin:12px 0 5px 8px; }
+  .nav a { display:flex; justify-content:space-between; align-items:center;
+           padding:6px 9px; border-radius:9px; color:var(--text-dim);
+           font-size:.82rem; text-decoration:none; }
+  .nav a.on { color:var(--text); background:linear-gradient(90deg,var(--nh-glow),transparent);
+              box-shadow:inset 2px 0 0 var(--accent); }
+  .nav .n { font-size:.72rem; color:var(--text-faint); font-variant-numeric:tabular-nums; }
+
+  .main { flex:1; padding:16px 18px; overflow:hidden; display:flex;
+          flex-direction:column; min-width:0; min-height:0; }
+  .topline { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .title { font-size:1.35rem; font-weight:650; letter-spacing:-.01em; }
+  .tools { display:flex; gap:7px; align-items:center; }
+  .btn { font-size:.75rem; padding:5px 11px; border-radius:8px; color:var(--text-dim);
+         border:1px solid rgba(255,255,255,.13); background:rgba(var(--pane-rgb),.3); }
+  .btn--go { background:linear-gradient(145deg,var(--nh-400),var(--nh-600));
+             color:#3a0f00; border-color:transparent; font-weight:650; }
+  .orb-btn { width:26px; height:26px; border-radius:50%;
+             background:radial-gradient(circle at 35% 35%,#ffd8b0,#ff7a59 70%);
+             box-shadow:0 0 12px rgba(255,122,89,.55); }
+
+  /* ── Board ──────────────────────────────────────────────────────────── */
+  .board { display:grid; grid-template-columns:repeat(4,1fr); gap:12px;
+           flex:1; min-height:0; }
+  .col { display:flex; flex-direction:column; min-height:0; }
+  .col__h { display:flex; align-items:baseline; gap:7px; margin-bottom:8px; padding:0 2px; }
+  .col__h b { font-size:.86rem; font-weight:650; }
+  .col__h .n { font-size:.74rem; color:var(--text-faint); font-variant-numeric:tabular-nums; }
+  .col__list { display:flex; flex-direction:column; gap:8px; overflow:hidden; }
+
+  .card {
+    background:rgba(var(--pane-rgb),.34);
+    backdrop-filter:blur(16px) saturate(150%); -webkit-backdrop-filter:blur(16px) saturate(150%);
+    border:1px solid rgba(255,255,255,.10); border-radius:12px;
+    padding:9px 10px; display:flex; gap:8px;
+  }
+  .dot { width:13px; height:13px; border-radius:50%; flex:none; margin-top:2px;
+         border:2px solid currentColor; }
+  .p1 { color:var(--coral); } .p2 { color:var(--amber); } .p3 { color:var(--sky); }
+  .arc { color:var(--ink-400); }
+  .card__b { min-width:0; flex:1; }
+  .card__t { font-size:.8rem; line-height:1.35; color:var(--text); }
+  .card__m { display:flex; flex-wrap:wrap; gap:7px; margin-top:5px;
+             font-size:.68rem; color:var(--text-faint); align-items:center; }
+  .due { color:var(--coral); font-variant-numeric:tabular-nums; }
+  .due--ok { color:var(--text-faint); }
+  .tag { color:var(--text-dim); }
+  .tag::before { content:"◇ "; color:var(--text-faint); }
+  .mark { color:var(--text-faint); }
+  .mins { font-variant-numeric:tabular-nums; }
+
+  /* ── Widget dashboard (wall) ────────────────────────────────────────── */
+  .grid { display:grid; grid-template-columns:repeat(12,1fr); gap:14px;
+          flex:1; min-height:0; grid-auto-rows:minmax(0,1fr); }
+  .w { padding:14px 16px; display:flex; flex-direction:column; min-height:0; }
+  .w__h { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:9px; }
+  .w__t { font-size:.86rem; font-weight:650; }
+  .w__s { font-size:.7rem; color:var(--text-faint); }
+  .w__big { font-size:2.6rem; font-weight:600; letter-spacing:-.03em;
+            font-variant-numeric:tabular-nums; line-height:1; }
+  .w__unit { font-size:.78rem; color:var(--text-dim); margin-top:5px; }
+  .row { display:flex; justify-content:space-between; gap:10px;
+         padding:6px 0; border-bottom:1px solid rgba(255,255,255,.07); font-size:.82rem; }
+  .row:last-child { border-bottom:0; }
+  .row span:last-child { color:var(--text-faint); font-variant-numeric:tabular-nums;
+                         white-space:nowrap; }
+
+  /* Wall type scale — same templates, one variable turned up. Everything here
+     is a size, never a different layout or a different component. */
+  .wall .nav a      { font-size:1.22rem; padding:10px 12px; }
+  .wall .nav .n     { font-size:1.05rem; }
+  .wall .nav-h      { font-size:.86rem; margin:18px 0 8px 8px; }
+  .wall .col__h b   { font-size:1.35rem; }
+  .wall .col__h .n  { font-size:1.15rem; }
+  .wall .card       { padding:15px 17px; border-radius:16px; }
+  .wall .card__t    { font-size:1.28rem; line-height:1.35; }
+  .wall .card__m    { font-size:1.02rem; gap:11px; margin-top:9px; }
+  .wall .dot        { width:20px; height:20px; border-width:3px; margin-top:3px; }
+
+  /* ── Kiosk ──────────────────────────────────────────────────────────── */
+  .kiosk { flex-direction:column; padding:16px; gap:12px; min-height:0; }
+  .k-head { display:flex; align-items:center; justify-content:space-between;
+            padding:10px 14px; border-radius:14px;
+            background:rgba(var(--pane-rgb),.44);
+            backdrop-filter:blur(12px) saturate(140%); -webkit-backdrop-filter:blur(12px) saturate(140%);
+            border:1px solid rgba(255,255,255,.10); }
+  .k-head b { font-size:1rem; }
+  .k-head .k-sub { font-size:.78rem; color:var(--text-dim); }
+  /* min-height:0 lets the grid actually shrink inside the flex column; without
+     it the rows size to content and push past the bottom of the panel. */
+  .k-grid { display:grid; grid-template-columns:repeat(3,1fr);
+            grid-template-rows:repeat(2,minmax(0,1fr));
+            gap:12px; flex:1; min-height:0; }
+  .k-tile {
+    background:rgba(var(--pane-rgb),.52);
+    backdrop-filter:blur(14px) saturate(150%); -webkit-backdrop-filter:blur(14px) saturate(150%);
+    border:1px solid rgba(255,255,255,.12); border-radius:16px;
+    padding:14px; display:flex; flex-direction:column; justify-content:flex-end;
+    gap:3px; min-height:0; overflow:hidden;
+  }
+  .k-tile b { font-size:1.02rem; font-weight:600; }
+  .k-tile span { font-size:.78rem; color:var(--text-dim); }
+  .k-tile--back { justify-content:center; align-items:center; }
+  .k-dot { width:8px; height:8px; border-radius:50%; background:var(--mint);
+           box-shadow:0 0 8px var(--mint); display:inline-block; margin-right:6px; }
+
+  /* ── Phone ──────────────────────────────────────────────────────────── */
+  .ph { flex-direction:column; padding:12px 12px 0; }
+  .ph__top { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .seg { display:flex; gap:5px; margin-bottom:10px; }
+  .seg span { flex:1; text-align:center; font-size:.7rem; padding:6px 0; border-radius:8px;
+              color:var(--text-dim); background:rgba(var(--pane-rgb),.3);
+              border:1px solid rgba(255,255,255,.09); }
+  .seg span.on { color:#3a0f00; font-weight:650; border-color:transparent;
+                 background:linear-gradient(145deg,var(--nh-400),var(--nh-600)); }
+  .ph__list { display:flex; flex-direction:column; gap:8px; flex:1; overflow:hidden; }
+  .fab { position:absolute; right:14px; bottom:64px; width:48px; height:48px;
+         border-radius:50%; display:grid; place-items:center; font-size:1.5rem;
+         color:#3a0f00; font-weight:600;
+         background:linear-gradient(145deg,var(--nh-400),var(--nh-600));
+         box-shadow:0 8px 24px rgba(0,0,0,.45), 0 0 18px var(--nh-glow); }
+  .tabbar { display:flex; justify-content:space-around; padding:9px 0 14px;
+            border-top:1px solid rgba(255,255,255,.09); margin:0 -12px;
+            background:rgba(var(--pane-rgb),.4);
+            backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+  .tabbar span { font-size:.64rem; color:var(--text-faint); }
+  .tabbar span.on { color:var(--accent); }
+
+  /* ── Reporting ──────────────────────────────────────────────────────── */
+  .rep { display:grid; grid-template-columns:repeat(12,1fr); gap:14px; flex:1; min-height:0; }
+  .bars { display:flex; align-items:flex-end; gap:5px; flex:1; min-height:0; }
+  .bars i { flex:1; background:var(--sky); border-radius:3px 3px 0 0; opacity:.85; display:block; }
+  .bars i.hot { background:var(--coral); }
+  .legend { display:flex; gap:12px; font-size:.68rem; color:var(--text-faint); margin-top:8px; }
+  .legend b { font-weight:500; color:var(--text-dim); }
+  .legend i { width:9px; height:9px; border-radius:2px; display:inline-block; margin-right:4px; }
+  .heat { display:grid; grid-template-columns:repeat(14,1fr); gap:3px; }
+  .heat i { aspect-ratio:1; border-radius:2px; background:rgba(79,209,165,.14); display:block; }
+  .heat i.a { background:rgba(79,209,165,.35); }
+  .heat i.b { background:rgba(79,209,165,.6); }
+  .heat i.c { background:rgba(79,209,165,.9); }
+
+  .suggest { border:1px solid rgba(255,154,92,.35); background:rgba(255,154,92,.07);
+             border-radius:12px; padding:11px 13px; }
+  .suggest__t { font-size:.82rem; font-weight:600; margin-bottom:3px; }
+  .suggest__b { font-size:.74rem; color:var(--text-dim); }
+  .suggest__a { display:flex; gap:7px; margin-top:9px; }
+
+  table { border-collapse:collapse; width:100%; margin:1rem 0; font-size:.88rem; }
+  th, td { text-align:left; padding:.5rem .7rem; border-bottom:1px solid var(--ink-700);
+           vertical-align:top; }
+  th { color:var(--text-faint); font-weight:600; font-size:.75rem;
+       text-transform:uppercase; letter-spacing:.07em; }
+  td { color:var(--text-dim); }
+  td b { color:var(--text); font-weight:600; }
+</style>
+
+<div class="page">
+
+  <p class="eyebrow">Nora Home · design</p>
+  <h1>Todo across the five surfaces</h1>
+  <p class="lede">
+    Mockups for review, drawn with the real Almanac tokens — the same glass panes
+    over the same living sky the house already runs. Nothing here is a new visual
+    direction; it is the agreed design placed onto each screen at its true size.
+  </p>
+
+  <!-- ────────────────────────────────────────────────────────────────── -->
+  <h2>1 · The 24" wall — the real app, at wall scale</h2>
+  <p>
+    The wall is <b>the house's interface to the application</b>, not a passive
+    summary of it. It shows the same board a laptop shows — same columns, same
+    cards, same data. Nothing is a visualization unless someone has navigated to
+    the Reporting tab on purpose.
+  </p>
+  <p>
+    The only thing that changes is the <b>type scale</b>. The platform already
+    knows which surface it is rendering to, so the wall gets a larger scale
+    throughout: ~1.6× the laptop's, tuned to read from three metres. Same
+    templates, same CSS, one variable.
+  </p>
+
+  <div class="device">
+    <div class="device__meta"><b>24" wall</b> · 1920 × 1080 · shown at 45% · Todo's board at wall type scale</div>
+    <div class="stage"><div class="bezel">
+      <div class="screen wall" style="width:1920px;height:1080px;transform:scale(.45);
+                                 margin-right:-1056px;margin-bottom:-594px">
+        <div class="scene"><div class="scene__sky"></div><div class="scene__orb"></div>
+          <div class="scene__hill"></div><div class="scene__vignette"></div></div>
+        <div class="ui">
+          <div class="side" style="width:290px;padding:24px 18px">
+            <div class="brand" style="font-size:1.5rem;margin-bottom:24px">
+              <i style="width:34px;height:34px"></i> Nora Home</div>
+            <div class="nav">
+              <div class="nav-h">Todo</div>
+              <a href="#" class="on">Tasks <span class="n">29</span></a>
+              <a href="#">Calendar</a>
+              <a href="#">Labels</a>
+              <a href="#">Reporting</a>
+              <a href="#">System tasks <span class="n">1</span></a>
+            </div>
+          </div>
+
+          <div class="main" style="padding:26px 30px">
+            <div class="topline" style="margin-bottom:22px">
+              <div class="title" style="font-size:2.4rem">Tasks</div>
+              <div style="color:var(--text-dim);font-size:1.15rem">
+                Everyone · Tuesday 5 August</div>
+            </div>
+
+            <div class="board" style="gap:20px">
+              <div class="col">
+                <div class="col__h"><b style="color:var(--coral)">Priority 1</b><span class="n">12</span></div>
+                <div class="col__list" style="gap:14px">
+                  <div class="card"><span class="dot p1"></span><div class="card__b">
+                    <div class="card__t">Gita Reading</div>
+                    <div class="card__m"><span class="due">May 16</span><span class="tag">Self</span>
+                      <span class="mark">↻</span></div></div></div>
+                  <div class="card"><span class="dot p1"></span><div class="card__b">
+                    <div class="card__t">Calibrate social dynamics and make a printable sheet</div>
+                    <div class="card__m"><span class="due">May 24</span><span class="mins">2h</span></div></div></div>
+                  <div class="card"><span class="dot p1"></span><div class="card__b">
+                    <div class="card__t">Research code patterns to discuss with Shailesh</div>
+                    <div class="card__m"><span class="due">May 26</span><span class="tag">Work</span></div></div></div>
+                  <div class="card"><span class="dot p1"></span><div class="card__b">
+                    <div class="card__t">Check the family OS model</div>
+                    <div class="card__m"><span class="due">Jul 3 · 7 PM</span><span class="mark">🔔</span></div></div></div>
+                </div>
+              </div>
+
+              <div class="col">
+                <div class="col__h"><b style="color:var(--amber)">Priority 2</b><span class="n">7</span></div>
+                <div class="col__list" style="gap:14px">
+                  <div class="card"><span class="dot p2"></span><div class="card__b">
+                    <div class="card__t">Bhakti Reading</div>
+                    <div class="card__m"><span class="due--ok">May 22 · 9 AM</span><span class="mark">↻</span>
+                      <span class="tag">Routine</span></div></div></div>
+                  <div class="card"><span class="dot p2"></span><div class="card__b">
+                    <div class="card__t">Morning cardio</div>
+                    <div class="card__m"><span class="due--ok">Jun 27 · 9 AM</span><span class="mark">↻</span>
+                      <span class="mins">45m</span></div></div></div>
+                  <div class="card"><span class="dot p2"></span><div class="card__b">
+                    <div class="card__t">Research reliable Laughter mechanism</div>
+                    <div class="card__m"><span class="due--ok">Jul 19</span><span class="tag">Fun</span></div></div></div>
+                  <div class="card"><span class="dot p2"></span><div class="card__b">
+                    <div class="card__t">Learn about Linux Drivers</div>
+                    <div class="card__m"><span class="due--ok">Jul 24</span><span class="mins">3h</span></div></div></div>
+                </div>
+              </div>
+
+              <div class="col">
+                <div class="col__h"><b style="color:var(--sky)">Priority 3</b><span class="n">10</span></div>
+                <div class="col__list" style="gap:14px">
+                  <div class="card"><span class="dot p3"></span><div class="card__b">
+                    <div class="card__t">Local park visit — 30 min</div>
+                    <div class="card__m"><span class="due">May 16</span><span class="tag">Fun</span></div></div></div>
+                  <div class="card"><span class="dot p3"></span><div class="card__b">
+                    <div class="card__t">Review notes stuck on wall</div>
+                    <div class="card__m"><span class="due">May 22</span><span class="mark">↻</span>
+                      <span class="tag">Mental-Health</span></div></div></div>
+                  <div class="card"><span class="dot p3"></span><div class="card__b">
+                    <div class="card__t">5 year plan Review</div>
+                    <div class="card__m"><span class="due">May 24</span><span class="mark">🔗 Notion</span></div></div></div>
+                  <div class="card"><span class="dot p3"></span><div class="card__b">
+                    <div class="card__t">Make list of retirement activities</div>
+                    <div class="card__m"><span class="due">May 24</span></div></div></div>
+                </div>
+              </div>
+
+              <div class="col">
+                <div class="col__h"><b style="color:var(--ink-300)">Archived</b><span class="n">9</span></div>
+                <div class="col__list" style="gap:14px">
+                  <div class="card" style="opacity:.62"><span class="dot arc"></span><div class="card__b">
+                    <div class="card__t">Join AI &amp; Robotic Communities</div>
+                    <div class="card__m"><span class="mark">parked 12 Jun</span></div></div></div>
+                  <div class="card" style="opacity:.62"><span class="dot arc"></span><div class="card__b">
+                    <div class="card__t">Polish the LinkedIn Profile</div>
+                    <div class="card__m"><span class="mark">parked 3 Jul</span></div></div></div>
+                  <div class="card" style="opacity:.62"><span class="dot arc"></span><div class="card__b">
+                    <div class="card__t">Research paper planning</div>
+                    <div class="card__m"><span class="mark">parked 3 Jul</span></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <div class="note">
+    <b>No visualizations here.</b> A chart appears on the wall only because
+    somebody navigated to Reporting. The wall is not a dashboard that summarises
+    the app at you — it is the app.
+  </div>
+
+  <!-- ────────────────────────────────────────────────────────────────── -->
+  <h2>2 · The 10.1" kiosk — the remote for the whole house</h2>
+  <p>
+    The kiosk drives the wall. Its buttons send a <code>navigate</code> action
+    over the display bus; the <b>wall</b> follows and the kiosk stays on its own
+    grid. It has two levels, and both matter: <b>Everywhere</b> reaches any
+    destination in the house — platform sections and every installed app — and
+    the second level is whichever app the wall is currently on.
+  </p>
+
+  <h3>Level 1 — Everywhere</h3>
+  <div class="device">
+    <div class="device__meta"><b>10.1" kiosk</b> · 1024 × 600 · shown at 68% · the whole application</div>
+    <div class="stage"><div class="bezel">
+      <div class="screen" style="width:1024px;height:600px;transform:scale(.68);
+                                 margin-right:-328px;margin-bottom:-192px">
+        <div class="scene"><div class="scene__sky"></div><div class="scene__orb"></div>
+          <div class="scene__hill"></div><div class="scene__vignette"></div></div>
+        <div class="ui kiosk">
+          <div class="k-head">
+            <div><b>Everywhere</b>
+              <div class="k-sub">the wall is on Todo · Tasks</div></div>
+            <div class="k-sub"><span class="k-dot"></span>connected</div>
+          </div>
+          <div class="k-grid" style="grid-template-columns:repeat(4,1fr)">
+            <div class="k-tile"><b>Todo</b><span>29 open</span></div>
+            <div class="k-tile"><b>Home</b><span>your widgets</span></div>
+            <div class="k-tile"><b>Alerts</b><span>2 unread</span></div>
+            <div class="k-tile"><b>Measurements</b><span>telemetry</span></div>
+            <div class="k-tile"><b>House log</b><span>what happened</span></div>
+            <div class="k-tile"><b>Apps</b><span>directory</span></div>
+            <div class="k-tile"><b>Status</b><span>all services up</span></div>
+            <div class="k-tile"><b>Settings</b><span>the base app</span></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <h3>Level 2 — inside Todo</h3>
+  <p>
+    Reached by tapping Todo above, or automatically when the wall lands on it.
+    These entries are declared by the app itself as
+    <code>nora_kiosk_controls</code> — every app supplies its own, and the kiosk
+    renders whatever it is given.
+  </p>
+  <div class="device">
+    <div class="device__meta"><b>10.1" kiosk</b> · 1024 × 600 · shown at 68% · Todo's own controls</div>
+    <div class="stage"><div class="bezel">
+      <div class="screen" style="width:1024px;height:600px;transform:scale(.68);
+                                 margin-right:-328px;margin-bottom:-192px">
+        <div class="scene"><div class="scene__sky"></div><div class="scene__orb"></div>
+          <div class="scene__hill"></div><div class="scene__vignette"></div></div>
+        <div class="ui kiosk">
+          <div class="k-head">
+            <div><b>Todo</b>
+              <div class="k-sub">showing on the wall</div></div>
+            <div class="k-sub"><span class="k-dot"></span>connected</div>
+          </div>
+          <div class="k-grid">
+            <div class="k-tile"><b>Tasks</b><span>all, by priority</span></div>
+            <div class="k-tile"><b>Due today</b><span>4 things</span></div>
+            <div class="k-tile"><b>Calendar</b><span>August</span></div>
+            <div class="k-tile"><b>Reporting</b><span>patterns and load</span></div>
+            <div class="k-tile"><b>System tasks</b><span>1 escalating</span></div>
+            <div class="k-tile k-tile--back"><b>← Everywhere</b></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <div class="note">
+    <b>The honest limit.</b> The kiosk cannot tick a task off. Every kiosk action
+    today means "tell the wall to navigate" — there is no mechanism for a button
+    to post back into an app, and no keyboard on that panel. Tap-to-complete
+    needs a platform change (a new <code>app-action</code> kiosk action), which is
+    deliberately <b>out of scope</b> and would benefit every future app equally.
+  </div>
+
+  <!-- ────────────────────────────────────────────────────────────────── -->
+  <h2>3 · Laptop — the real board</h2>
+  <p>
+    Three priority columns and Archived, each with a live count. No dragging:
+    priority is chosen at creation and changed by editing, so a card renders in
+    its column and stays there. Archiving is a button on the card.
+  </p>
+
+  <div class="device">
+    <div class="device__meta"><b>Laptop</b> · 1440 × 900 · shown at 58%</div>
+    <div class="stage"><div class="bezel">
+      <div class="screen" style="width:1440px;height:900px;transform:scale(.58);
+                                 margin-right:-605px;margin-bottom:-378px">
+        <div class="scene"><div class="scene__sky"></div><div class="scene__orb"></div>
+          <div class="scene__hill"></div><div class="scene__vignette"></div></div>
+        <div class="ui">
+          <div class="side">
+            <div class="brand"><i></i> Nora Home</div>
+            <div class="nav">
+              <div class="nav-h">Todo</div>
+              <a href="#">Search</a>
+              <a href="#" class="on">Tasks <span class="n">29</span></a>
+              <a href="#">Calendar</a>
+              <a href="#">Labels</a>
+              <a href="#">Reporting</a>
+              <a href="#">System tasks <span class="n">1</span></a>
+              <a href="#">Settings</a>
+              <div class="nav-h">Labels</div>
+              <a href="#">Self <span class="n">6</span></a>
+              <a href="#">Ambition <span class="n">8</span></a>
+              <a href="#">Routine <span class="n">5</span></a>
+              <a href="#">Mental-Health <span class="n">3</span></a>
+              <a href="#">Fun <span class="n">4</span></a>
+            </div>
+          </div>
+
+          <div class="main">
+            <div class="topline">
+              <div class="title">Tasks</div>
+              <div class="tools">
+                <span class="btn">Mine ▾</span>
+                <span class="btn">Label ▾</span>
+                <span class="btn">Completed</span>
+                <span class="btn btn--go">+ New task</span>
+                <span class="orb-btn"></span>
+              </div>
+            </div>
+
+            <div class="board">
+              <div class="col">
+                <div class="col__h"><b style="color:var(--coral)">Priority 1</b><span class="n">12</span></div>
+                <div class="col__list">
+                  <div class="card"><span class="dot p1"></span><div class="card__b">
+                    <div class="card__t">Gita Reading</div>
+                    <div class="card__m"><span class="due">May 16</span><span class="tag">Self</span>
+                      <span class="mark">↻</span><span class="mins">20m</span></div></div></div>
+                  <div class="card"><span class="dot p1"></span><div class="card__b">
+                    <div class="card__t">Calibrate social dynamics and make a printable sheet</div>
+                    <div class="card__m"><span class="due">May 24</span><span class="mins">2h</span></div></div></div>
+                  <div class="card"><span class="dot p1"></span><div class="card__b">
+                    <div class="card__t">Research code patterns to discuss with Shailesh</div>
+                    <div class="card__m"><span class="due">May 26</span><span class="tag">Work</span>
+                      <span class="mark">💬 1</span></div></div></div>
+                  <div class="card"><span class="dot p1"></span><div class="card__b">
+                    <div class="card__t">Check the family OS model</div>
+                    <div class="card__m"><span class="due">Jul 3 · 7 PM</span><span class="mark">🔔</span>
+                      <span class="mark">💬 6</span></div></div></div>
+                </div>
+              </div>
+
+              <div class="col">
+                <div class="col__h"><b style="color:var(--amber)">Priority 2</b><span class="n">7</span></div>
+                <div class="col__list">
+                  <div class="card"><span class="dot p2"></span><div class="card__b">
+                    <div class="card__t">Bhakti Reading</div>
+                    <div class="card__m"><span class="due--ok">May 22 · 9 AM</span><span class="mark">↻</span>
+                      <span class="mark">🔔</span><span class="tag">Routine</span></div></div></div>
+                  <div class="card"><span class="dot p2"></span><div class="card__b">
+                    <div class="card__t">Morning cardio</div>
+                    <div class="card__m"><span class="due--ok">Jun 27 · 9 AM</span><span class="mark">↻</span>
+                      <span class="tag">Routine</span><span class="mins">45m</span></div></div></div>
+                  <div class="card"><span class="dot p2"></span><div class="card__b">
+                    <div class="card__t">Research reliable Laughter mechanism</div>
+                    <div class="card__m"><span class="due--ok">Jul 19</span><span class="tag">Fun</span>
+                      <span class="mark">💬 4</span></div></div></div>
+                  <div class="card"><span class="dot p2"></span><div class="card__b">
+                    <div class="card__t">Learn about Linux Drivers</div>
+                    <div class="card__m"><span class="due--ok">Jul 24</span><span class="mins">3h</span></div></div></div>
+                </div>
+              </div>
+
+              <div class="col">
+                <div class="col__h"><b style="color:var(--sky)">Priority 3</b><span class="n">10</span></div>
+                <div class="col__list">
+                  <div class="card"><span class="dot p3"></span><div class="card__b">
+                    <div class="card__t">Local park visit — 30 min</div>
+                    <div class="card__m"><span class="due">May 16</span><span class="tag">Fun</span>
+                      <span class="mins">30m</span></div></div></div>
+                  <div class="card"><span class="dot p3"></span><div class="card__b">
+                    <div class="card__t">Review notes stuck on wall</div>
+                    <div class="card__m"><span class="due">May 22</span><span class="mark">↻</span>
+                      <span class="tag">Mental-Health</span></div></div></div>
+                  <div class="card"><span class="dot p3"></span><div class="card__b">
+                    <div class="card__t">5 year plan Review</div>
+                    <div class="card__m"><span class="due">May 24</span><span class="mark">🔗 Notion</span>
+                      <span class="tag">Ambition</span></div></div></div>
+                  <div class="card"><span class="dot p3"></span><div class="card__b">
+                    <div class="card__t">Make list of retirement activities</div>
+                    <div class="card__m"><span class="due">May 24</span></div></div></div>
+                </div>
+              </div>
+
+              <div class="col">
+                <div class="col__h"><b style="color:var(--ink-300)">Archived</b><span class="n">9</span></div>
+                <div class="col__list">
+                  <div class="card" style="opacity:.62"><span class="dot arc"></span><div class="card__b">
+                    <div class="card__t">Join AI &amp; Robotic Communities</div>
+                    <div class="card__m"><span class="tag">Ambition</span><span class="mark">parked 12 Jun</span></div></div></div>
+                  <div class="card" style="opacity:.62"><span class="dot arc"></span><div class="card__b">
+                    <div class="card__t">Polish the LinkedIn Profile</div>
+                    <div class="card__m"><span class="tag">Ambition</span><span class="mark">parked 3 Jul</span></div></div></div>
+                  <div class="card" style="opacity:.62"><span class="dot arc"></span><div class="card__b">
+                    <div class="card__t">Research paper planning</div>
+                    <div class="card__m"><span class="mark">parked 3 Jul</span></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <p>
+    Card markers, all of which appear above: <span style="color:var(--text-dim)">↻</span>
+    recurring · <span style="color:var(--text-dim)">🔔</span> has a reminder ·
+    <span style="color:var(--text-dim)">💬</span> comment count ·
+    <span style="color:var(--text-dim)">🔗</span> a link, internal or external ·
+    <span style="color:var(--text-dim)">◇</span> a label ·
+    and the planned duration in minutes, which is what feeds the load charts.
+  </p>
+
+  <!-- ────────────────────────────────────────────────────────────────── -->
+  <h2>4 · Phone — one column at a time</h2>
+  <p>
+    Four columns do not survive a 390px screen, so the priorities become a
+    segmented control and you see one at a time. Everything else is the same
+    data, the same cards, the same actions.
+  </p>
+
+  <div class="device">
+    <div class="device__meta"><b>Phone</b> · 390 × 844 · shown at 72%</div>
+    <div class="stage"><div class="bezel">
+      <div class="screen" style="width:390px;height:844px;transform:scale(.72);
+                                 margin-right:-110px;margin-bottom:-237px">
+        <div class="scene"><div class="scene__sky"></div><div class="scene__orb"></div>
+          <div class="scene__hill"></div><div class="scene__vignette"></div></div>
+        <div class="ui ph">
+          <div class="ph__top">
+            <div class="title" style="font-size:1.2rem">Tasks</div>
+            <div class="orb-btn" style="width:24px;height:24px"></div>
+          </div>
+          <div class="seg">
+            <span class="on">P1 · 12</span><span>P2 · 7</span><span>P3 · 10</span><span>Arch</span>
+          </div>
+          <div class="ph__list">
+            <div class="card"><span class="dot p1"></span><div class="card__b">
+              <div class="card__t">Gita Reading</div>
+              <div class="card__m"><span class="due">May 16</span><span class="tag">Self</span>
+                <span class="mark">↻</span></div></div></div>
+            <div class="card"><span class="dot p1"></span><div class="card__b">
+              <div class="card__t">Calibrate social dynamics and make a printable sheet</div>
+              <div class="card__m"><span class="due">May 24</span><span class="mins">2h</span></div></div></div>
+            <div class="card"><span class="dot p1"></span><div class="card__b">
+              <div class="card__t">Research code patterns to discuss with Shailesh</div>
+              <div class="card__m"><span class="due">May 26</span><span class="tag">Work</span>
+                <span class="mark">💬 1</span></div></div></div>
+            <div class="card"><span class="dot p1"></span><div class="card__b">
+              <div class="card__t">Explore concept of minimum viable work in rest periods</div>
+              <div class="card__m"><span class="due">May 31</span><span class="tag">Work</span></div></div></div>
+            <div class="card"><span class="dot p1"></span><div class="card__b">
+              <div class="card__t">Check the family OS model</div>
+              <div class="card__m"><span class="due">Jul 3 · 7 PM</span><span class="mark">🔔</span>
+                <span class="mark">💬 6</span></div></div></div>
+            <div class="card"><span class="dot p1"></span><div class="card__b">
+              <div class="card__t">Calibrate minimum aggression projection</div>
+              <div class="card__m"><span class="due">May 29</span><span class="mark">💬 2</span></div></div></div>
+          </div>
+          <div class="fab">+</div>
+          <div class="tabbar">
+            <span class="on">Tasks</span><span>Calendar</span><span>Labels</span>
+            <span>Reporting</span><span>Search</span>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- ────────────────────────────────────────────────────────────────── -->
+  <h2>5 · Reporting — where the visualizations live</h2>
+  <p>
+    Todo's own page, inside the app. Every chart on it is computed from instance
+    history on read, never from a stored counter — which is what lets a
+    retroactive correction three weeks back flow through everything immediately.
+  </p>
+
+  <div class="device">
+    <div class="device__meta"><b>Reporting</b> · laptop · shown at 58%</div>
+    <div class="stage"><div class="bezel">
+      <div class="screen" style="width:1440px;height:900px;transform:scale(.58);
+                                 margin-right:-605px;margin-bottom:-378px">
+        <div class="scene"><div class="scene__sky"></div><div class="scene__orb"></div>
+          <div class="scene__hill"></div><div class="scene__vignette"></div></div>
+        <div class="ui">
+          <div class="side">
+            <div class="brand"><i></i> Nora Home</div>
+            <div class="nav">
+              <div class="nav-h">Todo</div>
+              <a href="#">Search</a><a href="#">Tasks <span class="n">29</span></a>
+              <a href="#">Calendar</a><a href="#">Labels</a>
+              <a href="#" class="on">Reporting</a>
+              <a href="#">System tasks <span class="n">1</span></a><a href="#">Settings</a>
+            </div>
+          </div>
+          <div class="main">
+            <div class="topline">
+              <div class="title">Reporting</div>
+              <div class="tools"><span class="btn">Last 90 days ▾</span>
+                <span class="btn">Mine ▾</span><span class="orb-btn"></span></div>
+            </div>
+
+            <div class="rep">
+              <!-- suggestion -->
+              <div class="pane w" style="grid-column:span 12;grid-row:span 1">
+                <div class="suggest">
+                  <div class="suggest__t">Thursday is 4h 20m over what you usually manage</div>
+                  <div class="suggest__b">
+                    The exam takes 3h. Three flexible tasks could move to Saturday,
+                    which has 3h free — and one has been deferred nine times.
+                  </div>
+                  <div class="suggest__a">
+                    <span class="btn btn--go">Move all three</span>
+                    <span class="btn">Show me</span>
+                    <span class="btn">Dismiss</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- cumulative flow -->
+              <div class="pane w" style="grid-column:span 5;grid-row:span 2">
+                <div class="w__h"><div class="w__t">Arriving vs finishing</div>
+                  <div class="w__s">12 weeks</div></div>
+                <svg viewBox="0 0 300 130" style="flex:1;min-height:0">
+                  <polyline fill="rgba(92,184,255,.16)" stroke="none"
+                    points="0,130 0,96 27,90 55,84 82,72 109,66 136,58 164,50 191,44 218,34 245,28 273,20 300,14 300,130"/>
+                  <polyline fill="rgba(79,209,165,.16)" stroke="none"
+                    points="0,130 0,110 27,106 55,102 82,96 109,94 136,88 164,86 191,80 218,76 245,72 273,66 300,62 300,130"/>
+                  <polyline fill="none" stroke="#5cb8ff" stroke-width="2"
+                    points="0,96 27,90 55,84 82,72 109,66 136,58 164,50 191,44 218,34 245,28 273,20 300,14"/>
+                  <polyline fill="none" stroke="#4fd1a5" stroke-width="2"
+                    points="0,110 27,106 55,102 82,96 109,94 136,88 164,86 191,80 218,76 245,72 273,66 300,62"/>
+                </svg>
+                <div class="legend"><b><i style="background:#5cb8ff"></i>arrived</b>
+                  <b><i style="background:#4fd1a5"></i>finished</b>
+                  <b style="margin-left:auto">the gap is the pile</b></div>
+              </div>
+
+              <!-- throughput -->
+              <div class="pane w" style="grid-column:span 4">
+                <div class="w__h"><div class="w__t">Finished per day</div>
+                  <div class="w__s">distribution</div></div>
+                <div class="bars">
+                  <i style="height:18%"></i><i style="height:34%"></i><i style="height:62%"></i>
+                  <i style="height:88%"></i><i style="height:72%"></i><i style="height:44%"></i>
+                  <i style="height:26%"></i><i style="height:12%"></i>
+                </div>
+                <div class="legend"><b>0</b><b style="margin-left:auto">8 tasks</b></div>
+              </div>
+
+              <!-- priority drift -->
+              <div class="pane w" style="grid-column:span 3">
+                <div class="w__h"><div class="w__t">Priority 1</div></div>
+                <div class="w__big" style="color:var(--amber)">41%</div>
+                <div class="w__unit">of everything open. Above 40%, priority stops meaning much.</div>
+              </div>
+
+              <!-- deferral -->
+              <div class="pane w" style="grid-column:span 4">
+                <div class="w__h"><div class="w__t">What keeps moving</div>
+                  <div class="w__s">by label</div></div>
+                <div class="row"><span>Ambition</span><span>moved 11×</span></div>
+                <div class="row"><span>Mental-Health</span><span>moved 7×</span></div>
+                <div class="row"><span>Work</span><span>moved 3×</span></div>
+                <div class="row"><span>Fun</span><span>moved 0×</span></div>
+              </div>
+
+              <!-- estimate accuracy -->
+              <div class="pane w" style="grid-column:span 3">
+                <div class="w__h"><div class="w__t">Estimates</div></div>
+                <div class="w__big">1.7×</div>
+                <div class="w__unit">things take longer than planned, on average</div>
+              </div>
+
+              <!-- agency -->
+              <div class="pane w" style="grid-column:span 5">
+                <div class="w__h"><div class="w__t">Done, this fortnight</div>
+                  <div class="w__s">31 things</div></div>
+                <div class="row"><span>Morning cardio</span><span>9 times</span></div>
+                <div class="row"><span>Bhakti Reading</span><span>11 times</span></div>
+                <div class="row"><span>Learn about Linux Drivers</span><span>2 Aug</span></div>
+                <div class="row"><span>Came back after a 9-day gap</span><span>28 Jul</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- ────────────────────────────────────────────────────────────────── -->
+  <h3>Visual discipline — learned from the base app's home screen</h3>
+  <p>
+    The platform's own dashboard is the cautionary example. These are its actual
+    failures, and the rules Todo's Reporting page holds itself to so they are not
+    repeated.
+  </p>
+
+  <table>
+    <tr><th>What went wrong there</th><th>The rule here</th></tr>
+    <tr>
+      <td><b>A chart drawn with no data.</b> "Reliability" renders a full axis —
+        0, 0.2, 0.4, 0.6, 0.8, 1 — with nothing plotted on it.</td>
+      <td>Empty is a <b>sentence</b>, never an axis. If there is no history yet,
+        say so in one line and take up one line of space.</td>
+    </tr>
+    <tr>
+      <td><b>A huge box holding one line.</b> "House vitals" is roughly a
+        quarter of the screen for a single temperature reading.</td>
+      <td>Height follows content. A widget that renders two rows occupies two
+        rows' worth of card.</td>
+    </tr>
+    <tr>
+      <td><b>Ragged alignment.</b> Cards start at different vertical offsets and
+        leave gaps of arbitrary size.</td>
+      <td>One grid, aligned rows, a single gap value. Nothing floats.</td>
+    </tr>
+    <tr>
+      <td><b>Ratio axes.</b> 0 to 1 in increments of 0.2, which nobody reads as
+        a percentage.</td>
+      <td>Percentages are percentages. Durations are durations. Axis labels use
+        the unit a person would say aloud.</td>
+    </tr>
+    <tr>
+      <td><b>Chart furniture.</b> Threshold lines, arrow markers and dotted
+        rules that add marks without adding information.</td>
+      <td>Every mark earns its place. No gridline that a reader would not
+        otherwise miss, no marker that says nothing.</td>
+    </tr>
+    <tr>
+      <td><b>Large cards for absence.</b> "Nothing late. Good." occupying a
+        full-size tile twice over.</td>
+      <td>Good news is small. The quiet state is the compact state.</td>
+    </tr>
+  </table>
+
+  <p>
+    Two more that hold throughout: numbers that sit in columns use
+    <code>tabular-nums</code> so they do not jitter on refresh, and the accent is
+    spent on one thing per screen — everything else stays in the neutral ink
+    range.
+  </p>
+
+  <h2>6 · How a widget gets made</h2>
+  <p>
+    Widgets are for the <b>home screen</b> — the personal grid, and whatever the
+    wall shows when it is pointed at <code>/home/</code>. They are not how the
+    Todo app presents itself; the app presents itself as the app.
+  </p>
+  <p>
+    Todo builds them exactly the way any app does — there is no privileged path.
+    A widget is a Python class that returns <b>data, not HTML</b>; the platform
+    applies the house theme. That is what keeps every chart in the house looking
+    like one system regardless of who wrote it.
+  </p>
+
+  <table>
+    <tr><th>Base class</th><th>You implement</th><th>Used above for</th></tr>
+    <tr><td><b>ListWidget</b></td><td><code>rows()</code> → title, meta, status, url</td>
+        <td>Next up · This week · Done this fortnight</td></tr>
+    <tr><td><b>StatWidget</b></td><td><code>stat()</code> → value, unit, state</td>
+        <td>Today's load · Moved on · Priority 1 · Estimates</td></tr>
+    <tr><td><b>ChartWidget</b></td><td><code>option()</code> → an ECharts option dict</td>
+        <td>Arriving vs finishing · Finished per day · Last 14 days</td></tr>
+    <tr><td><b>TemplateWidget</b></td><td>a template, when the others do not fit</td>
+        <td>the suggestion card</td></tr>
+  </table>
+
+  <p>
+    Each declares <code>title</code>, <code>description</code> (what the picker
+    shows), <code>default_size</code> in a 12-column grid, <code>refresh_seconds</code>,
+    and <code>wall_safe</code> — whether it is legible at three metres and calm
+    enough for an always-on screen. The picker respects that flag when someone is
+    arranging the wall.
+  </p>
+  <p>
+    Every widget above reads from <code>nora_home.todo.analytics</code> — one
+    documented function per metric. The Reporting page calls the same functions,
+    the MCP tools call them, and a future AI layer calls them too. Nothing
+    re-derives a statistic on its own.
+  </p>
+
+  <div class="note">
+    <b>Colours are not set by the widget.</b> <code>option()</code> returns
+    structure — series, axes, data — and the house theme colours it. A widget that
+    hardcodes a hex is the one thing that breaks the "all one system" property,
+    and it is why charts look consistent across apps written by different people.
+  </div>
+
+</div>

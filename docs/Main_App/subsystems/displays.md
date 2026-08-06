@@ -50,9 +50,14 @@ is deliberately kept to exactly what the wall implements.
 ## What it offers other apps
 
 Declare `nora_kiosk_controls` in your `apps.py` and the kiosk grows a button screen
-for your app. Declare `nora_wall_panels` for wall panels. See
-[`../cross-functionality.md`](../cross-functionality.md#displays) and
-[`../DEVELOPMENT.md`](../DEVELOPMENT.md).
+for your app. See [`../cross-functionality.md`](../cross-functionality.md#displays)
+and [`../DEVELOPMENT.md`](../DEVELOPMENT.md).
+
+`nora_wall_panels` and its rotation mechanism were removed 2026-08-05 (Story 28)
+— dead code since the wall was repointed at the live app; nothing had rendered a
+wall panel since. The 24" now shows the real app, and what an app puts there is
+whatever it renders at its own URL — see
+[`subsystems/todo.md`](todo.md) §6 for how Todo does this.
 
 ## Background work
 

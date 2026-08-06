@@ -6,6 +6,9 @@ class DisplaysConfig(NoraAppConfig):
     label = "displays"
     verbose_name = "Displays"
 
+    # Level 1 — the base platform. See nora_home.core.registry.NoraAppConfig.
+    nora_level = 1
+
     nora_slug = "displays"
     nora_title = "Displays"
     nora_description = ("The always-on 24\" wall screen and the 10.1\" kiosk that "

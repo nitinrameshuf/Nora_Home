@@ -28,6 +28,8 @@ from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 
+from nora_home.core.registry import registered_apps
+
 
 class Command(BaseCommand):
     help = "Uninstall a house app: unregister it, and optionally purge its data or files."
@@ -43,6 +45,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         name = options["name"]
+        self._refuse_if_level_1_or_2(name)
         module = name if name.startswith("houseapps.") else f"houseapps.{name}"
         label = module.rsplit(".", 1)[-1]
         base = Path(settings.BASE_DIR)
@@ -81,6 +84,31 @@ class Command(BaseCommand):
             self.stdout.write("Restart the services to apply: docker compose up -d")
 
     # ── steps ─────────────────────────────────────────────────────────────────
+    def _refuse_if_level_1_or_2(self, name: str):
+        """This command auto-prefixes anything it is given with `houseapps.`,
+        which already means it can never structurally address a Level 1 or 2
+        app — those live outside houseapps/ entirely. Without this check,
+        trying anyway just fails later with a generic "not in
+        NORA_HOME_HOUSE_APPS" error that gives no hint why. Levels are
+        documented in docs/Main_App/subsystems/todo.md §1.
+        """
+        for meta in registered_apps(include_disabled=True):
+            if name not in (meta.slug, meta.module, meta.module.rsplit(".", 1)[-1]):
+                continue
+            if meta.level >= 3:
+                return
+            what_breaks = (
+                "scheduling, reminders, and escalation throughout the house"
+                if meta.slug == "todo" else
+                "features across the base platform that call its published API"
+            )
+            raise CommandError(
+                f"{meta.module} is a Level {meta.level} app — the base platform "
+                f"depends on it (see docs/Main_App/subsystems/todo.md §1). "
+                f"Removing it would break {what_breaks}. This command only ever "
+                "manages apps under houseapps/, and cannot uninstall it."
+            )
+
     def _purge_data(self, label: str):
         """Unapply every migration for this app, dropping its tables.
 

@@ -6,6 +6,9 @@ class UIConfig(NoraAppConfig):
     label = "ui"
     verbose_name = "Nora UI"
 
+    # Level 1 — the base platform. See nora_home.core.registry.NoraAppConfig.
+    nora_level = 1
+
     nora_slug = "ui"
     nora_title = "Interface"
     nora_description = "The shell, the theme, the surfaces, and the home bot."

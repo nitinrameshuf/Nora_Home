@@ -6,6 +6,9 @@ class IntegrationsConfig(NoraAppConfig):
     label = "integrations"
     verbose_name = "Integrations"
 
+    # Level 1 — the base platform. See nora_home.core.registry.NoraAppConfig.
+    nora_level = 1
+
     nora_slug = "integrations"
     nora_title = "Integrations"
     nora_description = ("Home Assistant, markets, calendars — anything outside the "

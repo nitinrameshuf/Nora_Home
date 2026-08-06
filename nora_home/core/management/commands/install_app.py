@@ -141,7 +141,7 @@ class Command(BaseCommand):
                 f"docs/House_Apps/{name}/README.md — what it is for, where it "
                 "appears on each screen, what it owns, and what it exposes to "
                 "other apps. See docs/House_Apps/README.md for the required "
-                "sections, and copy docs/House_Apps/example_habit/README.md."
+                "sections."
             ))
             if app_docs.exists():
                 self.stdout.write(f"    (docs/House_Apps/{name}/ exists but has no README.md)")
@@ -156,8 +156,7 @@ class Command(BaseCommand):
                 f"  {module} has no requirements.md. Every house app needs "
                 f"docs/House_Apps/{name}/requirements.md — what it does, in plain "
                 "language, approved by the user BEFORE the code was written. See "
-                "docs/Main_App/DEVELOPMENT.md section 'The workflow', and copy "
-                "docs/House_Apps/example_habit/requirements.md."
+                "docs/Main_App/DEVELOPMENT.md section 'The workflow'."
             ))
 
         # Same rule for testing.md: how the next person verifies this app, rather
@@ -169,8 +168,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(
                 f"  {module} has no testing.md. Every house app needs "
                 f"docs/House_Apps/{name}/testing.md — what its own tests cover, "
-                "and what still has to be checked on the real screens. Copy "
-                "docs/House_Apps/example_habit/testing.md, which is the template. "
+                "and what still has to be checked on the real screens. "
                 "tests/test_house_apps.py fails while it is missing."
             ))
 

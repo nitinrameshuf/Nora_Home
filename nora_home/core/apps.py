@@ -6,6 +6,9 @@ class CoreConfig(NoraAppConfig):
     label = "core"
     verbose_name = "Nora Core"
 
+    # Level 1 — the base platform. See nora_home.core.registry.NoraAppConfig.
+    nora_level = 1
+
     nora_slug = "core"
     nora_title = "Home"
     nora_description = "Dashboard, app registry, and system health."

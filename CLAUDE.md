@@ -168,8 +168,6 @@ reference implementation.
   apps, screens, uninstall), `docker-compose.yml`, `scripts/lib/provision-pi.sh`. An
   `nginx` service terminates TLS on `:443` (self-signed — see §4) and is the only
   published entry point; Daphne's `:8000` is internal-only.
-- **Reference app** — `houseapps/example_habit/`.
-
 - **Charts** — ECharts + Gridstack vendored in `static/nora_home/vendor/`, house chart
   theme in `static/nora_home/js/nh-charts.js`, grid in `static/nora_home/js/dashboard.js`.
 - **Migrations** generated for every app and applied.
@@ -435,6 +433,20 @@ git clone <repo> && cd nora-home
 
 Read this section before changing architecture. Each of these was a real fork.
 
+**Levels replace "the platform never depends on a house app" (2026-08-05).**
+That rule was withdrawn once Todo needed to become something the base platform
+itself relies on for scheduling, reminders and escalation — a house app can be
+uninstalled at any moment, so nothing the base needs could ever safely live
+there. Levels give a third option: **1** is the base (`nora_home/*` apps that
+never depend on anything below), **2** is an app the base deliberately leans on
+and the house degrades without (Todo), **3** is a family app under `houseapps/`
+(the default — uninstall freely, nothing breaks). The one rule Levels actually
+enforce: nothing at Level 1 or 2 may import a Level 3 app —
+`tests/test_house_apps.py::test_level_1_or_2_never_imports_a_level_3_app` checks
+this over every registered app, not only house apps. `nora_level` lives on
+`NoraAppConfig` (`nora_home/core/registry.py`), defaulting to 3. Full writeup:
+[`docs/Main_App/subsystems/todo.md`](docs/Main_App/subsystems/todo.md) §1.
+
 **Django over FastAPI/Node.** The admin alone is worth it: a family member can edit
 an escalation policy or retime a job without a deploy. Batteries-included matters
 more than raw speed on a home LAN.
@@ -620,7 +632,7 @@ nora/              the platform
   telemetry/       series, readings, rollups, thresholds
   integrations/    integration framework, scheduling, failure handling
   ui/              surface detection, Nora bot, theme
-houseapps/         family apps live here (example_habit is the reference)
+houseapps/         family apps live here (empty until Story 24)
 templates/         platform templates
 static/nora_home/       css, js, vendor
 docker/            entrypoint
