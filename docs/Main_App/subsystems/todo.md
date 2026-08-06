@@ -712,6 +712,54 @@ Two more throughout: numbers in columns use `tabular-nums` so they do not jitter
 on refresh, and the accent is spent on one thing per screen — everything else
 stays in the neutral ink range.
 
+### As built (Story 35, 2026-08-05)
+
+`nora_home/todo/analytics.py` holds one documented function per metric, all
+computed from history on read, and it is the only place in this app a statistic
+is derived — `overview()` is a convenience over those same functions, not a
+seventeenth one. `tone.py` decides *presentation* and never touches a number,
+which is what lets someone switch preset and see the other streak shape with no
+recomputation and no stored state.
+
+**The flagged risk was real, and it was in the arithmetic.** `priority_distribution()`
+counted **one task per priority**. `Task.Meta.ordering` is `["priority", "-created_at"]`,
+and Django appends the ordering fields to the `GROUP BY` of a
+`values().annotate()` — so the query grouped by `(priority, created_at)`, one
+row per task, and the dict comprehension reading it back kept only the last row
+per priority. Every count came out as `1`, percentages with them. The table
+rendered perfectly; it was simply full of wrong numbers, which is exactly the
+failure mode this story was flagged for. `.order_by()` before `.values()` clears
+the inherited ordering. It was caught only because the test used three tasks in
+one priority — a single task per priority passes either way.
+
+Two smaller ones: `reporting.html` styled its cards with `.pane`, which does not
+exist in this codebase (the house's glass class is `.card`), so five cards
+rendered with no card at all; and `today.replace(year=today.year - 1)` raises
+`ValueError` on 29 February, in both the heatmap chart and the heatmap widget —
+the Reporting page and the home screen would each have 500'd one day every four
+years.
+
+**The Visual discipline table needed a second pass, after looking at the wall.**
+The first version rendered an empty house as twelve near-full-size cards each
+saying "Nothing finished yet." — breaking two of its own six rules, "large cards
+for absence" and "a huge box holding one line", on the page written to avoid
+them. Reading the template would not have caught it; the rule only fails when
+you see the whole screen at once. An empty card now drops its subtitle (it
+explains how to read a chart that is not there) and collapses to a single
+baseline-aligned row. Two tests hold the rule, one in each direction.
+
+`_chart_card.html` is where "empty is a sentence, never an axis" is decided, so
+it is one decision in one place rather than eight. `views._reporting_charts()`
+returns `None` for anything with nothing to draw and the partial renders that as
+text; no chart option is ever built with an empty series. Chart options carry no
+colours — `NoraHomeCharts.render()` merges the house theme underneath, which is
+what keeps Reporting looking like the same system as every other chart in the
+house.
+
+Reporting also joined `nora_kiosk_controls` now that it has a page to point at,
+so four of the design doc's five kiosk buttons exist; System tasks (Story 36) is
+the one still missing.
+
 ---
 
 ## 11. Scheduling recommendations

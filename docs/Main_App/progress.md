@@ -2580,6 +2580,70 @@ Next: **Story 35 — Analytics & Reporting** (Opus, high effort).
 
 ---
 
+## 2026-08-05 — Story 35, Analytics & Reporting, finished from an interruption
+
+Picked up mid-story. `analytics.py`, `widgets.py`, `tone.py` and the reporting
+view had landed in commit `0e7a344`; the templates they render, the script that
+draws the charts, and every test of the arithmetic had not. **Both
+`/todo/reporting/` and `/todo/settings/` were 500s** on `TemplateDoesNotExist`.
+Added `_chart_card.html`, `settings.html`, `todo-reporting.js`, the Reporting and
+settings CSS, and `tests/test_todo_analytics.py`. 66 new tests, **857 green on
+the Pi**. Full writeup in
+[`subsystems/todo.md`](subsystems/todo.md) §10 "As built".
+
+**Three real bugs, and the one the story was flagged for was real.**
+`priority_distribution()` counted one task per priority — `Task.Meta.ordering`
+is `["priority", "-created_at"]` and Django appends ordering fields to the
+`GROUP BY` of a `values().annotate()`, so it grouped per task and every count
+came back as `1`. A perfectly plausible table full of wrong numbers. Caught only
+because the test used three tasks in one priority. Also `.pane` (a class that
+does not exist here — the glass class is `.card`) on five cards, and
+`today.replace(year=year - 1)`, which raises on 29 February, in both the heatmap
+chart and the heatmap widget.
+
+**Looking at the wall found what reading the template could not.** The first
+version rendered an empty house as twelve near-full-size cards each saying
+"Nothing finished yet." — breaking two of §10's own six rules on the page
+written to avoid them. Fixed, and two tests now hold it in both directions.
+Verified on the real hardware end to end: tapped the kiosk's Todo tile, then the
+new Reporting button, and watched the wall follow.
+
+### The `.env` trap — read this before touching the Pi
+
+**`.env` is tracked in git** (committed in `a173dcf`, which also removed the
+`.env` line from `.gitignore`). The committed copy carries `.env.example`'s
+*laptop* defaults. So **every `git pull` on the Pi replaces the house's real
+configuration**: `config.settings.pi` → `dev`, MySQL → SQLite, `America/New_York`
+→ `America/Los_Angeles`, `DEBUG=0` → `1`, ports 443/80 → 8443/8080, and the real
+Slack and MCP tokens → empty. It happened twice during this session.
+
+The failure is quiet and looks like data loss. A pull swaps the file; nothing
+changes until a container is recreated, and then *that* container comes up on a
+fresh empty SQLite database in its own writable layer — there is no volume for
+`db.sqlite3`. `web` served an empty house while `worker` and `beat`, never
+recreated, kept running on MySQL with all the data. CLAUDE.md's own warning is
+the thing that saves you here: **a container keeps the environment it started
+with**, which is also what makes the still-running container the best available
+record of the correct configuration.
+
+Recovering, if it happens again: rebuild `.env` from a container that has not
+been recreated —
+`docker inspect nora-home-worker-1 --format '{{range .Config.Env}}{{println .}}{{end}}'`
+— then `./nora recreate`. Nothing is lost; MySQL still holds everything. To pull
+without tripping it: `cp .env /tmp/env.keep && git checkout -- .env && git pull
+--ff-only && cp /tmp/env.keep .env`.
+
+**The real fix is to untrack `.env`** and restore the `.gitignore` line, which is
+what CLAUDE.md §4 says was always meant to be true ("`.env` is gitignored —
+secrets never enter the repo"). Left undone deliberately, pending a decision: the
+committed copy also carries a real `DJANGO_SECRET_KEY` and a real
+`NORA_HOME_MCP_TOKEN`, so untracking alone does not un-leak them — those two want
+rotating, and rotating the secret key logs everyone out while the MCP token needs
+re-issuing to the robot. The Slack token and Anthropic key are empty in the
+committed copy and did not leak.
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**

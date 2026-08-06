@@ -151,15 +151,17 @@ reference implementation.
 - **Todo** (`nora_home/todo/`) — **Level 2**, the app the base leans on for
   scheduling, reminders and escalation. Priority-column board, calendar, full-text
   search with saveable filters, labels, shared tasks with owner/assignee/approver,
-  reminders and a ported escalation ladder, all with a real front end at `/todo/`
-  and a two-level kiosk screen. 8 of 15 Phase 7 stories built (28–34, plus 42 out
-  of number order — see its own warning). **Full design, decision log, and
-  per-story "as built" notes**: [`docs/Main_App/subsystems/todo.md`](docs/Main_App/subsystems/todo.md).
+  reminders and a ported escalation ladder, a Reporting page and tone presets,
+  all with a real front end at `/todo/` and a two-level kiosk screen. 9 of 15
+  Phase 7 stories built (28–35, plus 42 out of number order — see its own
+  warning). **Full design, decision log, and per-story "as built" notes**:
+  [`docs/Main_App/subsystems/todo.md`](docs/Main_App/subsystems/todo.md).
   Build order and what's left: [`docs/Main_App/subsystems/todo-build-brief.md`](docs/Main_App/subsystems/todo-build-brief.md).
-  Story-by-story status: the dashboard. **Not yet deployed or verified on the
-  Pi** — everything so far has only run against SQLite on a laptop, verified with
-  the real test client and a real headless browser, never against MySQL in
-  Docker.
+  Story-by-story status: the dashboard. **Story 35 is the first of these run on
+  the Pi against MySQL** — Reporting and settings rendered there, the
+  priority-mix query checked against MySQL specifically, and both physical
+  screens driven through the kiosk to see it. Stories 28–34 and 42 have still
+  only run against SQLite on a laptop.
 - **Notifications** (`nora/notifications/`) — Slack (bot token *or* webhook), in-app,
   wall display, console. Delivery receipts and retries.
 - **AI** (`nora/ai/`) — Claude via the Anthropic SDK, three model tiers, prompt
@@ -305,20 +307,27 @@ button grid, connected, with no certificate-warning interstitial on either
 screen (`--ignore-certificate-errors` did its job).
 
 ### Not done — pick up here
-0. **Phase 7 — Todo, in progress. Next: Story 35 (Analytics & Reporting), Opus,
-   high effort.** Stories 28–34 built and green (793 tests), plus Story 42
-   (Shared Tasks & Approval, built out of number order — see its own entry for
-   why). Read [`docs/Main_App/subsystems/todo.md`](docs/Main_App/subsystems/todo.md)
+0. **Phase 7 — Todo, in progress. Next: Story 36 (System Tasks & Telemetry
+   Bridge), Sonnet, medium effort — small.** Stories 28–35 built and green
+   (**857 tests**), plus Story 42 (Shared Tasks & Approval, built out of number
+   order — see its own entry for why). Read
+   [`docs/Main_App/subsystems/todo.md`](docs/Main_App/subsystems/todo.md)
    before touching this app — it is the approved design and the record of every
    decision made building it; do not re-derive anything already settled there.
    [`docs/Main_App/subsystems/todo-build-brief.md`](docs/Main_App/subsystems/todo-build-brief.md)
-   has the remaining phases in build order. **Two things a fresh session needs to
-   know before doing anything else:**
-   - **Not yet run on the Pi.** Every story so far was verified against SQLite on
-     a laptop — the real Django test client plus a real headless-browser check
-     for every story, but never against MySQL/Docker. Story 42's migration in
-     particular (a CHECK constraint, an altered indexed column) has not been
-     proven on MySQL.
+   has the remaining phases in build order. **Three things a fresh session needs
+   to know before doing anything else:**
+   - **`.env` is tracked in git, so `git pull` on the Pi destroys the house's
+     configuration.** See §4's decision entry — this is the single most
+     expensive trap in the repo right now, it bit twice in one session, and it
+     looks exactly like data loss without being it. Read that entry before you
+     pull, build, or recreate anything on the Pi.
+   - **Story 35 ran on the Pi against MySQL** — the Reporting page, the settings
+     page and the priority-mix query were all exercised there, and both physical
+     screens were driven through the kiosk to check it. Stories 28–34 and 42 were
+     verified against SQLite on a laptop only; Story 42's migration in particular
+     (a CHECK constraint, an altered indexed column) still has not been proven on
+     MySQL.
    - **Check `git status` before doing anything.** Stories were committed
      periodically through the session, not after every single one — confirm
      what has and hasn't landed before assuming the working tree matches HEAD.
@@ -372,9 +381,9 @@ screen (`--ignore-certificate-errors` did its job).
    `SlackChannel` now maps the common codes to the actual fix.
 
    **AI and MCP remain untested against live services** — no keys supplied.
-4. **Tests: ~500, one file per subsystem, green.** `./scripts/run-tests.sh` (or
+4. **Tests: 857, one file per subsystem, green.** `./scripts/run-tests.sh` (or
    `make test`; `make test-pi` runs it inside the container on the Pi). Runs in
-   ~2s with no containers, no network, and no credentials — SQLite, in-memory
+   ~30s with no containers, no network, and no credentials — SQLite, in-memory
    channel layer, eager Celery — so it gives the same answer on a laptop and on
    the Pi. The root `conftest.py` prints a **fixed-size report** instead of
    pytest's output: one line per subsystem, one line per failure carrying only
@@ -477,6 +486,39 @@ enforce: nothing at Level 1 or 2 may import a Level 3 app —
 this over every registered app, not only house apps. `nora_level` lives on
 `NoraAppConfig` (`nora_home/core/registry.py`), defaulting to 3. Full writeup:
 [`docs/Main_App/subsystems/todo.md`](docs/Main_App/subsystems/todo.md) §1.
+
+**`.env` is tracked in git, and that is a bug, not a decision (2026-08-05).**
+Commit `a173dcf` added `.env` to the repo and deleted the `.env` line from
+`.gitignore`. The committed copy carries `.env.example`'s **laptop** defaults, so
+**every `git pull` on the Pi silently replaces the house's real configuration** —
+`config.settings.pi` → `dev`, MySQL → SQLite, `America/New_York` →
+`America/Los_Angeles`, `DEBUG=0` → `1`, ports 443/80 → 8443/8080, and the real
+Slack and MCP tokens → empty. It happened twice in one session.
+
+It presents as data loss and is not. A pull swaps the file; nothing changes until
+a container is recreated, and then *that* container comes up on a fresh, empty
+SQLite database in its own writable layer — **there is no volume for
+`db.sqlite3`**. Containers that were not recreated keep running on MySQL with
+every row intact, because a container keeps the environment it started with. That
+same fact is the recovery: a still-running container is the best record of the
+correct configuration.
+
+```bash
+# rebuild .env from a container that has NOT been recreated, then apply it
+docker inspect nora-home-worker-1 --format '{{range .Config.Env}}{{println .}}{{end}}'
+./nora recreate
+# and to pull without tripping it:
+cp .env /tmp/env.keep && git checkout -- .env && git pull --ff-only && cp /tmp/env.keep .env
+```
+
+**The fix is to untrack it** (`git rm --cached .env`, restore the `.gitignore`
+line), which is what this file has always claimed is true — see "Secrets never go
+in the database" below, and §3's "`.env` is gitignored — secrets never enter the
+repo." Deliberately not done yet, pending a decision: the committed copy also
+carries a real `DJANGO_SECRET_KEY` and a real `NORA_HOME_MCP_TOKEN`, and
+untracking does not un-leak them. Rotating the secret key logs everyone out;
+rotating the MCP token means re-issuing it to the robot. The Slack token and
+Anthropic key are empty in the committed copy and did not leak.
 
 **Django over FastAPI/Node.** The admin alone is worth it: a family member can edit
 an escalation policy or retime a job without a deploy. Batteries-included matters
