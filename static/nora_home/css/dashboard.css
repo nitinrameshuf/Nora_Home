@@ -19,7 +19,11 @@
 }
 .dash__grid--static .dash-tile-wrap {
   grid-column: span min(var(--w), 12);
-  min-height: calc(var(--h) * 80px);
+  /* rem, matching dashboard.js's Gridstack cellHeight (5rem == 80px at the
+     normal root) — this is the fallback path for when Gridstack itself
+     failed to load, and it needs to scale with the wall's root font-size for
+     the exact same reason the real Gridstack path does. */
+  min-height: calc(var(--h) * 5rem);
 }
 @media (max-width: 900px) {
   .dash__grid--static .dash-tile-wrap { grid-column: span 12; min-height: 0; }

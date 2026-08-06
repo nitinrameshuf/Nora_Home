@@ -83,7 +83,18 @@
 
     Dash.grid = window.GridStack.init({
       column: 12,
-      cellHeight: 80,
+      // rem, not a bare number (which Gridstack treats as px): the wall
+      // scales its whole root font-size 1.6x (Story 39) so its text stays
+      // readable from three metres, and a tile's *height* has to grow with
+      // it or its now-larger content — a stat's big number, in particular —
+      // gets clipped by the tile's own overflow:hidden. Found by looking at
+      // the wall itself, not by reading this file: a fixed 80px height is
+      // exactly the kind of thing that looks correct in isolation and is
+      // silently wrong the moment the root font-size it never accounted for
+      // changes. 5rem == 80px at the normal 16px root, so nothing changes
+      // anywhere else.
+      cellHeight: 5,
+      cellHeightUnit: "rem",
       margin: 8,
       float: false,
       disableDrag: true,       // opt in via "Rearrange"
