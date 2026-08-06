@@ -22,9 +22,15 @@ house looking like one system (CLAUDE.md §4, "Widgets return data, not HTML").
   span   grid columns out of 12 (default 6)
   h      chart height in px (default 240)
 {% endcomment %}
-<section class="card todo-report__card" style="grid-column:span {{ span|default:6 }}">
+<section class="card todo-report__card{% if not option %} todo-report__card--empty{% endif %}"
+         style="grid-column:span {{ span|default:6 }}">
   <h3 class="todo-report__title">{{ title }}</h3>
-  {% if sub %}<p class="todo-report__sub">{{ sub }}</p>{% endif %}
+  {% comment %}
+  The subtitle explains how to read the chart, so when there is no chart it is
+  just words taking up a card. Dropping it is half of "the quiet state is the
+  compact state" (§10); the other half is the padding, in todo.css.
+  {% endcomment %}
+  {% if sub and option %}<p class="todo-report__sub">{{ sub }}</p>{% endif %}
   {% if option %}
     {{ option|json_script:id }}
     <div class="todo-chart" data-todo-chart="{{ id }}"

@@ -610,3 +610,24 @@
 }
 
 .todo-overrides .field { margin: 0; }
+
+/* §10: "Large cards for absence" is one of the six failures this page exists
+ * not to repeat — the platform's own dashboard says "Nothing late. Good."
+ * twice, at full tile size. A card with nothing in it is a card that should
+ * take up almost no room: tighter padding, no subtitle (the partial drops it),
+ * and the sentence on the same line as the heading where there is width for
+ * it. Cards with real content are untouched. */
+.todo-report__card--empty {
+  padding: 0.7rem 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.6rem;
+}
+
+.todo-report__card--empty .todo-report__title {
+  font-size: var(--step-0);
+  color: var(--text-faint);
+}
+
+.todo-report__card--empty .todo-empty { padding: 0; }
