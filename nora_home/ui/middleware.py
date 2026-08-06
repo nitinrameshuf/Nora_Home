@@ -48,6 +48,22 @@ class SurfaceMiddleware:
         if path.startswith(KIOSK_PREFIXES):
             return "kiosk"
 
+        # The wall shows the *real app* through a same-origin iframe
+        # (nora_home.displays.views.wall / wall_live.html) — every page that
+        # iframe loads needs to know it is rendering for the wall too, not
+        # just the shell page above matched by WALL_PREFIXES. Sec-Fetch-Dest
+        # is the browser's own signal that a document was loaded as an
+        # iframe (sent by every Chromium this house's screens run); the
+        # Referer, sent because SECURE_REFERRER_POLICY is "same-origin" and
+        # this is one, confirms the parent was specifically the wall's own
+        # page rather than someone iframing the app for an unrelated reason.
+        # Stateless on purpose — no cookie, so a stray visit to the app from
+        # someone's own laptop is never at risk of getting stuck "wall"-sized.
+        if request.META.get("HTTP_SEC_FETCH_DEST") == "iframe":
+            referer = request.META.get("HTTP_REFERER", "")
+            if any(prefix in referer for prefix in WALL_PREFIXES):
+                return "wall"
+
         override = request.COOKIES.get("nh_surface", "")
         if override in VALID_SURFACES:
             return override

@@ -313,8 +313,8 @@ button grid, connected, with no certificate-warning interstitial on either
 screen (`--ignore-certificate-errors` did its job).
 
 ### Not done — pick up here
-0. **Phase 7 — Todo, 12 of 15 (80%). Two genuinely open next steps, not one
-   obvious pick — see the dashboard's next-box for the full comparison:**
+0. **Phase 7 — Todo, 13 of 15 (87%). Two substantial pieces left, both
+   platform-independent — see the dashboard's next-box for the full comparison:**
    **Story 40** (Tracker Removal & House Log, Opus, high effort, ~5h) just
    unblocked, deletes `nora_home/tracker` entirely and is its own warning about
    the house going non-functional mid-phase; **Story 24** (house maintenance,
@@ -404,7 +404,7 @@ screen (`--ignore-certificate-errors` did its job).
    those. Only the `slack` container reads it.
 
    **AI and MCP remain untested against live services** — no keys supplied.
-4. **Tests: 955, one file per subsystem, green.** `./scripts/run-tests.sh` (or
+4. **Tests: 971, one file per subsystem, green.** `./scripts/run-tests.sh` (or
    `make test`; `make test-pi` runs it inside the container on the Pi). Runs in
    ~30s with no containers, no network, and no credentials — SQLite, in-memory
    channel layer, eager Celery — so it gives the same answer on a laptop and on

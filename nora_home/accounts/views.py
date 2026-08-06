@@ -55,6 +55,24 @@ def switch_to_everyone(request):
     return redirect(_safe_next(request) or settings.LOGIN_REDIRECT_URL)
 
 
+@require_POST
+def switch_to_wall(request):
+    """§11.2: the 24" has no input devices, so its own layout is arranged
+    from here instead — anyone's phone or laptop, switched into this scope,
+    dragging on the exact same grid the "Everyone" and personal screens use.
+    Mirrors switch_to_everyone exactly; the only difference is which
+    DashboardLayout dashboard.views._layout_for() resolves to for this
+    session afterward."""
+    if not request.user.is_authenticated:
+        fallback = HouseMember.objects.filter(is_active=True).first()
+        if fallback is None:
+            raise Http404("No household members yet — run `make member` first.")
+        auth_login(request, fallback,
+                  backend="django.contrib.auth.backends.ModelBackend")
+    request.session[SCOPE_SESSION_KEY] = "wall"
+    return redirect(_safe_next(request) or settings.LOGIN_REDIRECT_URL)
+
+
 @login_required
 def switch_away(request):
     """'Sign out' in a house with no passwords just means: ask again."""

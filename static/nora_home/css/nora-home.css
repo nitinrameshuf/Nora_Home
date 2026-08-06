@@ -94,6 +94,22 @@
 
 html { -webkit-text-size-adjust: 100%; }
 
+/* §11.1 — the wall is read from three metres, everything else from arm's
+ * length. One root font-size multiplier, not six new sizes: every rem-based
+ * value in this file (--step-0 through --step-4, --space, --gap, and every
+ * ad-hoc 0.7xrem/0.85rem scattered through component rules) scales together
+ * automatically, because rem is always relative to *this* element. The
+ * templates, the components and every other CSS file are untouched — "same
+ * templates, same CSS, one variable" (todo.md §"The 24" wall").
+ *
+ * `data-surface` on `<html>` is set by SurfaceMiddleware from the request
+ * path for the wall's own shell page, and — for the real app content the
+ * wall shows through its iframe — from a same-origin Sec-Fetch-Dest check
+ * (see nora_home/ui/middleware.py). Nothing here needs to know which case
+ * it is; both produce the same attribute.
+ */
+html[data-surface="wall"] { font-size: 160%; }
+
 body {
   margin: 0;
   font-family: var(--font);

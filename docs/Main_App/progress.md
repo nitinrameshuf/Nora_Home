@@ -2886,6 +2886,41 @@ the first real app) are the two substantial open choices.
 
 ---
 
+## 2026-08-06 — Story 39, Wall Type Scale
+
+One line of CSS is the type scale itself: `html[data-surface="wall"] {
+font-size: 160%; }`. Every size in `nora-home.css` is already `rem`, and rem
+is always relative to the root, so one multiplier scales the whole system
+together — "same templates, same CSS, one variable" turned out to be
+literally true, not just the goal.
+
+**What made that one line insufficient by itself, and the actual work of this
+story:** the wall's shell page matches `data-surface="wall"` correctly, but
+the real app content it iframes (`/home/`, `/todo/`, wherever the kiosk points
+it) is requested at its own ordinary URL, indistinguishable from the same
+page opened directly on someone's laptop. `SurfaceMiddleware` (`nora_home/ui/middleware.py`) now tells the two apart statelessly, using
+`Sec-Fetch-Dest: iframe` plus a same-origin `Referer` naming the wall's own
+page — not a cookie, since a cookie set once would leave a stray laptop
+preview stuck wall-sized until someone thought to clear it.
+
+`DashboardLayout.Surface.WALL`, dead code since the skeleton, is now
+load-bearing: `dashboard/views.py` gained `_layout_for()`, which every
+layout-touching view calls, so the wall always shows the layout curated for
+it rather than whoever is signed into its browser. The "editor reachable from
+a phone or laptop" §11.2 asks for turned out to be a third option on the
+existing topbar switcher ("Wall", beside "Everyone"), not a new page — same
+picker, same drag-and-drop, `wall_safe` now enforced in `save_layout()`
+itself rather than only in what the picker offers.
+
+Deliberately not built: §11.3's configurable wall boot destination — separate
+work, no dependency on anything here.
+
+38 new tests, 971 green. Phase 7 is now **13 of 15 (87%)** — Story 40
+(Tracker Removal) and Story 24 (house maintenance, the first real app) are
+the two substantial pieces left.
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**

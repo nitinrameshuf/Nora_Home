@@ -493,6 +493,63 @@ surface it is rendering to (`nora_home/ui/`), so the wall gets a larger scale
 throughout — roughly 1.6× — tuned to read from three metres. Same templates,
 same CSS, one variable. Not a separate layout and not separate components.
 
+### As built (Story 39, 2026-08-06)
+
+**One line of CSS is the whole type scale**: `html[data-surface="wall"] {
+font-size: 160%; }`. Every size in `nora-home.css` — `--step-0` through
+`--step-4`, `--space`, `--gap`, and every ad-hoc `0.72rem`/`0.85rem` scattered
+through component rules — is already `rem`, and `rem` is always relative to
+the root element. One multiplier there, and the whole system grows together,
+which is what "throughout" actually meant.
+
+**The gap that made that one line insufficient by itself**: the wall's shell
+page (`/home/displays/wall/`) matches `data-surface="wall"` correctly, but the
+*real app content it iframes* — `/home/`, `/todo/`, whatever the kiosk points
+it at — is requested at its own ordinary URL, with nothing in the path
+naming the wall at all. `SurfaceMiddleware` had no way to tell that request
+apart from the identical one someone's own laptop would send opening the same
+page directly — which is exactly the distinction that matters, since getting
+it wrong either way is wrong in a way nobody would notice (the wall renders
+too small forever, or a stray laptop preview gets stuck oversized).
+
+Resolved statelessly, in `nora_home/ui/middleware.py`, with two browser
+signals together: `Sec-Fetch-Dest: iframe` (sent by every Chromium this
+house's screens run) confirms the document was loaded as an iframe at all,
+and the `Referer` (present because `SECURE_REFERRER_POLICY = "same-origin"`
+and this is one) confirms the parent was specifically the wall's own page.
+Deliberately not a cookie: a cookie set once by the wall's shell page would
+persist in whatever browser loaded it, so someone previewing the wall URL
+from their own laptop even once would find their laptop stuck wall-sized
+until they thought to clear it.
+
+**`DashboardLayout.Surface.WALL` — dead code since the skeleton — is now
+load-bearing.** `dashboard/views.py` gained `_layout_for(request)`, which
+every view that touches a layout calls: the wall surface (checked first,
+regardless of session state) or an explicit "I am arranging the wall right
+now" session scope both resolve to `DashboardLayout.for_wall()`, never a
+signed-in person's own screen — which is what the model's own docstring
+already promised and nothing had delivered. The editor §11.2 asks for
+("reachable from a phone or laptop — the 24" has no input devices") is not a
+new page: it is a third option, "Wall", added to the exact same topbar
+switcher "Everyone" already uses (`accounts:switch_to_wall`, mirroring
+`switch_to_everyone` line for line), so dragging on the wall's grid uses the
+identical picker and identical drag-and-drop the personal and shared screens
+already have.
+
+**The picker's `wall_safe` promise is now an actual constraint, not a
+suggestion.** `_widgets_for()` filters to `wall_safe` widgets whenever the
+layout in play is the wall's, and it is applied in `save_layout()`'s own
+validation set — not only in what `catalog()` offers the picker — so posting
+a non-wall-safe key directly cannot get it onto the wall either, the same
+"validated, not trusted" rule this file already applies to widget positions.
+
+**Deliberately not built**: §11.3's configurable wall boot destination
+(defaulting to the Todo board) — a separate, smaller piece of work with no
+dependency on anything here, left for whoever picks it up next rather than
+folded in under this story's name.
+
+38 new tests, 971 green.
+
 ### The 10.1" kiosk
 
 Two levels, and both are required:

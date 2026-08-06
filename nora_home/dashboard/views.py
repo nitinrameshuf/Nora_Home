@@ -16,16 +16,48 @@ logger = logging.getLogger(__name__)
 MAX_ITEMS = 40
 
 
+def _layout_for(request) -> DashboardLayout:
+    """Which grid this request should see: the wall's own (never a member's
+    personal one, however the wall happens to be signed in — see
+    DashboardLayout's own docstring on why), then "Everyone" scope, then the
+    signed-in person's. Checked in that order because the wall surface is a
+    property of the *request*, while view-scope is a property of the
+    *session* — a family member editing "Everyone" from their phone must not
+    accidentally start editing the wall's layout if they later happen to view
+    it through the wall itself.
+    """
+    if request.session.get("nh_view_scope") == "wall" or request.nh_surface == "wall":
+        return DashboardLayout.for_wall()
+    if request.session.get("nh_view_scope") == "all":
+        return DashboardLayout.for_shared()
+    return DashboardLayout.for_member(request.user)
+
+
+def _widgets_for(request, layout: DashboardLayout) -> list:
+    """The catalog this layout may draw from — every widget, unless this is
+    the wall's own layout, in which case only ones that declared themselves
+    `wall_safe` (§11.2). Applied everywhere a widget key can enter a layout
+    (here, `catalog()`, and `save_layout()`'s validation set) so this is an
+    actual constraint and not just a picker that politely hides the rest —
+    the same "validated, not trusted" rule save_layout() already applies to
+    positions.
+    """
+    role = getattr(request.user, "role", "member")
+    widgets = all_widgets(role)
+    if layout.surface == DashboardLayout.Surface.WALL:
+        widgets = [w for w in widgets if w.wall_safe]
+    return widgets
+
+
 @login_required
 def home(request):
-    """The home screen: this person's chosen visualizations, on their own grid —
-    or, in "Everyone" scope, the one grid the whole house shares."""
-    role = getattr(request.user, "role", "member")
-    if request.session.get("nh_view_scope") == "all":
-        layout = DashboardLayout.for_shared()
-    else:
-        layout = DashboardLayout.for_member(request.user)
-    available = all_widgets(role)
+    """The home screen: this person's chosen visualizations, on their own
+    grid — or, in "Everyone" scope, the one grid the whole house shares — or,
+    on the wall itself, the layout curated for it specifically (§11.2:
+    "the living-room screen does not inherit whatever someone last dragged
+    around on their phone")."""
+    layout = _layout_for(request)
+    available = _widgets_for(request, layout)
     by_key = {widget.key: widget for widget in available}
 
     placed = []
@@ -60,8 +92,10 @@ def widget_data(request, key: str):
 
 @login_required
 def catalog(request):
-    """Everything installable on the home screen, for the picker."""
-    widgets = all_widgets(getattr(request.user, "role", "member"))
+    """Everything installable on the home screen, for the picker — narrowed to
+    wall_safe widgets when the session is currently editing the wall's own
+    layout, so the picker never offers something save_layout() would refuse."""
+    widgets = _widgets_for(request, _layout_for(request))
     return JsonResponse({"widgets": [w.as_menu_entry() for w in widgets]})
 
 
@@ -84,7 +118,8 @@ def save_layout(request):
     if len(raw_items) > MAX_ITEMS:
         return JsonResponse({"ok": False, "error": "too many widgets"}, status=400)
 
-    known = {w.key for w in all_widgets(getattr(request.user, "role", "member"))}
+    layout = _layout_for(request)
+    known = {w.key for w in _widgets_for(request, layout)}
     cleaned = []
     for item in raw_items:
         if not isinstance(item, dict) or item.get("key") not in known:
@@ -97,10 +132,6 @@ def save_layout(request):
             "h": _clamp(item.get("h"), 1, 12),
         })
 
-    if request.session.get("nh_view_scope") == "all":
-        layout = DashboardLayout.for_shared()
-    else:
-        layout = DashboardLayout.for_member(request.user)
     layout.items = cleaned
     layout.save(update_fields=["items", "updated_at"])
     return JsonResponse({"ok": True, "count": len(cleaned)})

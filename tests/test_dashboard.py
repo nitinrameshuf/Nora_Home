@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 
 import pytest
+from django.urls import reverse
 
 from nora_home.core.registry import all_widgets, get_widget
 from nora_home.dashboard.models import STARTER_LAYOUT, DashboardLayout
@@ -29,7 +30,7 @@ from nora_home.dashboard.widgets import (
     Widget,
     load_widget,
 )
-from nora_home.dashboard.views import MAX_ITEMS
+from nora_home.dashboard.views import MAX_ITEMS, _layout_for, _widgets_for
 
 pytestmark = pytest.mark.django_db
 
@@ -70,6 +71,137 @@ def test_the_shared_layout_is_distinct_from_the_wall():
     """The "Everyone" switcher tile and the 24" wall are different surfaces that
     happened to share a model — keeping them apart is deliberate."""
     assert DashboardLayout.for_shared().pk != DashboardLayout.for_wall().pk
+
+
+# ── which layout a request resolves to (Story 39, §11.2) ────────────────────
+
+def test_the_wall_surface_gets_the_walls_layout_regardless_of_session(rf, member):
+    """However the wall's browser happens to be signed in, it must never show
+    a person's own dragged-around screen — that is the whole point of the
+    layout existing separately at all."""
+    request = rf.get("/home/")
+    request.user = member
+    request.nh_surface = "wall"
+    request.session = {"nh_view_scope": "self"}
+
+    assert _layout_for(request).surface == DashboardLayout.Surface.WALL
+
+
+def test_wall_view_scope_also_resolves_to_the_walls_layout(rf, adult):
+    """Editing from a phone: no wall surface, but the session says "I am
+    arranging the wall's screen right now"."""
+    request = rf.get("/home/")
+    request.user = adult
+    request.nh_surface = "desktop"
+    request.session = {"nh_view_scope": "wall"}
+
+    assert _layout_for(request).surface == DashboardLayout.Surface.WALL
+
+
+def test_everyone_scope_still_works_when_not_on_the_wall(rf, adult):
+    request = rf.get("/home/")
+    request.user = adult
+    request.nh_surface = "desktop"
+    request.session = {"nh_view_scope": "all"}
+
+    assert _layout_for(request).surface == DashboardLayout.Surface.SHARED
+
+
+def test_the_default_is_still_a_persons_own_layout(rf, adult):
+    request = rf.get("/home/")
+    request.user = adult
+    request.nh_surface = "desktop"
+    request.session = {}
+
+    layout = _layout_for(request)
+
+    assert layout.surface == DashboardLayout.Surface.PERSONAL
+    assert layout.member == adult
+
+
+# ── the picker respects wall_safe (§11.2) ────────────────────────────────────
+
+def test_a_non_wall_safe_widget_is_offered_off_the_wall(rf, adult, monkeypatch):
+    class RoomSensitive:
+        key = "test.RoomSensitive"
+        wall_safe = False
+
+    class Ordinary:
+        key = "test.Ordinary"
+        wall_safe = True
+
+    monkeypatch.setattr("nora_home.dashboard.views.all_widgets",
+                        lambda role: [RoomSensitive(), Ordinary()])
+
+    personal = _widgets_for(_FakeRequest(adult), DashboardLayout.for_member(adult))
+    on_wall = _widgets_for(_FakeRequest(adult), DashboardLayout.for_wall())
+
+    assert {w.key for w in personal} == {"test.RoomSensitive", "test.Ordinary"}
+    assert {w.key for w in on_wall} == {"test.Ordinary"}
+
+
+class _FakeRequest:
+    """Just enough of a request for _widgets_for(), which only reads .user."""
+    def __init__(self, user):
+        self.user = user
+
+
+def test_the_wall_cannot_be_given_a_non_wall_safe_widget_by_a_direct_post(
+        client, adult, monkeypatch):
+    """The picker hiding it is not the actual guarantee — save_layout() must
+    refuse it even if something posts the key directly, the same "validated,
+    not trusted" rule already applied to positions."""
+    class RoomSensitive:
+        key = "test.NotForTheWall"
+        wall_safe = False
+        title = "Room-sensitive"
+
+    monkeypatch.setattr("nora_home.dashboard.views.all_widgets",
+                        lambda role: [RoomSensitive()])
+    client.force_login(adult)
+    client.post(reverse("accounts:switch_to_wall"))
+
+    response = client.post("/home/dashboard/layout/",
+                           data=json.dumps({"items": [
+                               {"key": "test.NotForTheWall", "x": 0, "y": 0, "w": 4, "h": 4}]}),
+                           content_type="application/json")
+
+    assert response.status_code == 200
+    assert DashboardLayout.for_wall().items == []
+
+
+def test_the_wall_iframe_gets_the_walls_layout_over_real_http(client, adult):
+    """End to end through the real request cycle, not the unit-level
+    _layout_for() calls above: the exact headers Chromium sends when the
+    wall's iframe loads /home/, and the exact page the browser gets back."""
+    client.force_login(adult)
+    key = all_widgets("admin")[0].key
+    wall_layout = DashboardLayout.for_wall()
+    wall_layout.items = [{"key": key, "x": 0, "y": 0, "w": 4, "h": 4}]
+    wall_layout.save()
+
+    response = client.get(
+        "/home/", HTTP_SEC_FETCH_DEST="iframe",
+        HTTP_REFERER="https://nora.home/home/displays/wall/")
+
+    assert response.status_code == 200
+    assert response.context["layout"].surface == DashboardLayout.Surface.WALL
+
+
+def test_saving_while_in_wall_scope_writes_to_the_walls_layout(client, adult):
+    client.force_login(adult)
+    client.post(reverse("accounts:switch_to_wall"))
+    key = all_widgets("admin")[0].key
+
+    response = client.post("/home/dashboard/layout/",
+                           data=json.dumps({"items": [
+                               {"key": key, "x": 0, "y": 0, "w": 4, "h": 4}]}),
+                           content_type="application/json")
+
+    assert response.status_code == 200
+    assert key in DashboardLayout.for_wall().keys()
+    # And critically not the signer's own personal screen.
+    assert key not in DashboardLayout.for_member(adult).keys()
 
 
 def test_keys_lists_only_placed_widgets(member):

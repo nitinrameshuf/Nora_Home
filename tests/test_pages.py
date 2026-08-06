@@ -154,6 +154,27 @@ def test_switching_to_a_person_leaves_everyone_scope(client, household):
     assert client.session["nh_view_scope"] == "self"
 
 
+def test_wall_scope_is_reachable_from_a_phone_or_laptop(client, household):
+    """§11.2: the 24" has no input devices, so its layout is arranged from
+    here — anyone's own browser, switched into this scope."""
+    response = client.post(reverse("accounts:switch_to_wall"))
+
+    assert response.status_code == 302
+    assert client.session["nh_view_scope"] == "wall"
+
+
+def test_switching_to_a_person_leaves_wall_scope_too(client, household):
+    client.post(reverse("accounts:switch_to_wall"))
+
+    client.post(reverse("accounts:switch_to", args=[household["kid"].pk]))
+
+    assert client.session["nh_view_scope"] == "self"
+
+
+def test_wall_scope_needs_a_post(client):
+    assert client.get(reverse("accounts:switch_to_wall")).status_code == 405
+
+
 def test_a_crafted_next_parameter_cannot_bounce_you_off_the_house(client, adult):
     """The switcher takes ?next=. Without the host check, a link mailed to a
     family member could log them in and then land them on an attacker's page."""

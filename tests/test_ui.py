@@ -28,8 +28,8 @@ PI_KIOSK = ("Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 "
             "(KHTML, like Gecko) Chrome/120.0 Safari/537.36")
 
 
-def _surface(rf, path="/home/", agent="", cookies=None):
-    request = rf.get(path, HTTP_USER_AGENT=agent)
+def _surface(rf, path="/home/", agent="", cookies=None, **extra):
+    request = rf.get(path, HTTP_USER_AGENT=agent, **extra)
     request.COOKIES.update(cookies or {})
     captured = {}
 
@@ -65,6 +65,45 @@ def test_the_url_beats_a_cookie_override(rf):
     """Someone forcing 'phone' on their laptop must not be able to leave the
     physical wall stuck in phone layout."""
     surface = _surface(rf, "/home/displays/wall/", MAC, {"nh_surface": "phone"})
+
+    assert surface["surface"] == "wall"
+
+
+# ── the wall's own iframe (§11.1, "Wall Type Scale") ─────────────────────────
+#
+# The wall's shell page is at /home/displays/wall/, matched above by
+# WALL_PREFIXES — but §11 wants the *real app content the shell iframes*
+# (/home/, /todo/, …) at the same 1.6x scale, and that content is requested
+# at its own ordinary URL with no "wall" in the path at all. These tests are
+# the part of the surface story the URL-prefix check alone cannot cover.
+
+def test_content_iframed_by_the_wall_is_also_the_wall(rf):
+    surface = _surface(rf, "/home/", MAC, HTTP_SEC_FETCH_DEST="iframe",
+                       HTTP_REFERER="https://nora.home/home/displays/wall/")
+
+    assert surface["surface"] == "wall"
+
+
+def test_the_same_page_opened_directly_is_not_the_wall(rf):
+    """The one failure mode this whole mechanism exists to avoid: someone on
+    their own laptop opening /home/ normally must never get wall-sized text."""
+    surface = _surface(rf, "/home/", MAC)
+
+    assert surface["surface"] == "desktop"
+
+
+def test_an_iframe_from_somewhere_else_is_not_the_wall(rf):
+    """Sec-Fetch-Dest alone is not enough — anything could iframe the app.
+    Only a referer naming the wall's own page counts."""
+    surface = _surface(rf, "/home/", MAC, HTTP_SEC_FETCH_DEST="iframe",
+                       HTTP_REFERER="https://nora.home/some/other/page/")
+
+    assert surface["surface"] == "desktop"
+
+
+def test_a_named_walls_iframe_is_still_the_wall(rf):
+    surface = _surface(rf, "/todo/", MAC, HTTP_SEC_FETCH_DEST="iframe",
+                       HTTP_REFERER="https://nora.home/home/displays/wall/garage/")
 
     assert surface["surface"] == "wall"
 

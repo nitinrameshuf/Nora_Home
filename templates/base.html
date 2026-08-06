@@ -87,10 +87,10 @@ viewport measuring in JavaScript.
               {% block actions %}{% endblock %}
               <div class="profile-dropdown__section">
                 <div class="profile-dropdown__who">
-                  Signed in as {% if nh_view_scope == "all" %}Everyone{% else %}{{ request.user.name }}{% endif %}
+                  Signed in as {% if nh_view_scope == "all" %}Everyone{% elif nh_view_scope == "wall" %}the Wall{% else %}{{ request.user.name }}{% endif %}
                 </div>
                 {% for member in active_members %}
-                  {% if member.id != request.user.id or nh_view_scope == "all" %}
+                  {% if member.id != request.user.id or nh_view_scope != "self" %}
                     <form method="post" action="{% url 'accounts:switch_to' member.id %}">
                       {% csrf_token %}
                       <button class="switcher-option" type="submit">{{ member.name }}</button>
@@ -101,6 +101,12 @@ viewport measuring in JavaScript.
                   <form method="post" action="{% url 'accounts:switch_to_everyone' %}">
                     {% csrf_token %}
                     <button class="switcher-option" type="submit">Everyone</button>
+                  </form>
+                {% endif %}
+                {% if nh_view_scope != "wall" %}
+                  <form method="post" action="{% url 'accounts:switch_to_wall' %}">
+                    {% csrf_token %}
+                    <button class="switcher-option" type="submit">Wall</button>
                   </form>
                 {% endif %}
               </div>

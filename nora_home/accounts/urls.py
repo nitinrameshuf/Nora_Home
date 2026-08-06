@@ -7,6 +7,7 @@ app_name = "accounts"
 urlpatterns = [
     path("switch/", views.switch_picker, name="switch_picker"),
     path("switch/everyone/", views.switch_to_everyone, name="switch_to_everyone"),
+    path("switch/wall/", views.switch_to_wall, name="switch_to_wall"),
     path("switch/<int:member_id>/", views.switch_to, name="switch_to"),
     path("logout/", views.switch_away, name="logout"),
     path("me/", views.profile, name="profile"),
