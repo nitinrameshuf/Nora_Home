@@ -14,7 +14,7 @@ without depending on which containers happen to be up.
 
 from __future__ import annotations
 
-from datetime import date, time, timedelta
+from datetime import date
 
 import pytest
 from django.core.cache import cache
@@ -24,7 +24,7 @@ from nora_home.accounts.models import EscalationContact, HouseMember
 from nora_home.displays.models import Display
 from nora_home.notifications.models import Notification
 from nora_home.telemetry.models import Series
-from nora_home.tracker.models import Cadence, EscalationPolicy, Occurrence, Trackable
+from nora_home.todo.models import EscalationPolicy
 
 
 # ── hygiene ──────────────────────────────────────────────────────────────────
@@ -97,7 +97,7 @@ def household(make_member):
     return {"admin": boss, "adult": partner, "kid": kid}
 
 
-# ── tracker ──────────────────────────────────────────────────────────────────
+# ── escalation ───────────────────────────────────────────────────────────────
 
 @pytest.fixture
 def policy(db):
@@ -112,31 +112,6 @@ def policy(db):
             {"after_minutes": 240, "notify": "house", "severity": "critical"},
         ],
     )
-
-
-@pytest.fixture
-def make_trackable(db, policy):
-    def _make(owner, *, title="Test thing", cadence=Cadence.DAILY, **kwargs):
-        kwargs.setdefault("app_slug", "tracker")
-        kwargs.setdefault("starts_on", timezone.localdate())
-        kwargs.setdefault("due_time", time(18, 0))
-        kwargs.setdefault("escalation_policy", policy)
-        return Trackable.objects.create(
-            owner=owner, title=title, cadence=cadence, **kwargs)
-
-    return _make
-
-
-@pytest.fixture
-def make_occurrence(db):
-    """An occurrence at a chosen age. `minutes_overdue` is the knob nearly every
-    escalation test wants to turn."""
-    def _make(trackable, *, minutes_overdue: int = 0, **kwargs):
-        due = timezone.now() - timedelta(minutes=minutes_overdue)
-        kwargs.setdefault("window_ends_at", due + timedelta(days=1))
-        return Occurrence.objects.create(trackable=trackable, due_at=due, **kwargs)
-
-    return _make
 
 
 # ── other subsystems ─────────────────────────────────────────────────────────

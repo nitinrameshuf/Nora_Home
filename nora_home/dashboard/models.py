@@ -13,15 +13,21 @@ from django.db import models
 
 from nora_home.core.models import TimeStampedModel
 
-# Sensible first screen for someone who has not arranged anything yet.
-# Widths deliberately match the row above (4 columns, same as Today/Overdue/
-# Reliability) rather than HouseHealthWidget's own default_size of 3 — a
-# narrower widget stacked under a wider one is exactly what reads as "uneven"
-# on a real screen, even though each width is individually correct.
+# Sensible first screen for someone who has not arranged anything yet. These were
+# the tracker's Today/Overdue/Reliability widgets until Story 40 deleted it;
+# Todo's are the successors, and a key that no longer resolves is skipped at
+# render time (see the class docstring below), so anyone still carrying a stored
+# layout full of tracker.* keys sees those tiles quietly disappear rather than
+# getting an error page.
+#
+# Widths deliberately match across the row rather than using each widget's own
+# default_size — a narrower widget stacked under a wider one is exactly what
+# reads as "uneven" on a real screen, even though each width is individually
+# correct.
 STARTER_LAYOUT = [
-    {"key": "tracker.TodayWidget", "x": 0, "y": 0, "w": 4, "h": 4},
-    {"key": "tracker.OverdueWidget", "x": 4, "y": 0, "w": 4, "h": 4},
-    {"key": "tracker.ReliabilityWidget", "x": 8, "y": 0, "w": 4, "h": 4},
+    {"key": "todo.DueNextWidget", "x": 0, "y": 0, "w": 4, "h": 4},
+    {"key": "todo.OpenLoadWidget", "x": 4, "y": 0, "w": 4, "h": 4},
+    {"key": "todo.StreakWidget", "x": 8, "y": 0, "w": 4, "h": 4},
     {"key": "core.HouseHealthWidget", "x": 0, "y": 4, "w": 4, "h": 2},
 ]
 

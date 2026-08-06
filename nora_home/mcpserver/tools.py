@@ -21,9 +21,9 @@ def house_overview(**_):
     from nora_home.accounts.models import HouseMember
     from nora_home.core.health import collect_health
     from nora_home.core.registry import registered_apps
-    from nora_home.tracker.models import Occurrence
 
     health = collect_health()
+    open_items, overdue_items = _task_counts()
     return {
         "time": timezone.localtime().isoformat(),
         "healthy": health["healthy"],
@@ -37,83 +37,31 @@ def house_overview(**_):
              "description": a.description}
             for a in registered_apps()
         ],
-        "open_items": Occurrence.objects.open().count(),
-        "overdue_items": Occurrence.objects.overdue().count(),
+        "open_items": open_items,
+        "overdue_items": overdue_items,
     }
 
 
-@mcp_tool(
-    name="open_items",
-    description=(
-        "Everything the house still owes, soonest first. Call this when asked what "
-        "someone needs to do, what is late, or what is coming up. Filter by member "
-        "username when the question is about one person."
-    ),
-    schema={
-        "type": "object",
-        "properties": {
-            "member": {"type": "string", "description": "Username; omit for everyone."},
-            "overdue_only": {"type": "boolean", "description": "Only late items."},
-            "limit": {"type": "integer", "description": "Max rows (default 25)."},
-        },
-    },
-    app_slug="tracker",
-)
-def open_items(member: str = "", overdue_only: bool = False, limit: int = 25, **_):
-    from nora_home.tracker.models import Occurrence
+def _task_counts() -> tuple[int | None, int | None]:
+    """How much the house owes, or (None, None) if Todo is not installed.
 
-    qs = Occurrence.objects.overdue() if overdue_only else Occurrence.objects.open()
-    if member:
-        qs = qs.filter(trackable__owner__username=member)
-    qs = qs.select_related("trackable", "trackable__owner").order_by("due_at")
+    Todo is Level 2 — the base leans on it, but it is deliberately uninstallable
+    (docs/Main_App/subsystems/todo.md §1). An orientation tool losing two numbers
+    is a degraded answer; raising ImportError inside the first tool an agent
+    calls is a cascade. `None` says "not measured here", which an agent can read;
+    a `0` would be a lie.
+    """
+    try:
+        from nora_home.todo.models import Instance, InstanceOutcome, TaskState
+    except ImportError:
+        return None, None
 
-    return [
-        {
-            "id": str(o.uuid),
-            "title": o.trackable.title,
-            "owner": o.trackable.owner.get_username(),
-            "app": o.trackable.app_slug,
-            "due_at": o.due_at.isoformat(),
-            "minutes_overdue": o.minutes_overdue,
-            "escalation_level": o.escalation_level,
-        }
-        for o in qs[: min(int(limit), 100)]
-    ]
-
-
-@mcp_tool(
-    name="member_reliability",
-    description=(
-        "How consistently a member completes what they take on, over a window of "
-        "days. Use it when asked how someone is doing, or before deciding whether a "
-        "goal is realistic for them."
-    ),
-    schema={
-        "type": "object",
-        "properties": {
-            "member": {"type": "string", "description": "Username."},
-            "days": {"type": "integer", "description": "Window in days (default 30)."},
-        },
-        "required": ["member"],
-    },
-    app_slug="tracker",
-)
-def member_reliability(member: str, days: int = 30, **_):
-    from nora_home.tracker.models import Occurrence
-
-    since = timezone.now() - timezone.timedelta(days=int(days))
-    qs = Occurrence.objects.filter(trackable__owner__username=member, due_at__gte=since)
-    done = qs.filter(status=Occurrence.Status.DONE).count()
-    missed = qs.filter(status=Occurrence.Status.MISSED).count()
-    total = done + missed
-    return {
-        "member": member,
-        "window_days": days,
-        "completed": done,
-        "missed": missed,
-        "completion_rate": round(done / total * 100, 1) if total else None,
-        "still_open": qs.filter(status=Occurrence.Status.PENDING).count(),
-    }
+    open_instances = Instance.objects.filter(
+        outcome=InstanceOutcome.PENDING,
+        task__state=TaskState.OPEN,
+        task__deleted_at__isnull=True,
+    )
+    return open_instances.count(), open_instances.filter(due_at__lt=timezone.now()).count()
 
 
 @mcp_tool(

@@ -73,6 +73,17 @@ class Command(BaseCommand):
         if options["remove_files"]:
             self._remove_files(base, target, module)
 
+        # Written *before* the "done" line but after the work, and deliberately
+        # at warning severity when data was purged: an app being unmounted is
+        # reversible and routine, tables being dropped is neither, and the House
+        # log should not make those look like the same event.
+        from nora_home.core.audit import record
+
+        record("core", "app.uninstalled", subject=module, source="cli",
+               severity="warning" if destructive else "notice",
+               purged_data=bool(options["purge_data"]),
+               removed_files=bool(options["remove_files"]))
+
         self.stdout.write(self.style.SUCCESS(f"\nUninstalled {module}."))
         if not destructive:
             self.stdout.write(

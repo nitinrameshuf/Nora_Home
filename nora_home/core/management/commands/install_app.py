@@ -61,6 +61,15 @@ class Command(BaseCommand):
 
         self._commit(base, module)
 
+        # Audited with no actor: this runs from a shell, not a browser, so there
+        # is no request.user to attribute it to. record() already treats a
+        # missing actor as null rather than guessing, and "an app appeared"
+        # is worth knowing even without a name attached to it.
+        from nora_home.core.audit import record
+
+        record("core", "app.installed", subject=module, severity="notice",
+               source="cli")
+
         self.stdout.write(self.style.SUCCESS(f"\nInstalled {module}."))
         self.stdout.write("Restart the services to mount it: docker compose up -d")
 

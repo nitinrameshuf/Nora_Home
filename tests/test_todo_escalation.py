@@ -1,8 +1,9 @@
 """
 Todo's escalation ladder, ported from the tracker's own — see the module
 docstring in nora_home/todo/escalation.py for what changed and what didn't.
-Mirrors tests/test_escalation.py's coverage rather than re-deriving it, since
-this is meant to behave the same way the proven engine already does.
+Written to mirror the deleted tests/test_escalation.py's coverage rather than
+re-derive it, since this is meant to behave the same way that proven engine did.
+Story 40 deleted the tracker, so this file is now the only test of the ladder.
 """
 
 from __future__ import annotations
@@ -15,9 +16,14 @@ from django.utils import timezone
 from nora_home.accounts.models import HouseMember
 from nora_home.core.signals import escalation_raised
 from nora_home.notifications.models import Notification
-from nora_home.tracker.models import EscalationPolicy
 from nora_home.todo.escalation import escalate_due_instances
-from nora_home.todo.models import ChangeEvent, Priority, Task, TaskState
+from nora_home.todo.models import (
+    ChangeEvent,
+    EscalationPolicy,
+    Priority,
+    Task,
+    TaskState,
+)
 from nora_home.todo.scheduling import current_instance, materialize
 
 pytestmark = pytest.mark.django_db
@@ -333,3 +339,47 @@ def test_acknowledging_records_who_and_when(make_task, member):
 
     assert instance.acknowledged_by == member
     assert instance.acknowledged_at is not None
+
+
+# ── the policy's move from the tracker (Story 40) ────────────────────────────
+
+def test_the_escalation_policy_belongs_to_todo_now():
+    """The FK used to be a string reference to tracker.EscalationPolicy, which
+    was the one thing keeping a Level 2 app pointed at a Level 1 one it was
+    replacing. Story 40 deleted the tracker; this is what says the move landed."""
+    field = Task._meta.get_field("escalation_policy")
+
+    assert field.related_model is EscalationPolicy
+    assert field.related_model._meta.app_label == "todo"
+
+
+def test_a_house_with_no_policy_configured_still_escalates(member):
+    """get_default() creates one rather than raising. An escalation that fired
+    inside a Celery beat job and blew up on a missing row would fail silently,
+    which is the opposite of what escalation is for."""
+    EscalationPolicy.objects.all().delete()
+
+    policy = EscalationPolicy.get_default()
+
+    assert policy.pk
+    assert policy.is_default
+    assert len(policy.levels) == 4
+
+
+def test_get_default_reuses_the_seeded_policy_rather_than_making_another():
+    seeded = EscalationPolicy.objects.create(
+        name="House default", is_default=True,
+        levels=[{"after_minutes": 0, "notify": "owner", "severity": "nudge"}])
+
+    assert EscalationPolicy.get_default() == seeded
+    assert EscalationPolicy.objects.filter(is_default=True).count() == 1
+
+
+def test_bootstrap_seeds_the_three_policies_onto_todo():
+    from django.core.management import call_command
+
+    EscalationPolicy.objects.all().delete()
+    call_command("bootstrap_home")
+
+    assert set(EscalationPolicy.objects.values_list("name", flat=True)) == {
+        "House default", "Gentle", "Safety critical"}

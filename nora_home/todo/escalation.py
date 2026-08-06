@@ -28,7 +28,13 @@ from django.utils import timezone
 from nora_home.core.audit import record
 from nora_home.core.signals import escalation_raised
 from nora_home.notifications.api import notify, notify_house
-from nora_home.todo.models import ChangeEvent, Instance, InstanceOutcome, TaskState
+from nora_home.todo.models import (
+    ChangeEvent,
+    EscalationPolicy,
+    Instance,
+    InstanceOutcome,
+    TaskState,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,8 +67,6 @@ def escalate_due_instances(limit: int = 200) -> dict:
 
 
 def _advance(instance: Instance, now) -> bool:
-    from nora_home.tracker.models import EscalationPolicy
-
     task = instance.task
     policy = task.escalation_policy or EscalationPolicy.get_default()
     levels = policy.levels or []
@@ -108,9 +112,9 @@ def _resolve_audience(task, audience: str, level: int) -> list:
         return [owner]
     if audience == "chain":
         chain = owner.escalation_chain()
-        # Level 3 uses chain rung 1, level 4 uses rung 2, and so on — same
-        # offset the tracker's own ladder uses, for the same reason: the first
-        # two rungs are "owner" by convention on the default policies.
+        # Level 3 uses chain rung 1, level 4 uses rung 2, and so on — the
+        # offset exists because the first two rungs are "owner" by convention
+        # on all three seeded policies.
         index = max(0, level - 3)
         return chain[index:index + 1] or chain[:1]
     if audience == "adults":

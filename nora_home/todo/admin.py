@@ -4,6 +4,7 @@ from nora_home.todo.models import (
     Attachment,
     ChangeEvent,
     Comment,
+    EscalationPolicy,
     Event,
     Instance,
     Label,
@@ -12,6 +13,16 @@ from nora_home.todo.models import (
     Task,
     TodoPreference,
 )
+
+
+@admin.register(EscalationPolicy)
+class EscalationPolicyAdmin(admin.ModelAdmin):
+    """Registered because the whole point of `levels` being JSON is that a
+    family member can retime the ladder here without a deploy (CLAUDE.md §4).
+    Inherited from the tracker's admin when Story 40 deleted it."""
+
+    list_display = ("name", "grace_minutes", "is_default", "stop_on_acknowledge")
+    list_filter = ("is_default",)
 
 
 class InstanceInline(admin.TabularInline):

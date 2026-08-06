@@ -223,7 +223,7 @@ def test_pushing_a_notification_carries_what_the_bell_needs(member):
 
     notification = Notification.objects.create(
         title="Overdue", body="x", severity="warning", recipient=member,
-        app_slug="tracker")
+        app_slug="todo")
 
     assert bot.push_notification(notification) is True
 

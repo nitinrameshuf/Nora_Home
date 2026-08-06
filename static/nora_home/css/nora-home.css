@@ -601,3 +601,143 @@ th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; colo
   .setting { grid-template-columns: 1fr; gap: 0.45rem; }
   .setting__control { justify-content: flex-start; }
 }
+
+/* ── the House log ────────────────────────────────────────────────────────── */
+/* One timeline over five subsystems (nora_home/core/houselog.py). The filter bar
+   is a plain GET form, so everything here is layout — there is no open/closed
+   state, no JS, and nothing to keep in sync with a script. */
+
+.log-filters { margin-bottom: 1.1rem; padding: 1rem 1.15rem; }
+
+.log-filters__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+}
+
+.log-field { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+/* The search box takes whatever is left, so the three fixed-width controls keep
+   their own size instead of all sharing the row equally. */
+.log-field--grow { flex: 1 1 14rem; }
+.log-field--actions { flex-direction: row; gap: 0.5rem; }
+
+.log-field__label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-faint);
+  font-weight: 650;
+}
+.log-field select,
+.log-field input[type="search"] { min-height: var(--tap); }
+
+.log-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.1rem;
+  align-items: center;
+  border: 0;
+  margin: 0.9rem 0 0;
+  padding: 0.85rem 0 0;
+  border-top: 1px solid var(--border);
+}
+.log-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  /* The whole label is the target, not just the 20px box — this page gets used
+     on the 10.1" touchscreen, where a bare checkbox is not a tappable thing. */
+  min-height: var(--tap);
+  cursor: pointer;
+}
+.log-source input { width: 20px; height: 20px; accent-color: var(--accent); }
+
+.log-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 0.9rem;
+  margin-bottom: 1.4rem;
+}
+.log-chart-card { padding: 1rem 1.15rem 1.15rem; }
+.log-chart { width: 100%; height: 220px; margin-top: 0.6rem; }
+
+.log-truncated {
+  color: var(--text-faint);
+  font-size: 0.88rem;
+  margin: 0 0 0.8rem;
+}
+
+.log-timeline { list-style: none; margin: 0; padding: 0; }
+
+.log-entry {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.5rem 1rem;
+  padding: 0.8rem 0.2rem;
+  border-bottom: 1px solid var(--border);
+}
+.log-entry:last-child { border-bottom: 0; }
+/* A left edge rather than a background tint: the timeline sits on the living
+   background, and a filled row would punch a hole in it. */
+.log-entry--loud {
+  border-left: 3px solid var(--warn);
+  padding-left: 0.7rem;
+  margin-left: -0.5rem;
+}
+
+.log-entry__when {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.log-entry__time { color: var(--text-dim); }
+
+.log-entry__title { font-weight: 550; line-height: 1.35; }
+.log-entry__detail {
+  color: var(--text-dim);
+  font-size: 0.88rem;
+  margin-top: 0.15rem;
+  /* Errors and notification bodies can be long; two lines is enough to
+     recognise one, and the rest belongs on the page it came from. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.log-entry__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.7rem;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--text-faint);
+}
+.log-tag {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.1rem 0.45rem;
+}
+
+.log-empty {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--text-faint);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+/* On a phone the severity pill moves under the entry rather than squeezing the
+   title into a column too narrow to read. */
+@media (max-width: 620px) {
+  .log-entry { grid-template-columns: 4.5rem minmax(0, 1fr); }
+  .log-entry .pill { grid-column: 2; justify-self: start; }
+  .log-field--grow { flex-basis: 100%; }
+}

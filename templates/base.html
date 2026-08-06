@@ -57,6 +57,8 @@ viewport measuring in JavaScript.
             rather than getting their own "This house" header.
           {% endcomment %}
           <a class="nav-link" href="{% url 'core:app_directory' %}">Apps</a>
+          <a class="nav-link" href="{% url 'core:house_log' %}"
+             {% if request.path == '/home/log/' %}aria-current="page"{% endif %}>Log</a>
           <a class="nav-link" href="{% url 'core:system_status' %}">Status</a>
           <a class="nav-link" href="{% url 'core:settings' %}">Settings</a>
         {% endif %}

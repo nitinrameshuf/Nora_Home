@@ -22,7 +22,8 @@ class TodoConfig(NoraAppConfig):
     nora_order = 5
     nora_url_prefix = "todo/"
 
-    # Still to come: nora_provides_mcp_tools.
+    # open_items and member_reliability, inherited from the tracker in Story 40.
+    nora_provides_mcp_tools = True
     nora_has_page = True
     nora_nav = True
 
@@ -33,6 +34,10 @@ class TodoConfig(NoraAppConfig):
         # Socket Mode process dispatches through a registry it expects to find
         # already populated, so the base platform never imports this app by name.
         from nora_home.todo import slack_commands  # noqa: F401
+
+        # Importing the module is what registers the tools, exactly as
+        # nora_home.mcpserver.apps does for the platform's own.
+        from nora_home.todo import mcp_tools  # noqa: F401
 
     # §6: widgets are for the *home screen*, not how Todo presents itself —
     # deliberately a small chosen set, not one per chart on Reporting.

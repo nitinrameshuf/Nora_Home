@@ -106,7 +106,6 @@ NORA_HOME_PLATFORM_APPS = [
     "nora_home.dashboard",
     "nora_home.accounts",
     "nora_home.notifications",
-    "nora_home.tracker",
     "nora_home.todo",
     "nora_home.ai",
     "nora_home.mcpserver",

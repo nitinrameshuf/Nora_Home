@@ -52,7 +52,7 @@ def test_a_members_layout_is_created_once(member):
 
 def test_layouts_are_per_person(member, adult):
     mine = DashboardLayout.for_member(member)
-    mine.items = [{"key": "tracker.TodayWidget", "x": 0, "y": 0, "w": 12, "h": 4}]
+    mine.items = [{"key": "todo.OpenLoadWidget", "x": 0, "y": 0, "w": 12, "h": 4}]
     mine.save()
 
     assert DashboardLayout.for_member(adult).items == STARTER_LAYOUT

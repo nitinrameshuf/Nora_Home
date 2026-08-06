@@ -41,7 +41,7 @@ def test_platform_apps_are_all_present():
     """Every platform subsystem that declares itself should be found. If one
     disappears, its widgets, cards, and MCP tools go with it."""
     modules = {meta.module for meta in registered_apps()}
-    for expected in ["nora_home.core", "nora_home.tracker", "nora_home.notifications",
+    for expected in ["nora_home.core", "nora_home.todo", "nora_home.notifications",
                      "nora_home.telemetry", "nora_home.displays", "nora_home.dashboard",
                      "nora_home.integrations"]:
         assert expected in modules, f"{expected} is not registered"

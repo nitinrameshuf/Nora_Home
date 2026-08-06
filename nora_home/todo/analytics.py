@@ -21,7 +21,7 @@ of `None` means nothing was due; a rate of `0.0` means things were due and
 none got done. Rendering the first as a zero tells someone they failed at a
 week when the house asked nothing of them — which is exactly the accusation
 §10's Tone section exists to avoid. This mirrors
-`nora_home.tracker.api.completion_stats()`, which already made this choice.
+the deleted tracker's own `completion_stats()`, which already made this choice.
 
 **3. These functions return data, never presentation.** No ECharts options,
 no HTML, no colours, and — importantly — **no tone**. `nora_home.todo.tone`

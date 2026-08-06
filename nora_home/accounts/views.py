@@ -8,6 +8,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from nora_home.accounts.models import HouseMember
+from nora_home.core.audit import record
 
 SCOPE_SESSION_KEY = "nh_view_scope"
 
@@ -36,9 +37,21 @@ def switch_picker(request):
 @require_POST
 def switch_to(request, member_id):
     member = get_object_or_404(HouseMember, pk=member_id, is_active=True)
+    # Audited because there is no password: tapping a name *is* the whole
+    # authentication story in this house (CLAUDE.md §4), so this row is the only
+    # record that anyone became anyone. `actor` is who they became, not who they
+    # were — nothing here knows the latter, which is exactly the tradeoff the
+    # passwordless switcher accepts.
+    record("accounts", "member.switched", actor=member, subject=member.name,
+           from_member=_previous_username(request))
     auth_login(request, member, backend="django.contrib.auth.backends.ModelBackend")
     request.session[SCOPE_SESSION_KEY] = "self"
     return redirect(_safe_next(request) or settings.LOGIN_REDIRECT_URL)
+
+
+def _previous_username(request) -> str:
+    user = getattr(request, "user", None)
+    return user.get_username() if user is not None and user.is_authenticated else ""
 
 
 @require_POST
@@ -52,6 +65,7 @@ def switch_to_everyone(request):
         auth_login(request, fallback,
                   backend="django.contrib.auth.backends.ModelBackend")
     request.session[SCOPE_SESSION_KEY] = "all"
+    record("accounts", "scope.changed", actor=request.user, subject="Everyone")
     return redirect(_safe_next(request) or settings.LOGIN_REDIRECT_URL)
 
 
@@ -70,6 +84,7 @@ def switch_to_wall(request):
         auth_login(request, fallback,
                   backend="django.contrib.auth.backends.ModelBackend")
     request.session[SCOPE_SESSION_KEY] = "wall"
+    record("accounts", "scope.changed", actor=request.user, subject="Wall")
     return redirect(_safe_next(request) or settings.LOGIN_REDIRECT_URL)
 
 

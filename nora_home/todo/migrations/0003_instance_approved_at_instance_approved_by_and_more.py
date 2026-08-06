@@ -7,9 +7,12 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
+    # The ('tracker', '0001_initial') dependency was dropped by Story 40 along
+    # with the tracker app — see the note in 0001_initial. It was only ever here
+    # because the autodetector carries an initial migration's dependencies
+    # forward; nothing in this file touches an escalation policy.
     dependencies = [
         ('todo', '0002_instance_acknowledged_at_instance_acknowledged_by_and_more'),
-        ('tracker', '0001_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

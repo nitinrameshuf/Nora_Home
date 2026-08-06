@@ -68,7 +68,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("The house is ready."))
 
     def _policies(self):
-        from nora_home.tracker.models import EscalationPolicy
+        from nora_home.todo.models import EscalationPolicy
 
         for spec in DEFAULT_POLICIES:
             _, created = EscalationPolicy.objects.get_or_create(

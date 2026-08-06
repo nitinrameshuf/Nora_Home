@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import pytest
 from django.core.cache import cache
+from django.urls import reverse
 from django.utils import timezone
 
 from nora_home.core.api.auth import (
@@ -89,64 +90,64 @@ def test_falsy_settings_are_not_mistaken_for_missing():
 # ── base models ──────────────────────────────────────────────────────────────
 
 def test_timestamps_are_set_on_create(member):
-    from nora_home.tracker.models import Trackable
+    from nora_home.todo.models import Priority, Task
 
-    trackable = Trackable.objects.create(owner=member, title="x")
+    task = Task.objects.create(owner=member, priority=Priority.P2, title="x")
 
-    assert trackable.created_at is not None
-    assert trackable.updated_at is not None
+    assert task.created_at is not None
+    assert task.updated_at is not None
 
 
 def test_soft_delete_hides_without_destroying(member):
-    from nora_home.tracker.models import Trackable
+    from nora_home.todo.models import Priority, Task
 
-    trackable = Trackable.objects.create(owner=member, title="Filter")
-    trackable.delete()
+    task = Task.objects.create(owner=member, priority=Priority.P2, title="Filter")
+    task.delete()
 
-    assert Trackable.objects.filter(pk=trackable.pk).exists(), "row was really deleted"
-    assert trackable.deleted_at is not None
-    assert Trackable.objects.alive().filter(pk=trackable.pk).count() == 0
-    assert Trackable.objects.dead().filter(pk=trackable.pk).count() == 1
+    assert Task.objects.filter(pk=task.pk).exists(), "row was really deleted"
+    assert task.deleted_at is not None
+    assert Task.objects.alive().filter(pk=task.pk).count() == 0
+    assert Task.objects.dead().filter(pk=task.pk).count() == 1
 
 
 def test_soft_deleted_records_can_be_restored(member):
-    from nora_home.tracker.models import Trackable
+    from nora_home.todo.models import Priority, Task
 
-    trackable = Trackable.objects.create(owner=member, title="Filter")
-    trackable.delete()
-    trackable.restore()
+    task = Task.objects.create(owner=member, priority=Priority.P2, title="Filter")
+    task.delete()
+    task.restore()
 
-    assert trackable.deleted_at is None
-    assert Trackable.objects.alive().filter(pk=trackable.pk).exists()
+    assert task.deleted_at is None
+    assert Task.objects.alive().filter(pk=task.pk).exists()
 
 
 def test_hard_delete_really_removes_the_row(member):
-    from nora_home.tracker.models import Trackable
+    from nora_home.todo.models import Priority, Task
 
-    trackable = Trackable.objects.create(owner=member, title="Filter")
-    pk = trackable.pk
-    trackable.hard_delete()
+    task = Task.objects.create(owner=member, priority=Priority.P2, title="Filter")
+    pk = task.pk
+    task.hard_delete()
 
-    assert not Trackable.objects.filter(pk=pk).exists()
+    assert not Task.objects.filter(pk=pk).exists()
 
 
 def test_queryset_delete_is_also_soft(member):
-    from nora_home.tracker.models import Trackable
+    from nora_home.todo.models import Priority, Task
 
-    Trackable.objects.create(owner=member, title="a")
-    Trackable.objects.create(owner=member, title="b")
+    Task.objects.create(owner=member, priority=Priority.P2, title="a")
+    Task.objects.create(owner=member, priority=Priority.P2, title="b")
 
-    Trackable.objects.all().delete()
+    Task.objects.all().delete()
 
-    assert Trackable.objects.count() == 2
-    assert Trackable.objects.alive().count() == 0
+    assert Task.objects.count() == 2
+    assert Task.objects.alive().count() == 0
 
 
 def test_uuid_model_generates_a_unique_external_id(member):
-    from nora_home.tracker.models import Trackable
+    from nora_home.todo.models import Priority, Task
 
-    one = Trackable.objects.create(owner=member, title="a")
-    two = Trackable.objects.create(owner=member, title="b")
+    one = Task.objects.create(owner=member, priority=Priority.P2, title="a")
+    two = Task.objects.create(owner=member, priority=Priority.P2, title="b")
 
     assert one.uuid != two.uuid
 
@@ -154,12 +155,52 @@ def test_uuid_model_generates_a_unique_external_id(member):
 # ── audit ────────────────────────────────────────────────────────────────────
 
 def test_record_writes_an_audit_row(adult):
-    event = record("tracker", "escalation.raised", actor=adult,
+    event = record("todo", "escalation.raised", actor=adult,
                    subject="Bins", severity="warning", source="celery", level=2)
 
     assert event.pk
     assert event.detail == {"level": 2}
     assert event.actor == adult
+
+
+def test_switching_to_a_member_is_audited(client, member):
+    """There is no password in this house, so tapping a name *is* the whole
+    authentication story (CLAUDE.md §4) — this row is the only durable record
+    that anyone became anyone. Story 40 §12.3."""
+    client.post(reverse("accounts:switch_to", args=[member.pk]))
+
+    event = AuditEvent.objects.filter(action="member.switched").first()
+    assert event is not None
+    assert event.actor == member
+    assert event.subject == member.name
+
+
+def test_switching_records_who_it_was_before(client, member, adult):
+    client.force_login(adult)
+
+    client.post(reverse("accounts:switch_to", args=[member.pk]))
+
+    event = AuditEvent.objects.filter(action="member.switched").first()
+    assert event.detail["from_member"] == adult.get_username()
+
+
+def test_changing_the_wall_schedule_records_what_it_was_set_to(client, admin_member):
+    """"Why did the wall go dark at six" is only answerable from the log if the
+    log says what the hours became, not merely that something changed."""
+    client.force_login(admin_member)
+
+    client.post(reverse("core:settings"), {
+        "wall_schedule_enabled": "on",
+        "wall_schedule_start": "7",
+        "wall_schedule_end": "23",
+    })
+
+    event = AuditEvent.objects.filter(action="setting.changed").first()
+    assert event is not None
+    assert event.actor == admin_member
+    assert event.detail["start_hour"] == 7
+    assert event.detail["end_hour"] == 23
+    assert event.detail["enabled"] is True
 
 
 def test_record_never_raises_even_when_the_write_fails(monkeypatch):
@@ -169,7 +210,7 @@ def test_record_never_raises_even_when_the_write_fails(monkeypatch):
 
     monkeypatch.setattr(AuditEvent.objects, "create", explode)
 
-    assert record("tracker", "thing.happened") is None
+    assert record("todo", "thing.happened") is None
 
 
 def test_record_tolerates_an_unsaved_actor():

@@ -2,8 +2,8 @@
 Telemetry widgets — what's true across every app's numbers right now.
 
 HouseVitalsWidget is the telemetry-side counterpart to
-nora_home.tracker.widgets.TodayWidget: it queries every active Series with no
-app_slug filter, the same way TodayWidget queries every open Occurrence with
+nora_home.todo.widgets.DueNextWidget: it queries every active Series with no
+app_slug filter, the same way DueNextWidget queries every open Instance with
 no app_slug filter. Any app that records through telemetry.record_reading()
 shows up here automatically — nothing to register beyond define_series()
 itself.

@@ -50,6 +50,73 @@ class AlarmKind(models.TextChoices):
     SPEECH = "speech", "Spoken text"
 
 
+class EscalationPolicy(TimeStampedModel):
+    """How hard the house pushes when something is not done.
+
+    Carried over from the tracker unchanged in Story 40 — same fields, same rung
+    shape, same audiences — because it works and the admin already knows it. What
+    changed is only which app owns it: the tracker is gone, and Todo is what the
+    base platform leans on for escalation now.
+
+    `levels` is an ordered list of rungs, each escalating further:
+
+        [
+          {"after_minutes": 0,    "notify": "owner",  "severity": "nudge"},
+          {"after_minutes": 120,  "notify": "owner",  "severity": "warning"},
+          {"after_minutes": 720,  "notify": "chain",  "severity": "alert"},
+          {"after_minutes": 2880, "notify": "house",  "severity": "critical"}
+        ]
+
+    notify: owner | chain (the member's escalation_contacts, one rung per level)
+            | adults | house
+
+    JSON rather than columns so a family member can retime the ladder in the
+    admin without a deploy — CLAUDE.md §4, "escalation is a policy object, not
+    code."
+    """
+
+    name = models.CharField(max_length=80, unique=True)
+    description = models.CharField(max_length=200, blank=True)
+    grace_minutes = models.PositiveIntegerField(
+        default=0, help_text="Time after due before the first rung fires.")
+    levels = models.JSONField(default=list)
+    stop_on_acknowledge = models.BooleanField(
+        default=True, help_text="Acknowledging the alert halts further rungs.")
+    quiet_hours_respected = models.BooleanField(default=True)
+    is_default = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name_plural = "escalation policies"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def get_default(cls) -> "EscalationPolicy":
+        """The policy a task with none of its own escalates under.
+
+        Creates one if the house has never been bootstrapped — an escalation
+        that fires with no policy configured must still escalate, rather than
+        raising inside a Celery beat job where nobody would see it.
+        """
+        policy = cls.objects.filter(is_default=True).first()
+        if policy:
+            return policy
+        return cls.objects.create(
+            name="House default",
+            description="Nudge, warn, tell the household, then tell everyone.",
+            grace_minutes=15,
+            is_default=True,
+            levels=[
+                {"after_minutes": 0, "notify": "owner", "severity": "nudge"},
+                {"after_minutes": 120, "notify": "owner", "severity": "warning"},
+                {"after_minutes": 720, "notify": "chain", "severity": "alert"},
+                {"after_minutes": 2880, "notify": "house", "severity": "critical"},
+            ],
+        )
+
+
 class Task(UUIDModel, OwnedModel, SoftDeleteModel):
     """The thing, and its rule. `OwnedModel` gives `owner` — required, not
     nullable: every task, including a system one, has an owner (see
@@ -104,13 +171,10 @@ class Task(UUIDModel, OwnedModel, SoftDeleteModel):
                              default=TaskState.OPEN, db_index=True)
 
     escalation_enabled = models.BooleanField(default=False)
-    # String reference, not a Python import: EscalationPolicy still lives on
-    # the tracker (Level 1) until Story 40 deletes it and gives Todo its own.
-    # A FK must name a real model, but a string reference defers resolution
-    # until Django's app registry is ready, so this needs no
-    # `from nora_home.tracker.models import ...` anywhere in this file.
+    # Todo's own policy since Story 40 — this pointed at "tracker.Escalation
+    # Policy" until the tracker was deleted and Todo absorbed it.
     escalation_policy = models.ForeignKey(
-        "tracker.EscalationPolicy", null=True, blank=True,
+        EscalationPolicy, null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+")
 
     # Per task, not per reminder — confirmed 2026-08-05. alarm_ref's meaning

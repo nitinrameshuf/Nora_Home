@@ -11,8 +11,20 @@ class Migration(migrations.Migration):
 
     initial = True
 
+    # EDITED BY STORY 40, deliberately, against the usual "never edit an applied
+    # migration" rule (CLAUDE.md §6). This depended on ('tracker',
+    # '0001_initial') and pointed Task.escalation_policy at
+    # tracker.escalationpolicy. Story 40 deletes the tracker app, and a
+    # migration that names a node no app can supply is not a stale dependency —
+    # Django refuses to build the graph at all and *every* management command
+    # dies with NodeNotFoundError. So the dependency had to go.
+    #
+    # The rule's actual purpose is preserved: replaying this file from empty
+    # still produces exactly the schema the unedited version did, because
+    # EscalationPolicy is created here with the same fields the tracker gave it.
+    # Databases where the original already ran are converged by 0007, which is a
+    # no-op on any database built from this file. See 0007 for that argument.
     dependencies = [
-        ('tracker', '0001_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -70,6 +82,29 @@ class Migration(migrations.Migration):
                 'ordering': ['due_at'],
             },
         ),
+        # Copied verbatim from the deleted tracker/0001_initial's own
+        # EscalationPolicy block, so a database built from this file gets
+        # byte-for-byte the table the tracker used to create. See the note on
+        # `dependencies` above for why this moved here.
+        migrations.CreateModel(
+            name='EscalationPolicy',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('created_at', models.DateTimeField(db_index=True, default=django.utils.timezone.now, editable=False)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
+                ('name', models.CharField(max_length=80, unique=True)),
+                ('description', models.CharField(blank=True, max_length=200)),
+                ('grace_minutes', models.PositiveIntegerField(default=0, help_text='Time after due before the first rung fires.')),
+                ('levels', models.JSONField(default=list)),
+                ('stop_on_acknowledge', models.BooleanField(default=True, help_text='Acknowledging the alert halts further rungs.')),
+                ('quiet_hours_respected', models.BooleanField(default=True)),
+                ('is_default', models.BooleanField(default=False)),
+            ],
+            options={
+                'verbose_name_plural': 'escalation policies',
+                'ordering': ['name'],
+            },
+        ),
         migrations.CreateModel(
             name='Task',
             fields=[
@@ -92,7 +127,7 @@ class Migration(migrations.Migration):
                 ('escalation_enabled', models.BooleanField(default=False)),
                 ('alarm_kind', models.CharField(blank=True, choices=[('chime', 'Chime'), ('file', 'Audio file'), ('speech', 'Spoken text')], max_length=6)),
                 ('alarm_ref', models.CharField(blank=True, max_length=300)),
-                ('escalation_policy', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='+', to='tracker.escalationpolicy')),
+                ('escalation_policy', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='+', to='todo.escalationpolicy')),
                 ('labels', models.ManyToManyField(blank=True, related_name='tasks', to='todo.label')),
                 ('owner', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='%(app_label)s_%(class)s_set', to=settings.AUTH_USER_MODEL)),
             ],

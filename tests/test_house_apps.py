@@ -227,11 +227,11 @@ def test_level_1_or_2_never_imports_a_level_3_app():
 # Recorded exceptions to the "never import another app's models" rule.
 #
 # Deliberately empty, and it should stay that way. It briefly held example_habit,
-# which read nora_home.tracker.models in five files — a problem precisely because
-# it is the app DEVELOPMENT.md tells people to copy, so every new app inherited
-# the violation and started with a failing suite. Cleared 2026-08-04 by adding
-# the missing query helpers to nora_home.tracker.api (streak_for, is_done_today,
-# history_for, completion_stats). If you are about to add an entry here, add the
+# which read the old nora_home.tracker.models in five files — a problem precisely
+# because it is the app DEVELOPMENT.md tells people to copy, so every new app
+# inherited the violation and started with a failing suite. Cleared 2026-08-04 by
+# adding the missing query helpers to that app's own API; both apps are gone now
+# (Story 28 and Story 40), but the rule they proved is not. If you are about to add an entry here, add the
 # API function instead.
 KNOWN_MODEL_IMPORT_DEBT: dict[str, set[str]] = {}
 

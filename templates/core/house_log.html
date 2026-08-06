@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% comment %}
+The House log (docs/Main_App/subsystems/todo-build-brief.md §12.2).
+
+The filter form is a plain GET form on purpose — no JavaScript, no stored
+state. Every view of this page is a URL, so "look at what happened on Tuesday"
+is something one person can send another, and the back button does what it
+looks like it does.
+
+Charts follow the same contract as Todo's Reporting page: the view hands over an
+ECharts option or `None`, and `None` renders as a sentence rather than an empty
+axis. Options travel through `json_script` so the browser parses them as JSON —
+entries carry task titles and error strings people typed, and those must never
+be able to close a tag.
+{% endcomment %}
+
+{% block heading %}House log{% endblock %}
+
+{% block actions %}
+  <a class="btn" href="{% url 'core:system_status' %}">Status</a>
+{% endblock %}
+
+{% block content %}
+  <form class="log-filters card" method="get" role="search">
+    <div class="log-filters__row">
+      <label class="log-field">
+        <span class="log-field__label">Window</span>
+        <select name="days">
+          <option value="1" {% if days == 1 %}selected{% endif %}>Last 24 hours</option>
+          <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
+          <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
+          <option value="90" {% if days == 90 %}selected{% endif %}>Last 90 days</option>
+          <option value="365" {% if days == 365 %}selected{% endif %}>Last year</option>
+        </select>
+      </label>
+
+      <label class="log-field">
+        <span class="log-field__label">Severity</span>
+        <select name="severity">
+          <option value="">Everything</option>
+          {% for level in severities %}
+            <option value="{{ level }}" {% if severity == level %}selected{% endif %}>
+              {{ level|capfirst }} and worse
+            </option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label class="log-field log-field--grow">
+        <span class="log-field__label">Contains</span>
+        <input type="search" name="q" value="{{ q }}"
+               placeholder="a name, a subject, an error">
+      </label>
+
+      <div class="log-field log-field--actions">
+        <button class="btn btn-primary" type="submit">Filter</button>
+        <a class="btn btn-ghost" href="{% url 'core:house_log' %}">Reset</a>
+      </div>
+    </div>
+
+    <fieldset class="log-sources">
+      <legend class="log-field__label">Sources</legend>
+      {% comment %}
+      No boxes ticked means every source, which is why the default page has none
+      ticked rather than all six — "all" and "none selected" are the same answer
+      here, and ticking all six on load would make Reset look like it did nothing.
+      {% endcomment %}
+      {% for key, label in sources.items %}
+        <label class="log-source">
+          <input type="checkbox" name="source" value="{{ key }}"
+                 {% if key in chosen_sources %}checked{% endif %}>
+          <span>{{ label }}</span>
+        </label>
+      {% endfor %}
+    </fieldset>
+  </form>
+
+  <div class="log-charts">
+    <section class="card log-chart-card">
+      <h3 class="card-title">What happened, by day</h3>
+      {% if charts.activity %}
+        {{ charts.activity|json_script:"log-activity" }}
+        <div class="log-chart" data-log-chart="log-activity"></div>
+      {% else %}
+        <p class="card-subtitle">Nothing recorded in this window.</p>
+      {% endif %}
+    </section>
+
+    <section class="card log-chart-card">
+      <h3 class="card-title">How loud it was</h3>
+      {% if charts.mix %}
+        {{ charts.mix|json_script:"log-mix" }}
+        <div class="log-chart" data-log-chart="log-mix"></div>
+      {% else %}
+        <p class="card-subtitle">Nothing to weigh up yet.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  {% if truncated %}
+    <p class="log-truncated">
+      Showing the most recent {{ limit }} entries. Narrow the window or a source
+      to see further back.
+    </p>
+  {% endif %}
+
+  <ol class="log-timeline">
+    {% for entry in entries %}
+      <li class="log-entry{% if entry.is_loud %} log-entry--loud{% endif %}">
+        <time class="log-entry__when" datetime="{{ entry.at|date:'c' }}">
+          {{ entry.at|date:"d M" }}<span class="log-entry__time">{{ entry.at|date:"H:i" }}</span>
+        </time>
+        <div class="log-entry__body">
+          <div class="log-entry__title">
+            {% if entry.url %}<a href="{{ entry.url }}">{{ entry.title }}</a>
+            {% else %}{{ entry.title }}{% endif %}
+          </div>
+          {% if entry.detail %}<div class="log-entry__detail">{{ entry.detail }}</div>{% endif %}
+          <div class="log-entry__meta">
+            <span class="log-tag">{{ entry.source_label }}</span>
+            {% if entry.app_slug %}<code>{{ entry.app_slug }}</code>{% endif %}
+            {% if entry.actor %}<span>{{ entry.actor }}</span>{% endif %}
+          </div>
+        </div>
+        <span class="pill {% if entry.severity == 'alert' or entry.severity == 'critical' %}alert{% elif entry.severity == 'warning' %}warn{% elif entry.severity == 'info' %}info{% endif %}">
+          {{ entry.severity }}
+        </span>
+      </li>
+    {% empty %}
+      <li class="log-empty">
+        {% comment %}
+        Deliberately not "no results": on a house that has just been set up this
+        is the true and expected answer, and it should not read like a failure.
+        {% endcomment %}
+        Nothing happened in this window that the house thought worth remembering.
+      </li>
+    {% endfor %}
+  </ol>
+{% endblock %}
+
+{% block scripts %}
+  {% comment %}
+  Not deferred, and in this order: nh-charts.js reads `echarts` at load time to
+  register the house theme, so the vendor bundle has to be parsed first. The page
+  script below is deferred because it only runs once the DOM exists.
+  {% endcomment %}
+  <script src="{% static 'nora_home/vendor/echarts.min.js' %}"></script>
+  <script src="{% static 'nora_home/js/nh-charts.js' %}"></script>
+  <script src="{% static 'nora_home/js/house-log.js' %}" defer></script>
+{% endblock %}

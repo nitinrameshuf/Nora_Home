@@ -6,6 +6,7 @@ import time
 from celery import shared_task
 from django.utils import timezone
 
+from nora_home.core.audit import record
 from nora_home.core.signals import integration_failing, integration_synced
 from nora_home.integrations.base import IntegrationError, get_class
 from nora_home.integrations.models import Integration, IntegrationRun
@@ -78,6 +79,14 @@ def _record_failure(integration: Integration, message: str, started: float,
     if integration.consecutive_failures == FAILURE_ALERT_THRESHOLD:
         from nora_home.notifications.api import notify_house
 
+        # `== threshold`, not `>=`: this whole block fires once per continuous
+        # failure episode, which is what keeps the audit log readable — an
+        # integration polling every 5 minutes and down for a day would otherwise
+        # write 288 identical rows and bury everything else on the House log.
+        record("integrations", "integration.failing", subject=integration.name,
+               severity="warning", source="celery", slug=integration.slug,
+               consecutive_failures=integration.consecutive_failures,
+               error=message[:300])
         notify_house(
             title=f"{integration.name} keeps failing",
             body=f"{FAILURE_ALERT_THRESHOLD} runs in a row failed: {message[:300]}",

@@ -9,7 +9,7 @@
 # needs more than its assertion, the detail is one file read away:
 #
 #     ./scripts/run-tests.sh              # everything
-#     ./scripts/run-tests.sh tracker      # just tests/test_tracker.py
+#     ./scripts/run-tests.sh todo         # just tests/test_todo.py
 #     ./scripts/run-tests.sh -k escalate  # anything pytest understands
 #
 # On the Pi, run it inside the web container so it uses the same Python and the

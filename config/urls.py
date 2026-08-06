@@ -3,7 +3,7 @@ Root URL map.
 
 Two rules:
 
-    /home/...        the platform — settings, tracker, alerts, displays, AI, system
+    /home/...        the platform — settings, log, alerts, displays, AI, system
     /<app-slug>/...  each house app gets a top-level URL of its own
 
 So the family's apps read like their own sites — /workout, /family, /maintenance —
@@ -22,7 +22,6 @@ from nora_home.core.registry import house_app_urlpatterns
 urlpatterns = [
     # The base app.
     path("home/", include("nora_home.core.urls")),
-    path("home/tracker/", include("nora_home.tracker.urls")),
     path("home/alerts/", include("nora_home.notifications.urls")),
     path("home/displays/", include("nora_home.displays.urls")),
     path("home/ai/", include("nora_home.ai.urls")),

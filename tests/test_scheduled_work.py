@@ -108,12 +108,12 @@ def test_prune_keeps_tasks_that_do_exist():
     every_minute, _ = IntervalSchedule.objects.get_or_create(
         every=1, period=IntervalSchedule.MINUTES)
     PeriodicTask.objects.create(
-        name="tracker.sweep-due", task="nora_home.tracker.tasks.sweep_due_items",
+        name="todo.close-passed", task="nora_home.todo.tasks.close_passed",
         interval=every_minute)
 
     call_command("prune_beat_schedule")
 
-    assert PeriodicTask.objects.filter(name="tracker.sweep-due").exists()
+    assert PeriodicTask.objects.filter(name="todo.close-passed").exists()
 
 
 def test_prune_keeps_celerys_own_builtin_tasks():

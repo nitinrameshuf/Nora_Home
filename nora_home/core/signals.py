@@ -14,7 +14,11 @@ another app's models is not.
 
 from django.dispatch import Signal
 
-# nora_home.tracker fires these.
+# nora_home.todo fires these. `item` is a todo.Instance — deliberately named
+# `item` rather than `instance`, both because Django already spends that word on
+# receiver kwargs and because a receiver should not need to care which app the
+# thing came from. The tracker fired these before Story 40 deleted it; the
+# signatures are unchanged, so a listener written against it still works.
 item_completed = Signal()      # item, member, completion
 item_missed = Signal()         # item, member, due_at
 escalation_raised = Signal()   # item, level, notified

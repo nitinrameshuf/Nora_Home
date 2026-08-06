@@ -38,21 +38,18 @@ def configure_logging(**_kwargs):
 # Platform heartbeat schedule. Anything a house app needs on a schedule should be
 # registered as a PeriodicTask row instead (see docs/Main_App/DEVELOPMENT.md), not added here.
 app.conf.beat_schedule = {
-    "tracker.sweep-due": {
-        "task": "nora_home.tracker.tasks.sweep_due_items",
-        "schedule": crontab(minute="*/5"),
-        "options": {"queue": "platform"},
-    },
-    "tracker.run-escalations": {
-        "task": "nora_home.tracker.tasks.run_escalations",
-        "schedule": crontab(minute="*/5"),
-        "options": {"queue": "alerts"},
-    },
-    "tracker.materialize-schedules": {
-        "task": "nora_home.tracker.tasks.materialize_schedules",
-        "schedule": crontab(minute=5, hour="*"),
-        "options": {"queue": "platform"},
-    },
+    # The tracker's three jobs — sweep-due, run-escalations,
+    # materialize-schedules — were removed with the app in Story 40. Todo's
+    # close-passed, run-escalations and extend-windows below are their
+    # successors one for one, and were already running alongside them.
+    #
+    # Deleting them here is enough to retire them for real: DatabaseScheduler
+    # syncs this dict *into* PeriodicTask rows but never removes what it no
+    # longer finds, so `manage.py prune_beat_schedule` — which the entrypoint
+    # runs before beat starts — is what actually drops the three orphaned rows
+    # on the Pi. Without it beat would keep dispatching to import paths that no
+    # longer exist.
+    #
     # Todo's own clock. `close-passed` is what makes a missed day exist at all
     # — see nora_home/todo/tasks.py. `extend-windows` only has to outpace a
     # 90-day horizon, so nightly is generous.

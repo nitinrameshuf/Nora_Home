@@ -1,7 +1,7 @@
 """
 MongoDB access for house apps.
 
-MySQL holds anything relational and anything the tracker or escalation engine needs
+MySQL holds anything relational and anything the task and escalation engines need
 to join across. Mongo holds the rest: journals, AI transcripts, raw integration
 payloads, sensor bursts, notes — documents whose shape you do not want to migrate
 every time an idea changes.

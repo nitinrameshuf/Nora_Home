@@ -146,7 +146,7 @@ PLATFORM_PAGES = [
     ("status", "/home/system/"),
     ("settings", "/home/settings/"),
     ("household", "/accounts/household/"),
-    ("tracker", "/home/tracker/"),
+    ("log", "/home/log/"),
     ("alerts", "/home/alerts/"),
     ("measurements", "/home/measurements/"),
     ("integrations", "/home/integrations/"),
