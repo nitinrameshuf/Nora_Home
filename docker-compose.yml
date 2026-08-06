@@ -104,6 +104,29 @@ services:
       retries: 3
       start_period: 90s
 
+  # The inbound half of Slack. Separate from web/worker/beat because it holds
+  # one long-lived outbound websocket: that does not belong in a request/response
+  # server, and it would be killed every 200 tasks inside the worker.
+  #
+  # Exits 0 when Slack is not configured, so `restart: on-failure` (not
+  # unless-stopped, unlike every other service here) leaves it stopped instead
+  # of looping. A house with no Slack app is a supported configuration.
+  slack:
+    <<: *app
+    command: ["slack"]
+    restart: on-failure
+    depends_on:
+      web: { condition: service_healthy }
+    # It serves nothing and answers no ping, so — as with beat — the only
+    # honest liveness signal is that the process is still there. entrypoint.sh
+    # execs manage.py, so the command line is what to look for.
+    healthcheck:
+      test: ["CMD-SHELL", "grep -qa slack_socket /proc/1/cmdline"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
   # ── data ───────────────────────────────────────────────────────────────────
   mysql:
     image: mariadb:11

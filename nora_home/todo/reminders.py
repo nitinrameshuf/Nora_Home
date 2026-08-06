@@ -112,10 +112,50 @@ def send_due_reminders(*, now=None, limit: int = 500) -> dict:
     return {"sent": sent}
 
 
+def _slack_actions(task: Task, instance) -> list[dict]:
+    """Done · Skip · Snooze · Reassign, for the Slack message itself (§12).
+
+    Answering a reminder from a phone should not mean opening the house — that
+    is the whole point of the buttons, and better than typing a slash command
+    one-handed. Handlers live in `nora_home.todo.slack_commands`; the
+    `action_id`s here are the contract between the two.
+    """
+    from nora_home.accounts.models import HouseMember
+
+    others = HouseMember.objects.filter(is_active=True).exclude(pk=task.owner_id)
+    actions = [
+        {"action_id": "todo_done", "text": "Done", "value": str(instance.uuid),
+         "style": "primary"},
+    ]
+
+    # Skip only while it is still a *decision*. §5 draws the line at the due
+    # moment: before it, declining is deliberate and excluded from miss
+    # patterns; after it, the occasion is already a miss and `api.skip` refuses.
+    # Since the default reminder fires exactly at `due_at`, this button would
+    # otherwise be present and broken on almost every reminder the house sends
+    # — offering it is only honest when it can still work.
+    if instance.due_at > timezone.now():
+        actions.append({"action_id": "todo_skip", "text": "Skip",
+                        "value": str(instance.uuid)})
+
+    actions.append({"action_id": "todo_snooze", "text": "Snooze",
+                    "value": str(instance.uuid)})
+    if others.exists():
+        # A select rather than a button: reassigning needs a *target*, and a
+        # button cannot carry one without a modal round trip.
+        actions.append({
+            "action_id": "todo_reassign", "text": "Reassign",
+            "options": [{"text": member.name, "value": f"{instance.uuid}|{member.pk}"}
+                        for member in others],
+        })
+    return actions
+
+
 def _send_reminder(task: Task, instance, reminder: Reminder) -> bool:
     channels = [c for c in (reminder.channels or []) if c not in UNDELIVERABLE_CHANNELS] or None
     recipients = api.doers(task)
     key = f"todo-reminder:{instance.uuid}:{reminder.pk}"
+    actions = _slack_actions(task, instance)
 
     any_sent = False
     for member in recipients:
@@ -124,7 +164,7 @@ def _send_reminder(task: Task, instance, reminder: Reminder) -> bool:
             body=f"Due {timezone.localtime(instance.due_at):%a %d %b, %H:%M}.",
             severity="info", app_slug="todo", url=f"/todo/t/{task.uuid}/",
             dedupe_key=f"{key}:{member.pk}", dedupe_minutes=REMINDER_DEDUPE_MINUTES,
-            channels=channels,
+            channels=channels, slack_actions=actions,
         )
         any_sent = any_sent or result is not None
 

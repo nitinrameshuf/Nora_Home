@@ -29,6 +29,11 @@ class TodoConfig(NoraAppConfig):
     def ready(self):
         from nora_home.todo import system_tasks  # noqa: F401 — connects the signal receivers
 
+        # Registers `/todo` and its message buttons. Same reason as above: the
+        # Socket Mode process dispatches through a registry it expects to find
+        # already populated, so the base platform never imports this app by name.
+        from nora_home.todo import slack_commands  # noqa: F401
+
     # §6: widgets are for the *home screen*, not how Todo presents itself —
     # deliberately a small chosen set, not one per chart on Reporting.
     nora_widgets = [

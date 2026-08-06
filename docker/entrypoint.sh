@@ -6,6 +6,7 @@
 #   web     migrate, collect static, serve ASGI (HTTP + websockets)
 #   worker  celery worker across every queue
 #   beat    celery beat, the house's clock
+#   slack   the Socket Mode websocket, Slack's only way in (see §12)
 #
 set -euo pipefail
 
@@ -72,6 +73,22 @@ case "$ROLE" in
     exec celery -A config beat \
         --loglevel="${NORA_HOME_LOG_LEVEL:-INFO}" \
         --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    ;;
+
+  slack)
+    wait_for "${NORA_HOME_WEB_HOST:-web}" 8000 "the web service" 120
+
+    # Exit rather than idle when Slack is not configured. This container is
+    # optional — a house with no Slack app should not have a process pretending
+    # to listen — and `restart: unless-stopped` would otherwise turn a missing
+    # token into a silent restart loop nobody looks at.
+    if ! python manage.py slack_socket --check; then
+        log "Slack is not configured; this container has nothing to do."
+        exit 0
+    fi
+
+    log "starting the Slack Socket Mode listener"
+    exec python manage.py slack_socket
     ;;
 
   shell)

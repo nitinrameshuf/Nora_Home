@@ -160,19 +160,66 @@ class SlackChannel(BaseChannel):
         blocks.append({"type": "context",
                        "elements": [{"type": "mrkdwn", "text": " · ".join(context_bits)}]})
 
+        elements: list[dict] = []
+
         if notification.url:
             base = (settings.ALLOWED_HOSTS[0] if settings.ALLOWED_HOSTS else "nora_home.home")
             href = notification.url if notification.url.startswith("http") \
                 else f"http://{base}{notification.url}"
-            blocks.append({
-                "type": "actions",
-                "elements": [{
-                    "type": "button",
-                    "text": {"type": "plain_text", "text": "Open in Nora Home"},
-                    "url": href,
-                }],
+            elements.append({
+                "type": "button",
+                "text": {"type": "plain_text", "text": "Open in Nora Home"},
+                "url": href,
             })
+
+        elements.extend(self._interactive_elements(notification))
+        if elements:
+            blocks.append({"type": "actions", "elements": elements})
         return blocks
+
+    def _interactive_elements(self, notification) -> list[dict]:
+        """Buttons and menus an app asked for, via `slack_actions` in the
+        notification's context.
+
+        Deliberately generic. This is Level 1 and must not learn what a "task"
+        is — an app passes `slack_actions=[…]` to `notify()` and owns both the
+        wording and the `action_id` its own handler is registered under
+        (nora_home.notifications.slack_commands). That keeps the same seam the
+        widget registry uses: apps supply data, the platform renders it.
+
+        Anything malformed is dropped rather than raising: a bad button must
+        cost its own button, not the whole notification.
+        """
+        elements: list[dict] = []
+        for spec in (notification.context or {}).get("slack_actions") or []:
+            if not isinstance(spec, dict) or not spec.get("action_id"):
+                continue
+
+            if spec.get("options"):
+                elements.append({
+                    "type": "static_select",
+                    "action_id": spec["action_id"],
+                    "placeholder": {"type": "plain_text",
+                                    "text": str(spec.get("text", "Choose"))[:75]},
+                    "options": [{
+                        "text": {"type": "plain_text", "text": str(o.get("text", ""))[:75]},
+                        "value": str(o.get("value", ""))[:150],
+                    } for o in spec["options"][:100]],
+                })
+                continue
+
+            button = {
+                "type": "button",
+                "action_id": spec["action_id"],
+                "text": {"type": "plain_text", "text": str(spec.get("text", "?"))[:75]},
+                "value": str(spec.get("value", ""))[:150],
+            }
+            # Slack rejects style:"default" outright — only primary and danger
+            # are valid, and the absence of the key is what means "default".
+            if spec.get("style") in {"primary", "danger"}:
+                button["style"] = spec["style"]
+            elements.append(button)
+        return elements
 
     # ── transports ─────────────────────────────────────────────────────────────
     def _send_via_api(self, target: str, text: str, blocks: list[dict]) -> dict:

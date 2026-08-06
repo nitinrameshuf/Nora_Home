@@ -28,6 +28,13 @@ django-storages>=1.14
 anthropic>=0.40                 # Claude API
 mcp>=1.2                        # Model Context Protocol server
 
+# --- Slack (Socket Mode) ---
+# The Pi is behind home NAT with a self-signed cert, so Slack can never call in.
+# Socket Mode dials out instead; slack_sdk's SocketModeClient needs
+# websocket-client for the connection itself.
+slack-sdk>=3.33
+websocket-client>=1.8
+
 # --- Integrations / utility ---
 requests>=2.32
 httpx>=0.27

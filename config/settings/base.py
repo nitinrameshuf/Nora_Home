@@ -287,6 +287,10 @@ STORAGES = {
 
 # ── Slack ──────────────────────────────────────────────────────────────────────
 NORA_HOME_SLACK_BOT_TOKEN = env("NORA_HOME_SLACK_BOT_TOKEN", "")
+# App-level token (xapp-…, scope connections:write), a different credential from
+# the bot token above. Only the Socket Mode process reads it — see
+# nora_home.notifications.slack_socket for why the house dials out at all.
+NORA_HOME_SLACK_APP_TOKEN = env("NORA_HOME_SLACK_APP_TOKEN", "")
 NORA_HOME_SLACK_WEBHOOK_URL = env("NORA_HOME_SLACK_WEBHOOK_URL", "")
 NORA_HOME_SLACK_DEFAULT_CHANNEL = env("NORA_HOME_SLACK_DEFAULT_CHANNEL", "#nora-home")
 NORA_HOME_SLACK_ESCALATION_CHANNEL = env("NORA_HOME_SLACK_ESCALATION_CHANNEL", "#nora-home-alerts")
