@@ -2697,6 +2697,28 @@ five documented kiosk buttons now exist.
 **Story 40 (Tracker Removal & House Log) is unblocked** — its only two
 dependencies were Stories 35 and 36.
 
+### A real, pre-existing test flake found while verifying the deploy
+
+Rebuilding the Pi's image `--no-cache` from a clean git checkout (rather than
+the hot-patched container used through most of this story's development) and
+re-running the suite turned up **7 failures, all in
+`tests/test_todo_reminders.py`**, none in anything Story 36 touched. Confirmed
+by direct reproduction, not assumed: a task due "today" with no explicit
+`due_time` falls back to the owner's default hour (09:00), and the suite ran at
+00:08 local — nine hours before that reminder is actually due. Constructing the
+same scenario with an explicit `due_time` set to the current moment sent a
+reminder immediately (`{'sent': 1}`); the identical scenario relying on the
+9am default correctly returned `{'sent': 0}` with `due_at` nine hours out. The
+reminder logic is right; the tests assume the suite always runs after 9am
+local, and `TODAY = timezone.localdate()` at module scope gives them no way to
+control for it. No time-freezing library (`freezegun`/`time-machine`) is in
+`requirements/`, so tests can't yet pin "now" the way this needs. **Not fixed
+here** — deliberately out of scope for Story 36, since it touches unrelated
+test infrastructure rather than anything this story built. Flagged separately.
+
+With those excluded, **874 passed** on the clean image, all other subsystems
+green including `test_todo_system_tasks.py` at 22/22 in isolation.
+
 ---
 
 ## Next
