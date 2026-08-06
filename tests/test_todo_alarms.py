@@ -272,6 +272,20 @@ def test_sound_channel_writes_the_resolved_audio_to_the_cache(settings, tmp_path
     assert result["target"] == "wall-speakers"
 
 
+def test_a_wav_chime_is_written_with_a_wav_extension(settings, tmp_path, alarm_task):
+    """Regression test for a real bug found running this on the house:
+    mimetypes.guess_extension("audio/wav") returns None on stock Python (only
+    the legacy "audio/x-wav" is in its table), so every chime silently landed
+    as "<id>.bin" until this was caught. aplay likely still plays a WAV by its
+    header regardless of extension, but a wrong filename is still wrong."""
+    settings.NORA_HOME_ALARM_CACHE_DIR = tmp_path
+    delivery = _sound_delivery(task_id=alarm_task.pk)
+
+    result = SoundChannel().send(delivery.notification, delivery)
+
+    assert result["ref"].endswith(".wav")
+
+
 def test_sound_channel_raises_when_the_task_is_gone(settings, tmp_path):
     settings.NORA_HOME_ALARM_CACHE_DIR = tmp_path
     delivery = _sound_delivery(task_id=999999)

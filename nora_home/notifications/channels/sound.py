@@ -25,7 +25,6 @@ running.
 from __future__ import annotations
 
 import logging
-import mimetypes
 import time
 from pathlib import Path
 
@@ -39,6 +38,18 @@ logger = logging.getLogger(__name__)
 # further back than this — old files are debris from a run the host script
 # never got to (a crash, a reboot mid-cycle), not a queue to work through.
 STALE_AFTER_SECONDS = 3600
+
+# Not `mimetypes.guess_extension()` — checked rather than assumed, and it
+# returns None for "audio/wav" on stock Python (only the legacy
+# "audio/x-wav" maps to .wav in the stdlib's table), so every chime this
+# channel ever wrote landed as a silently wrong "N.bin" until this was
+# caught running the real pipeline end to end on the house. The two content
+# types nora_home.todo.alarms actually produces are worth naming exactly
+# rather than trusting a guesser tuned for arbitrary uploads.
+EXTENSIONS = {
+    "audio/wav": ".wav",
+    "audio/mpeg": ".mp3",
+}
 
 
 class SoundChannel(BaseChannel):
@@ -64,7 +75,7 @@ class SoundChannel(BaseChannel):
             raise ChannelError(f"No alarm audio could be resolved for task {task_id}.")
 
         data, content_type = audio
-        extension = mimetypes.guess_extension(content_type) or ".bin"
+        extension = EXTENSIONS.get(content_type, ".bin")
         cache_dir = Path(settings.NORA_HOME_ALARM_CACHE_DIR)
         cache_dir.mkdir(parents=True, exist_ok=True)
         _prune_stale(cache_dir)
