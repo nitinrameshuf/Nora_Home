@@ -646,6 +646,38 @@ def test_a_chart_with_data_is_drawn(client, done_on, member):
     assert 'data-todo-chart="chart-flow"' in response.content.decode()
 
 
+def test_every_card_is_compact_when_there_is_nothing_in_it(client, member):
+    """§10: "Good news is small. The quiet state is the compact state." An
+    empty house rendered twelve near-full-size cards each saying "Nothing
+    finished yet." before this — two of the six failures the Visual discipline
+    table catalogues, on the page written to avoid them. Found by looking at
+    the wall, not by reading the template.
+    """
+    client.force_login(member)
+
+    body = client.get(reverse("todo:reporting")).content.decode()
+
+    # Every report card on the page is an empty one in this state, so none of
+    # them may be rendering at full size.
+    assert body.count("todo-report__card--empty") == body.count("todo-report__card ")
+    assert "todo-report__card--empty" in body
+
+
+def test_a_card_with_content_is_not_compact(client, done_on, make_task, member):
+    """The other half: the modifier must not leak onto cards that have
+    something to show, or the whole page collapses."""
+    client.force_login(member)
+    done_on(1)
+    make_task(title="Open thing")
+
+    body = client.get(reverse("todo:reporting")).content.decode()
+
+    assert 'data-todo-chart="chart-flow"' in body
+    # The flow card has data, so its heading is not inside a compact card.
+    assert "Arriving vs finishing" in body
+    assert body.count("todo-report__card--empty") < 12
+
+
 def test_reporting_sets_no_colours(client, done_on, member):
     """CLAUDE.md §4: widgets return data, the house applies the theme. A colour
     set here is a chart that stops matching the rest of the house."""

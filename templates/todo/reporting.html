@@ -91,12 +91,19 @@ Reporting (§10). Every card follows the Visual discipline table:
     {% include "todo/_chart_card.html" with id="chart-aging" title="Open work by age" sub="Per priority" option=charts.aging span=6 empty="Nothing open." %}
     {% include "todo/_chart_card.html" with id="chart-estimates" title="Planned vs actual" sub="Minutes" option=charts.estimates span=6 empty="No times recorded yet." %}
 
-    <section class="card todo-report__card" style="grid-column:span 6">
+    {% comment %}
+    The table cards below follow the same rule as the chart cards: when there is
+    nothing in them they collapse to one line. They are written out rather than
+    included because each has a different table body, but the empty branch has
+    to look identical to _chart_card.html's or the page reads as two designs.
+    {% endcomment %}
+    <section class="card todo-report__card{% if d.priorities.0.share is None %} todo-report__card--empty{% endif %}"
+             style="grid-column:span 6">
       <h3 class="todo-report__title">Priority mix</h3>
-      <p class="todo-report__sub">Whether priority still means anything</p>
       {% if d.priorities.0.share is None %}
         <p class="todo-empty">Nothing open.</p>
       {% else %}
+        <p class="todo-report__sub">Whether priority still means anything</p>
         <table class="todo-table">
           {% for row in d.priorities %}
             <tr><td>{{ row.label }}</td><td class="num">{{ row.count }}</td><td class="num">{{ row.share }}%</td></tr>
@@ -105,10 +112,11 @@ Reporting (§10). Every card follows the Visual discipline table:
       {% endif %}
     </section>
 
-    <section class="card todo-report__card" style="grid-column:span 6">
+    <section class="card todo-report__card{% if not d.aging %} todo-report__card--empty{% endif %}"
+             style="grid-column:span 6">
       <h3 class="todo-report__title">Oldest still open</h3>
-      <p class="todo-report__sub">Deal with it, or park it</p>
       {% if d.aging %}
+        <p class="todo-report__sub">Deal with it, or park it</p>
         <table class="todo-table">
           {% for row in d.aging %}
             <tr>
@@ -126,10 +134,11 @@ Reporting (§10). Every card follows the Visual discipline table:
       {% endif %}
     </section>
 
-    <section class="card todo-report__card" style="grid-column:span 6">
+    <section class="card todo-report__card{% if not d.deferrals %} todo-report__card--empty{% endif %}"
+             style="grid-column:span 6">
       <h3 class="todo-report__title">Which labels keep sliding</h3>
-      <p class="todo-report__sub">Rescheduled, last 180 days</p>
       {% if d.deferrals %}
+        <p class="todo-report__sub">Rescheduled, last 180 days</p>
         <table class="todo-table">
           {% for row in d.deferrals %}
             <tr>
@@ -144,10 +153,11 @@ Reporting (§10). Every card follows the Visual discipline table:
       {% endif %}
     </section>
 
-    <section class="card todo-report__card" style="grid-column:span 6">
+    <section class="card todo-report__card{% if not d.recoveries %} todo-report__card--empty{% endif %}"
+             style="grid-column:span 6">
       <h3 class="todo-report__title">Came back to it</h3>
-      <p class="todo-report__sub">Stopped for a while, then picked it up again</p>
       {% if d.recoveries %}
+        <p class="todo-report__sub">Stopped for a while, then picked it up again</p>
         <table class="todo-table">
           {% for row in d.recoveries %}
             <tr><td>after {{ row.gap_days }} days</td><td class="num">{{ row.returned_on|date:"j M Y" }}</td></tr>
@@ -158,10 +168,11 @@ Reporting (§10). Every card follows the Visual discipline table:
       {% endif %}
     </section>
 
-    <section class="card todo-report__card" style="grid-column:span 12">
+    <section class="card todo-report__card{% if not d.recent %} todo-report__card--empty{% endif %}"
+             style="grid-column:span 12">
       <h3 class="todo-report__title">What you decided to do, and did</h3>
-      <p class="todo-report__sub">Most recent first</p>
       {% if d.recent %}
+        <p class="todo-report__sub">Most recent first</p>
         <table class="todo-table">
           {% for row in d.recent %}
             <tr>
