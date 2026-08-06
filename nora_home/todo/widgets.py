@@ -23,6 +23,8 @@ platform's own home dashboard breaks both:
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 from django.urls import reverse
 from django.utils import timezone
 
@@ -168,7 +170,9 @@ class CompletionHeatmapWidget(ChartWidget):
                           "type": "piecewise", "orient": "horizontal",
                           "left": "center", "top": 0, "showLabel": False},
             "calendar": {
-                "range": [str(today.replace(year=today.year - 1)), str(today)],
+                # 365 days rather than `replace(year=year - 1)`, which raises
+                # on 29 February and would take the home screen down with it.
+                "range": [str(today - timedelta(days=365)), str(today)],
                 "cellSize": ["auto", 13], "top": 50,
                 "splitLine": {"show": False},
                 "itemStyle": {"borderWidth": 2},

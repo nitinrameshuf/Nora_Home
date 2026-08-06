@@ -38,14 +38,13 @@ class TodoConfig(NoraAppConfig):
     ]
 
     # §6: "Two levels, and both are required" — this is the second, the
-    # buttons the kiosk shows once the wall has switched to Todo. Only three
-    # today, deliberately, not the five the design doc lists: Reporting
-    # (Story 35) and System tasks (Story 36) don't have a page to point at
-    # yet, and a kiosk tile linking to a 404 on a wall-mounted touchscreen is
-    # worse than a tile that doesn't exist. Add the other two here the moment
-    # those stories ship — nothing else about this list needs to change.
+    # buttons the kiosk shows once the wall has switched to Todo. Four of the
+    # design doc's five: Reporting joined when Story 35 gave it a page to point
+    # at. System tasks (Story 36) still has none, and a kiosk tile linking to a
+    # 404 on a wall-mounted touchscreen is worse than a tile that isn't there.
     nora_kiosk_controls = [
         {"title": "Tasks", "path": "/todo/"},
         {"title": "Due today", "path": "/todo/?due=today"},
         {"title": "Calendar", "path": "/todo/calendar/"},
+        {"title": "Reporting", "path": "/todo/reporting/"},
     ]

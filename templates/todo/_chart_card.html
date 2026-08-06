@@ -1,0 +1,35 @@
+{% comment %}
+One chart on the Reporting page (§10, Visual discipline).
+
+`option` is an ECharts option dict built by `views._reporting_charts()`, or
+None. **None is the whole point of this partial**: it renders one line of text
+instead of a chart, because §10's first rule is that empty is a sentence, never
+an axis. Nothing here draws a chart with no data in it.
+
+The option travels as `json_script` rather than an inline attribute so the
+browser parses it as JSON, not as HTML — chart data contains task labels people
+typed, and those must never be able to close a tag.
+
+Colours are deliberately absent. `NoraHomeCharts.render()` merges the house
+theme underneath whatever the app set, which is what keeps every chart in this
+house looking like one system (CLAUDE.md §4, "Widgets return data, not HTML").
+
+  title  heading
+  sub    one line under it, optional
+  id     unique on the page; ties the <script> to its holder
+  option the ECharts option, or None
+  empty  the sentence shown when there is nothing to draw
+  span   grid columns out of 12 (default 6)
+  h      chart height in px (default 240)
+{% endcomment %}
+<section class="card todo-report__card" style="grid-column:span {{ span|default:6 }}">
+  <h3 class="todo-report__title">{{ title }}</h3>
+  {% if sub %}<p class="todo-report__sub">{{ sub }}</p>{% endif %}
+  {% if option %}
+    {{ option|json_script:id }}
+    <div class="todo-chart" data-todo-chart="{{ id }}"
+         style="height:{{ h|default:240 }}px"></div>
+  {% else %}
+    <p class="todo-empty">{{ empty }}</p>
+  {% endif %}
+</section>

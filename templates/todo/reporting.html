@@ -82,16 +82,16 @@ Reporting (§10). Every card follows the Visual discipline table:
   </div>
 
   <div class="todo-report">
-    {% include "todo/_chart_card.html" with title="Arriving vs finishing" sub="Last 60 days" option=charts.flow span=6 empty="Nothing to plot yet." %}
-    {% include "todo/_chart_card.html" with title="Things finished in a day" sub="How the days actually spread" option=charts.histogram span=6 empty="Nothing finished yet." %}
-    {% include "todo/_chart_card.html" with title="The year so far" sub="Days with something finished" option=charts.heatmap span=12 empty="Nothing finished yet." %}
-    {% include "todo/_chart_card.html" with title="When work gets done" sub="By hour" option=charts.rhythm span=6 empty="Nothing finished yet." %}
-    {% include "todo/_chart_card.html" with title="By weekday" sub="" option=charts.weekdays span=6 empty="Nothing finished yet." %}
-    {% include "todo/_chart_card.html" with title="Where attention goes" sub="Completed, last 90 days" option=charts.labels span=6 empty="Nothing finished yet." %}
-    {% include "todo/_chart_card.html" with title="Open work by age" sub="Per priority" option=charts.aging span=6 empty="Nothing open." %}
-    {% include "todo/_chart_card.html" with title="Planned vs actual" sub="Minutes" option=charts.estimates span=6 empty="No times recorded yet." %}
+    {% include "todo/_chart_card.html" with id="chart-flow" title="Arriving vs finishing" sub="Last 60 days" option=charts.flow span=6 empty="Nothing to plot yet." %}
+    {% include "todo/_chart_card.html" with id="chart-histogram" title="Things finished in a day" sub="How the days actually spread" option=charts.histogram span=6 empty="Nothing finished yet." %}
+    {% include "todo/_chart_card.html" with id="chart-heatmap" title="The year so far" sub="Days with something finished" option=charts.heatmap span=12 h=200 empty="Nothing finished yet." %}
+    {% include "todo/_chart_card.html" with id="chart-rhythm" title="When work gets done" sub="By hour" option=charts.rhythm span=6 empty="Nothing finished yet." %}
+    {% include "todo/_chart_card.html" with id="chart-weekdays" title="By weekday" sub="" option=charts.weekdays span=6 empty="Nothing finished yet." %}
+    {% include "todo/_chart_card.html" with id="chart-labels" title="Where attention goes" sub="Completed, last 90 days" option=charts.labels span=6 empty="Nothing finished yet." %}
+    {% include "todo/_chart_card.html" with id="chart-aging" title="Open work by age" sub="Per priority" option=charts.aging span=6 empty="Nothing open." %}
+    {% include "todo/_chart_card.html" with id="chart-estimates" title="Planned vs actual" sub="Minutes" option=charts.estimates span=6 empty="No times recorded yet." %}
 
-    <section class="pane todo-report__card" style="grid-column:span 6">
+    <section class="card todo-report__card" style="grid-column:span 6">
       <h3 class="todo-report__title">Priority mix</h3>
       <p class="todo-report__sub">Whether priority still means anything</p>
       {% if d.priorities.0.share is None %}
@@ -105,7 +105,7 @@ Reporting (§10). Every card follows the Visual discipline table:
       {% endif %}
     </section>
 
-    <section class="pane todo-report__card" style="grid-column:span 6">
+    <section class="card todo-report__card" style="grid-column:span 6">
       <h3 class="todo-report__title">Oldest still open</h3>
       <p class="todo-report__sub">Deal with it, or park it</p>
       {% if d.aging %}
@@ -126,7 +126,7 @@ Reporting (§10). Every card follows the Visual discipline table:
       {% endif %}
     </section>
 
-    <section class="pane todo-report__card" style="grid-column:span 6">
+    <section class="card todo-report__card" style="grid-column:span 6">
       <h3 class="todo-report__title">Which labels keep sliding</h3>
       <p class="todo-report__sub">Rescheduled, last 180 days</p>
       {% if d.deferrals %}
@@ -144,7 +144,7 @@ Reporting (§10). Every card follows the Visual discipline table:
       {% endif %}
     </section>
 
-    <section class="pane todo-report__card" style="grid-column:span 6">
+    <section class="card todo-report__card" style="grid-column:span 6">
       <h3 class="todo-report__title">Came back to it</h3>
       <p class="todo-report__sub">Stopped for a while, then picked it up again</p>
       {% if d.recoveries %}
@@ -158,7 +158,7 @@ Reporting (§10). Every card follows the Visual discipline table:
       {% endif %}
     </section>
 
-    <section class="pane todo-report__card" style="grid-column:span 12">
+    <section class="card todo-report__card" style="grid-column:span 12">
       <h3 class="todo-report__title">What you decided to do, and did</h3>
       <p class="todo-report__sub">Most recent first</p>
       {% if d.recent %}

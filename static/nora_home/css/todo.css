@@ -446,3 +446,167 @@
 }
 
 .todo-saved-filter__delete:hover { color: var(--alert); }
+
+/* ── Reporting (§10) ────────────────────────────────────────────────────────
+ *
+ * The Visual discipline table in the design doc is the spec for this block,
+ * and each rule below is one of its rows:
+ *
+ *   * One grid, one gap value, aligned rows. `todo-report` is a single 12-column
+ *     grid with `align-items:start` — nothing floats and nothing sets its own
+ *     margin to nudge itself.
+ *   * Height follows content. The headline numbers are a *strip* of small
+ *     figures, not five large tiles, and a card with one sentence in it is one
+ *     sentence tall.
+ *   * Numbers use tabular-nums so a refresh cannot make a column jitter.
+ *   * The accent is spent on one thing per screen: `is-alert`, and only when
+ *     the person's tone settings allow a number to be red at all.
+ */
+
+.todo-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  padding: 0 0.2rem var(--gap);
+}
+
+.todo-figure__value {
+  font-size: var(--step-3);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* "No data" is not zero (analytics.py, rule 2). It reads as an em dash in the
+   faint ink, so it cannot be mistaken for a real measurement of zero. */
+.todo-figure__value--none { color: var(--text-faint); }
+
+.todo-figure__of {
+  font-size: var(--step-1);
+  color: var(--text-faint);
+}
+
+.todo-figure__label {
+  font-size: 0.85rem;
+  color: var(--text-faint);
+  margin-top: 0.15rem;
+}
+
+.todo-figure__aside {
+  display: block;
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.todo-figure .is-alert { color: var(--alert); }
+
+.todo-report {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--gap);
+  align-items: start;
+}
+
+/* Below the fold of a laptop, twelve columns stop meaning anything: every card
+   becomes full width rather than keeping a span that would leave a chart 90px
+   wide on a phone. The kiosk and the wall both sit above this. */
+@media (max-width: 900px) {
+  .todo-report > .todo-report__card { grid-column: span 12 !important; }
+}
+
+.todo-report__card { min-width: 0; }
+
+.todo-report__title {
+  font-size: var(--step-1);
+  margin: 0;
+}
+
+.todo-report__sub {
+  font-size: 0.8rem;
+  color: var(--text-faint);
+  margin: 0.1rem 0 0.8rem;
+}
+
+/* ECharts needs a laid-out box before it can size a canvas; the height comes
+   from the partial so one chart can be shorter than the rest without a
+   modifier class for every size. */
+.todo-chart { width: 100%; }
+
+.todo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.todo-table td {
+  padding: 0.35rem 0.2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.todo-table tr:last-child td { border-bottom: none; }
+
+.todo-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text-faint);
+}
+
+.todo-table a { color: var(--text); text-decoration: none; }
+.todo-table a:hover { color: var(--nh-400); }
+
+/* ── Todo settings, and the tone presets (§10, "Tone") ──────────────────── */
+
+.todo-tones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--gap);
+  margin-bottom: var(--gap);
+}
+
+.todo-tone {
+  display: block;
+  cursor: pointer;
+  position: relative;
+}
+
+.todo-tone input { position: absolute; opacity: 0; pointer-events: none; }
+
+.todo-tone__body {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+  height: 100%;
+  background: var(--bg-raised);
+}
+
+.todo-tone input:checked + .todo-tone__body { border-color: var(--nh-400); }
+
+/* Keyboard users must be able to see which preset is focused; the radio itself
+   is off-screen, so the visible body carries the ring. */
+.todo-tone input:focus-visible + .todo-tone__body {
+  outline: 2px solid var(--nh-400);
+  outline-offset: 2px;
+}
+
+.todo-tone__name {
+  font-size: var(--step-1);
+  margin-bottom: 0.5rem;
+}
+
+.todo-tone__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.82rem;
+  color: var(--text-faint);
+  line-height: 1.7;
+}
+
+.todo-overrides {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.9rem var(--gap);
+  margin-bottom: var(--gap);
+}
+
+.todo-overrides .field { margin: 0; }

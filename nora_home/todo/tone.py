@@ -35,6 +35,52 @@ SETTINGS = {
     "upcoming_count": (3, 5, None),
 }
 
+# How each setting and each of its values is said on the settings page, taken
+# from §10's Tone table so the screen and the design doc cannot drift apart.
+# Kept next to SETTINGS deliberately: adding a setting means adding one row in
+# each of these two dicts and nothing else — no template edit, no view edit.
+WORDING = {
+    "streaks": ("Streaks", {
+        "ratio": "Rolling ratio — 19 of the last 30",
+        "classic": "Classic — resets on a miss",
+    }),
+    "counts_in_red": ("Counts in red", {
+        "never": "Never",
+        "overdue": "Overdue only",
+        "everything": "Everything",
+    }),
+    "compare_members": ("Compare household members", {
+        False: "Off",
+        True: "Leaderboard",
+    }),
+    "wording": ("Wording", {
+        "gentle": "“Moved 11 times”",
+        "plain": "“Overdue 11 days”",
+    }),
+    "observations_on_home": ("Pattern observations", {
+        False: "Reporting page only",
+        True: "Also on the home screen",
+    }),
+    "upcoming_count": ("Wall, kiosk and widgets show", {
+        3: "Next 3",
+        5: "Next 5",
+        None: "Everything",
+    }),
+}
+
+
+def label_for(key: str) -> str:
+    """The setting's name, in words."""
+    return WORDING.get(key, (key, {}))[0]
+
+
+def describe(key: str, value) -> str:
+    """One value of one setting, in words. Falls back to the raw value rather
+    than raising, so a setting added to SETTINGS without a WORDING row is
+    merely ugly on screen instead of a 500 on somebody's settings page."""
+    return WORDING.get(key, (key, {}))[1].get(value, str(value))
+
+
 PRESETS = {
     Tone.CALM: {
         "streaks": "ratio",

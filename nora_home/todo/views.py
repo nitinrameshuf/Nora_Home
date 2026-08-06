@@ -7,7 +7,7 @@ nora_home.todo.api rather than re-deriving them here.
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 from urllib.parse import urlencode
 
 from django.contrib.auth.decorators import login_required
@@ -277,14 +277,64 @@ def settings_view(request):
         record("todo", "settings.saved", actor=request.user, subject=preference.tone)
         return redirect("todo:settings")
 
+    effective = tone.resolve(request.user)
     return render(request, "todo/settings.html", {
         "preference": preference,
-        "tones": Tone.choices,
-        "presets": tone.PRESETS,
-        "setting_options": tone.SETTINGS,
-        "effective": tone.resolve(request.user),
+        "hours": range(24),
+        "tone_cards": _tone_cards(preference),
+        "overrides": _override_rows(preference, effective),
         "page_title": "Todo settings",
     })
+
+
+def _tone_cards(preference) -> list[dict]:
+    """The three presets, each spelled out in full.
+
+    Every preset shows *all* of its settings rather than only where it differs
+    from Standard. §10's "nothing is withheld from anyone" is about the numbers,
+    but the same courtesy applies to the choice itself: someone picking Calm
+    should be able to read what they are getting without holding another card in
+    their head to diff against.
+    """
+    return [{
+        "value": value,
+        "label": label,
+        "chosen": preference.tone == value,
+        "lines": [f"{tone.label_for(key)}: {tone.describe(key, setting)}"
+                  for key, setting in tone.PRESETS[value].items()],
+    } for value, label in Tone.choices]
+
+
+def _override_rows(preference, effective) -> list[dict]:
+    """One row per setting: "follow the preset", or a specific value pinned.
+
+    The stored override is what selects the option, **not** the effective value
+    — otherwise every setting would come back looking individually pinned to
+    whatever the preset happened to say, and switching preset afterwards would
+    appear to do nothing.
+    """
+    stored = preference.tone_overrides or {}
+    # The *preset's* own value, with overrides deliberately not applied: the
+    # "follow the preset" option has to say what the preset says, not echo back
+    # whatever this person has already pinned on top of it.
+    preset = tone.PRESETS.get(preference.tone, tone.PRESETS[Tone.STANDARD])
+    rows = []
+    for key, allowed in tone.SETTINGS.items():
+        rows.append({
+            "key": key,
+            "label": tone.label_for(key),
+            "following_preset": key not in stored,
+            # `str(value)` is the wire format the POST branch above matches on;
+            # the two must agree or an override silently never takes.
+            "options": [{
+                "raw": str(value),
+                "label": tone.describe(key, value),
+                "selected": key in stored and stored[key] == value,
+            } for value in allowed],
+            "preset_label": tone.describe(key, preset[key]),
+            "effective_label": tone.describe(key, effective[key]),
+        })
+    return rows
 
 
 @login_required
@@ -352,7 +402,10 @@ def _reporting_charts(d: dict) -> dict:
         "visualMap": {"min": 0, "max": max(c for _, c in heatmap) or 1,
                       "type": "piecewise", "orient": "horizontal",
                       "left": "center", "top": 0, "showLabel": False},
-        "calendar": {"range": [str(today.replace(year=today.year - 1)), str(today)],
+        # Not `today.replace(year=year - 1)`: that raises ValueError on 29
+        # February, so the whole Reporting page would 500 one day every four
+        # years. The heatmap window is "a year back", and 365 days is that.
+        "calendar": {"range": [str(today - timedelta(days=365)), str(today)],
                      "cellSize": ["auto", 13], "top": 50,
                      "splitLine": {"show": False},
                      "itemStyle": {"borderWidth": 2},

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% comment %}
+Todo's own settings (§10, "Tone"), at /todo/settings/ — not the platform
+Settings page, which stays for base-app concerns.
+
+The presets are radios, not a dropdown, because the point of the screen is to
+read what each one actually does before choosing: "nothing is withheld from
+anyone" only means something if you can see what you would be getting. The
+per-setting overrides underneath default to "follow the preset", so nobody has
+to understand six settings to pick a tone.
+{% endcomment %}
+
+{% block head %}
+  <link rel="stylesheet" href="{% static 'nora_home/css/todo.css' %}">
+{% endblock %}
+
+{% block heading %}Todo settings{% endblock %}
+
+{% block actions %}
+  <a class="btn" href="{% url 'todo:board' %}">Tasks</a>
+  <a class="btn" href="{% url 'todo:reporting' %}">Reporting</a>
+{% endblock %}
+
+{% block content %}
+  <form method="post">
+    {% csrf_token %}
+
+    <h2>Tone</h2>
+    <p class="todo-report__sub">
+      How the house talks to you about your own numbers. The numbers themselves
+      are the same either way &mdash; only the wording, the colour and how much
+      is shown at a glance change.
+    </p>
+
+    <div class="todo-tones">
+      {% for card in tone_cards %}
+        <label class="todo-tone">
+          <input type="radio" name="tone" value="{{ card.value }}"
+                 {% if card.chosen %}checked{% endif %}>
+          <span class="todo-tone__body">
+            <span class="todo-tone__name">{{ card.label }}</span>
+            <ul class="todo-tone__list">
+              {% for line in card.lines %}<li>{{ line }}</li>{% endfor %}
+            </ul>
+          </span>
+        </label>
+      {% endfor %}
+    </div>
+
+    <h2>Individual settings</h2>
+    <p class="todo-report__sub">
+      These sit underneath the preset. Leave one on &ldquo;follow the
+      preset&rdquo; and it moves whenever the preset does.
+    </p>
+
+    <div class="todo-overrides">
+      {% for row in overrides %}
+        <div class="field">
+          <label for="override-{{ row.key }}">{{ row.label }}</label>
+          <select id="override-{{ row.key }}" name="override_{{ row.key }}">
+            <option value="preset" {% if row.following_preset %}selected{% endif %}>
+              Follow the preset &mdash; {{ row.preset_label }}
+            </option>
+            {% for option in row.options %}
+              <option value="{{ option.raw }}" {% if option.selected %}selected{% endif %}>
+                {{ option.label }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endfor %}
+    </div>
+
+    <h2>Due times</h2>
+    <div class="todo-overrides">
+      <div class="field">
+        <label for="default-due-hour">Default hour for date-only tasks</label>
+        <select id="default-due-hour" name="default_due_hour">
+          {% for hour in hours %}
+            <option value="{{ hour }}"
+                    {% if hour == preference.default_due_hour %}selected{% endif %}>
+              {{ hour|stringformat:"02d" }}:00
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" type="submit">Save settings</button>
+  </form>
+{% endblock %}
