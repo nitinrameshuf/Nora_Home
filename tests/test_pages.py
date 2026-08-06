@@ -37,6 +37,9 @@ PLATFORM_PAGES = [
     "integrations:index",
     "ai:console",
     "todo:board",
+    "todo:calendar",
+    "todo:search",
+    "todo:labels",
     "todo:create",
 ]
 

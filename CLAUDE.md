@@ -146,6 +146,20 @@ reference implementation.
   mount, nav entry, dashboard widgets, wall panels, and MCP presence.
 - **Tracker + escalation** (`nora/tracker/`) — trackables, materialized occurrences,
   completions, and a ladder that escalates owner → chain → adults → whole house.
+  **Being superseded by Todo** (below) — see §4's Levels decision. Still live and
+  still what `EscalationPolicy` lives on; not yet deleted (Story 40).
+- **Todo** (`nora_home/todo/`) — **Level 2**, the app the base leans on for
+  scheduling, reminders and escalation. Priority-column board, calendar, full-text
+  search with saveable filters, labels, shared tasks with owner/assignee/approver,
+  reminders and a ported escalation ladder, all with a real front end at `/todo/`
+  and a two-level kiosk screen. 8 of 15 Phase 7 stories built (28–34, plus 42 out
+  of number order — see its own warning). **Full design, decision log, and
+  per-story "as built" notes**: [`docs/Main_App/subsystems/todo.md`](docs/Main_App/subsystems/todo.md).
+  Build order and what's left: [`docs/Main_App/subsystems/todo-build-brief.md`](docs/Main_App/subsystems/todo-build-brief.md).
+  Story-by-story status: the dashboard. **Not yet deployed or verified on the
+  Pi** — everything so far has only run against SQLite on a laptop, verified with
+  the real test client and a real headless browser, never against MySQL in
+  Docker.
 - **Notifications** (`nora/notifications/`) — Slack (bot token *or* webhook), in-app,
   wall display, console. Delivery receipts and retries.
 - **AI** (`nora/ai/`) — Claude via the Anthropic SDK, three model tiers, prompt
@@ -291,6 +305,23 @@ button grid, connected, with no certificate-warning interstitial on either
 screen (`--ignore-certificate-errors` did its job).
 
 ### Not done — pick up here
+0. **Phase 7 — Todo, in progress. Next: Story 35 (Analytics & Reporting), Opus,
+   high effort.** Stories 28–34 built and green (793 tests), plus Story 42
+   (Shared Tasks & Approval, built out of number order — see its own entry for
+   why). Read [`docs/Main_App/subsystems/todo.md`](docs/Main_App/subsystems/todo.md)
+   before touching this app — it is the approved design and the record of every
+   decision made building it; do not re-derive anything already settled there.
+   [`docs/Main_App/subsystems/todo-build-brief.md`](docs/Main_App/subsystems/todo-build-brief.md)
+   has the remaining phases in build order. **Two things a fresh session needs to
+   know before doing anything else:**
+   - **Not yet run on the Pi.** Every story so far was verified against SQLite on
+     a laptop — the real Django test client plus a real headless-browser check
+     for every story, but never against MySQL/Docker. Story 42's migration in
+     particular (a CHECK constraint, an altered indexed column) has not been
+     proven on MySQL.
+   - **Check `git status` before doing anything.** Stories were committed
+     periodically through the session, not after every single one — confirm
+     what has and hasn't landed before assuming the working tree matches HEAD.
 1. **Design system chosen: "Almanac" — engine shipped and seen live on the Pi.**
    See §4's new decision entry and the design-options mockups (deleted 2026-08-03; see progress.md). The living
    background (season/day-night/weather composited behind the real app, never

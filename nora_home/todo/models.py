@@ -473,6 +473,34 @@ class TodoPreference(TimeStampedModel):
         help_text="Local hour a date-only task falls due, when nothing more "
                   "specific is set.")
     tone = models.CharField(max_length=11, choices=Tone.choices, default=Tone.STANDARD)
+    # Individual settings laid over the preset — §10: "A preset sets everything
+    # at once; individual overrides sit underneath." Keys and permitted values
+    # live in nora_home.todo.tone.SETTINGS; anything else here is ignored on
+    # read rather than raising, so a stale row cannot break a dashboard.
+    tone_overrides = models.JSONField(default=dict, blank=True)
 
     def __str__(self):
         return f"Todo preferences for {self.member}"
+
+
+class SavedFilter(TimeStampedModel):
+    """A combination of Search's filters, named and kept — §7's "a filter set
+    can be saved and returned to." `params` is exactly the querystring the
+    search view already understands, so applying a saved filter is just
+    redirecting to `?{params}` rather than a second code path that
+    interprets the same options differently."""
+
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                              related_name="todo_saved_filters")
+    name = models.CharField(max_length=100)
+    params = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(fields=["owner", "name"],
+                                    name="todo_saved_filter_unique_name_per_member"),
+        ]
+
+    def __str__(self):
+        return f"{self.owner}: {self.name}"

@@ -8,16 +8,20 @@
 {% block heading %}Tasks{% endblock %}
 
 {% block actions %}
+  <a class="btn" href="{% url 'todo:search' %}">Search</a>
+  <a class="btn" href="{% url 'todo:labels' %}">Labels</a>
+  <a class="btn" href="{% url 'todo:calendar' %}">Calendar</a>
   <a class="btn btn-primary" href="{% url 'todo:create' %}">+ New task</a>
 {% endblock %}
 
 {% block content %}
   <div class="todo-toolbar">
-    <a class="btn {% if not active_label %}btn-primary{% endif %}" href="{% url 'todo:board' %}">All</a>
+    <a class="btn {% if not active_label and not due_today %}btn-primary{% endif %}" href="{% url 'todo:board' %}">All</a>
     {% for label in labels %}
       <a class="btn {% if active_label == label.name %}btn-primary{% endif %}"
          href="{% url 'todo:board' %}?label={{ label.name }}">{{ label.name }}</a>
     {% endfor %}
+    <a class="btn {% if due_today %}btn-primary{% endif %}" href="{% url 'todo:board' %}?due=today">Due today</a>
     <div class="spacer"></div>
     <a class="btn btn-primary" href="{% url 'todo:create' %}">+ New task</a>
   </div>

@@ -208,3 +208,28 @@ def test_the_board_filters_by_label(client, member, task):
 
     assert task.title.encode() in response.content
     assert other.title.encode() not in response.content
+
+
+def test_due_today_filters_to_only_todays_instances(client, member, task):
+    """The kiosk's "Due today" tile lands on this same board, filtered —
+    §6.3/6.4."""
+    tomorrow = Task.objects.create(title="Due tomorrow", owner=member, priority=Priority.P3,
+                                   due_on=MONDAY + timedelta(days=1))
+    materialize(tomorrow)
+    client.force_login(member)
+
+    response = client.get(reverse("todo:board"), {"due": "today"})
+
+    assert task.title.encode() not in response.content
+    assert tomorrow.title.encode() not in response.content
+
+
+def test_due_today_shows_a_task_actually_due_today(client, member):
+    today_task = Task.objects.create(title="Due right now", owner=member, priority=Priority.P2,
+                                     due_on=timezone.localdate())
+    materialize(today_task)
+    client.force_login(member)
+
+    response = client.get(reverse("todo:board"), {"due": "today"})
+
+    assert today_task.title.encode() in response.content

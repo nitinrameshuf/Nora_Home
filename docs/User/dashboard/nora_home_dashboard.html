@@ -188,10 +188,10 @@
 <div id="tab-progress" class="tab-pane active">
 
   <div class="summary">
-    <div class="summary-card"><div class="num num-complete">23</div><div class="label">Complete</div></div>
+    <div class="summary-card"><div class="num num-complete">25</div><div class="label">Complete</div></div>
     <div class="summary-card"><div class="num num-partial">6</div><div class="label">Built, Unproven</div></div>
     <div class="summary-card"><div class="num num-next">1</div><div class="label">Next Up</div></div>
-    <div class="summary-card"><div class="num num-planned">12</div><div class="label">Planned</div></div>
+    <div class="summary-card"><div class="num num-planned">10</div><div class="label">Planned</div></div>
     <div class="summary-card"><div class="num num-total">42</div><div class="label">Total Stories</div></div>
   </div>
 
@@ -203,15 +203,16 @@
     <div class="phase-progress"><div class="pname">Phase 4 — Data &amp; Intelligence</div><div class="bar-bg"><div class="bar-fill partial" style="width:30%"></div></div><div class="pct">30%</div></div>
     <div class="phase-progress"><div class="pname">Phase 5 — Operations</div><div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div><div class="pct">100%</div></div>
     <div class="phase-progress"><div class="pname">Phase 6 — Hardening &amp; Real Apps</div><div class="bar-bg"><div class="bar-fill partial" style="width:29%"></div></div><div class="pct">29%</div></div>
-    <div class="phase-progress"><div class="pname">Phase 7 — Todo</div><div class="bar-bg"><div class="bar-fill partial" style="width:40%"></div></div><div class="pct">40%</div></div>
+    <div class="phase-progress"><div class="pname">Phase 7 — Todo</div><div class="bar-bg"><div class="bar-fill partial" style="width:53%"></div></div><div class="pct">53%</div></div>
   </div>
 
   <div class="next-box">
-    <h3>🎯 Story 33 — Calendar (Stories 28-32 and 42 done, 732 tests green)</h3>
-    <div class="next-step"><div class="step-num">1</div><div class="step-text">Month view only. Shows events (birthdays, appointments, exams) alongside task instances — planned ones and actual history in distinguishable weights</div></div>
-    <div class="next-step"><div class="step-num">2</div><div class="step-text">Hand-written as a CSS grid rather than vendoring a calendar library, which would be large and opinionated about event rendering for a single view</div></div>
-    <div class="next-step"><div class="step-num">3</div><div class="step-text">Rolling recurrences show only their next occasion — say so in the UI rather than letting it look like a bug</div></div>
-    <div class="next-step"><div class="step-num">4</div><div class="step-text">A CSS grid and date arithmetic. Model: <strong>Sonnet, medium effort</strong></div></div>
+    <h3>🎯 Story 35 — Analytics &amp; Reporting (Stories 28-34 and 42 done, 793 tests green)</h3>
+    <div class="next-step"><div class="step-num">1</div><div class="step-text">Todo&apos;s own visualization page: cumulative flow, cycle time, throughput distribution, deferral by label, priority drift, estimate accuracy, aging, recovery after gaps</div></div>
+    <div class="next-step"><div class="step-num">2</div><div class="step-text">One documented function per metric in analytics.py, computed from instance history on read — the charts, the MCP tools, and a future AI layer all call the same functions</div></div>
+    <div class="next-step"><div class="step-num">3</div><div class="step-text">Tone presets — Calm, Standard, Competitive — so the gentler defaults are defaults, not rules forced on anyone</div></div>
+    <div class="next-step"><div class="step-num">4</div><div class="step-text">Shared-task effort must SPLIT across assignees, never multiply — reuse api.effort_share_minutes(), already built in Story 42</div></div>
+    <div class="next-step"><div class="step-num">5</div><div class="step-text">Must follow the visual-discipline rules in todo.md &sect;10 — the platform&apos;s own home dashboard breaks all six on one screen, go look at it first. Model: <strong>Opus, high effort</strong></div></div>
   </div>
 
   <div class="blocked-box">
@@ -360,6 +361,8 @@
   <div class="decision"><h4>Secrets never enter the database</h4><p>Integration credentials are read from the environment via <code>Integration.secret()</code>. A database dump shared for debugging carries no tokens. <span class="verdict">Settled.</span></p></div>
   <div class="decision"><h4>Nora Home is not Nora</h4><p>The robot is a separate machine with its own repository. Package, settings prefix, CSS classes and JS globals were all renamed to <code>nora_home</code> / <code>NORA_HOME_*</code> / <code>nh-</code> so the two can never be confused in an import or a system prompt. They meet at exactly two places. <span class="verdict">Settled 2026-07-31.</span></p></div>
   <div class="decision"><h4>Design language: "Almanac"</h4><p>Two dashboard-shaped rounds rejected as generic regardless of palette; an ambient/passive-wall idea was tried and rejected too. Landed on a living background — real season, time of day, and outside weather composited behind the actual, fully-interactive app. "Charm outside, polish inside." <span class="verdict">Decided and shipped 2026-08-03 — engine only, full component restyle still ahead.</span></p></div>
+  <div class="decision"><h4>Levels replace "the platform never depends on a house app"</h4><p>Withdrawn once Todo needed to become something the base itself relies on for scheduling, reminders and escalation — a house app can be uninstalled at any moment, so nothing the base needs could ever safely live there. Level 1 is the base (never depends downward on 3); Level 2 is an app the base deliberately leans on and degrades without (Todo); Level 3 is a family app under <code>houseapps/</code> (the default, uninstall freely). Enforced by a test, not just a convention: nothing at Level 1 or 2 may import a Level 3 app. <span class="verdict">Settled 2026-08-05.</span></p></div>
+  <div class="decision"><h4>Todo replaces the tracker</h4><p>One system for both a person's own tasks and anything the house needs to track — no separate concept for "system tracking" beyond a <code>source=system</code> filter on the same board. The tracker's escalation engine is ported into Todo largely intact (same policy model, same ladder, same audiences) rather than rewritten, because it already works and is tested. <span class="verdict">In progress — Phase 7, 8 of 15 stories built. See CLAUDE.md §2 and todo.md.</span></p></div>
 </div>
 
 <footer>Nora Home &nbsp;·&nbsp; v0.1.0 &nbsp;·&nbsp; Generated 2026-08-03 &nbsp;·&nbsp; Source: docs/progress.md + CLAUDE.md &nbsp;·&nbsp; Update this file in the same commit as the code</footer>
@@ -589,20 +592,21 @@ const STORIES = {
     notes:"Built 2026-08-05 on Sonnet, high effort. 41 new tests (18 reminders, 23 escalation), 732 green — verified live in a real browser too: created a P1 task, confirmed its default reminder in the database, hand-advanced an instance past due, ran the sweep for real, saw the escalation badge and a &quot;Seen it&quot; button render, clicked it, watched it flip to acknowledged. Reminders go to every assignee via api.doers(); escalation chases the owner alone, which is what keeps the ladder meaningful on a shared task. Fire-once needed no new schema — notify()&apos;s existing dedupe_key window does it, per the build brief.",
     warn:"Escalation is a genuine port of the tracker&apos;s engine (same EscalationPolicy, same ladder, same audiences), with two deliberate departures: no second EscalationEvent table (reuses ChangeEvent, same as the approval trail), and a new acknowledge() action over Instance.acknowledged_at/acknowledged_by, which had sat unused since Story 30 waiting for exactly this. &quot;Sound&quot; is accepted in Reminder.channels and silently dropped — no audio channel exists in the platform yet (Story 38). Event reminders are not evaluated — that needs Calendar&apos;s (Story 33) recurrence arithmetic, not a narrower copy of it." },
 
-  "33": { num:"Story 33", title:"Calendar", status:"next", phase:7, time:"~3 hours", readiness:"indep", deps:["Story 30 ✅"],
+  "33": { num:"Story 33", title:"Calendar", status:"complete", phase:7, time:"~3 hours", readiness:"complete", deps:["Story 30 ✅"],
     what:"Month view only. Shows events (birthdays, appointments, exams) alongside task instances — planned ones and actual history in distinguishable weights.",
     how:"Hand-written as a CSS grid rather than vendoring a calendar library, which would be large and opinionated about event rendering for a single view. Rolling recurrences show only their next occasion, stated in the UI so it does not read as a bug.",
-    files:["nora_home/todo/views.py","templates/todo/calendar.html"],
-    notes:"Model: Sonnet, medium effort. A CSS grid and date arithmetic." },
+    files:["nora_home/todo/calendar.py","nora_home/todo/views.py","templates/todo/calendar.html","static/nora_home/css/todo.css","tests/test_todo_calendar.py"],
+    notes:"Built 2026-08-05 on Sonnet, medium effort. 24 new tests, 756 green — the month-grid and yearly-event math in calendar.py is tested with no database at all, same as recurrence.py. Verified live in a real browser with actual demo data: month navigation, a completed task, a planned task and a yearly event all rendered on the right days with distinct colours and the recurrence marker, zero console errors. Scoped exactly like the board (api.tasks_for(scope_members(request))), so a shared task and the Everyone toggle work for free.",
+    warn:"&quot;Actual&quot; means every non-pending outcome, not just done — a missed or skipped instance is real history too, and hiding it would make a week with a real gap look empty. Archived tasks are excluded, matching reminders and escalation, but a done one-shot task&apos;s own instance is not — it&apos;s the record of the day it actually happened. An out-of-range ?year=/?month= falls back to today instead of a 500." },
 
-  "34": { num:"Story 34", title:"Search, Labels & Kiosk", status:"planned", phase:7, time:"~3 hours", readiness:"indep", deps:["Story 31 ✅"],
+  "34": { num:"Story 34", title:"Search, Labels & Kiosk", status:"complete", phase:7, time:"~3 hours", readiness:"complete", deps:["Story 31 ✅"],
     what:"Full-text search across titles, descriptions and comments, with combinable filters that can be saved and returned to. House-wide labels with live counts. And the kiosk gaining two levels: everywhere in the house, and inside the current app.",
     how:"nora_kiosk_controls is title-and-path pairs; the kiosk navigates the wall and never itself. Its top level must reach every platform section and every installed app, not just the current one.",
-    files:["nora_home/todo/views.py","nora_home/displays/views.py","templates/displays/kiosk.html"],
-    notes:"Model: Sonnet, medium effort.",
-    warn:"A kiosk button cannot post back into an app, so nothing there can complete a task. Tap-to-complete needs a platform-level app-action, deliberately out of scope." },
+    files:["nora_home/todo/search.py","nora_home/todo/views.py","nora_home/todo/apps.py","nora_home/todo/migrations/0004_savedfilter.py","templates/todo/search.html","templates/todo/labels.html","tests/test_todo_search.py"],
+    notes:"Built 2026-08-05 on Sonnet, medium effort. 37 new tests, 793 green — verified live in a real browser including the kiosk itself: tapped the Todo tile and watched it switch to a screen with exactly Tasks/Due today/Calendar, each working. Both the live search page and a saved filter&apos;s apply link run through the same search_tasks(queryset, FilterParams) call, so a saved search can never mean something different from the form that produced it. Labels page also gained a small create-label form — nothing before this story let anyone add one outside /admin/.",
+    warn:"6.4 turned out to already be built: the kiosk&apos;s two-level system was already generic off the app registry from the kiosk-drives-wall redesign, so Todo&apos;s declaration needed zero platform code. Only 3 of the 5 documented kiosk controls are declared — Reporting (35) and System tasks (36) have no page yet, and a kiosk button linking to a 404 on a wall-mounted touchscreen is worse than one that isn&apos;t there. A kiosk button still cannot post back into an app, so nothing there can complete a task — tap-to-complete needs a platform-level app-action, deliberately out of scope." },
 
-  "35": { num:"Story 35", title:"Analytics & Reporting", status:"planned", phase:7, time:"~6 hours", readiness:"indep", deps:["Story 30 ✅"],
+  "35": { num:"Story 35", title:"Analytics & Reporting", status:"next", phase:7, time:"~6 hours", readiness:"indep", deps:["Story 30 ✅"],
     what:"Todo&apos;s own visualization page. Cumulative flow, cycle time, throughput distribution, deferral by label, priority drift, estimate accuracy, aging, recovery after gaps. Plus Tone presets — Calm, Standard, Competitive — so the gentler defaults are defaults, not rules.",
     how:"One documented function per metric in analytics.py, computed from instance history on read. The charts call it, the MCP tools call it, and a future AI layer calls the same functions. Nothing re-derives a statistic on its own.",
     files:["nora_home/todo/analytics.py","nora_home/todo/widgets.py","templates/todo/reporting.html"],

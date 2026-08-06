@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block head %}
+  <link rel="stylesheet" href="{% static 'nora_home/css/todo.css' %}">
+{% endblock %}
+
+{% block heading %}Calendar{% endblock %}
+
+{% block actions %}
+  <a class="btn" href="{% url 'todo:board' %}">Tasks</a>
+{% endblock %}
+
+{% block content %}
+  <div class="todo-toolbar">
+    <a class="btn" href="{{ prev_url }}" aria-label="Previous month">&larr;</a>
+    <strong>{{ month_label }}</strong>
+    <a class="btn" href="{{ next_url }}" aria-label="Next month">&rarr;</a>
+    {% if not on_current_month %}
+      <a class="btn" href="?">Today</a>
+    {% endif %}
+    <div class="spacer"></div>
+    <span class="todo-cal-key">
+      <span class="todo-cal-key__dot todo-cal-key__dot--planned"></span> Planned
+      <span class="todo-cal-key__dot todo-cal-key__dot--actual"></span> Actual
+      <span class="todo-cal-key__dot todo-cal-key__dot--event"></span> Event
+    </span>
+  </div>
+
+  <div class="todo-cal">
+    <div class="todo-cal__weekdays">
+      <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span>
+      <span>Fri</span><span>Sat</span><span>Sun</span>
+    </div>
+    {% for week in grid %}
+      <div class="todo-cal__week">
+        {% for day in week %}
+          <div class="todo-cal__day{% if not day.in_month %} todo-cal__day--out{% endif %}{% if day.is_today %} todo-cal__day--today{% endif %}">
+            <div class="todo-cal__daynum">{{ day.date|date:"j" }}</div>
+            <div class="todo-cal__items">
+              {% for event in day.events %}
+                <div class="todo-cal__item todo-cal__item--event" title="{{ event.title }}">
+                  {{ event.title }}
+                  {% if event.recurrence == "yearly" %}<span title="Repeats every year">&#8635;</span>{% endif %}
+                </div>
+              {% endfor %}
+              {% for instance in day.actual %}
+                <a class="todo-cal__item todo-cal__item--actual todo-outcome--{{ instance.outcome }}"
+                   href="{% url 'todo:detail' instance.task.uuid %}" title="{{ instance.task.title }}">
+                  {{ instance.task.title }}
+                </a>
+              {% endfor %}
+              {% for instance in day.planned %}
+                <a class="todo-cal__item todo-cal__item--planned"
+                   href="{% url 'todo:detail' instance.task.uuid %}" title="{{ instance.task.title }}">
+                  {{ instance.task.title }}
+                  {% if instance.task.recurrence_type == "rolling" %}
+                    <span title="Rolling recurrence — only its next occasion is ever scheduled">&#8635;</span>
+                  {% endif %}
+                </a>
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}

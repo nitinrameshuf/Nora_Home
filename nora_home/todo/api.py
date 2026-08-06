@@ -296,6 +296,49 @@ def approval_history(instance):
     return instance.changes.filter(field=APPROVAL)
 
 
+# ── the edit trail ───────────────────────────────────────────────────────────
+#
+# §3 promises that "every reschedule, priority change, label change, skip, and
+# archive is its own dated row." §13 says why in one line: **the expensive
+# mistake is not the code, it is data thrown away.** `times_moved: 11` cannot
+# be turned back into *when* each move happened or what else was going on;
+# eleven dated rows can always be turned into an 11.
+#
+# Nothing writes these except a caller that snapshots first and records after,
+# which is deliberate — a signal on Task.save() would fire for every
+# materialisation touch and every escalation bookkeeping write too, and the
+# trail would be mostly noise.
+
+TRACKED = ("due_on", "priority", "state", "labels")
+
+
+def snapshot(task) -> dict:
+    """What `record_changes()` compares against. Take one *before* saving an
+    edit, pass it back afterwards."""
+    return {
+        "due_on": task.due_on.isoformat() if task.due_on else None,
+        "priority": task.priority,
+        "state": task.state,
+        "labels": sorted(label.name for label in task.labels.all()),
+    }
+
+
+def record_changes(task, before: dict, *, actor=None) -> int:
+    """Write one dated `ChangeEvent` per field that actually moved. Returns how
+    many were written; zero when someone opened the edit form and saved it
+    unchanged, which should leave no trace at all."""
+    after = snapshot(task)
+    written = 0
+    for field in TRACKED:
+        old, new = before.get(field), after.get(field)
+        if old == new:
+            continue
+        ChangeEvent.objects.create(task=task, actor=actor, field=field,
+                                   from_value=old, to_value=new)
+        written += 1
+    return written
+
+
 def acknowledge(instance, *, member) -> Instance:
     """Stop the escalation ladder without claiming the work is done — "seen
     it, will get to it" (§9, ported from the tracker's own `Occurrence.
@@ -359,7 +402,7 @@ def _announce_completion(instance):
 
 
 __all__ = [
-    "APPROVAL", "acknowledge", "approval_history", "approve", "can_complete",
-    "complete", "doers", "effort_share_minutes", "reject", "skip", "tasks_for",
-    "uncomplete",
+    "APPROVAL", "TRACKED", "acknowledge", "approval_history", "approve",
+    "can_complete", "complete", "doers", "effort_share_minutes",
+    "record_changes", "reject", "skip", "snapshot", "tasks_for", "uncomplete",
 ]

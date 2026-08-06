@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block head %}
+  <link rel="stylesheet" href="{% static 'nora_home/css/todo.css' %}">
+{% endblock %}
+
+{% block heading %}Search{% endblock %}
+
+{% block actions %}
+  <a class="btn" href="{% url 'todo:board' %}">Tasks</a>
+{% endblock %}
+
+{% block content %}
+  <form class="todo-form todo-search-form" method="get">
+    <div class="todo-search-row">
+      <input type="text" name="q" value="{{ params.q }}" placeholder="Title, description or comments…"
+             style="max-width:340px">
+
+      <select name="label">
+        <option value="">Any label</option>
+        {% for label in labels %}
+          <option value="{{ label.name }}" {% if params.label == label.name %}selected{% endif %}>{{ label.name }}</option>
+        {% endfor %}
+      </select>
+
+      <select name="priority">
+        <option value="">Any priority</option>
+        {% for value, label in priorities %}
+          <option value="{{ value }}" {% if params.priority == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+
+      <select name="owner_id">
+        <option value="">Anyone</option>
+        {% for m in house_members %}
+          <option value="{{ m.pk }}" {% if params.owner_id == m.pk|stringformat:"s" %}selected{% endif %}>{{ m.name }}</option>
+        {% endfor %}
+      </select>
+
+      <select name="state">
+        <option value="">Any state</option>
+        {% for value, label in states %}
+          <option value="{{ value }}" {% if params.state == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+
+      <label class="todo-search-date">Due after <input type="date" name="due_after" value="{{ params.due_after }}"></label>
+      <label class="todo-search-date">Due before <input type="date" name="due_before" value="{{ params.due_before }}"></label>
+
+      <label class="checks"><input type="checkbox" name="overdue" value="1" {% if params.overdue %}checked{% endif %}> Overdue only</label>
+
+      <button class="btn btn-primary" type="submit">Search</button>
+    </div>
+  </form>
+
+  <div class="todo-toolbar">
+    <form method="post" action="{% url 'todo:save_filter' %}" class="todo-save-search">
+      {% csrf_token %}
+      {% for key, value in params.as_dict.items %}
+        <input type="hidden" name="{{ key }}" value="{{ value }}">
+      {% endfor %}
+      <input type="text" name="name" placeholder="Name this search" maxlength="100" required>
+      <button class="btn" type="submit">Save search</button>
+    </form>
+    <div class="spacer"></div>
+  </div>
+
+  {% if saved_filters %}
+    <div class="todo-saved-filters">
+      {% for saved in saved_filters %}
+        <span class="todo-saved-filter">
+          <a href="{% url 'todo:search' %}?{% for k, v in saved.params.items %}{{ k }}={{ v }}&{% endfor %}">{{ saved.name }}</a>
+          <button class="todo-saved-filter__delete" type="button" data-todo-action="delete-filter"
+                  data-url="{% url 'todo:delete_saved_filter' saved.pk %}" title="Delete this saved search">&times;</button>
+        </span>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if not params.is_empty %}
+    <div class="todo-col__list">
+      {% for task in results %}
+        {% include "todo/_card.html" with task=task %}
+      {% empty %}
+        <div class="todo-empty">Nothing matches.</div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="card-subtitle">Search or apply a filter to see results.</p>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'nora_home/js/todo.js' %}" defer></script>
+{% endblock %}

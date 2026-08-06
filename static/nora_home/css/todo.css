@@ -187,6 +187,7 @@
 .todo-outcome--done { background: rgba(79, 209, 165, 0.16); color: var(--ok); }
 .todo-outcome--missed { background: rgba(255, 107, 107, 0.16); color: var(--alert); }
 .todo-outcome--skipped { background: var(--bg-raised); color: var(--text-faint); }
+.todo-outcome--awaiting_approval { background: rgba(245, 196, 81, 0.16); color: var(--amber-500); }
 
 .todo-form fieldset {
   border: none;
@@ -243,3 +244,205 @@
 }
 
 .todo-recurrence-fields[hidden] { display: none; }
+
+/* ── Calendar (§6) ─────────────────────────────────────────────────────── */
+
+.todo-cal-key {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--text-faint);
+}
+
+.todo-cal-key__dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-left: 0.6rem;
+}
+
+.todo-cal-key__dot:first-child { margin-left: 0; }
+.todo-cal-key__dot--planned { background: var(--sky-500); opacity: 0.55; }
+.todo-cal-key__dot--actual { background: var(--ok); }
+.todo-cal-key__dot--event { background: var(--violet-500); }
+
+.todo-cal {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.todo-cal__weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: var(--bg-sunken);
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.todo-cal__weekdays span { padding: 0.4rem 0.5rem; }
+
+.todo-cal__week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-top: 1px solid var(--border);
+}
+
+.todo-cal__day {
+  min-height: 96px;
+  padding: 0.35rem;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.todo-cal__day:first-child { border-left: none; }
+.todo-cal__day--out { opacity: 0.4; }
+.todo-cal__day--today { background: rgba(255, 154, 92, 0.08); }
+
+.todo-cal__daynum {
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+}
+
+.todo-cal__day--today .todo-cal__daynum { color: var(--nh-400); font-weight: 650; }
+
+.todo-cal__items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  overflow: hidden;
+}
+
+.todo-cal__item {
+  display: block;
+  font-size: 0.72rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-decoration: none;
+  color: inherit;
+}
+
+.todo-cal__item--event { background: rgba(167, 139, 250, 0.18); color: var(--violet-500); }
+.todo-cal__item--actual { background: rgba(79, 209, 165, 0.14); }
+.todo-cal__item--planned { background: rgba(92, 184, 255, 0.12); color: var(--text-dim); }
+
+@media (max-width: 900px) {
+  .todo-cal__day { min-height: 64px; }
+}
+
+/* ── Labels (§6) ───────────────────────────────────────────────────────── */
+
+.todo-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1.6rem;
+  max-width: 420px;
+}
+
+.todo-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.8rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-raised);
+  text-decoration: none;
+  color: inherit;
+}
+
+.todo-label-row:hover { background: var(--ink-700); text-decoration: none; }
+.todo-label-row .n { color: var(--text-faint); font-variant-numeric: tabular-nums; }
+
+/* ── Search (§7) ───────────────────────────────────────────────────────── */
+
+.todo-search-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.todo-search-row select,
+.todo-search-row input[type="text"] {
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 0.5rem 0.7rem;
+  font: inherit;
+}
+
+.todo-search-date {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.todo-search-date input {
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 0.35rem 0.5rem;
+}
+
+.todo-save-search {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.todo-save-search input[type="text"] {
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+}
+
+.todo-saved-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: var(--gap);
+}
+
+.todo-saved-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--bg-raised);
+  border-radius: 999px;
+  padding: 0.2rem 0.3rem 0.2rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+.todo-saved-filter a { color: var(--text); text-decoration: none; }
+.todo-saved-filter a:hover { color: var(--nh-400); }
+
+.todo-saved-filter__delete {
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.2rem 0.4rem;
+}
+
+.todo-saved-filter__delete:hover { color: var(--alert); }

@@ -311,7 +311,14 @@ channel and not the other; archived tasks produce nothing.
 
 ---
 
-# Phase 5 — Calendar
+# Phase 5 — Calendar — **BUILT 2026-08-05**
+
+Landed as specified below. See [`todo.md`](todo.md) §6 "Calendar — as built"
+for what building it settled: "actual" means every non-`pending` outcome, not
+just `done` (a missed or skipped instance is real history); archived tasks are
+excluded the same way reminders and escalation already exclude them, but a
+`done` one-shot task's own instance is not, since it's the record of the day
+it happened; and an out-of-range month falls back to today instead of a 500.
 
 Month view only, hand-written as a CSS grid. Shows events, plus **planned** and
 **actual** instances in distinguishable weights.
@@ -321,7 +328,19 @@ letting it look like a bug.
 
 ---
 
-# Phase 6 — Search, labels, kiosk
+# Phase 6 — Search, labels, kiosk — **BUILT 2026-08-05**
+
+Landed as specified below. See [`todo.md`](todo.md) §7 "as built" for
+`search_tasks()`/`FilterParams`/`SavedFilter`, §6 Labels "as built" for the
+live-count fix and the new label-creation form, and §6 "The 10.1" kiosk — as
+built" for why only 3 of the documented 5 kiosk controls are declared today
+(Reporting and System tasks don't have pages yet — Stories 35/36).
+
+6.4 turned out to already be done: the kiosk's two-level system was already
+generic, driven entirely from the registry, from when the kiosk-drives-wall
+redesign shipped. Todo's `nora_kiosk_controls` declaration needed zero
+platform-level changes — confirmed by clicking through it on a real running
+house, not just reading the code and assuming.
 
 **6.1** Full text across titles, descriptions and comments. Combinable filters,
 saveable and returnable.

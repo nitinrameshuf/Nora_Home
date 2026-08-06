@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% comment %}
+Reporting (§10). Every card follows the Visual discipline table:
+
+  * Empty is a **sentence**, never an axis — `_reporting_charts()` returns None
+    for anything with nothing to draw, and that renders as one line of text.
+  * Height follows content — the stat strip is a strip, not six large tiles.
+  * One grid, one gap value. Nothing floats.
+  * Percentages are percentages; durations say "days".
+  * No threshold lines, no arrow markers, no chart furniture.
+  * Good news is small — "nothing late" is a word, not a card.
+{% endcomment %}
+
+{% block head %}
+  <link rel="stylesheet" href="{% static 'nora_home/css/todo.css' %}">
+{% endblock %}
+
+{% block heading %}Reporting{% endblock %}
+
+{% block actions %}
+  <a class="btn" href="{% url 'todo:board' %}">Tasks</a>
+  <a class="btn" href="{% url 'todo:settings' %}">Settings</a>
+{% endblock %}
+
+{% block content %}
+  <div class="todo-figures">
+    <div class="todo-figure">
+      <div class="todo-figure__value">{{ d.load.count }}</div>
+      <div class="todo-figure__label">
+        open{% if d.load.overdue %} ·
+          <span {% if red_overdue %}class="is-alert"{% endif %}>{{ overdue_phrase }}</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="todo-figure">
+      {% if d.throughput.median is None %}
+        <div class="todo-figure__value todo-figure__value--none">&mdash;</div>
+        <div class="todo-figure__label">not enough history yet</div>
+      {% else %}
+        <div class="todo-figure__value">{{ d.throughput.median }}</div>
+        <div class="todo-figure__label">
+          typically finished a day
+          {% if d.throughput.low != d.throughput.high %}
+            <span class="todo-figure__aside">{{ d.throughput.low }}&ndash;{{ d.throughput.high }} normal</span>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="todo-figure">
+      {% if tone.streaks == "classic" %}
+        <div class="todo-figure__value">{{ d.streak.classic }}</div>
+        <div class="todo-figure__label">day streak</div>
+      {% else %}
+        <div class="todo-figure__value">{{ d.streak.ratio_done }}<span class="todo-figure__of">/{{ d.streak.ratio_of }}</span></div>
+        <div class="todo-figure__label">days with something done</div>
+      {% endif %}
+    </div>
+
+    <div class="todo-figure">
+      {% if d.first_touch.median_days is None %}
+        <div class="todo-figure__value todo-figure__value--none">&mdash;</div>
+        <div class="todo-figure__label">nothing finished yet</div>
+      {% else %}
+        <div class="todo-figure__value">{{ d.first_touch.median_days }}</div>
+        <div class="todo-figure__label">days to first touch</div>
+      {% endif %}
+    </div>
+
+    <div class="todo-figure">
+      {% if d.estimates.ratio is None %}
+        <div class="todo-figure__value todo-figure__value--none">&mdash;</div>
+        <div class="todo-figure__label">no times recorded yet</div>
+      {% else %}
+        <div class="todo-figure__value">{{ d.estimates.ratio }}&times;</div>
+        <div class="todo-figure__label">actual vs planned</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="todo-report">
+    {% include "todo/_chart_card.html" with title="Arriving vs finishing" sub="Last 60 days" option=charts.flow span=6 empty="Nothing to plot yet." %}
+    {% include "todo/_chart_card.html" with title="Things finished in a day" sub="How the days actually spread" option=charts.histogram span=6 empty="Nothing finished yet." %}
+    {% include "todo/_chart_card.html" with title="The year so far" sub="Days with something finished" option=charts.heatmap span=12 empty="Nothing finished yet." %}
+    {% include "todo/_chart_card.html" with title="When work gets done" sub="By hour" option=charts.rhythm span=6 empty="Nothing finished yet." %}
+    {% include "todo/_chart_card.html" with title="By weekday" sub="" option=charts.weekdays span=6 empty="Nothing finished yet." %}
+    {% include "todo/_chart_card.html" with title="Where attention goes" sub="Completed, last 90 days" option=charts.labels span=6 empty="Nothing finished yet." %}
+    {% include "todo/_chart_card.html" with title="Open work by age" sub="Per priority" option=charts.aging span=6 empty="Nothing open." %}
+    {% include "todo/_chart_card.html" with title="Planned vs actual" sub="Minutes" option=charts.estimates span=6 empty="No times recorded yet." %}
+
+    <section class="pane todo-report__card" style="grid-column:span 6">
+      <h3 class="todo-report__title">Priority mix</h3>
+      <p class="todo-report__sub">Whether priority still means anything</p>
+      {% if d.priorities.0.share is None %}
+        <p class="todo-empty">Nothing open.</p>
+      {% else %}
+        <table class="todo-table">
+          {% for row in d.priorities %}
+            <tr><td>{{ row.label }}</td><td class="num">{{ row.count }}</td><td class="num">{{ row.share }}%</td></tr>
+          {% endfor %}
+        </table>
+      {% endif %}
+    </section>
+
+    <section class="pane todo-report__card" style="grid-column:span 6">
+      <h3 class="todo-report__title">Oldest still open</h3>
+      <p class="todo-report__sub">Deal with it, or park it</p>
+      {% if d.aging %}
+        <table class="todo-table">
+          {% for row in d.aging %}
+            <tr>
+              <td><a href="{% url 'todo:detail' row.uuid %}">{{ row.title }}</a></td>
+              <td class="num">{{ row.age_days }}d</td>
+              <td>
+                <button class="btn btn-ghost" type="button" data-todo-action="archive"
+                        data-url="{% url 'todo:archive' row.uuid %}">Not now</button>
+              </td>
+            </tr>
+          {% endfor %}
+        </table>
+      {% else %}
+        <p class="todo-empty">Nothing open.</p>
+      {% endif %}
+    </section>
+
+    <section class="pane todo-report__card" style="grid-column:span 6">
+      <h3 class="todo-report__title">Which labels keep sliding</h3>
+      <p class="todo-report__sub">Rescheduled, last 180 days</p>
+      {% if d.deferrals %}
+        <table class="todo-table">
+          {% for row in d.deferrals %}
+            <tr>
+              <td>{{ row.label|default:"Unlabelled" }}</td>
+              <td class="num">{{ row.moves }}&times;</td>
+              <td class="num">{% if row.median_days is None %}&mdash;{% else %}{{ row.median_days }}d{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </table>
+      {% else %}
+        <p class="todo-empty">Nothing has been rescheduled.</p>
+      {% endif %}
+    </section>
+
+    <section class="pane todo-report__card" style="grid-column:span 6">
+      <h3 class="todo-report__title">Came back to it</h3>
+      <p class="todo-report__sub">Stopped for a while, then picked it up again</p>
+      {% if d.recoveries %}
+        <table class="todo-table">
+          {% for row in d.recoveries %}
+            <tr><td>after {{ row.gap_days }} days</td><td class="num">{{ row.returned_on|date:"j M Y" }}</td></tr>
+          {% endfor %}
+        </table>
+      {% else %}
+        <p class="todo-empty">No gaps to come back from yet.</p>
+      {% endif %}
+    </section>
+
+    <section class="pane todo-report__card" style="grid-column:span 12">
+      <h3 class="todo-report__title">What you decided to do, and did</h3>
+      <p class="todo-report__sub">Most recent first</p>
+      {% if d.recent %}
+        <table class="todo-table">
+          {% for row in d.recent %}
+            <tr>
+              <td><a href="{% url 'todo:detail' row.uuid %}">{{ row.title }}</a></td>
+              <td>{{ row.completed_at|date:"D j M, H:i" }}</td>
+              <td>{{ row.by|default:"" }}</td>
+              <td class="num">{% if row.minutes %}{{ row.minutes }}m{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </table>
+      {% else %}
+        <p class="todo-empty">Nothing finished yet.</p>
+      {% endif %}
+    </section>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'nora_home/vendor/echarts.min.js' %}"></script>
+  <script src="{% static 'nora_home/js/nh-charts.js' %}"></script>
+  <script src="{% static 'nora_home/js/todo.js' %}" defer></script>
+  <script src="{% static 'nora_home/js/todo-reporting.js' %}" defer></script>
+{% endblock %}

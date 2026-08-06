@@ -2489,6 +2489,97 @@ Next: **Story 33 — Calendar** (Sonnet, medium effort).
 
 ---
 
+### 2026-08-05 — Story 33: calendar
+
+`nora_home/todo/calendar.py` (pure month-grid and yearly-event-recurrence
+arithmetic, tested with no database), `views.calendar_view`,
+`templates/todo/calendar.html`. **24 new tests, 756 green.** Verified live in
+a real browser with actual demo data rather than just the unit suite: month
+navigation (September 2026 rendered correctly after clicking "next" from
+August), a completed task, a planned task, and a yearly-recurring event all
+rendered on the correct days with distinct colour coding and the recurrence
+marker on the event, zero console errors.
+
+Three decisions settled by building rather than left to the design doc's
+prose:
+
+- **"Actual" means every non-`pending` outcome**, not only `done`. A `missed`
+  or `skipped` instance is real history too, and hiding it would make a week
+  that actually had a gap in it look empty instead — the same "a gap is
+  honest, a zero says you failed" reasoning `tracker.api.completion_stats()`
+  already uses. `awaiting_approval` counts as actual as well: the work
+  happened, even though Reporting won't count it as a completion until
+  approved.
+- **Archived tasks are excluded, matching reminders and escalation** — "not
+  now" means quiet everywhere. A `done` one-shot task (Story 31) is
+  deliberately *not* excluded: its instance is the record of the day it
+  actually happened, and hiding it because the task itself later finished
+  would erase real history.
+- **An out-of-range `?year=`/`?month=` falls back to today** rather than
+  raising — a calendar that 500s on a hand-edited URL or a stale bookmark is
+  worse than one that just shows the current month.
+
+Scoped exactly like the board — `api.tasks_for(scope_members(request))` — so
+a shared task appears on every assignee's calendar and the Everyone toggle
+widens it for free, with no separate mechanism to keep in sync.
+
+Next: **Story 34 — Search, Labels & Kiosk** (Sonnet, medium effort).
+
+---
+
+### 2026-08-05 — Story 34: search, labels, kiosk
+
+`nora_home/todo/search.py` (`search_tasks()`, `FilterParams`), a new
+`SavedFilter` model and migration, `views.search`/`save_filter`/
+`delete_saved_filter`/`labels_view`, `templates/todo/{search,labels}.html`,
+and Todo's `nora_kiosk_controls` declaration in `apps.py`. **37 new tests, 793
+green.** Verified live in a real browser, including the kiosk: created a task
+with "bird feeder" in its description, found it by that text on the Search
+page; created a label from the new Labels-page form; saved a filter and saw
+it come back as a chip; and — the part no unit test could check — opened the
+actual kiosk page, tapped the Todo tile, and watched it switch to a screen
+with exactly the three real buttons (Tasks, Due today, Calendar), each one
+working.
+
+**6.4 turned out to already be built.** The brief said to check whether the
+kiosk's "everywhere + inside an app" system reached the whole house, and
+extend it if not. It already did — built generically off the app registry
+when the kiosk-drives-wall redesign shipped weeks ago — so Todo's kiosk
+declaration needed zero platform-level code, only the declaration itself.
+Confirmed by clicking through it on a running house rather than reading the
+view function and assuming it still worked.
+
+**Only 3 of the 5 documented kiosk controls are declared, on purpose.**
+Reporting (Story 35) and System tasks (Story 36) don't have pages yet, and a
+kiosk button linking to a 404 on a wall-mounted touchscreen is worse than one
+that isn't there at all — the same reasoning `nora_has_page` already applies
+to the Apps directory. `apps.py` has a comment marking where to add the other
+two. "Due today" reuses the board at `/todo/?due=today` rather than becoming
+a fourth page, so the priority-column and awaiting-approval logic stays in
+one place.
+
+**"Saved and returned to" is one function away from drifting**, so it was
+built to make that impossible rather than merely unlikely: both the live
+search page and a saved filter's "apply" link run through the exact same
+`search_tasks(queryset, FilterParams)` call. A saved filter is stored as
+`SavedFilter.params`, and applying it is a redirect to that same dict rendered
+back as a querystring — there is no second function that could someday
+interpret "priority=1" differently from the form that produced it.
+
+**Full-text search over comments needed two join paths, not one** — a task's
+own standing comments (`Task -> Comment`) and an instance's comments
+(`Task -> Instance -> Comment`) are different relations to the same `Comment`
+model, both real per §4's "comments attach at both levels." Combined as one
+queryset filter (`Q(comments__body__icontains=...) | Q(instances__comments__
+body__icontains=...)`) rather than two separate queries fed back in — the
+first draft tried the two-query version and it was both slower to reason
+about and required a manual `.distinct()` that a plain queryset filter needed
+anyway.
+
+Next: **Story 35 — Analytics & Reporting** (Opus, high effort).
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**

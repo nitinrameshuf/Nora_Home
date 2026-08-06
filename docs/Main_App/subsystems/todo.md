@@ -379,9 +379,45 @@ Month view only, covering from when the app starts running. Shows:
 Written by hand as a CSS grid. Calendar libraries are large and opinionated about
 event rendering, and only one view is wanted.
 
+#### As built (Story 33, 2026-08-05)
+
+`nora_home/todo/calendar.py` (pure date arithmetic — a Monday-starting grid,
+year-rolling month shift, yearly-event expansion — tested with no database at
+all, same reasoning as `recurrence.py`'s own tests) plus `views.calendar_view`
+and `templates/todo/calendar.html`.
+
+**"Actual" is everything except `pending`**, not just `done`. A `missed` or
+`skipped` instance is real history too, and hiding it would make the calendar
+lie about a week that actually had a gap in it — the same "a gap is honest, a
+zero says you failed" reasoning `tracker.api.completion_stats()` already uses
+for `rate`. `awaiting_approval` also counts as actual: the work happened, even
+though Reporting won't count it as a completion until approved.
+
+**Archived tasks are excluded**, matching reminders and escalation — "not now"
+means quiet everywhere, including here. A one-shot task that reached `done`
+(Story 31) is **not** excluded: its instance is the record of the day it
+actually happened, and removing it because the task itself is finished would
+erase real history from view.
+
+**Scoped exactly like the board** — `api.tasks_for(scope_members(request))` —
+so a shared task appears on every assignee's calendar and the Everyone toggle
+widens it for free, with no separate mechanism.
+
+An out-of-range `?year=`/`?month=` (a hand-edited URL, a stale bookmark after
+a leap year) falls back to the current month rather than a 500 — a calendar
+that occasionally 500s on a bad link is worse than one that just shows today.
+
 ### Labels
 
 Every label, with a live count. Selecting one shows every task carrying it.
+
+**As built (Story 34, 2026-08-05):** `views.labels_view`, `templates/todo/
+labels.html`. Counts exclude archived and deleted tasks, matching the
+calendar's and reminders' "not now means quiet everywhere" — a label's count
+now always matches what selecting it on the board actually shows. The page
+also gained a small "New label" form, since nothing before this story let
+anyone create one outside `/admin/` — the create/edit form's label picker
+only ever offered labels that already existed.
 
 ### System tasks
 
@@ -421,6 +457,23 @@ there can complete a task. That needs a new `app-action` kiosk action at platfor
 level — deliberately out of scope here, and deserving its own decision since it
 would serve every app equally.
 
+**As built (Story 34, 2026-08-05):** both levels already existed, generically,
+in `nora_home/displays/views.py: kiosk()` and `templates/displays/kiosk.html`
+— built when the kiosk-drives-wall redesign shipped, driven entirely from the
+registry, so a new app with `nora_kiosk_controls` gets its own button screen
+for free. Todo's own declaration in `apps.py` needed no platform change at
+all, confirmed by clicking through it on a real running house: tapping the
+Todo tile swaps the kiosk to Todo's own screen, and its buttons work.
+
+**Only three controls today, not five.** Reporting (§10, Story 35) and System
+tasks (Story 36) don't have a page to point at yet, and a kiosk tile linking
+to a 404 on a wall-mounted touchscreen is worse than a control that simply
+isn't there — the same reasoning that keeps `nora_has_page` honest for the
+Apps directory. `apps.py` documents adding the other two the moment those
+stories ship. "Due today" reuses the board (`/todo/?due=today`) rather than
+being a fifth page — one place holds the priority-column and
+awaiting-approval logic, not two that could drift apart.
+
 ### Widgets
 
 Widgets are for the **home screen** — the personal grid, and whatever the wall
@@ -447,6 +500,29 @@ app presents itself as the app. Todo ships them to the picker like any other app
 Full text across titles, descriptions and comments. Combinable filters — label,
 priority, owner, state, date range, overdue — and a filter set can be **saved and
 returned to**.
+
+### As built (Story 34, 2026-08-05)
+
+`nora_home/todo/search.py` — one function, `search_tasks()`, that both the live
+page and a saved filter run through, so a saved search can never mean something
+different from the form that produced it. `FilterParams` is the shape of a
+filter set — a plain dataclass, built from either a querystring or a
+`SavedFilter.params` dict identically.
+
+**Empty on first load**, deliberately — Search is its own destination, not a
+second view of "my open tasks"; showing nothing until a query or a filter is
+applied is what keeps it from being a redundant mirror of the board.
+
+**"Saved and returned to" needed one new table** — `SavedFilter` (`owner`,
+`name`, `params` as JSON), unique per member per name so saving under an
+existing name updates it rather than creating a duplicate. Applying a saved
+filter is a plain redirect to `?{params}`, the same querystring the form
+itself produces — no second interpretation of what a filter means.
+
+Comments are searched at **both** levels a task can carry them (§4: "Photos
+and comments attach at both levels") — a task's own standing comments, and
+comments on any of its instances — which needs two join paths through the
+same `Comment` model, not one.
 
 ---
 
