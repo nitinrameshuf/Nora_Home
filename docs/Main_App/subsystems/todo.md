@@ -877,7 +877,15 @@ time rather than trusting this document.*
 
 ### What it enables
 
-- `/todo-ack`, `/todo-approve`, `/todo-new`
+- **One slash command, `/todo`, with subcommands** — `/todo ack 123`,
+  `/todo approve 5 looks good`, `/todo new Buy milk`, `/todo help`. Decided
+  2026-08-06 over three separate commands (`/todo-ack`, `/todo-approve`,
+  `/todo-new`): Slack only needs one command registered, every action routes
+  through one Socket Mode handler, and a future action is a new case in that
+  handler, not a new command to register in the Slack app config. The cost is
+  Slack's per-command autocomplete hint — typing `/todo-ack` used to show its
+  own description; `/todo` shows one generic one, and `/todo help` is the
+  fallback for discoverability. Worth it for a house of four people.
 - **Buttons on the message itself** — Done · Skip · Snooze · Reassign. Same
   plumbing, and better than typing a slash command on a phone.
 
@@ -896,9 +904,10 @@ Bot token scopes:
 
 App-level token (separate, starts `xapp-`): **`connections:write`** — Socket Mode.
 
-Also: enable **Socket Mode**, enable **Interactivity**, create the three slash
-commands, and record each member's `slack_user_id` (the existing `slack_members`
-command does the matching).
+Also: enable **Socket Mode**, enable **Interactivity**, create the single `/todo`
+slash command, and record each member's `slack_user_id` (the existing
+`slack_members` command does the matching — `nitin` and `priya` were set
+directly, 2026-08-06, ahead of that command existing).
 
 **Until these are granted, nothing reaches Slack.** Build against it, but verify
 early.

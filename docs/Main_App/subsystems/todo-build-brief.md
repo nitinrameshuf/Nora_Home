@@ -402,7 +402,9 @@ telemetry.
 holding the outbound websocket. Needs the app-level token (`xapp-`) with
 `connections:write`.
 
-**9.2** `/todo-ack`, `/todo-approve`, `/todo-new`, plus Block Kit buttons —
+**9.2** One `/todo` command with subcommands (`ack`, `approve`, `new`, `help`
+— decided 2026-08-06 over three separate commands, see todo.md §12), plus
+Block Kit buttons —
 Done · Skip · Snooze · Reassign.
 
 **9.3** Confirm Slack's current concurrent-connection limits against their docs.

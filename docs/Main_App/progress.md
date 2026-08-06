@@ -2719,6 +2719,25 @@ test infrastructure rather than anything this story built. Flagged separately.
 With those excluded, **874 passed** on the clean image, all other subsystems
 green including `test_todo_system_tasks.py` at 22/22 in isolation.
 
+### 2026-08-06 — ahead of Story 37: Slack IDs recorded, command shape decided
+
+Two real house members set up ahead of the Slack build. `priya` did not exist
+as a `HouseMember` yet — added via the documented `add_member` command
+(`python manage.py add_member priya --display-name Priya --role admin`), same
+path any real member gets added, not a one-off. Both `nitin` and `priya` now
+carry a real `slack_user_id` (`U098WCK1JGM`, `U098YALDXRQ`), set directly since
+the `slack_members` matching command needs the workspace connection Story 37
+builds.
+
+**Command shape changed from three slash commands to one.** The design doc
+originally specified `/todo-ack`, `/todo-approve`, `/todo-new` as three
+separately registered Slack commands. Asked directly which was better, decided
+on a single `/todo` with subcommands instead — one command to register in the
+Slack app config, one Socket Mode handler routing all of it, a future action
+is a new case rather than new Slack-side setup. todo.md §12 and the build
+brief updated before any Story 37 code exists, so the design doc and the code
+never had a chance to disagree.
+
 ---
 
 ## Next
