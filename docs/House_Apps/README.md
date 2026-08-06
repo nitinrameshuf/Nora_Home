@@ -28,7 +28,7 @@ workflow in
 1. **Requirements, approved.** Write `requirements.md`, get a yes on *what the app
    does*, then start coding.
 2. **Tested and integrated.** Unit tests for your own logic, plus verified
-   integration with the platform — tracker, notifications, telemetry, widgets, nav
+   integration with the platform — todo, notifications, telemetry, widgets, nav
    and kiosk. The whole suite green, not just your file.
 3. **Deployed to the Pi and checked over SSH.** An app that has never run on the
    hardware is *built, unproven*, not Complete.
@@ -67,7 +67,7 @@ way.
 | **Who it is for** | Which roles, and whether data is per-person or house-wide |
 | **Where it appears** | Nav, home dashboard, 24" wall, 10.1" kiosk, phone |
 | **Data it owns** | Its models, and what it deliberately does *not* store because the platform does |
-| **What it uses from the platform** | tracker / notifications / telemetry / AI / storage |
+| **What it uses from the platform** | todo / notifications / telemetry / AI / storage |
 | **What it offers other apps** | Telemetry series, MCP tools, signals — see [`../Main_App/cross-functionality.md`](../Main_App/cross-functionality.md) |
 | **Background work** | Celery tasks and their schedules |
 | **Settings and secrets** | `.env` keys it needs. Say "none" if none |

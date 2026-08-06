@@ -43,7 +43,7 @@ the Pi, rather than depending on which services happen to be up.
 
 ```bash
 ./scripts/run-tests.sh              # everything
-./scripts/run-tests.sh tracker      # one subsystem (tests/test_tracker.py)
+./scripts/run-tests.sh houselog     # one subsystem (tests/test_houselog.py)
 ./scripts/run-tests.sh -k escalate  # anything else pytest understands
 make test                           # same thing
 ```
@@ -97,11 +97,11 @@ assertion. A green run is ~20 lines however many tests there are.
 ──────────────────────────────────────────────────────────────
   accounts                26 ok
   core                    31 ok
-  escalation              32 ok   1 FAIL
+  todo_escalation         32 ok   1 FAIL
   ...
 ──────────────────────────────────────────────────────────────
  FAILURES
-  test_escalation.py::test_the_chain_rung_notifies_the_first_contact
+  test_todo_escalation.py::test_the_chain_rung_notifies_the_first_contact
     AssertionError: assert [<HouseMember: Nitin>] == [<HouseMember: Partner>]
 ──────────────────────────────────────────────────────────────
  1 FAILED · 495 passed · 1 failed · 0 skipped · 1.9s
@@ -123,9 +123,8 @@ reports `NOT OK` rather than `ALL PASSED`. If it says `ALL PASSED`, it ran.
 | `test_registry.py` | App discovery, nav grouping, role filtering, URL mounting, reserved slugs |
 | `test_core.py` | Settings store + cache, soft delete, audit, device tokens, health probes |
 | `test_accounts.py` | Roles → admin flags, quiet hours across midnight, escalation chains |
-| `test_scheduling.py` | Every cadence, month-end clamping, materialization idempotency |
-| `test_escalation.py` | The ladder: climbing, stopping, audiences, expiry, resilience |
-| `test_tracker.py` | The published API house apps call, streaks, occurrence lifecycle |
+| `test_todo_escalation.py` | The ladder: climbing, stopping, audiences, resilience — and, since Story 40, that `EscalationPolicy` belongs to Todo |
+| `test_houselog.py` | The House log's editorial rule — that a run of healthy snapshots and a stream of successful integration runs produce **no** entries — plus merging, filtering and the charts |
 | `test_notifications.py` | Routing, dedupe, quiet hours, delivery receipts, retries |
 | `test_telemetry.py` | Series, thresholds, alert suppression, history windows |
 | `test_displays.py` | The bus, heartbeats, and **every kiosk action having a wall handler** |
@@ -241,7 +240,8 @@ Be honest about these rather than implying the suite proves more than it does.
 - **No websocket consumer tests.** The bus is tested, and the message-type contract
   between kiosk and wall is tested, but the consumers themselves are not driven.
 - ~~**`example_habit` imports `nora_home.tracker.models` directly**~~ — **fixed
-  2026-08-04.** The helpers it needed now exist on `nora_home.tracker.api`
+  2026-08-04**, and both apps have since been deleted (Story 28, Story 40). The
+  helpers it needed were added to that app's own API
   (`streak_for`, `is_done_today`, `history_for`, `completion_stats`,
   `trackable_for`), all five files use them, and `KNOWN_MODEL_IMPORT_DEBT` is
   empty. Confirmed by copying the reference app into a scratch app and running the

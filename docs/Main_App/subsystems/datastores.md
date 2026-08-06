@@ -41,7 +41,7 @@ must survive anything.
 
 | Store | For |
 |---|---|
-| **MySQL** | Anything the tracker joins across. The relational spine |
+| **MySQL** | Anything Todo joins across. The relational spine |
 | **Mongo** | Documents whose shape will change. Optional |
 | **Object storage** | Bytes. Optional |
 

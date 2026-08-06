@@ -455,7 +455,7 @@ board.
 
 ---
 
-# Phase 12 — Remove the tracker, add the House log
+# Phase 12 — Remove the tracker, add the House log — **DONE 2026-08-06 (Story 40)**
 
 **12.1** Delete `nora_home/tracker/` entirely. Update `config/settings/base.py`,
 `config/urls.py`, `config/celery.py`, `nora_home/core/signals.py`,
@@ -472,6 +472,17 @@ deleted. Call it wherever a family member might later ask what happened: signing
 in as someone, changing a setting, installing or removing an app, a backup
 running, an integration failing, a task completed or escalated. **The page is
 useless without this; they ship together.**
+
+> **As built.** All of the above, plus scope changes. Two judgement calls worth
+> keeping: setting changes carry the **new values** in `detail`, because "why did
+> the wall go dark at six" is only answerable if the row says what the hours
+> became; and `app.uninstalled` is written at *warning* severity when data was
+> purged and *notice* when it was not, because unmounting an app and dropping its
+> tables should not look like the same event on the timeline.
+>
+> The integration one fires on `consecutive_failures == threshold`, not `>=` —
+> an integration polling every five minutes and down for a day would otherwise
+> write 288 identical rows and bury everything else on the page.
 
 ---
 

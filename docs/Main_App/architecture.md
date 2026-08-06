@@ -27,7 +27,7 @@ graph TB
     REG{{"nora_home.core.registry<br/>NoraAppConfig"}}
 
     subgraph Platform["nora_home/ — the platform"]
-        TRK[tracker<br/>schedules · escalation]
+        TODO[todo<br/>tasks · schedules · escalation]
         NOT[notifications<br/>slack · display · in-app]
         DASH[dashboard<br/>widgets · layouts]
         TEL[telemetry<br/>time series · thresholds]
@@ -43,13 +43,13 @@ graph TB
     F --> REG
     M --> REG
     R --> REG
-    REG -.->|"URL mount · nav · widgets<br/>wall panels · MCP listing"| Platform
+    REG -.->|"URL mount · nav · widgets<br/>kiosk controls · MCP listing"| Platform
 
     classDef app fill:#1e3a5f,stroke:#3b82f6,color:#dbeafe
     classDef plat fill:#1e293b,stroke:#475569,color:#e2e8f0
     classDef reg fill:#3b0764,stroke:#a855f7,color:#e9d5ff
     class W,F,M,R app
-    class TRK,NOT,DASH,TEL,AI,MCP,DS,DISP,INT,UI plat
+    class TODO,NOT,DASH,TEL,AI,MCP,DS,DISP,INT,UI plat
     class REG reg
 ```
 
@@ -110,7 +110,7 @@ graph LR
 
 | Store | Holds | Chosen because |
 |---|---|---|
-| **MySQL** | Members, trackables, occurrences, notifications, telemetry, layouts | Anything the tracker or escalation engine joins across. Relational, transactional, migratable. |
+| **MySQL** | Members, tasks, instances, notifications, telemetry, layouts | Anything Todo or the escalation engine joins across. Relational, transactional, migratable. |
 | **MongoDB** | Journals, AI transcripts, raw integration payloads, sensor bursts | Shapes that change as ideas change, without a migration each time. **Optional** — the house runs degraded, not broken, without it. |
 | **Redis** | Cache, Channels layer, rate limits | Fast, ephemeral, and already needed for websockets. |
 | **RabbitMQ** | Celery work queues | Durable queues and real routing, so a runaway app task cannot delay an escalation. Collapsible to Redis on a laptop via `NORA_HOME_BROKER_USE_REDIS=1`. |
@@ -130,39 +130,47 @@ Five queues, so one app's slowness is never another's outage:
 
 ---
 
-## 3. The tracker and the escalation ladder
+## 3. Todo and the escalation ladder
 
 The spine of the system, and the reason it is not a todo list.
 
+> **This was `nora_home/tracker` until 2026-08-06.** Story 40 deleted it and Todo
+> absorbed the job — same shape, different names: `Task` for the standing
+> intent, `Instance` for one due occasion, and `ChangeEvent` in place of a
+> separate escalation table. `EscalationPolicy` moved across unchanged, rows and
+> primary keys intact. Full design:
+> [`subsystems/todo.md`](subsystems/todo.md).
+
 ```mermaid
 graph TD
-    T["Trackable<br/><i>the standing intent</i><br/>'change the filter quarterly'"]
-    O["Occurrence<br/><i>one concrete due instance</i><br/>materialized 2 weeks ahead"]
-    C["Completion<br/><i>evidence</i><br/>who · when · note · photo"]
-    E["EscalationEvent<br/><i>immutable record</i><br/>that the house pushed harder"]
+    T["Task<br/><i>the thing and its rule</i><br/>'change the filter quarterly'"]
+    O["Instance<br/><i>one concrete due occasion</i><br/>materialized 90 days ahead"]
+    C["ChangeEvent<br/><i>append-only history</i><br/>who · when · what changed"]
+    E["Escalation<br/><i>a rung fired</i><br/>recorded as a ChangeEvent"]
 
     T -->|"materialize()"| O
-    O -->|"complete()"| C
+    O -->|"api.complete()"| C
     O -->|"overdue + policy"| E
 
-    P["EscalationPolicy<br/><i>editable JSON ladder</i>"]
+    P["todo.EscalationPolicy<br/><i>editable JSON ladder</i>"]
     P -.-> E
 ```
 
-Three layers, kept separate on purpose:
+Two layers, kept separate on purpose, and one history table under both:
 
-- **Trackable** — the standing intent. Belongs to a person and to an app.
-- **Occurrence** — one concrete due instance. **Written ahead of time, not computed
+- **Task** — the thing and its rule. Belongs to a person; may be shared with
+  assignees, and may carry an approver.
+- **Instance** — one concrete due occasion. **Written ahead of time, not computed
   on read.** That is what makes "what did I miss last March" answerable and gives
   escalation state somewhere to live.
-- **Completion** — evidence, kept separately so history survives an occurrence being
-  reopened.
+- **ChangeEvent** — append-only history, so completions, reschedules, approvals
+  and escalations all land in one place rather than each needing a table.
 
 ### The ladder
 
 ```mermaid
 sequenceDiagram
-    participant O as Occurrence
+    participant O as Instance
     participant E as Escalation engine
     participant M as Owner
     participant C as Their chain
@@ -283,7 +291,7 @@ Each person arranges their own grid from widgets any app offers.
 graph LR
     subgraph Apps
         A1["workout.WeeklyVolume<br/>ChartWidget"]
-        A2["tracker.TodayWidget<br/>ListWidget"]
+        A2["todo.DueNextWidget<br/>ListWidget"]
         A3["core.HouseHealthWidget<br/>StatWidget"]
     end
 
@@ -330,7 +338,7 @@ Rules that keep the system able to lose a part without losing the whole.
 
 | Boundary | Rule |
 |---|---|
-| **App ↔ app** | Never import another app's models. Use `nora_home.tracker.api`, `nora_home.notifications.api`, `nora_home.telemetry.api`, or a signal from `nora_home.core.signals`. |
+| **App ↔ app** | Never import another app's models. Use `nora_home.todo.api`, `nora_home.notifications.api`, `nora_home.telemetry.api`, or a signal from `nora_home.core.signals`. |
 | **App ↔ environment** | No app reads `os.environ`. Settings go in `config/settings/base.py` with a default. |
 | **Secrets ↔ database** | Credentials live in `.env` only. A database dump shared for debugging carries no tokens. |
 | **Failure ↔ blast radius** | A card that raises renders "unavailable". A broken house app is skipped at mount. A dead Mongo is *degraded*, not *down*. The wall display survives everything. |
@@ -347,7 +355,7 @@ nora_home/              THE PLATFORM
   dashboard/            widget base classes, per-member layouts
   accounts/             HouseMember (AUTH_USER_MODEL), roles, escalation contacts
   notifications/        channels, delivery receipts
-  tracker/              trackables, occurrences, scheduling, escalation engine
+  todo/                 tasks, instances, recurrence, reminders, escalation
   ai/                   Claude client, model tiers, cost accounting
   mcpserver/            MCP tool registry, stdio server, HTTP transport
   datastores/           mongo, object storage, backup/restore
@@ -368,7 +376,7 @@ docker/ scripts/ docs/  entrypoint, provisioning, this folder
 ```
 /                       → redirects to /home/
 /home/                  the home dashboard (per-person widget grid)
-/home/tracker/          the tracker
+/home/log/              the House log — one timeline over every subsystem
 /home/alerts/           notifications
 /home/displays/         redirects to /home/settings/ (the screen cards live there)
 /home/displays/wall/    THE 24" SCREEN — iframe shell, shows real app pages remotely

@@ -19,7 +19,7 @@ published function, change its row here in the same commit.
 
 | You want to… | Call | Lives in |
 |---|---|---|
-| Make something show up as due / overdue / escalating | `tracker.api.register_trackable()` | [Tracker](#tracker) |
+| Make something show up as due / overdue / escalating | *no app-facing call yet* — see [Tracker — removed](#tracker--removed) | [Todo](#todo) |
 | Finish, approve or reject one occasion of a todo | `todo.api.complete()` / `approve()` / `reject()` | [Todo](#todo) |
 | Find the tasks that belong to some people | `todo.api.tasks_for()` | [Todo](#todo) |
 | Tell one person something | `notifications.api.notify()` | [Notifications](#notifications) |
@@ -36,57 +36,33 @@ published function, change its row here in the same commit.
 
 ---
 
-## Tracker
+## Tracker — removed
 
-`from nora_home.tracker import api as tracker`
+`nora_home.tracker` was **deleted on 2026-08-06 (Story 40)**. Todo does its job;
+see [Todo](#todo) below and
+[`subsystems/todo.md`](subsystems/todo.md).
 
-The scheduling and accountability spine. Give it a thing that has to happen and it
-handles recurrence, materialized occurrences, "what did I miss last March", and the
-escalation ladder when nobody does it.
+Most of what the tracker published has a direct successor — `EscalationPolicy` is
+now `nora_home.todo.models.EscalationPolicy`, with the same three seeded ladders
+(*House default*, *Gentle*, *Safety critical*), still editable in `/admin/`
+without a deploy. The MCP tools it published, `open_items` and
+`member_reliability`, kept their names and now answer from Todo.
 
-```python
-tracker.register_trackable(
-    owner=member,                  # HouseMember
-    title="Change the water filter",
-    app_slug="maintenance",        # yours
-    source_ref="filter-kitchen",   # your record's stable id; re-calling updates
-    cadence="interval",            # once|daily|weekdays|weekly|monthly|
-                                   # quarterly|yearly|interval|cron
-    interval_days=90,
-    url="/maintenance/filters/3/", # where a person should land from a reminder
-    escalation_policy="House default",
-    show_on_wall=True,
-    priority=2,
-) -> Trackable
-```
-
-| Function | Does |
-|---|---|
-| `register_trackable(**kw) -> Trackable` | Create **or update** — keyed on `(app_slug, source_ref)`, so calling it again on save is the correct pattern, not a duplicate |
-| `deactivate_trackable(*, app_slug, source_ref) -> int` | Stop tracking, keep history. Cancels pending occurrences so nothing escalates about a record you already deleted |
-| `complete_source(*, app_slug, source_ref, member=None, note="", ...)` | Mark done from your side (e.g. the user ticked it in *your* UI, not the tracker's) |
-| `open_items_for(member, limit=50)` | What this person currently owes the house |
-
-**Reading back what happened.** These exist so you never have to import
-`nora_home.tracker.models` — see [The rule](#the-rule). If you find yourself
-wanting a query these do not cover, add a function here rather than reaching into
-the models; that is what was done on 2026-08-04, when the reference app was still
-importing them in five files and every app copied from it inherited the violation.
-
-| Function | Does |
-|---|---|
-| `streak_for(*, app_slug, source_ref) -> int` | Consecutive completions on your record, until a miss. `0` for a record the tracker has never seen |
-| `is_done_today(*, app_slug, source_ref) -> bool` | Completed today, in house-local time — what greys out your "done" button |
-| `history_for(*, app_slug, source_ref, limit=60)` | That record's occurrences, newest first, for a detail page or chart |
-| `completion_stats(*, app_slug, members=None, since=None, until=None) -> dict` | `{"done", "missed", "total", "rate"}`. `rate` is a percentage, or **`None`** when nothing was due — a gap in a chart is honest, a zero says "you failed" when there was nothing to do. Ignores still-pending work |
-| `trackable_for(*, app_slug, source_ref)` | The `Trackable` itself, read-only. Prefer the others; this is the escape hatch |
-
-**Cadences:** `once`, `daily`, `weekdays`, `weekly`, `monthly`, `quarterly`,
-`yearly`, `interval` (+`interval_days`), `cron` (+`cron_expression`).
-
-**Escalation** is a policy object, not code — `escalation_policy=` takes a name
-string or an `EscalationPolicy`. Three ship by default: *House default*, *Gentle*,
-*Safety critical*. They are editable in `/admin/` without a deploy.
+> **One thing has no successor yet, and you need to know before you plan an app.**
+> The tracker published `register_trackable()` — the call that let a house app
+> hand the platform a recurring job keyed on `(app_slug, source_ref)` and get
+> due dates, reminders, streaks and escalation for free. **Todo has no
+> equivalent.** Its API is written for a person operating a board, not for
+> another app registering work: there is a `Task.origin_ref` field, but the only
+> thing that writes it is `nora_home.todo.system_tasks`, which is internal.
+>
+> What the app-facing version should look like on Todo's model is a design
+> question rather than a mechanical port, so it is deliberately left to **Story
+> 24** — the first real family app, which is the first thing that will actually
+> need it. Until that is settled, an app that needs recurrence either drives
+> `nora_home.todo.api` directly or keeps its own schedule. Do not invent a
+> `register_task()` here without agreeing its shape first; a half-designed
+> registration API is worse than none, because apps will build on it.
 
 ---
 
@@ -149,9 +125,9 @@ their own schedule rather than in response to a request:
 
 - `nora_home.todo.reminders` — `ensure_default_reminder(task)` and
   `send_due_reminders()`. Fans reminders out to every assignee via `doers()`.
-- `nora_home.todo.escalation` — `escalate_due_instances()`, ported from
-  `nora_home.tracker.escalation` onto `Instance`. Chases the owner alone,
-  never the assignees — see `todo.md` §9.
+- `nora_home.todo.escalation` — `escalate_due_instances()`, ported from the
+  deleted tracker's engine onto `Instance`. Chases the owner alone, never the
+  assignees — see `todo.md` §9.
 
 ---
 
@@ -351,7 +327,7 @@ objects.presigned_url(key, expires=3600)
 objects.delete(key)
 ```
 
-**MySQL** for anything the tracker joins across. **Mongo** for journals, transcripts,
+**MySQL** for anything Todo joins across. **Mongo** for journals, transcripts,
 raw integration payloads — where the shape changes without a migration. **Object
 storage** for files. Keys are namespaced by `app_slug` for you.
 
@@ -387,9 +363,9 @@ How apps react to each other **without importing each other**.
 
 | Signal | Fired by | Arguments |
 |---|---|---|
-| `item_completed` | tracker, todo | `item, member, completion` |
-| `item_missed` | tracker, todo | `item, member, due_at` |
-| `escalation_raised` | tracker | `item, level, notified` |
+| `item_completed` | todo | `item, member, completion` |
+| `item_missed` | todo | `item, member, due_at` |
+| `escalation_raised` | todo | `item, level, notified` |
 | `threshold_crossed` | telemetry | `series, value, threshold, direction` |
 | `integration_synced` | integrations | `integration, records, duration_ms` |
 | `home_should_react` | anything | `mood, message, surface` |
@@ -405,7 +381,7 @@ def celebrate(sender, item, member, **kwargs):
 
 **From Todo, `item` and `completion` are the same object** — the `Instance`,
 which already carries the note and the actual minutes a receiver would want, so
-there is no separate completion row as the tracker has. It fires **once**, at the
+there is no separate completion row as the deleted tracker had. It fires **once**, at the
 moment the occasion genuinely becomes done: on `complete()` for an ordinary task,
 on `approve()` for one with an approver, and not at all when someone amends an
 occasion that was already finished.
@@ -416,9 +392,9 @@ occasion that was already finished.
 
 **Call the spine directly. Never import a peer app's models.**
 
-`nora_home.tracker`, `nora_home.notifications`, `nora_home.telemetry`,
+`nora_home.todo`, `nora_home.notifications`, `nora_home.telemetry`,
 `nora_home.ai`, `nora_home.datastores`, `nora_home.displays` and
-`nora_home.core` are the platform. Importing `nora_home.tracker.api` is correct and
+`nora_home.core` are the platform. Importing `nora_home.todo.api` is correct and
 expected — that is what it is for.
 
 `houseapps.workout` importing `houseapps.family.models` is not. It makes both apps

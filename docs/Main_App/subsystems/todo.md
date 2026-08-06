@@ -1135,13 +1135,19 @@ breaks it.
 
 ---
 
-## 14. What is deleted
+## 14. What is deleted — **done 2026-08-06 (Story 40)**
 
 - **`nora_home/tracker/`** entirely — models, API, widgets, cards, MCP tools,
-  admin, urls, views.
-- **`nora_home.tracker.api`** as a published surface. It becomes
-  `nora_home.todo.api`. Nothing but `example_habit` calls it, and that is being
-  deleted, so this is a clean cut with no compatibility shim.
+  admin, urls, views, templates, and its three beat jobs.
+- **`nora_home.tracker.api`** as a published surface. Nothing but `example_habit`
+  called it and that was already gone, so this was a clean cut with no
+  compatibility shim. **With one consequence that was not foreseen here:**
+  `register_trackable()` was the *app-facing* half of that surface — the call
+  `DEVELOPMENT.md` tells a house-app author to make — and `nora_home.todo.api`
+  has no equivalent. Todo's API is written for a person working a board, not for
+  another app registering work. Deliberately left to **Story 24**, the first app
+  that will actually need it, because the shape is a design question rather than
+  a port.
 - **`nora_wall_panels`** from the registry, its `wall_panels()` function, the
   contract test, and its section in `DEVELOPMENT.md` — dead since the wall was
   repointed.
@@ -1150,7 +1156,37 @@ breaks it.
 - **`docs/Main_App/subsystems/tracker.md`**, replaced by this file.
 
 Carried over rather than rewritten: `scheduling.py` (materialisation) and
-`escalation.py` (the ladder). Both work and are tested.
+`escalation.py` (the ladder). Both work and are tested. `EscalationPolicy` came
+across as a model, keeping its rows and their primary keys — see below.
+
+### How the model actually moved
+
+`Task.escalation_policy` was a string reference to `tracker.EscalationPolicy`,
+and **both** of Todo's earlier migrations declared a dependency on the tracker's.
+A migration naming a node no installed app can supply does not degrade to a
+warning: Django refuses to build the graph and every management command dies with
+`NodeNotFoundError`. So `0001_initial` had to be edited, against CLAUDE.md §6.
+
+The rule's purpose is preserved rather than waived — `EscalationPolicy`'s
+`CreateModel` block was copied verbatim out of the deleted `tracker/0001_initial`,
+so replaying Todo's history from empty produces exactly the table the unedited
+version did. `0007_escalationpolicy_from_tracker` exists only for databases where
+the *original* ran, and converges them with a single `RENAME TABLE`: that carries
+the rows, their primary keys and their indexes across, and on both MySQL and
+SQLite it rewrites the foreign keys in *referencing* tables to follow the new
+name — so `todo_task`'s constraint followed without anyone dropping and
+recreating it. Rehearsed against a throwaway copy of the live MySQL schema before
+the real database was touched. Full reasoning: CLAUDE.md §4.
+
+### Todo's MCP tools
+
+`open_items` and `member_reliability` (`nora_home/todo/mcp_tools.py`) inherited
+the tracker's tool *names* on purpose — an agent that already knows to reach for
+`open_items` keeps working — but answer from `Instance` history.
+`open_items` matches on owner **or** assignee, with `.distinct()`: an agent asked
+"what does Priya need to do" that only matched `owner` would silently omit every
+task she was assigned but does not own, which is the same trap `api.tasks_for()`
+documents.
 
 ---
 
@@ -1160,15 +1196,15 @@ Not part of Todo, but Todo needs or triggers each of them.
 
 | # | Work |
 |---|---|
-| 1 | **House log page** — audit, health, deliveries, integrations, telemetry events on one timeline with filters and charts, under House in the sidebar |
-| 2 | **Audit coverage** — `record()` currently has four call sites, three of which are being deleted. The page is empty without this; they ship together |
+| 1 | ~~**House log page**~~ — **done 2026-08-06.** `/home/log/`, `nora_home/core/houselog.py`. Built on one rule: *record what changed, not what ran* — the module docstring carries the measurements that forced it |
+| 2 | ~~**Audit coverage**~~ — **done 2026-08-06**, in the same commit as the page, because the page is empty without it |
 | 3 | **Levels** — `nora_level`, level-aware dependency test, `uninstall_app` warning |
 | 4 | **Alarm audio** — host script + systemd timer, HDMI to the 24", TTS seam |
 | 5 | **Telemetry → system task bridge** — a threshold breach creates a card |
 | 6 | **Slack Socket Mode container** + the scopes in §12 |
 | 7 | **Wall as a widget surface** — adopt `Surface.WALL`, plus a remote editor |
-| 8 | **Delete `nora_wall_panels`** |
-| 9 | **Delete `houseapps/example_habit`** — already agreed |
+| 8 | ~~**Delete `nora_wall_panels`**~~ — done in Story 28 |
+| 9 | ~~**Delete `houseapps/example_habit`**~~ — done in Story 28 |
 
 ---
 

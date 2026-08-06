@@ -2934,6 +2934,107 @@ the real wall a second time.
 
 ---
 
+## 2026-08-06 — Story 40: the tracker deleted, and the House log built
+
+`nora_home/tracker/` is gone — models, API, widgets, cards, views, urls,
+templates, and its three Celery beat jobs, whose successors in Todo had been
+running alongside them since Story 31. `prune_beat_schedule` (already run by the
+entrypoint before beat starts) dropped the three orphaned `PeriodicTask` rows on
+the Pi by itself, which is what stops beat dispatching to import paths that no
+longer exist. Confirmed on the Pi: the schedule now lists ten jobs, none of them
+`tracker.*`.
+
+**The migration was the whole risk, and not where the story expected it.**
+`Task.escalation_policy` was a string reference to `tracker.EscalationPolicy`,
+and *both* of Todo's earlier migrations carried a dependency on the tracker's.
+A migration naming a node no installed app can supply does not degrade to a
+warning: Django refuses to build the graph at all, and every management command
+— `migrate`, `check`, `shell` — dies with `NodeNotFoundError`. So the
+dependency had to go, which meant editing `0001_initial`, against CLAUDE.md §6's
+"never edit an applied migration."
+
+That rule's purpose is preserved rather than waived: `EscalationPolicy`'s
+`CreateModel` block was copied verbatim out of the deleted
+`tracker/0001_initial`, so replaying Todo's history from empty produces exactly
+the table the unedited version did. `0007` is what converges databases where the
+*original* already ran, and it does the whole job with one `RENAME TABLE`.
+Renaming carries the rows, their primary keys and their indexes across, and — on
+both MySQL and SQLite — rewrites the foreign keys in *referencing* tables to
+follow the new name. So `todo_task`'s constraint ended up pointing at
+`todo_escalationpolicy` without anyone dropping and recreating it, which is the
+step that would otherwise have needed vendor-specific SQL and a lookup of
+MySQL's auto-generated constraint name.
+
+**Rehearsed before the live database was touched.** The tracker's schema (no
+data) plus its `django_migrations` rows were dumped out of the running house
+into a throwaway `nora_rehearsal` database, and the new migrations run against
+that first: 3 policies carried with primary keys 1/2/3 and `is_default` intact,
+0 tracker tables left, `todo_task`'s FK repointed by MySQL itself, the orphaned
+`django_migrations` row cleared, `migrate --check` clean, and a real
+write-then-read through the FK. Only then was it run for real, after a full
+`./nora backup`. The live result matched the rehearsal exactly.
+
+**The House log** (`/home/log/`, under House in the sidebar) merges five
+subsystems onto one filterable timeline, and is built on one rule: **record what
+changed, not what ran.** That rule came from measuring the real house before
+writing any of it — over seven days it held 563 health snapshots of which **0**
+were unhealthy, 275 integration runs of which **1** failed, 4 notifications, 4
+deliveries of which 2 failed, and **0 audit rows**. A page listing all 563
+health snapshots would have been 563 rows saying "everything is fine" with the
+one row that mattered unfindable. So: health shows transitions only (and looks
+one snapshot *before* the window, so a change at its very edge still reads as a
+change rather than as the house's first-ever state); integrations show a failure
+and the recovery that ends it; deliveries show only what did not arrive, because
+a delivery that worked is the absence of an event; notifications and audit rows
+show in full, audit because `record()` is curated at the call site. On the real
+house that collapses 275 integration runs into the two entries that say the
+weather integration broke at 17:30 on 4 August and recovered at 18:05.
+
+**Which is why §12.3 shipped with it.** Audit had four call sites and three were
+being deleted, so the page would have launched empty. `record()` is now called
+for signing in as someone (there is no password in this house, so tapping a name
+*is* the whole authentication story, and this row is the only durable record of
+it), scope changes, setting changes — carrying the new values, because "why did
+the wall go dark at six" is only answerable if the log says what the hours became
+— app install and uninstall (at warning severity when data was purged, since
+that is not the same event as unmounting), backups succeeding and failing, and an
+integration entering a failing episode. The last is written on `== threshold`
+rather than `>=`, so an integration down for a day writes one row rather than 288.
+
+Todo also picked up the two MCP tools the tracker published — `open_items` and
+`member_reliability`, same tool names, now answering from `Instance` history.
+`open_items` matches on owner *or* assignee, since an agent asked "what does
+Priya need to do" that only matched `owner` would silently omit every shared
+task. `house_overview` keeps its counts but degrades to `None` when Todo is
+absent rather than raising inside the first tool an agent calls.
+
+Verified: 884 tests green (down from 971 — three tracker test files went with
+the app; 28 new ones cover the log), the migration rehearsed and then applied
+live, all ten services healthy afterwards, every platform page still 200, and
+the page itself seen on the physical wall with both charts rendering real data
+and the nav entry in place.
+
+**Two things left honest rather than papered over.** The wall cannot scroll — it
+has no input devices by design — so only the top of the log was visible there;
+the timeline rows themselves were confirmed from the rendered markup and the
+unit tests, not with eyes on a screen. And ECharts draws its legend and axis
+labels at fixed pixel sizes that do not follow the wall's 160% root, so the two
+charts are legible on a laptop and small at three metres. That is a
+pre-existing property of every chart in the house, not something this story
+introduced, and the House log is a page you read from a phone or laptop rather
+than a wall page.
+
+**One gap this exposed and deliberately did not close.** The tracker published
+`register_trackable()` — the call `DEVELOPMENT.md` tells house-app authors to
+make so the platform handles their due dates, nudges and escalation. Todo has no
+equivalent, so that recipe currently has no working call behind it. What it
+should look like on Todo's model is a design question, not a deletion one, so it
+belongs to Story 24's requirements gate; the docs now say so plainly instead of
+pointing at a function that no longer exists.
+
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**
@@ -2944,4 +3045,11 @@ the real wall a second time.
    (rain/snow/stars, backdrop blur on every pane) holding up over hours
    rather than minutes on a Pi 5 driving two Chromium instances at once.
 2. **Story 24 — house maintenance**, the first real app, which is what proves the
-   skeleton was worth building. Unblocked since Story 27 (2026-08-02).
+   skeleton was worth building. Unblocked since Story 27 (2026-08-02). Its
+   `requirements.md` needs the user's approval before any code is written — the
+   first of DEVELOPMENT.md's three gates. It also has to settle what replaces
+   the tracker's `register_trackable()` for house apps, which Story 40 removed
+   without a successor (see the 2026-08-06 entry).
+3. **Story 41 — Todo: tests, docs, deploy.** Unblocked by Story 40. Browser
+   tests through `./nora qa`, and the deployed-and-observed pass that moves the
+   whole phase from built to Complete.

@@ -13,7 +13,7 @@ the Apps page for that reason — that page shows family apps only.
 |---|---|---|---|
 | [`core.md`](core.md) | `nora_home.core` | The app registry, base models, settings store, audit, health | Complete |
 | [`accounts.md`](accounts.md) | `nora_home.accounts` | Who lives here, roles, escalation contacts, passwordless auth | Complete |
-| [`tracker.md`](tracker.md) | `nora_home.tracker` | Trackables, occurrences, completions, the escalation ladder | Built, unproven |
+| ~~`tracker.md`~~ | ~~`nora_home.tracker`~~ | **Deleted 2026-08-06 (Story 40).** Todo absorbed it; see [`todo.md`](todo.md) | Retired |
 | [`notifications.md`](notifications.md) | `nora_home.notifications` | Slack / in-app / wall / console delivery, receipts, retries | Built, unproven |
 | [`telemetry.md`](telemetry.md) | `nora_home.telemetry` | Every number in the house, over time, with thresholds | Complete |
 | [`displays.md`](displays.md) | `nora_home.displays` | The 24" wall, the 10.1" kiosk, and the bus between them | Complete |

@@ -45,7 +45,7 @@ than merely stated.
    language, and **the user approves that functionality before any code is
    written.** Do not start with code.
 2. **Development is not done until it is tested and integrated.** Unit tests for
-   the app's own logic, plus verified integration with the platform (tracker,
+   the app's own logic, plus verified integration with the platform (todo,
    notifications, telemetry, widgets, nav, kiosk), with the whole suite green.
 3. **Deployed to the Pi and confirmed over SSH.** Until then it is *built,
    unproven*, never Complete.
@@ -123,7 +123,7 @@ Planned apps — none of them built yet, all of them the *point*:
 | House | maintenance schedules, consumables, repairs, bills |
 | Integrations | Home Assistant, stock/portfolio, weather, calendars |
 
-It is explicitly **not a todo list**. The tracker is one subsystem. The system is
+It is explicitly **not a todo list**. Todo is one subsystem. The system is
 meant to monitor automatically, escalate when things slip, hold long-term history,
 and act as the second half of the Nora robot.
 
@@ -144,10 +144,15 @@ reference implementation.
 - Django project (`config/`) with dev / prod / pi settings layered on a shared base.
 - **App registry** (`nora/core/registry.py`) — `NoraAppConfig` gives an app its URL
   mount, nav entry, dashboard widgets, wall panels, and MCP presence.
-- **Tracker + escalation** (`nora/tracker/`) — trackables, materialized occurrences,
-  completions, and a ladder that escalates owner → chain → adults → whole house.
-  **Being superseded by Todo** (below) — see §4's Levels decision. Still live and
-  still what `EscalationPolicy` lives on; not yet deleted (Story 40).
+- ~~**Tracker + escalation** (`nora/tracker/`)~~ — **deleted 2026-08-06 (Story
+  40).** Todo absorbed it: scheduling and the escalation ladder carried over
+  rather than being rewritten, and `EscalationPolicy` is now a Todo model,
+  moved with its rows and primary keys intact. See §4's migration decision.
+- **House log** (`/home/log/`, `nora/core/houselog.py`) — audit events, health
+  transitions, notifications, failed deliveries, integration failures and
+  telemetry breaches on one filterable timeline. Built on one rule: **record
+  what changed, not what ran** — the module docstring carries the measurements
+  that forced it.
 - **Todo** (`nora_home/todo/`) — **Level 2**, the app the base leans on for
   scheduling, reminders and escalation. Priority-column board, calendar, full-text
   search with saveable filters, labels, shared tasks with owner/assignee/approver,
@@ -155,7 +160,7 @@ reference implementation.
   and a system-tasks board fed by telemetry thresholds and failing
   integrations, all with a real front end at `/todo/` and a two-level kiosk
   screen (all five documented buttons now exist). 11 of 15 Phase 7 stories
-  built (28–37, plus 42 out of number order — see its own warning), including
+  built (28–37 and 40, plus 42 out of number order — see its own warning), including
   Slack in both directions: reminders arrive as DMs with Done/Skip/Snooze/
   Reassign buttons, and `/todo` answers back over Socket Mode. **Full
   design, decision log, and per-story "as built" notes**:
@@ -192,7 +197,9 @@ reference implementation.
   published entry point; Daphne's `:8000` is internal-only.
 - **Charts** — ECharts + Gridstack vendored in `static/nora_home/vendor/`, house chart
   theme in `static/nora_home/js/nh-charts.js`, grid in `static/nora_home/js/dashboard.js`.
-- **Migrations** generated for every app and applied.
+- **Migrations** generated for every app and applied. One of them,
+  `todo/0007_escalationpolicy_from_tracker`, is worth knowing about before you
+  touch Todo's history — see §4.
 
 ### Verified working
 Run end to end on Windows against SQLite: `manage.py check` clean, migrations
@@ -313,16 +320,14 @@ button grid, connected, with no certificate-warning interstitial on either
 screen (`--ignore-certificate-errors` did its job).
 
 ### Not done — pick up here
-0. **Phase 7 — Todo, 13 of 15 (87%). Two substantial pieces left, both
-   platform-independent — see the dashboard's next-box for the full comparison:**
-   **Story 40** (Tracker Removal & House Log, Opus, high effort, ~5h) just
-   unblocked, deletes `nora_home/tracker` entirely and is its own warning about
-   the house going non-functional mid-phase; **Story 24** (house maintenance,
-   the first real family app, unblocked since Story 27) is what actually proves
-   the platform was worth building rather than another platform story; **Story
-   39** (Wall Type Scale, Sonnet, ~2h) is small and independent. Stories 28–37
-   built and green (**924 tests**), plus Story 42 (Shared Tasks & Approval,
-   built out of number order — see its own entry for why). Read
+0. **Phase 7 — Todo, 14 of 15 (93%). Two pieces left:** **Story 24** (house
+   maintenance, the first real family app, unblocked since Story 27) is what
+   actually proves the platform was worth building rather than another platform
+   story — and **its `requirements.md` needs your approval before any code**,
+   the first of DEVELOPMENT.md's three gates; **Story 41** (Tests, Docs &
+   Deploy, Sonnet, ~6h) is now unblocked and is volume rather than difficulty.
+   Stories 28–40 built and green (**884 tests**), plus Story 42 (Shared Tasks &
+   Approval, built out of number order — see its own entry for why). Read
    [`docs/Main_App/subsystems/todo.md`](docs/Main_App/subsystems/todo.md)
    before touching this app — it is the approved design and the record of every
    decision made building it; do not re-derive anything already settled there.
@@ -350,6 +355,13 @@ screen (`--ignore-certificate-errors` did its job).
    - **Check `git status` before doing anything.** Stories were committed
      periodically through the session, not after every single one — confirm
      what has and hasn't landed before assuming the working tree matches HEAD.
+   - **Story 40 left one gap open on purpose.** The tracker published
+     `register_trackable()` — the call `DEVELOPMENT.md` tells a house-app author
+     to make so the platform handles their due dates, nudges and escalation.
+     Todo has no equivalent, so that recipe has no working call behind it right
+     now. What it should look like on Todo's model is a design question, so it
+     belongs to Story 24's requirements gate rather than to a deletion story.
+     Do not invent one without agreeing the shape first.
 1. **Design system chosen: "Almanac" — engine shipped and seen live on the Pi.**
    See §4's new decision entry and the design-options mockups (deleted 2026-08-03; see progress.md). The living
    background (season/day-night/weather composited behind the real app, never
@@ -404,7 +416,7 @@ screen (`--ignore-certificate-errors` did its job).
    those. Only the `slack` container reads it.
 
    **AI and MCP remain untested against live services** — no keys supplied.
-4. **Tests: 971, one file per subsystem, green.** `./scripts/run-tests.sh` (or
+4. **Tests: 884, one file per subsystem, green.** `./scripts/run-tests.sh` (or
    `make test`; `make test-pi` runs it inside the container on the Pi). Runs in
    ~30s with no containers, no network, and no credentials — SQLite, in-memory
    channel layer, eager Celery — so it gives the same answer on a laptop and on
@@ -436,11 +448,11 @@ screen (`--ignore-certificate-errors` did its job).
    too. That was confirmed with the user and accepted, since per-output
    `xrandr --off` had already proven fragile earlier in this project.
 8. **The reference app taught the pattern the platform forbids** — `example_habit`
-   imported `nora_home.tracker.models` in five files. **Fixed 2026-08-04**: the
-   missing query helpers now exist on `nora_home.tracker.api` (`streak_for`,
-   `is_done_today`, `history_for`, `completion_stats`, `trackable_for`), the five
-   files use them, and `KNOWN_MODEL_IMPORT_DEBT` in `tests/test_house_apps.py` is
-   empty. Verified by actually copying the reference app into a scratch house app
+   imported the old `nora_home.tracker.models` in five files. **Fixed 2026-08-04**
+   by adding the missing query helpers to that app's own API; both apps are gone
+   now (Story 28 deleted the reference app, Story 40 the tracker), but the rule
+   they proved is not, and `KNOWN_MODEL_IMPORT_DEBT` in `tests/test_house_apps.py`
+   is still empty. Verified by actually copying the reference app into a scratch house app
    and running the contract tests against it: clean. If you are ever tempted to
    add an entry to that debt list, add the API function instead.
 
@@ -496,6 +508,40 @@ git clone <repo> && cd nora-home
 
 Read this section before changing architecture. Each of these was a real fork.
 
+**Editing an applied migration, once, to delete an app (2026-08-06).**
+CLAUDE.md §6 says never edit an applied migration. Story 40 had to, and the
+reasoning is worth not re-deriving. `Task.escalation_policy` pointed at
+`tracker.EscalationPolicy`, and both of Todo's earlier migrations declared a
+dependency on `('tracker', '0001_initial')`. **A migration naming a node no
+installed app can supply does not degrade** — Django refuses to build the graph
+and every management command dies with `NodeNotFoundError`, so there is no
+version of deleting the app that leaves those dependencies in place.
+
+The rule's *purpose* — that replaying history produces the same schema — is
+preserved rather than waived: `EscalationPolicy`'s `CreateModel` block was
+copied verbatim out of the deleted `tracker/0001_initial` into `todo/0001`, so a
+fresh database gets byte-for-byte the table the tracker used to create.
+`todo/0007` exists only for databases where the *original* ran, and is a no-op
+on any built since.
+
+**The trick in 0007 is worth reusing.** It converges with a single `RENAME
+TABLE` rather than create-copy-repoint-drop. Renaming carries the rows, their
+primary keys and their indexes across, and on both MySQL and SQLite it rewrites
+the foreign keys in *referencing* tables to follow the new name — so
+`todo_task`'s constraint followed the table without anyone dropping and
+recreating it. That is the step that would otherwise have needed vendor-specific
+SQL plus a lookup of MySQL's auto-generated constraint name. The only residue is
+cosmetic: carried-over constraint names still read `..._fk_tracker_e`, and
+Django looks constraints up by the columns they cover, never by name.
+
+**And it was rehearsed, not reasoned about.** The live schema (no data) plus its
+`django_migrations` rows were dumped into a throwaway `nora_rehearsal` database
+and migrated there first, then checked for all four things that could have gone
+wrong — rows carried with their pks, FK repointed, tracker tables gone,
+`migrate --check` clean — before the real database was touched. For a migration
+that cannot be undone, on the one database that matters, that rehearsal cost ten
+minutes and is the reason this section is short.
+
 **Levels replace "the platform never depends on a house app" (2026-08-05).**
 That rule was withdrawn once Todo needed to become something the base platform
 itself relies on for scheduling, reminders and escalation — a house app can be
@@ -549,7 +595,7 @@ docker inspect nora-home-worker-1 --format '{{range .Config.Env}}{{println .}}{{
 an escalation policy or retime a job without a deploy. Batteries-included matters
 more than raw speed on a home LAN.
 
-**MySQL for relational, Mongo for documents, both.** Anything the tracker joins
+**MySQL for relational, Mongo for documents, both.** Anything Todo joins
 across lives in MySQL. Journals, AI transcripts, and raw integration payloads go to
 Mongo where the shape can change without a migration. Mongo is *optional* — the house
 runs degraded, not broken, without it.
@@ -559,9 +605,10 @@ queues and real routing so a runaway app task cannot delay an escalation. Redis 
 cache + channel layer + rate limits. `NORA_HOME_BROKER_USE_REDIS=1` collapses this to
 Redis-only for laptop work.
 
-**Occurrences are materialized, not computed.** The tracker writes concrete rows two
-weeks ahead. That is what makes "what did I miss last March" answerable and gives
-escalation state somewhere to live.
+**Occurrences are materialized, not computed.** Todo writes concrete `Instance`
+rows ahead of time over a 90-day horizon (the tracker did the same two weeks
+ahead before Story 40 replaced it). That is what makes "what did I miss last
+March" answerable and gives escalation state somewhere to live.
 
 **Escalation is a policy object, not code.** `EscalationPolicy.levels` is JSON, so
 the ladder is editable in the admin. Three ship by default: House default, Gentle,
@@ -695,7 +742,7 @@ at minimum. `OwnedModel` when it belongs to a person, `SoftDeleteModel` when los
 it would hurt, `UUIDModel` when it is referenced from outside the database.
 
 **Never import another app's models.** Use the published APIs
-(`nora_home.tracker.api`, `nora_home.notifications.api`, `nora_home.telemetry.api`) or send a signal
+(`nora_home.todo.api`, `nora_home.notifications.api`, `nora_home.telemetry.api`) or send a signal
 from `nora_home.core.signals`. This is what lets an app be uninstalled without breaking
 the house.
 
@@ -722,7 +769,7 @@ nora/              the platform
   dashboard/       widget base classes and per-member layouts
   accounts/        HouseMember (AUTH_USER_MODEL), roles, escalation contacts
   notifications/   channels (slack/inapp/display/console), delivery receipts
-  tracker/         trackables, occurrences, scheduling, the escalation engine
+  todo/            tasks, instances, recurrence, reminders, escalation, alarms
   ai/              Claude client, model tiers, cost accounting
   mcpserver/       MCP tool registry, stdio server, HTTP transport
   datastores/      mongo, object storage, backup/restore commands
@@ -751,7 +798,7 @@ docs/
 Append here. Newest last. Keep entries short and factual.
 
 ### 2026-07-31 — skeleton written and booted
-- Platform apps, registry, tracker, escalation, notifications, AI, MCP, datastores,
+- Platform apps, registry, tracker (deleted 2026-08-06), escalation, notifications, AI, MCP, datastores,
   displays, telemetry, integrations, dashboard.
 - Docker Compose stack, Makefile, Pi install script, `install_app` command.
 - URLs restructured: platform under `/home`, house apps at the root (`/habits/`).

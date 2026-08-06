@@ -52,7 +52,8 @@ both of these must hold:
    app knows about.
 2. **Integration with the home app is verified**, not assumed. That means checking
    the seams your app actually uses:
-   - Its trackables materialize and escalate (`tracker`).
+   - Its tasks materialize and escalate (`todo`) — see the caveat in
+     [Tracking, reminders, and escalation](#tracking-reminders-and-escalation).
    - Its notifications route and deliver (`notifications`).
    - Its readings land and its thresholds fire (`telemetry`).
    - Its widgets appear in the "Add a widget" picker and render on the home screen.
@@ -90,7 +91,7 @@ does the hard parts:
 
 | You might be tempted to build | Use this instead |
 |---|---|
-| Reminders, due dates, "did they do it" | `nora_home.tracker.api.register_trackable()` |
+| Reminders, due dates, "did they do it" | `nora_home.todo` — **but read [the caveat](#tracking-reminders-and-escalation) first: the app-facing call was deleted with the tracker and its successor is Story 24's to design** |
 | Nagging people who forget | The escalation ladder — automatic |
 | Slack messages | `nora_home.notifications.api.notify()` |
 | A charts table and a chart library | `nora_home.telemetry.api.record_reading()` + a `ChartWidget` |
@@ -98,7 +99,7 @@ does the hard parts:
 | File uploads to S3 | A normal Django `FileField` |
 | A cron job | `@shared_task` + a PeriodicTask row |
 | An audit trail | `nora_home.core.audit.record()` |
-| A private table in another app's domain | That app's `app_slug` through `tracker`/`telemetry` — see [Talking to other apps](#talking-to-other-apps) |
+| A private table in another app's domain | That app's `app_slug` through `todo`/`telemetry` — see [Talking to other apps](#talking-to-other-apps) |
 | Exposing your data to AI agents | `@mcp_tool` |
 | Login, roles, who lives here | `settings.AUTH_USER_MODEL` |
 
@@ -151,9 +152,8 @@ Then, in your new directory:
    `MCP tool 'X' is already registered; overwriting` and moves on — but it means
    your app's tool silently replaces the original's rather than existing alongside
    it.
-3. `models.py` — your models. Delete the habit ones. Note `app_slug="habits"` in
-   the tracker registration call is a separate string from the URL slug; change it
-   too.
+3. `models.py` — your models. Delete the habit ones. Note `app_slug="habits"` is
+   a separate string from the URL slug; change it too, wherever it appears.
 4. `views.py` / `urls.py` — your pages. They mount at `/workout/` automatically.
 5. **Write your app's docs.** Every house app needs three files under
    `docs/House_Apps/<app>/` — `install_app` warns without them and the contract
@@ -275,61 +275,35 @@ any time without anything above you breaking.
 
 ## Tracking, reminders, and escalation
 
-Do not write reminder logic. Register a trackable and the platform owns due dates,
-nudges, missed-item detection, streaks, and the escalation ladder.
+> ### Read this before you plan an app around it
+>
+> **There is currently no app-facing call for this.** Until 2026-08-06 the
+> platform published `nora_home.tracker.api.register_trackable()`: you handed it
+> a thing that had to happen, keyed on `(app_slug, source_ref)`, and got due
+> dates, nudges, missed-item detection, streaks and the escalation ladder for
+> free. Story 40 deleted the tracker and Todo took over its job — but Todo's API
+> is written for a person working a board, not for another app registering work,
+> and **no successor to `register_trackable()` exists yet.**
+>
+> What that call should look like on Todo's model is a design question, not a
+> mechanical port, so it is deliberately being settled by **Story 24** — the
+> first real family app, which is the first thing that actually needs it.
+>
+> **So, for now:** if your app needs recurrence and escalation, say so in your
+> `requirements.md` and raise it before you write code, rather than working
+> around it. If you need something in the meantime, drive
+> `nora_home.todo.api` directly — but understand that you are using an interface
+> meant for the Todo UI, and it may change when the app-facing one lands.
 
-```python
-from nora_home.tracker.api import register_trackable, complete_source, deactivate_trackable
-
-
-class Routine(OwnedModel):
-    ...
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-
-        if not self.is_active:
-            deactivate_trackable(app_slug="workout", source_ref=str(self.pk))
-            return
-
-        register_trackable(
-            owner=self.owner,
-            title=self.name,
-            app_slug="workout",
-            source_ref=str(self.pk),        # your own id — makes this idempotent
-            cadence="weekly",               # once|daily|weekdays|weekly|monthly|
-                                            # quarterly|yearly|interval|cron
-            due_time=self.due_time,
-            url=f"/workout/{self.uuid}/",   # deep link used by alerts and Slack
-            kind="task",                    # task|habit|maintenance|goal|
-                                            # measurement|checkin
-            escalation_policy="House default",   # or "Gentle" / "Safety critical"
-            requires_evidence=False,
-        )
-```
-
-Calling `register_trackable` twice with the same `(app_slug, source_ref)` **updates**
-rather than duplicating, which is why putting it in `save()` is safe.
-
-When someone finishes the thing, tell the platform:
-
-```python
-complete_source(app_slug="workout", source_ref=str(routine.pk),
-                member=request.user, note="Felt strong", value=8100)
-```
-
-That is what stops the nagging, extends the streak, and clears the wall display.
-
-This is also the entire mechanism behind the home screen's "Today", "Overdue", and
-"Reliability" widgets (`nora_home.tracker.widgets`) — they query every open/overdue
-`Occurrence` in the house with **no `app_slug` filter at all**. The moment you call
-`register_trackable`, your app's items appear in everyone's cross-app summary for
-free. You do not write an aggregation widget; the platform already has one, and
-`register_trackable` is how you opt in.
+Everything below describes the shape the platform provides once the call exists.
+The **escalation ladder itself is real and unchanged** — it is
+`nora_home.todo.escalation`, running against `todo.Instance` — so a task created
+through `nora_home.todo.api` today does escalate.
 
 ### The escalation ladder
 
-Attached to every trackable via its policy. Ships with three:
+Attached to every task via its policy (`Task.escalation_policy`, opt-in per task
+via `Task.escalation_enabled`). Ships with three:
 
 | Policy | Behaviour |
 |---|---|
@@ -337,7 +311,19 @@ Attached to every trackable via its policy. Ships with three:
 | `Gentle` | one quiet note, one nudge 8h later, then let it go — for habits |
 | `Safety critical` | warn owner → all adults at 15 min → whole house at 1h |
 
-Policies are rows, editable in the admin. Add your own there rather than in code.
+Policies are rows (`nora_home.todo.models.EscalationPolicy`), editable in the
+admin. Add your own there rather than in code — that is the whole reason `levels`
+is JSON.
+
+### The cross-app summary widgets
+
+The home screen's Todo widgets (`nora_home.todo.widgets` — "Open now", "Due
+next", "Keeping at it") query every open `Instance` in the house with **no
+`app_slug` filter at all**. Anything that reaches Todo appears in everyone's
+cross-app summary for free; you never write an aggregation widget. The same
+pattern applies to `nora_home.telemetry.widgets.HouseVitalsWidget` for numbers,
+and that one *does* have a working app-facing call today —
+`telemetry.api.record_reading()`.
 
 ---
 
@@ -515,7 +501,7 @@ screen group your numbers with another app's by *theme* ("fitness", "health",
 "house") instead of by which app happens to own them. Leave it blank and your series
 still shows up everywhere, just grouped under its `app_slug` instead.
 
-Same free-aggregation pattern as tracker: `nora_home.telemetry.widgets.HouseVitalsWidget`
+Same free-aggregation pattern as Todo's widgets: `nora_home.telemetry.widgets.HouseVitalsWidget`
 queries every active `Series` with no `app_slug` filter, the same way `TodayWidget`
 does for occurrences. Call `define_series`/`record_reading` and your number is on it —
 no widget to write, nothing to register beyond the call you were already making.
@@ -620,30 +606,29 @@ refuses them unless the caller's token carries that scope.
 ### The shared spine isn't "another app" — call it directly
 
 If you want your workout app to put something on a todo list, you are not
-reaching into a "todo app." There isn't one — `tracker` **is** the house's
-shared todo/scheduling spine, the same way `telemetry` is the shared numbers
-store. Every app already has direct access to both:
+reaching into someone else's app. `nora_home.todo` **is** the house's shared
+todo/scheduling spine, the same way `telemetry` is the shared numbers store, and
+every app has direct access to both:
 
 ```python
 # From anywhere in your workout app:
-from nora_home.tracker.api import register_trackable
+from nora_home.telemetry.api import record_reading
 
-register_trackable(
-    owner=member,
-    title="Log yesterday's session",
-    app_slug="workout",              # still yours — this is what makes it
-    source_ref=f"missed-log:{session.pk}",   #   "your" item on the shared board
-    cadence="once",
-    due_time=tomorrow_9am,
-)
+record_reading("workout.volume_kg", 8100, member=member, source="workout")
 ```
 
-This is not a special case — it's the normal way to use tracker/telemetry/
+This is not a special case — it's the normal way to use todo/telemetry/
 notifications, which exist precisely so apps don't need private versions of
 "things due" or "numbers over time." `app_slug` records *which app this item
 belongs to* (for its icon, its URL, its place in the nav); it does not gate
-who is allowed to create it. Calling these three APIs is always fine, from
-any app, for your own data.
+who is allowed to create it. Calling these APIs is always fine, from any app,
+for your own data.
+
+**The scheduling half of that promise has a hole in it right now.** The example
+above used to be `register_trackable()`, which Story 40 removed along with the
+tracker; see [Tracking, reminders, and
+escalation](#tracking-reminders-and-escalation). Telemetry and notifications are
+unaffected and work exactly as described.
 
 ### Peer apps: never import, only signal
 
@@ -667,7 +652,7 @@ def on_completion(sender, item, member, completion, **kwargs):
 
 Available: `item_completed`, `item_missed`, `escalation_raised`, `threshold_crossed`,
 `integration_synced`, `home_should_react`. Firing one of these (or defining your
-own with `django.dispatch.Signal`) is the escape hatch when tracker/telemetry/
+own with `django.dispatch.Signal`) is the escape hatch when todo/telemetry/
 notifications don't already cover what you're announcing — it keeps two apps
 decoupled: yours doesn't need to know the mealplan app exists, or even whether
 anything is listening.
@@ -768,20 +753,19 @@ from houseapps.workout.models import Session
 pytestmark = pytest.mark.django_db
 
 
-def test_logging_a_session_registers_it_with_the_tracker(member):
-    """The platform owns the schedule; this app only hands it the record."""
-    from nora_home.tracker.models import Trackable
+def test_logging_a_session_records_its_volume(member):
+    """The platform owns the numbers store; this app only hands it the reading."""
+    from nora_home.telemetry.models import Reading
 
-    session = Session.objects.create(owner=member, title="Push day")
+    session = Session.objects.create(owner=member, title="Push day", volume_kg=8100)
 
-    assert Trackable.objects.filter(app_slug="workout",
-                                    source_ref=str(session.pk)).exists()
+    assert Reading.objects.filter(series__key="workout.volume_kg",
+                                  value=8100).exists()
 ```
 
 Fixtures from `tests/conftest.py` are available to you — `member`, `adult`,
-`admin_member`, `household`, `make_member`, `make_trackable`, `make_occurrence`,
-`series`, `wall_display`, `kiosk_display`, `signal_recorder`. Use them instead of
-building people and trackables by hand.
+`admin_member`, `household`, `make_member`, `policy`, `series`, `wall_display`,
+`kiosk_display`, `signal_recorder`. Use them instead of building people by hand.
 
 ```bash
 ./scripts/run-tests.sh workout      # just yours
