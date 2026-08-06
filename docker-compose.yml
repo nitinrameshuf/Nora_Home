@@ -96,9 +96,14 @@ services:
     # liveness signal is that its process is still running. Read /proc directly
     # rather than using pgrep: procps is not in the slim base image, and adding
     # a package to the house's image for one healthcheck is a poor trade.
-    # entrypoint.sh execs beat, so it is always PID 1.
+    #
+    # This used to read /proc/1/cmdline, and passed for the wrong reason: PID 1
+    # is tini, whose command line is `tini -- entrypoint.sh beat`, so it was
+    # matching the *role argument* rather than a running celery process. Found
+    # while adding the slack service, whose role argument (`slack`) does not
+    # happen to contain the string its check was looking for.
     healthcheck:
-      test: ["CMD-SHELL", "grep -qa beat /proc/1/cmdline"]
+      test: ["CMD-SHELL", "for p in /proc/[0-9]*/cmdline; do grep -qa celery \"$$p\" && exit 0; done; exit 1"]
       interval: 60s
       timeout: 10s
       retries: 3
@@ -118,10 +123,15 @@ services:
     depends_on:
       web: { condition: service_healthy }
     # It serves nothing and answers no ping, so — as with beat — the only
-    # honest liveness signal is that the process is still there. entrypoint.sh
-    # execs manage.py, so the command line is what to look for.
+    # honest liveness signal is that the process is still there.
+    #
+    # Scan every /proc entry rather than PID 1. PID 1 is tini (the Dockerfile's
+    # entrypoint), so its command line reads `tini -- entrypoint.sh slack`: the
+    # `exec` in entrypoint.sh replaces the *script*, not tini. Checking
+    # /proc/1/cmdline for `slack_socket` therefore failed forever while the
+    # socket was demonstrably up and answering button taps.
     healthcheck:
-      test: ["CMD-SHELL", "grep -qa slack_socket /proc/1/cmdline"]
+      test: ["CMD-SHELL", "for p in /proc/[0-9]*/cmdline; do grep -qa slack_socket \"$$p\" && exit 0; done; exit 1"]
       interval: 60s
       timeout: 10s
       retries: 3
