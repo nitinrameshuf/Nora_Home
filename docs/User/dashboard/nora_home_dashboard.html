@@ -211,7 +211,7 @@
     <div class="next-step"><div class="step-num">1</div><div class="step-text">Nora Home&apos;s own tasks on the same board shape, filtered to source=system — the fourth of the five documented kiosk buttons is still missing because this page does not exist yet</div></div>
     <div class="next-step"><div class="step-num">2</div><div class="step-text">A telemetry threshold breach, or an integration failing repeatedly, creates a system task</div></div>
     <div class="next-step"><div class="step-num">3</div><div class="step-text">One-directional by design: the measurement stays in telemetry where it can be charted, and only the &quot;someone should look at this&quot; part becomes a task. Model: <strong>Sonnet, medium effort</strong> — small</div></div>
-    <div class="next-step"><div class="step-num">4</div><div class="step-text">Before anything else: the Pi&apos;s <code>.env</code> is tracked in git, so every <code>git pull</code> on the Pi replaces the house&apos;s real configuration with the laptop defaults from <code>.env.example</code>. It bit twice during Story 35. See the Decisions tab</div></div>
+    <div class="next-step"><div class="step-num">4</div><div class="step-text">Nothing blocking: the <code>.env</code>-tracked-in-git trap that bit twice during Story 35 is fixed — <code>.env</code> and <code>.env.*</code> are ignored again. The diagnosis is kept in the Decisions tab because the failure shape (an empty-looking house that has lost nothing) will recur in other forms</div></div>
   </div>
 
   <div class="blocked-box">

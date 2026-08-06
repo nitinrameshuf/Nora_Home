@@ -269,41 +269,32 @@ ssh -i ~/.ssh/nora_pi ckstation@192.168.1.253 "cd ~/Nora_Home && ./nora upgrade"
 health endpoint before returning — so a failure stops there rather than leaving a
 half-started house. `./nora help` lists the rest.
 
-> ### Every pull on the Pi currently destroys `.env`
+> ### If the house suddenly looks empty after a deploy, it is not
 >
-> **`.env` is tracked in git** (commit `a173dcf`), and the committed copy holds
-> `.env.example`'s *laptop* defaults. So the `git pull` inside `./nora upgrade`
-> replaces the house's real configuration — `config.settings.pi` → `dev`, MySQL →
-> SQLite, the real Slack and MCP tokens → empty — and the rebuild that follows
-> brings `web` up on a fresh, empty SQLite database in its own container layer
-> (there is no volume for `db.sqlite3`).
+> `.env` was tracked in git for two days (fixed 2026-08-05 — it and `.env.*` are
+> ignored now), and while it was, the `git pull` inside `./nora upgrade` replaced
+> the house's real configuration with `.env.example`'s laptop defaults. The
+> rebuild that followed brought `web` up on a fresh, empty SQLite database in its
+> own container layer, because **there is no volume for `db.sqlite3`**.
 >
-> **It looks exactly like the house losing all its data, and it is not.** Nothing
-> is deleted: MySQL still holds every row, and any container you did *not*
-> recreate is still using it. Do not restore from a backup on this evidence
-> alone — check what the app is actually connected to first:
+> The specific cause is fixed; the shape of the failure is worth remembering,
+> because anything that changes `.env` produces it. **It looks exactly like the
+> house losing all its data, and it is not.** MySQL still holds every row, and
+> any container you did *not* recreate is still using it. Do not restore from a
+> backup on this evidence alone — ask what the app is actually connected to:
 >
 > ```bash
 > docker compose exec -T web python manage.py shell -c "
 > from django.conf import settings; print(settings.DATABASES['default'])"
 > ```
 >
-> Recover by rebuilding `.env` from a container that has not been recreated —
-> it kept the environment it started with, which makes it the best record of the
-> correct values — then `./nora recreate`:
+> If it says sqlite and you expected MySQL, rebuild `.env` from a container that
+> has not been recreated — it kept the environment it started with, which makes
+> it the best record of the correct values — then `./nora recreate`:
 >
 > ```bash
 > docker inspect nora-home-worker-1 --format '{{range .Config.Env}}{{println .}}{{end}}'
 > ```
->
-> To pull without tripping it at all:
->
-> ```bash
-> cp .env /tmp/env.keep && git checkout -- .env && git pull --ff-only && cp /tmp/env.keep .env
-> ```
->
-> The real fix is to untrack `.env`; see CLAUDE.md §4 for why that is waiting on
-> a decision about rotating the two secrets already in the history.
 
 The ones worth knowing while debugging:
 

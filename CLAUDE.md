@@ -487,38 +487,40 @@ this over every registered app, not only house apps. `nora_level` lives on
 `NoraAppConfig` (`nora_home/core/registry.py`), defaulting to 3. Full writeup:
 [`docs/Main_App/subsystems/todo.md`](docs/Main_App/subsystems/todo.md) §1.
 
-**`.env` is tracked in git, and that is a bug, not a decision (2026-08-05).**
+**`.env` was tracked in git for two days, and it cost a session (2026-08-05).**
 Commit `a173dcf` added `.env` to the repo and deleted the `.env` line from
-`.gitignore`. The committed copy carries `.env.example`'s **laptop** defaults, so
-**every `git pull` on the Pi silently replaces the house's real configuration** —
+`.gitignore`. The committed copy carried `.env.example`'s **laptop** defaults, so
+**every `git pull` on the Pi silently replaced the house's real configuration** —
 `config.settings.pi` → `dev`, MySQL → SQLite, `America/New_York` →
 `America/Los_Angeles`, `DEBUG=0` → `1`, ports 443/80 → 8443/8080, and the real
-Slack and MCP tokens → empty. It happened twice in one session.
+Slack and MCP tokens → empty. It happened twice in one session before anyone
+understood why.
 
-It presents as data loss and is not. A pull swaps the file; nothing changes until
-a container is recreated, and then *that* container comes up on a fresh, empty
-SQLite database in its own writable layer — **there is no volume for
-`db.sqlite3`**. Containers that were not recreated keep running on MySQL with
-every row intact, because a container keeps the environment it started with. That
-same fact is the recovery: a still-running container is the best record of the
-correct configuration.
+**Fixed the same day**: `.env` and a leftover `.env.check_tmp` are untracked, and
+`.gitignore` now carries `.env` / `.env.*` with `!.env.example`, so the whole
+class is covered rather than just the one file. The repo is private, and the
+values that were briefly committed are staying as they are — a deliberate call,
+not an oversight.
+
+**Keep the diagnosis, because the failure mode will recur in other forms.** It
+presents as total data loss and is not. Swapping `.env` changes nothing until a
+container is recreated, and then *that* container comes up on a fresh, empty
+SQLite database in its own writable layer — **there is still no volume for
+`db.sqlite3`**, so a house running on `dev` settings has no persistence at all.
+Containers that were not recreated keep running on MySQL with every row intact,
+because a container keeps the environment it started with. That same fact is the
+recovery: a still-running container is the best available record of the correct
+configuration.
 
 ```bash
+# what is this container ACTUALLY connected to? ask before concluding anything
+docker compose exec -T web python manage.py shell -c "
+from django.conf import settings; print(settings.DATABASES['default'])"
+
 # rebuild .env from a container that has NOT been recreated, then apply it
 docker inspect nora-home-worker-1 --format '{{range .Config.Env}}{{println .}}{{end}}'
 ./nora recreate
-# and to pull without tripping it:
-cp .env /tmp/env.keep && git checkout -- .env && git pull --ff-only && cp /tmp/env.keep .env
 ```
-
-**The fix is to untrack it** (`git rm --cached .env`, restore the `.gitignore`
-line), which is what this file has always claimed is true — see "Secrets never go
-in the database" below, and §3's "`.env` is gitignored — secrets never enter the
-repo." Deliberately not done yet, pending a decision: the committed copy also
-carries a real `DJANGO_SECRET_KEY` and a real `NORA_HOME_MCP_TOKEN`, and
-untracking does not un-leak them. Rotating the secret key logs everyone out;
-rotating the MCP token means re-issuing it to the robot. The Slack token and
-Anthropic key are empty in the committed copy and did not leak.
 
 **Django over FastAPI/Node.** The admin alone is worth it: a family member can edit
 an escalation policy or retime a job without a deploy. Batteries-included matters

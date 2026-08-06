@@ -1,3 +1,11 @@
+# Secrets never enter the repo (CLAUDE.md §4). The pattern covers .env.bak.*
+# and any other .env.<something> a session leaves behind, because the last time
+# .env was tracked, every `git pull` on the Pi silently replaced the house's
+# real configuration with the laptop defaults from .env.example.
+.env
+.env.*
+!.env.example
+
 nginx/certs/
 *.pyc
 __pycache__/

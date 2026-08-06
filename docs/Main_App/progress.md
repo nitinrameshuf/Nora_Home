@@ -2626,21 +2626,23 @@ the thing that saves you here: **a container keeps the environment it started
 with**, which is also what makes the still-running container the best available
 record of the correct configuration.
 
-Recovering, if it happens again: rebuild `.env` from a container that has not
-been recreated —
+Recovering, if the configuration is ever wrong again: rebuild `.env` from a
+container that has not been recreated —
 `docker inspect nora-home-worker-1 --format '{{range .Config.Env}}{{println .}}{{end}}'`
-— then `./nora recreate`. Nothing is lost; MySQL still holds everything. To pull
-without tripping it: `cp .env /tmp/env.keep && git checkout -- .env && git pull
---ff-only && cp /tmp/env.keep .env`.
+— then `./nora recreate`. Nothing is lost; MySQL still holds everything.
 
-**The real fix is to untrack `.env`** and restore the `.gitignore` line, which is
-what CLAUDE.md §4 says was always meant to be true ("`.env` is gitignored —
-secrets never enter the repo"). Left undone deliberately, pending a decision: the
-committed copy also carries a real `DJANGO_SECRET_KEY` and a real
-`NORA_HOME_MCP_TOKEN`, so untracking alone does not un-leak them — those two want
-rotating, and rotating the secret key logs everyone out while the MCP token needs
-re-issuing to the robot. The Slack token and Anthropic key are empty in the
-committed copy and did not leak.
+**Fixed the same day.** `.env` and a leftover `.env.check_tmp` (a scratch copy
+from an earlier session, carrying the same values) are untracked, and
+`.gitignore` now reads `.env` / `.env.*` with `!.env.example` — the class, not
+the one file, so the next `.env.bak.*` or `.env.something` a session leaves
+behind cannot repeat this. Both files stay on disk on every machine that has
+them; only git stops following them. The repo is private and the briefly
+committed values are staying as they are, decided explicitly.
+
+The `db.sqlite3`-in-the-container-layer half is **not** fixed and was never the
+cause here: it only matters when the house is running on `dev` settings, which
+it should never be. Worth knowing if anyone ever points the Pi at SQLite
+deliberately — there is no volume, so that house has no persistence.
 
 ---
 
