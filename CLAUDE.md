@@ -322,12 +322,15 @@ screen (`--ignore-certificate-errors` did its job).
      expensive trap in the repo right now, it bit twice in one session, and it
      looks exactly like data loss without being it. Read that entry before you
      pull, build, or recreate anything on the Pi.
-   - **Story 35 ran on the Pi against MySQL** — the Reporting page, the settings
-     page and the priority-mix query were all exercised there, and both physical
-     screens were driven through the kiosk to check it. Stories 28–34 and 42 were
-     verified against SQLite on a laptop only; Story 42's migration in particular
-     (a CHECK constraint, an altered indexed column) still has not been proven on
-     MySQL.
+   - **Todo's schema is proven on MySQL; most of its behaviour is not.** All five
+     todo migrations are applied on the Pi, `migrate --check` reports nothing
+     outstanding, and the constraints are really there — including Story 42's
+     `todo_no_approver_on_recurring`, which this file previously listed as
+     unproven. Story 35 was additionally exercised *as an app* against MySQL
+     (Reporting, settings, the priority-mix query, and both physical screens
+     driven through the kiosk). Stories 28–34 and 42 have still only had their
+     **behaviour** run against SQLite on a laptop — the tables exist on MySQL,
+     but nobody has completed, skipped, approved or escalated anything there.
    - **Check `git status` before doing anything.** Stories were committed
      periodically through the session, not after every single one — confirm
      what has and hasn't landed before assuming the working tree matches HEAD.
