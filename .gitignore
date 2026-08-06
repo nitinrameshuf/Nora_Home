@@ -13,6 +13,7 @@
 # tracking .env. The file itself stays on disk and keeps working.
 db.sqlite3
 db.sqlite3-journal
+/var/alarms/
 
 nginx/certs/
 *.pyc

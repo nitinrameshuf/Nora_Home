@@ -1,0 +1,88 @@
+"""
+Sound — the one channel that cannot deliver anything itself.
+
+Every other channel in this package posts, DMs, or writes a row from inside
+the container. This one can't: the speakers are physically wired to the Pi's
+HDMI output, on the host, and Django runs in Docker with no path to it — the
+same boundary the wall power schedule crosses
+(`nora_home.core.management.commands.wall_power_state`), solved the same way.
+
+**`send()` does not play a sound. It writes the resolved audio to a
+host-visible cache and stops.** A small host-side script, on a systemd timer,
+is what actually calls `aplay` — see `docker/entrypoint.sh` §"slack" for the
+sibling pattern (a container that only decides) and
+`scripts/lib/provision-pi.sh` for the timer itself.
+
+**What "resolved" means is entirely `nora_home.todo.alarms`'s decision** — this
+channel only knows a task id and hands it straight to `resolve_alarm()`. Not
+`alarm_kind`/`alarm_ref` themselves, and not the audio bytes: `context` is a
+`JSONField`, so anything here has to survive a database round trip, and raw
+audio does not. Resolving fresh, on delivery, is also simply correct — the
+task's alarm could have changed between the reminder firing and this channel
+running.
+"""
+
+from __future__ import annotations
+
+import logging
+import mimetypes
+import time
+from pathlib import Path
+
+from django.conf import settings
+
+from nora_home.notifications.channels import BaseChannel, ChannelError
+
+logger = logging.getLogger(__name__)
+
+# Nothing physically playing this house's one set of speakers needs to look
+# further back than this — old files are debris from a run the host script
+# never got to (a crash, a reboot mid-cycle), not a queue to work through.
+STALE_AFTER_SECONDS = 3600
+
+
+class SoundChannel(BaseChannel):
+    name = "sound"
+
+    def is_configured(self) -> bool:
+        # Always "configured": writing to the cache directory needs nothing
+        # from the environment. Whether anything is physically connected to
+        # play it back is the host script's problem, not this channel's.
+        return True
+
+    def send(self, notification, delivery) -> dict:
+        task_id = (notification.context or {}).get("alarm_task_id")
+        if not task_id:
+            raise ChannelError("This notification carries no alarm_task_id.")
+
+        from nora_home.todo.alarms import resolve_alarm
+        from nora_home.todo.models import Task
+
+        task = Task.objects.filter(pk=task_id).first()
+        audio = resolve_alarm(task) if task else None
+        if audio is None:
+            raise ChannelError(f"No alarm audio could be resolved for task {task_id}.")
+
+        data, content_type = audio
+        extension = mimetypes.guess_extension(content_type) or ".bin"
+        cache_dir = Path(settings.NORA_HOME_ALARM_CACHE_DIR)
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        _prune_stale(cache_dir)
+
+        filename = f"{delivery.pk}{extension}"
+        (cache_dir / filename).write_bytes(data)
+
+        return {"target": "wall-speakers", "ref": filename}
+
+
+def _prune_stale(cache_dir: Path) -> None:
+    cutoff = time.time() - STALE_AFTER_SECONDS
+    for entry in cache_dir.iterdir():
+        try:
+            if entry.is_file() and entry.stat().st_mtime < cutoff:
+                entry.unlink()
+        except OSError:
+            # Another process (the host script) may be mid-read of this exact
+            # file; losing a prune this cycle is nothing, raising here would
+            # take the whole alarm down over housekeeping.
+            logger.debug("Could not prune stale alarm file %s", entry, exc_info=True)

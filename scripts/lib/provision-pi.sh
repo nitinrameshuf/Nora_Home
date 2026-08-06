@@ -347,6 +347,73 @@ UNIT
 sudo systemctl daemon-reload
 sudo systemctl enable --now nora-wall-power.timer
 
+# ── 10. Alarm playback ────────────────────────────────────────────────────────
+# Same boundary, same pattern as the wall power schedule (§9): Django decides
+# what should make a sound and resolves it to bytes, but the speakers are
+# physically wired to the Pi's HDMI output on the host, outside Docker. Here
+# the container writes the resolved audio to a bind-mounted directory instead
+# of printing a word for the host to act on — see docker-compose.yml's
+# ./var/alarms mount and nora_home/notifications/channels/sound.py.
+#
+# The mount is bind, not a named volume, precisely so aplay can read it
+# directly. Docker auto-creates a missing bind-mount source as root, which the
+# container's non-root `nora` user then cannot write into — created and opened
+# up here, ahead of the first `docker compose up`, rather than leaving that
+# failure to surface as a silent missing alarm the first time one is due.
+info "Installing alarm playback"
+mkdir -p "$REPO_DIR/var/alarms"
+chmod 777 "$REPO_DIR/var/alarms"
+
+cat > "$HOME/.nora/alarm-play.sh" <<SCRIPT
+#!/usr/bin/env bash
+# Plays the single most recently queued alarm since the last time this ran,
+# and only that one — a burst of several queued together (the Pi having been
+# off for a while, say) intentionally does not become a burst of sounds.
+# nora_home/todo/reminders.py already collapsed the rest into one message.
+CACHE="$REPO_DIR/var/alarms"
+STATE="\$HOME/.nora/alarm-last-played"
+mkdir -p "\$CACHE"
+LAST="\$(cat "\$STATE" 2>/dev/null || echo 0)"
+
+NEWEST="\$(find "\$CACHE" -maxdepth 1 -type f -newermt "@\$LAST" -printf '%T@ %p\n' 2>/dev/null \\
+    | sort -rn | head -1 | cut -d' ' -f2-)"
+[ -z "\$NEWEST" ] && exit 0
+
+# plughw, not hw — the raw HDMI device rejects speaker-test's own parameters
+# outright ("Setting of hwparams failed: Invalid argument"); plughw lets ALSA
+# convert instead, confirmed by ear against the real wall panel, 2026-08-06.
+aplay -D plughw:0,0 "\$NEWEST" >/dev/null 2>&1 || true
+date +%s > "\$STATE"
+SCRIPT
+chmod +x "$HOME/.nora/alarm-play.sh"
+
+sudo tee /etc/systemd/system/nora-alarm-play.service >/dev/null <<UNIT
+[Unit]
+Description=Play the most recently queued Nora Home alarm, if any
+After=nora-home.service
+
+[Service]
+Type=oneshot
+User=$USER
+Environment=DISPLAY=:0
+ExecStart=$HOME/.nora/alarm-play.sh
+UNIT
+
+sudo tee /etc/systemd/system/nora-alarm-play.timer >/dev/null <<UNIT
+[Unit]
+Description=Check for a Nora Home alarm to play every 2 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+
+[Install]
+WantedBy=timers.target
+UNIT
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now nora-alarm-play.timer
+
 info "Done."
 cat <<SUMMARY
 

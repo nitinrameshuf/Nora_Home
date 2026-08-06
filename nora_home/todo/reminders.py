@@ -24,6 +24,7 @@ from django.utils import timezone
 from nora_home.notifications.api import notify, notify_house
 from nora_home.todo import api
 from nora_home.todo.models import (
+    Instance,
     InstanceOutcome,
     Priority,
     Reminder,
@@ -44,12 +45,11 @@ REMINDER_DEDUPE_MINUTES = 60 * 24 * 30
 # lives in nora_home.todo.escalation.
 REMINDS_THE_HOUSE_TOO = {Priority.P1}
 
-# Channels §8 promises but this platform cannot deliver yet. "Sound" needs
-# Story 38 (Alarms & House Audio) — no audio plumbing exists anywhere in this
-# codebase today. Silently dropping it here, rather than passing it through to
-# notify() and having it raise on an unknown channel, is the same "degrade,
-# never cascade" rule CLAUDE.md states for every other missing capability.
-UNDELIVERABLE_CHANNELS = {"sound"}
+# "sound" is handled separately from every other channel — see
+# `_queue_alarms()` — because it needs a house-wide backlog rule (§10.4) the
+# per-recipient notify() loop below has no way to apply. Filtered out here so
+# it is never passed straight through as an ordinary channel.
+ALARM_CHANNEL = "sound"
 
 
 def ensure_default_reminder(task: Task) -> Reminder | None:
@@ -90,7 +90,7 @@ def send_due_reminders(*, now=None, limit: int = 500) -> dict:
                  .select_related("task", "task__owner")
                  .prefetch_related("task__assignees")[:limit])
 
-    sent = 0
+    due = []
     for reminder in reminders:
         task = reminder.task
         instance = task.instances.filter(outcome=InstanceOutcome.PENDING).order_by("due_at").first()
@@ -100,16 +100,53 @@ def send_due_reminders(*, now=None, limit: int = 500) -> dict:
         when = fire_at(reminder, instance.due_at)
         if when is None or when > now:
             continue
+        due.append((task, instance, reminder))
 
+    sent = 0
+    for task, instance, reminder in due:
         try:
             if _send_reminder(task, instance, reminder):
                 sent += 1
         except Exception:
             logger.exception("Reminder failed for task %s", task.pk)
 
+    _queue_alarms(due)
+
     if sent:
         logger.info("Sent %s todo reminders", sent)
     return {"sent": sent}
+
+
+def _queue_alarms(due: list[tuple[Task, Instance, Reminder]]) -> None:
+    """§10.4, "backlog after downtime": if the Pi was off, or several alarms
+    simply land in the same sweep, play only the most recent and collapse the
+    rest into one message rather than firing every sound in a burst.
+
+    A house has one set of speakers, so this is a house-wide decision made
+    once per sweep — unlike everything in `_send_reminder()`, which fans out
+    per recipient.
+    """
+    from nora_home.todo.alarms import queue_alarm, queue_missed_alarms_summary
+
+    # Gated on the task's own alarm_kind alone, not on a reminder's channels
+    # list — there is no UI anywhere that lets a person put "sound" into a
+    # Reminder.channels, so requiring it would make a task's alarm form field
+    # do nothing. §10.1 frames the alarm as the task's own property; a
+    # reminder here is only the trigger for *when*.
+    seen_tasks = set()
+    eligible = []
+    for task, instance, _reminder in due:
+        if task.alarm_kind and task.pk not in seen_tasks:
+            seen_tasks.add(task.pk)
+            eligible.append((task, instance))
+    if not eligible:
+        return
+
+    eligible.sort(key=lambda pair: pair[1].due_at)
+    *backlog, (latest_task, latest_instance) = eligible
+    queue_alarm(latest_task, latest_instance)
+    if backlog:
+        queue_missed_alarms_summary([task for task, _ in backlog])
 
 
 def _slack_actions(task: Task, instance) -> list[dict]:
@@ -152,7 +189,10 @@ def _slack_actions(task: Task, instance) -> list[dict]:
 
 
 def _send_reminder(task: Task, instance, reminder: Reminder) -> bool:
-    channels = [c for c in (reminder.channels or []) if c not in UNDELIVERABLE_CHANNELS] or None
+    # "sound" is handled house-wide by _queue_alarms(), not per recipient here
+    # — passing it through to notify() would fan an alarm out to every
+    # assignee individually, which is not what one set of speakers means.
+    channels = [c for c in (reminder.channels or []) if c != ALARM_CHANNEL] or None
     recipients = api.doers(task)
     key = f"todo-reminder:{instance.uuid}:{reminder.pk}"
     actions = _slack_actions(task, instance)

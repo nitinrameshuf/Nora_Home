@@ -301,6 +301,7 @@ NORA_HOME_NOTIFICATION_CHANNELS = {
     "inapp": "nora_home.notifications.channels.inapp.InAppChannel",
     "display": "nora_home.notifications.channels.display.DisplayChannel",
     "console": "nora_home.notifications.channels.console.ConsoleChannel",
+    "sound": "nora_home.notifications.channels.sound.SoundChannel",
 }
 NORA_HOME_NOTIFICATION_DEFAULT_CHANNELS = env_list(
     "NORA_HOME_NOTIFICATION_DEFAULT_CHANNELS", ["inapp", "slack"]
@@ -338,6 +339,12 @@ NORA_HOME_LON = env_float("NORA_HOME_LON", -74.0060)
 
 # ── Backups ────────────────────────────────────────────────────────────────────
 NORA_HOME_BACKUP_DIR = Path(env("NORA_HOME_BACKUP_DIR", str(BASE_DIR / "backups")))
+# Where a resolved alarm's audio bytes land so the host-side player can reach
+# them — Django runs in Docker and has no path to the physical speakers, same
+# boundary the wall power schedule crosses (see docker-compose.yml's bind mount
+# and scripts/lib/provision-pi.sh). Not used on a laptop; writes still succeed,
+# there is simply nothing on the other end to play them.
+NORA_HOME_ALARM_CACHE_DIR = Path(env("NORA_HOME_ALARM_CACHE_DIR", str(BASE_DIR / "var" / "alarms")))
 NORA_HOME_BACKUP_RETAIN_DAYS = env_int("NORA_HOME_BACKUP_RETAIN_DAYS", 30)
 NORA_HOME_BACKUP_TO_OBJECT_STORAGE = env_bool("NORA_HOME_BACKUP_TO_OBJECT_STORAGE", False)
 

@@ -35,6 +35,11 @@ x-app: &app
     - media:/srv/nora/media
     - logs:/srv/nora/logs
     - backups:/var/backups/nora
+    # A bind mount, not a named volume, and on purpose: the host's own aplay
+    # needs to read whatever lands here, and a named volume lives under
+    # /var/lib/docker/volumes/ where only root can reach it directly. See
+    # nora_home/notifications/channels/sound.py and scripts/lib/provision-pi.sh.
+    - ./var/alarms:/srv/nora/alarms
   restart: unless-stopped
   depends_on:
     mysql: { condition: service_healthy }
