@@ -873,7 +873,12 @@ URL for ordinary webhooks) — a genuine alternative, rejected to avoid dependin
 a third party and adding another moving piece to provisioning.
 
 *Confirm Slack's current concurrent-connection limits against their docs at build
-time rather than trusting this document.*
+time rather than trusting this document.* **Checked 2026-08-06: 10 concurrent
+websocket connections per app, and payloads may arrive on any of them.** This
+house opens exactly one, from a single container, so the limit is nowhere near
+binding — but it is the reason the socket must never be run from the worker,
+which would open one per process and could hand the same interaction to a
+different one than sent it.
 
 ### What it enables
 

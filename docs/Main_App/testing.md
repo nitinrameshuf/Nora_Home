@@ -269,6 +269,25 @@ ssh -i ~/.ssh/nora_pi ckstation@192.168.1.253 "cd ~/Nora_Home && ./nora upgrade"
 health endpoint before returning — so a failure stops there rather than leaving a
 half-started house. `./nora help` lists the rest.
 
+> ### `docker compose up -d web` is not a deploy
+>
+> Recreating `web` alone leaves `worker`, `beat` and `slack` on the previous
+> image, and **they fail silently rather than loudly** — a container keeps the
+> code it started with, and old code simply does not know about the new field.
+>
+> This cost a debugging detour during Story 37: a Slack reminder arrived with no
+> buttons, no error anywhere. Notification *rendering* happens in the **worker**,
+> which was still on the previous image and ignored the `slack_actions` it had
+> never heard of. Rule of thumb for which container to recreate:
+>
+> | You changed | Recreate |
+> |---|---|
+> | A view, template, or static file | `web` |
+> | A Celery task, or anything a task calls — notifications, reminders, escalation | `worker` |
+> | A schedule in `beat_schedule` | `beat` |
+> | A Slack command, button, or dispatch | `slack` (and `worker`, if rendering moved) |
+> | Anything you are unsure about | all of them: `./nora recreate` |
+
 > ### If the house suddenly looks empty after a deploy, it is not
 >
 > `.env` was tracked in git for two days (fixed 2026-08-05 — it and `.env.*` are

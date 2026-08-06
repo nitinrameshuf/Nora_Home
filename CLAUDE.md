@@ -154,8 +154,10 @@ reference implementation.
   reminders and a ported escalation ladder, a Reporting page and tone presets,
   and a system-tasks board fed by telemetry thresholds and failing
   integrations, all with a real front end at `/todo/` and a two-level kiosk
-  screen (all five documented buttons now exist). 10 of 15 Phase 7 stories
-  built (28–36, plus 42 out of number order — see its own warning). **Full
+  screen (all five documented buttons now exist). 11 of 15 Phase 7 stories
+  built (28–37, plus 42 out of number order — see its own warning), including
+  Slack in both directions: reminders arrive as DMs with Done/Skip/Snooze/
+  Reassign buttons, and `/todo` answers back over Socket Mode. **Full
   design, decision log, and per-story "as built" notes**:
   [`docs/Main_App/subsystems/todo.md`](docs/Main_App/subsystems/todo.md).
   Build order and what's left: [`docs/Main_App/subsystems/todo-build-brief.md`](docs/Main_App/subsystems/todo-build-brief.md).
@@ -311,15 +313,15 @@ button grid, connected, with no certificate-warning interstitial on either
 screen (`--ignore-certificate-errors` did its job).
 
 ### Not done — pick up here
-0. **Phase 7 — Todo, 10 of 15 (67%). Three genuinely open next steps, not one
+0. **Phase 7 — Todo, 11 of 15 (73%). Three genuinely open next steps, not one
    obvious pick — see the dashboard's next-box for the full comparison:**
    **Story 40** (Tracker Removal & House Log, Opus, high effort, ~5h) just
    unblocked, deletes `nora_home/tracker` entirely and is its own warning about
    the house going non-functional mid-phase; **Story 24** (house maintenance,
    the first real family app, unblocked since Story 27) is what actually proves
    the platform was worth building rather than another platform story; **Story
-   39** (Wall Type Scale, Sonnet, ~2h) is small and independent. Stories 28–36
-   built and green (**881 tests**), plus Story 42 (Shared Tasks & Approval,
+   39** (Wall Type Scale, Sonnet, ~2h) is small and independent. Stories 28–37
+   built and green (**924 tests**), plus Story 42 (Shared Tasks & Approval,
    built out of number order — see its own entry for why). Read
    [`docs/Main_App/subsystems/todo.md`](docs/Main_App/subsystems/todo.md)
    before touching this app — it is the approved design and the record of every
@@ -377,28 +379,32 @@ screen (`--ignore-certificate-errors` did its job).
    end to end: **279 health snapshots in the database, newest 5.5 minutes old**,
    which is beat → worker → DB working. All nine services now report healthy.
    The beat log did expose a real bug, though — see item 8.
-3. **Slack: token verified live, delivery blocked in the workspace.** A bot token
-   was supplied 2026-08-04 and `auth.test` succeeds — team *Puffin Robotics*, bot
-   `nora_home`. The house loads it correctly and `SlackChannel.is_configured()`
-   returns True. Delivery still fails with `channel_not_found`, for two reasons
-   that are both **in Slack, not in this code**:
-   - the token carries only `commands`, `chat:write`, `app_mentions:read`. Posting
-     to a channel the bot has not joined needs **`chat:write.public`** (or an
-     `/invite @nora_home` in `#nora-home` and `#nora-home-alerts`), and the
-     escalation ladder's DMs need **`im:write`**;
-   - no `HouseMember` has `slack_user_id` set, so personal notifications have no
-     DM target and fall back to the channel anyway.
+3. ~~**Slack: token verified live, delivery blocked in the workspace.**~~
+   **Resolved 2026-08-06, and Slack now works in both directions.** All scopes
+   were granted and verified against the live API rather than assumed
+   (`users:read` by resolving both members' Slack IDs back to their real
+   names); `nitin` and `priya` have `slack_user_id` set. Story 37 then added
+   the inbound half — Socket Mode, `/todo`, and buttons on the message. **Real
+   reminders arrive as DMs and Done/Skip were tapped for real**, moving the
+   instances in MySQL. See §12 of
+   [`docs/Main_App/subsystems/todo.md`](docs/Main_App/subsystems/todo.md).
 
-   Two traps found doing this, both now guarded: the token was **quoted** in
-   `.env`, and Compose passes `env_file` values through literally, so the app saw
-   a token beginning with `"`; and the container had not been recreated since the
-   edit, so it saw nothing at all. `.env.example` now documents both, plus the
-   scopes. Slack's own error strings are useless for diagnosis
+   Traps found along the way, all now guarded or documented: the bot token was
+   once **quoted** in `.env` and Compose passes `env_file` values literally, so
+   the app saw a leading `"`; a container had not been recreated after an edit,
+   so it saw nothing at all; and notification *rendering* happens in the
+   **worker**, so a `docker compose up -d web` alone ships a message with no
+   buttons and no error. Slack's own error strings are useless for diagnosis
    (`channel_not_found` means both "no such channel" and "never invited"), so
-   `SlackChannel` now maps the common codes to the actual fix.
+   `SlackChannel` maps the common codes to the actual fix.
+
+   The **app-level token** (`xapp-`, `connections:write`) is a third credential,
+   distinct from the bot token *and* from Slack's "App Configuration Tokens"
+   which expire every 12 hours and are for the manifest API — nothing here uses
+   those. Only the `slack` container reads it.
 
    **AI and MCP remain untested against live services** — no keys supplied.
-4. **Tests: 881, one file per subsystem, green.** `./scripts/run-tests.sh` (or
+4. **Tests: 924, one file per subsystem, green.** `./scripts/run-tests.sh` (or
    `make test`; `make test-pi` runs it inside the container on the Pi). Runs in
    ~30s with no containers, no network, and no credentials — SQLite, in-memory
    channel layer, eager Celery — so it gives the same answer on a laptop and on

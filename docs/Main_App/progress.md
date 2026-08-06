@@ -2740,6 +2740,52 @@ never had a chance to disagree.
 
 ---
 
+## 2026-08-06 — Story 37, Slack Socket Mode, verified against the real workspace
+
+The house gains an inbound half. `nora_home/notifications/slack_socket.py`
+holds one outbound websocket; `slack_commands.py` beside it is a registry that
+resolves a Slack user id to a `HouseMember` and knows nothing else;
+`nora_home/todo/slack_commands.py` is what `/todo` actually means. Todo
+registers into the registry from its own `ready()`, so the base platform never
+imports the app by name — the same seam `IntegrationsConfig` uses. Buttons
+travel as `slack_actions` in the notification context, so the Level 1 channel
+renders controls without learning what a task is. **45 new tests, 924 green.**
+Design notes in [`subsystems/todo.md`](subsystems/todo.md) §12 "As built".
+
+**Two real bugs, both found by running it rather than reading it.**
+
+The first came from a *failing test*, and it was a genuine design fault, not a
+bad assertion. `api.skip` refuses once `due_at` has passed — §5 is explicit
+that the occasion is a miss by then, and calling it a skip would launder a miss
+out of the pattern data Reporting is built on. But the default reminder fires
+*exactly at* `due_at`. So the Skip button would have shipped present and
+permanently broken on almost every reminder the house sends. It is now offered
+only while declining is still a decision, which is the rule §10 already applies
+to empty charts: do not draw a control that cannot act.
+
+The second came from **tapping a real button in Slack**. Slack sends a
+`block_actions` interaction for *URL* buttons too — so "Open in Nora Home"
+dispatched into the registry, found no handler, and replied "that button no
+longer does anything" while cheerfully opening the page it pointed at. Link
+buttons are now recognised by their `url` and answered with silence. The log
+line that gave it away read `No handler registered for Slack action '68IXC'`,
+because Slack invents a random `action_id` when one is absent; that button now
+carries an explicit one.
+
+**A deployment trap worth remembering.** The first live test message arrived
+with no buttons at all. The rendering happens in the **worker**, not the web
+container, and `docker compose up -d web` had left the worker on the previous
+image. Nothing errored — old `_blocks()` simply ignored the `slack_actions` it
+had never heard of. Any change to notification *rendering* needs the worker
+recreated, not just web.
+
+Also confirmed against Slack's live docs rather than this file's own claim
+(§12 asked for exactly that): **10 concurrent Socket Mode connections per app**,
+payloads arriving on any of them. This house opens one, from one container —
+which is also why the socket must never run inside the worker.
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**
