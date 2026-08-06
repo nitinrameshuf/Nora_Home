@@ -56,11 +56,20 @@ services:
     # if you need to hit Daphne directly for debugging, `docker compose exec
     # nginx wget -qO- http://web:8000/home/health/` or temporarily add a
     # ports: mapping rather than making that the default.)
+    # `<<: *app` merges keys, but a key `web:` also defines itself — like
+    # `volumes:` — replaces the anchor's entirely rather than extending it.
+    # This is why the alarms bind mount (added to the x-app anchor) never
+    # actually reached `web`: only worker/beat/slack, which leave `volumes:`
+    # unset here and inherit the anchor untouched, ever saw it. Found by
+    # writing a real alarm file from inside `web` (via a manual shell, not
+    # the real delivery path — that always runs in worker) and watching it
+    # land in the container's own throwaway layer instead of the host.
     volumes:
       - media:/srv/nora/media
       - logs:/srv/nora/logs
       - backups:/var/backups/nora
       - static:/srv/nora/staticfiles
+      - ./var/alarms:/srv/nora/alarms
 
   nginx:
     image: nginx:1.27-alpine
