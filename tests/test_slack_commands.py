@@ -398,6 +398,32 @@ def test_an_unrecognised_payload_type_is_ignored_quietly(db):
     assert slack_socket.reply_for("event_callback", {}) == ("", False)
 
 
+def test_tapping_a_link_button_says_nothing(slack_member):
+    """Slack sends an interaction for URL buttons too. Found on real hardware:
+    tapping "Open in Nora Home" answered "that button no longer does anything"
+    while cheerfully opening the page it pointed at."""
+    text, replace = slack_socket.reply_for("interactive", {
+        "user": {"id": "U0NITIN"},
+        "actions": [{"action_id": "open_in_nora_home",
+                     "url": "https://192.168.1.253/todo/"}],
+    })
+
+    assert text == ""
+    assert replace is False
+
+
+def test_the_link_button_is_named_rather_than_left_to_slack(db):
+    """An unnamed button gets a random action_id, so the log line for it reads
+    "no handler for '68IXC'" — which is what actually happened."""
+    notification = Notification.objects.create(
+        app_slug="todo", title="Due: something", severity="info",
+        url="/todo/t/abc/")
+
+    elements = _action_elements(SlackChannel()._blocks(notification))
+
+    assert elements[0]["action_id"] == "open_in_nora_home"
+
+
 def test_socket_mode_reports_itself_unconfigured_without_both_tokens(settings):
     settings.NORA_HOME_SLACK_APP_TOKEN = ""
     settings.NORA_HOME_SLACK_BOT_TOKEN = "xoxb-something"

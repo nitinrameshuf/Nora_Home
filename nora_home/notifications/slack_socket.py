@@ -88,6 +88,15 @@ def reply_for(payload_type: str, payload: dict) -> tuple[str, bool]:
     if payload_type == "interactive":
         user = (payload.get("user") or {}).get("id", "")
         for element in payload.get("actions") or []:
+            # A link button still sends an interaction, and Slack still wants
+            # it acknowledged — but there is nothing to run and nothing to say.
+            # Found by tapping the real "Open in Nora Home" button on a real
+            # message, which answered "that button no longer does anything"
+            # while cheerfully opening the page it was pointing at.
+            if element.get("url"):
+                logger.debug("Link button opened: %s", element.get("action_id", ""))
+                return "", False
+
             action_id = element.get("action_id", "")
             # A button carries `value`; a select carries the chosen option's.
             value = element.get("value") or (

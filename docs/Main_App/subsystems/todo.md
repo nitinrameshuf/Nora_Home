@@ -910,7 +910,64 @@ slash command, and record each member's `slack_user_id` (the existing
 directly, 2026-08-06, ahead of that command existing).
 
 **Until these are granted, nothing reaches Slack.** Build against it, but verify
-early.
+early. *(All granted 2026-08-06, and each scope verified against the live API
+rather than taken on trust — `users:read` by resolving both members' real
+Slack IDs back to their names.)*
+
+### As built (Story 37, 2026-08-06)
+
+Three pieces, split along the Levels boundary (§1) rather than by convenience:
+
+**`nora_home/notifications/slack_socket.py`** holds the websocket and nothing
+else. Two things in it are load-bearing and both are easy to get wrong. It
+**acknowledges the envelope before doing any work** — Slack retries an
+unacknowledged one, so a slow handler does not produce a late reply, it
+produces the same task completed twice. And it calls `close_old_connections()`
+around every dispatch, because slack_sdk runs listeners in its own thread pool
+and Django's connections are thread-local: without it those threads accumulate
+connections MySQL has long since dropped, and the first symptom is an
+interaction failing hours after the process looked healthy. Everything the
+house actually *decides* is in `reply_for()`, a pure function over a dict, so
+it is testable with no network, no token, and no slack_sdk installed.
+
+**`nora_home/notifications/slack_commands.py`** is a registry — `@command` and
+`@action` — that knows how to resolve a Slack user id to a `HouseMember` and
+nothing about what any command means. **Matching is on `slack_user_id` alone,
+never on name or email**: a Slack display name is not an identity, and acting
+on a guess would mean completing somebody else's task. `TodoConfig.ready()`
+registers `/todo` into it, the same way `IntegrationsConfig.ready()` registers
+providers, so the base platform never imports the app by name.
+
+**`nora_home/todo/slack_commands.py`** is what `/todo` means. Every action goes
+through `nora_home.todo.api` — not the models, not the views — so Slack gets
+the same permission checks, approval transitions and change trail the board
+does, and cannot become a back door around them. When the api raises, the
+person sees the api's own wording, because those messages are already written
+for a human and two vocabularies for one rule is worse than one.
+
+Buttons reach the message through **`slack_actions` in the notification's
+context**, a generic list of `{action_id, text, value}` the Slack channel
+renders. The channel stays Level 1 and never learns what a task is; an app
+supplies data and the platform renders it, the same seam the widget registry
+uses.
+
+**The Skip button is conditional, and finding out why was the useful part.**
+§5 draws the line at the due moment: declining beforehand is a deliberate
+decision excluded from miss patterns, and `api.skip` refuses afterwards
+because by then the occasion is a miss. But the default reminder fires *at*
+`due_at`. So a Skip button would have been present, and permanently broken, on
+almost every reminder the house sends — caught by a failing test rather than
+by reasoning, and fixed by offering it only while it can still work. That is
+the same rule §10 applies to empty charts: do not draw a control that cannot
+act. Snooze exists for the case Skip no longer covers, and deliberately creates
+a new `Reminder` rather than moving `due_on` — "remind me after dinner" is not
+the claim "this is due tomorrow", and moving the date would write a deferral
+into the trail `analytics.deferral_by_label()` reads.
+
+The container exits 0 when Slack is unconfigured, and is the only service with
+`restart: on-failure` rather than `unless-stopped` — a house with no Slack app
+is a supported configuration, and should not have a process restart-looping
+against a missing token.
 
 ---
 

@@ -168,6 +168,11 @@ class SlackChannel(BaseChannel):
                 else f"http://{base}{notification.url}"
             elements.append({
                 "type": "button",
+                # Named explicitly: Slack generates a random action_id when one
+                # is absent, and a log line reading "no handler for '68IXC'" is
+                # a worse thing to debug than it needs to be. Nothing dispatches
+                # on it — slack_socket ignores link buttons by their `url`.
+                "action_id": "open_in_nora_home",
                 "text": {"type": "plain_text", "text": "Open in Nora Home"},
                 "url": href,
             })
