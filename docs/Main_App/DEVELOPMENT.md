@@ -383,6 +383,45 @@ and the `--step-*` type scale, you get most of this for free and should not need
 surface-specific CSS at all. Reach for it only when the *layout* genuinely differs,
 not to nudge a font size.
 
+### Your app's own navigation
+
+The sidebar shows the house's pages. **Inside your app, it shows yours first** —
+declare them and they appear:
+
+```python
+nora_sections = [
+    {"title": "Log a set", "path": "/workout/log/"},
+    {"title": "This week",  "path": "/workout/week/"},
+    {"title": "Settings",   "path": "/workout/settings/"},
+]
+```
+
+Same shape as `nora_kiosk_controls`, different job, and deliberately a separate
+list: the kiosk gets a handful of big touch targets for driving the wall, a
+sidebar can afford every section you have.
+
+**Without this your sub-pages are reachable only by typing a URL.** That is not
+hypothetical — Todo shipped that way and nobody noticed until someone opened it
+and asked how they were supposed to get to the calendar. The house's own nav
+stays below yours, so "back to the house" is never something you have to build.
+
+`tests/test_registry.py` walks every declared section and fails if one 404s: a
+link that looks like navigation and dead-ends is worse than a missing one.
+
+### Your app does not need to style itself to be readable
+
+The house paints a living background — the real season, time of day and weather
+— behind everything. **On the base app's pages that is the point** and it is
+meant to be clearly seen. **Inside a house app it is not**: somebody who opened
+your app came to use it, so the platform automatically makes your panes
+near-opaque and the background settles into the background.
+
+You get this for free from `data-app` on `<html>`, set from the URL. Use `.card`
+and the house's own classes and it is already handled — do not add your own
+opacity, and in particular do not add `backdrop-filter` to something sitting on
+an already-opaque surface: it blurs an opaque parent for no visible result, and
+this house runs on a Pi driving two screens continuously.
+
 ### How the two screens work together
 
 - The **24" wall** shows the real app — whatever page is currently open, full-size,

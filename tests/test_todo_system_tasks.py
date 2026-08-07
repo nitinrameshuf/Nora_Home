@@ -233,7 +233,11 @@ def test_a_kid_does_not_see_system_tasks_they_are_not_assigned_to(client, househ
 
     body = client.get(reverse("todo:system_board")).content.decode()
 
-    assert "System task" not in body
+    # The card, not the raw page: since 2026-08-07 the sidebar carries the
+    # app's own section names, so searching the whole body matches navigation
+    # as readily as content — this asserted "System task" and started failing
+    # the moment a section was called "System tasks".
+    assert 'class="todo-card__title"' not in body
 
 
 def test_the_system_board_has_no_create_button(client, household):

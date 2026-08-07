@@ -62,7 +62,7 @@ class TodoConfig(NoraAppConfig):
         {"title": "Search", "path": "/todo/search/"},
         {"title": "Labels", "path": "/todo/labels/"},
         {"title": "Reporting", "path": "/todo/reporting/"},
-        {"title": "System tasks", "path": "/todo/system/"},
+        {"title": "System", "path": "/todo/system/"},
         {"title": "Settings", "path": "/todo/settings/"},
     ]
 

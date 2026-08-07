@@ -552,6 +552,37 @@ git clone <repo> && cd nora-home
 
 Read this section before changing architecture. Each of these was a real fork.
 
+**The base app shows the weather; a house app shows the work (2026-08-07).**
+Two surfaces, two jobs, and conflating them was making apps unreadable.
+
+The living background — real season, time of day, weather — is the whole
+"charm outside, polish inside" idea, and it is *the point* on the base app's
+pages. **Inside a house app it is not.** Somebody who opened Todo came to read a
+board; at the house's 0.3 pane opacity the columns and cards washed out against
+a bright afternoon, and the priority columns had no pane at all — four headings
+floating on blue with nothing to say where one ended and the next began.
+
+So `data-app` on `<html>` (set from the URL by `nora_home.ui.context_processors`)
+drives near-opaque panes for every app, and the scene stays visible but settles
+behind. **An app gets this without styling itself**, which matters more than the
+look: a family member's agent should not have to know about `--pane-rgb` to
+produce something readable.
+
+**Which pages count as "an app" is the subtle part**, and `app_for_path()`
+carries it: *anything under `/home/` is the base platform*, including the
+several platform pages that are separate Django apps internally (notifications
+at `/home/alerts/`, telemetry at `/home/measurements/`). Nobody went "into" an
+app by opening Alerts. **Level is deliberately not the test** either — Todo is
+Level 2 and `is_platform`, but it is an app in every way a person cares about.
+
+**The same request settled navigation.** The sidebar showed the house's pages no
+matter where you were, so an app's own sub-pages had no route to them at all —
+Todo's calendar, reporting and labels were reachable only by typing a URL, and
+it shipped that way. Apps now declare `nora_sections` and the sidebar leads with
+them. The house nav stays *underneath* rather than being replaced: navigation
+must never become a dead end, and "back to the house" should not be something
+each app has to remember to build.
+
 **Screen size is a setting, because only the person in front of the screen can
 judge it (2026-08-07).** Settled after three wrong answers, and the reasoning is
 worth not repeating.
