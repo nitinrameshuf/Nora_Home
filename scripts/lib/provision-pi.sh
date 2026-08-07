@@ -251,32 +251,20 @@ DESKTOP
 # normalises for physical size through devicePixelRatio. What it cannot know is
 # the distance, so it assumes the web's default and reports a plain 1920.
 #
-# --force-device-scale-factor makes Chromium report a smaller viewport and
-# render at that ratio on the real 1920 panel. This is what TV and signage
-# platforms do (a 4K TV browser will happily tell a page it is 1280 wide), and
-# it is meaningfully better than scaling the root font-size in CSS, which was
-# tried first: that grows the text while every border, shadow and corner radius
-# stays a 1-device-pixel hairline, so the proportions come apart and the result
-# reads as "zoomed in" even when the text size itself is right. Here everything
-# scales together, and the app lays out for the reported width rather than being
-# magnified from 1920.
+# Both screens launch at scale 1, and that is deliberate. The wall *was* set to
+# 1.25 here, which is the more native mechanism and what TV and signage
+# platforms use — but a launch flag can only be changed by regenerating this
+# script and restarting the browser, which means an SSH session. Screen size is
+# a judgement only the person standing in front of the screen can make, so it
+# moved to Settings > Screens and is applied as CSS `zoom` on <html> instead
+# (nora_home/ui/zoom.py, which carries the measurements showing the two are
+# equivalent — including that zoom scales borders and radii, which a root
+# font-size multiplier does not).
 #
-# 1.25 -> a 1536px viewport, which is an ordinary laptop width, so the wall gets
-# a real laptop layout rendered slightly larger rather than a compressed one.
-# 1.5 was tried and is too much: it reports 1280, which is narrow enough that
-# the topbar starts wrapping the profile icon under the greeting, and it lands
-# *bigger* than the CSS approach it replaced (60 vs 54 device px on an h1) when
-# the whole complaint was that the wall looked zoomed.
-#
-# Worth knowing before reaching for a bigger number: nothing in this range makes
-# body text genuinely readable at three metres — that would need roughly 90px
-# type, five times this. The wall is a glance surface, and what carries at
-# distance is the large stat values, not prose. Scale for coherence, not for
-# reading.
-#
-# The kiosk stays at 1 — it is a touchscreen at arm's length, which is exactly
-# the case the web's defaults already assume.
-launch_script "wall"  "$WALL_URL"  "0,0"    "1920,1080" 1.25
+# The flag stays plumbed through because it is the right lever if a screen ever
+# needs scaling *before* the app can answer — a login page, an error page, or a
+# panel whose zoom should not depend on a database read.
+launch_script "wall"  "$WALL_URL"  "0,0"    "1920,1080" 1
 launch_script "kiosk" "$KIOSK_URL" "1920,0" "1024,600"
 
 # Never blank on idle. DPMS itself stays ON (not disabled) — the wall power

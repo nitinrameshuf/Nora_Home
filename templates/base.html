@@ -3,8 +3,20 @@
 The shell every page in the house sits inside. Surfaces (wall, kiosk, phone,
 tablet, desktop) are set server-side on <html> so CSS can respond without any
 viewport measuring in JavaScript.
+
+`zoom` only ever appears on the wall and the kiosk — the two screens whose
+viewing distance the browser cannot work out for itself. A phone or laptop is
+held at arm's length, which is what every browser default already assumes, so
+nh_zoom is None there and this attribute is not emitted at all.
+
+zoom rather than a root font-size multiplier, deliberately: it scales borders,
+shadows and radii along with the text. Scaling font-size alone leaves those as
+1-device-pixel hairlines while everything around them grows, and *that*
+mismatch is what reads as "zoomed in". Set in Settings > Screens; see
+nora_home/ui/zoom.py for the measurements behind the choice.
 {% endcomment %}
 <html lang="en" data-surface="{{ surface }}" data-theme="dark"
+      {% if nh_zoom %}style="zoom: {{ nh_zoom }}"{% endif %}
       data-season="{{ nh_season }}" data-daypart="{{ nh_daypart }}" data-weather="{{ nh_weather }}"
       {% if not nh_bot_enabled %}data-nh-bot="off"{% endif %}>
 <head>

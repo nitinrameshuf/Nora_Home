@@ -137,6 +137,18 @@ def settings_page(request):
     """
     from nora_home.core.settings_store import get_setting, set_setting
 
+    from nora_home.ui import zoom as zoom_settings
+
+    if request.method == "POST" and request.POST.get("form") == "zoom":
+        # Its own form: saving a zoom must not also rewrite the power schedule,
+        # and a page with two independent forms needs to know which one posted.
+        zoom_settings.save(
+            {"wall": request.POST.get("zoom_wall"),
+             "kiosk": request.POST.get("zoom_kiosk")},
+            actor=request.user,
+        )
+        return redirect(reverse("core:settings"))
+
     if request.method == "POST":
         schedule = {
             "enabled": request.POST.get("wall_schedule_enabled") == "on",
@@ -161,6 +173,10 @@ def settings_page(request):
     wall_schedule = get_setting(WALL_SCHEDULE_KEY, default=WALL_SCHEDULE_DEFAULT)
     return render(request, "core/settings.html", {
         "wall_schedule": wall_schedule,
+        "zoom": zoom_settings.stored(),
+        "zoom_min": zoom_settings.MIN_ZOOM,
+        "zoom_max_wall": zoom_settings.MAX_ZOOM["wall"],
+        "zoom_max_kiosk": zoom_settings.MAX_ZOOM["kiosk"],
         "member": request.user,
         "chain": request.user.escalation_chain(),
         # The two physical screens. Imported inside the view rather than at

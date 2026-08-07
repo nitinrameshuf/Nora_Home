@@ -8,7 +8,13 @@ see NoraAppConfig in nora_home/core/registry.py) so the remote stays
 relevant to whatever's currently on the big screen. Screens scroll if a
 house has grown enough apps that they don't fit on one 10" panel.
 {% endcomment %}
+{% comment %}
+See base.html's note on zoom. The kiosk's own ceiling is lower than the wall's
+(nora_home/ui/zoom.py) because at 1024 physical, a large zoom puts the layout
+viewport under the 860px breakpoint while media queries still report 1024.
+{% endcomment %}
 <html lang="en" data-surface="kiosk" data-theme="dark" data-nh-bot="off"
+      {% if nh_zoom %}style="zoom: {{ nh_zoom }}"{% endif %}
       data-season="{{ nh_season }}" data-daypart="{{ nh_daypart }}" data-weather="{{ nh_weather }}">
 <head>
   <meta charset="utf-8">

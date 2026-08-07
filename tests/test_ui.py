@@ -271,17 +271,21 @@ def _stylesheet() -> str:
     return css.read_text(encoding="utf-8")
 
 
-def test_the_walls_type_scale_is_a_device_scale_factor_not_css():
-    """The wall is read from three metres, and that is a *distance* — the one
-    thing CSS cannot measure. It is declared to Chromium instead, which is what
-    TV and signage platforms do.
-
-    Scaling the root font-size here was tried twice (160%, then 135%) and was
-    worse both times: it grows every rem while borders, shadows and radii stay
+def test_the_type_scale_is_not_in_the_stylesheet():
+    """Scaling the root font-size was tried twice (160%, then 135%) and was
+    wrong both times: it grows every rem while borders, shadows and radii stay
     1-device-pixel hairlines, so the proportions come apart and it reads as
-    zoomed. This asserts the scale lives in the launch script and *not* in the
-    stylesheet, because putting it back in CSS is the tempting wrong move.
-    """
+    zoomed even when the text size is right. Putting it back is the tempting
+    wrong move, so this asserts it has not come back."""
+    import re
+
+    assert not re.search(r'html\[data-surface="wall"\]\s*\{\s*font-size', _stylesheet()), (
+        "the wall's type scale is back in CSS — see the comment on that rule")
+
+
+def test_the_screens_launch_unscaled_so_the_setting_is_the_only_scale():
+    """The device scale factor and the stored zoom would multiply together if
+    both were set, and the launch flag is the one nobody can see from the app."""
     import re
     from pathlib import Path
 
@@ -290,21 +294,13 @@ def test_the_walls_type_scale_is_a_device_scale_factor_not_css():
     provision = (Path(settings.BASE_DIR) / "scripts" / "lib" / "provision-pi.sh"
                  ).read_text(encoding="utf-8")
 
-    assert "--force-device-scale-factor=$scale" in provision, (
-        "the wall's Chromium no longer takes a device scale factor")
-
-    wall = re.search(r'launch_script\s+"wall"\s+\S+\s+\S+\s+\S+\s+([\d.]+)', provision)
-    assert wall, "the wall is no longer launched with an explicit scale factor"
-    assert 1.25 <= float(wall.group(1)) <= 2.0, (
-        f"a wall scale factor of {wall.group(1)} is either pointless or unusable")
-
-    # The kiosk is a touchscreen at arm's length — the case the web's defaults
-    # already assume. Scaling it would be scaling for no reason.
-    kiosk = re.search(r'launch_script\s+"kiosk"\s+\S+\s+\S+\s+\S+\s*([\d.]*)', provision)
-    assert kiosk and not kiosk.group(1).strip(), "the kiosk should not be scaled"
-
-    assert not re.search(r'html\[data-surface="wall"\]\s*\{\s*font-size', _stylesheet()), (
-        "the wall's type scale is back in CSS — see the comment on that rule")
+    for screen in ("wall", "kiosk"):
+        call = re.search(rf'launch_script\s+"{screen}".*', provision)
+        assert call, f"the {screen} is no longer launched from provision-pi.sh"
+        scale = call.group(0).split()[-1]
+        assert scale in ("1", '"1024,600"'), (
+            f"the {screen} launches at scale {scale} — that would multiply with "
+            f"the zoom stored in Settings")
 
 
 @pytest.mark.parametrize("token", ["--nav-width", "--tap"])
@@ -327,3 +323,133 @@ def test_the_card_grid_minimum_is_rem_not_px():
     their contents ran larger inside them."""
     assert "minmax(17.5rem, 1fr)" in _stylesheet(), (
         "the card grid's minimum column width must be rem — see --nav-width")
+
+
+# ── screen zoom, set from Settings ───────────────────────────────────────────
+
+@pytest.mark.django_db
+class TestScreenZoom:
+    """nora_home/ui/zoom.py — the one thing a browser cannot work out for
+    itself, so the person in front of the screen sets it."""
+
+    def test_the_defaults_are_the_measured_ones(self):
+        from nora_home.ui import zoom
+
+        assert zoom.stored() == {"wall": 1.25, "kiosk": 1.0}
+
+    def test_saving_round_trips(self):
+        from nora_home.ui import zoom
+
+        zoom.save({"wall": 1.4, "kiosk": 1.1})
+
+        assert zoom.stored() == {"wall": 1.4, "kiosk": 1.1}
+
+    def test_values_are_clamped_per_screen(self):
+        """The kiosk's ceiling is lower than the wall's: at 1024 physical, a big
+        zoom puts the layout viewport under the 860px breakpoint while media
+        queries still report 1024, so the narrow rules never fire."""
+        from nora_home.ui import zoom
+
+        saved = zoom.save({"wall": 99, "kiosk": 99})
+
+        assert saved["wall"] == zoom.MAX_ZOOM["wall"]
+        assert saved["kiosk"] == zoom.MAX_ZOOM["kiosk"]
+        assert zoom.clamp("wall", 0.01) == zoom.MIN_ZOOM
+
+    def test_nonsense_falls_back_rather_than_raising(self):
+        """This is read on the way to rendering the always-on wall. A bad stored
+        value must not be able to take that screen down."""
+        from nora_home.ui import zoom
+
+        assert zoom.clamp("wall", "banana") == zoom.DEFAULTS["wall"]
+        assert zoom.clamp("wall", None) == zoom.DEFAULTS["wall"]
+
+    def test_a_corrupted_setting_still_yields_usable_numbers(self):
+        from nora_home.core.settings_store import set_setting
+        from nora_home.ui import zoom
+
+        set_setting(zoom.SETTING_KEY, "not a dict at all", app_slug="displays")
+
+        assert zoom.stored() == {"wall": 1.25, "kiosk": 1.0}
+
+    @pytest.mark.parametrize("surface", ["desktop", "phone", "tablet"])
+    def test_handheld_surfaces_get_no_zoom_at_all(self, surface):
+        """"for displays like laptop or phone, it already looks fine" — those
+        are held at arm's length, which is what every browser default assumes.
+        None rather than 1.0, so the template emits no style attribute."""
+        from nora_home.ui import zoom
+
+        assert zoom.for_surface(surface) is None
+
+    def test_a_screen_set_to_1_also_emits_nothing(self):
+        from nora_home.ui import zoom
+
+        zoom.save({"wall": 1.0, "kiosk": 1.0})
+
+        assert zoom.for_surface("wall") is None
+
+    def test_the_wall_carries_its_zoom_into_the_markup(self, client, admin_member):
+        from django.urls import reverse
+
+        from nora_home.ui import zoom
+
+        zoom.save({"wall": 1.4, "kiosk": 1.0})
+        client.force_login(admin_member)
+
+        body = client.get(reverse("core:dashboard"),
+                          HTTP_SEC_FETCH_DEST="iframe",
+                          HTTP_REFERER="http://testserver/home/displays/wall/").content.decode()
+
+        assert 'style="zoom: 1.4"' in body
+
+    def test_a_laptop_gets_no_zoom_attribute(self, client, admin_member):
+        from django.urls import reverse
+
+        client.force_login(admin_member)
+
+        body = client.get(reverse("core:dashboard")).content.decode()
+
+        assert "zoom:" not in body
+
+    def test_the_settings_page_saves_it(self, client, admin_member):
+        from django.urls import reverse
+
+        from nora_home.ui import zoom
+
+        client.force_login(admin_member)
+
+        client.post(reverse("core:settings"),
+                    {"form": "zoom", "zoom_wall": "1.35", "zoom_kiosk": "1.05"})
+
+        assert zoom.stored() == {"wall": 1.35, "kiosk": 1.05}
+
+    def test_saving_a_zoom_does_not_disturb_the_power_schedule(self, client, admin_member):
+        """Two independent forms on one page. Posting either must not silently
+        rewrite the other's setting with whatever the browser did not send."""
+        from django.urls import reverse
+
+        from nora_home.core.settings_store import get_setting
+
+        client.force_login(admin_member)
+        client.post(reverse("core:settings"), {
+            "wall_schedule_enabled": "on", "wall_schedule_start": "7",
+            "wall_schedule_end": "23"})
+
+        client.post(reverse("core:settings"),
+                    {"form": "zoom", "zoom_wall": "1.3", "zoom_kiosk": "1"})
+
+        schedule = get_setting("displays.wall_power_schedule")
+        assert schedule["start_hour"] == 7 and schedule["end_hour"] == 23
+
+    def test_changing_it_is_audited_with_the_new_values(self, client, admin_member):
+        from django.urls import reverse
+
+        from nora_home.core.models import AuditEvent
+
+        client.force_login(admin_member)
+        client.post(reverse("core:settings"),
+                    {"form": "zoom", "zoom_wall": "1.3", "zoom_kiosk": "1"})
+
+        event = AuditEvent.objects.filter(action="zoom.changed").first()
+        assert event is not None
+        assert event.detail["wall_zoom"] == 1.3

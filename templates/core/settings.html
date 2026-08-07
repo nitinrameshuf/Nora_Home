@@ -114,6 +114,54 @@ lined up, and the grouping read as arbitrary. See .settings in nora-home.css.
           </div>
         {% endfor %}
       </div>
+
+      {% comment %}
+      Its own form, separate from Overnight below, so saving a zoom does not
+      also rewrite the power schedule and vice versa.
+
+      Only these two screens are here. A phone or a laptop is held at arm's
+      length, which is what every browser default already assumes — there is
+      nothing to correct, and offering a control implies otherwise.
+      {% endcomment %}
+      <form method="post" class="card settings__panel">
+        {% csrf_token %}
+        <input type="hidden" name="form" value="zoom">
+        <p class="settings__note">
+          How large everything renders on the two fixed screens. The browser can
+          work out a screen's size but never how far away you are standing, so
+          this is the one thing it cannot guess &mdash; set it from in front of
+          the screen. Takes effect when that screen next loads a page.
+        </p>
+
+        <div class="setting">
+          <label class="setting__label" for="zoom_wall">The 24&quot; wall
+            <span class="setting__hint">Read from across the room. 1.25 is the
+              default; higher makes everything bigger and fits less on.</span>
+          </label>
+          <div class="setting__control">
+            <input type="number" name="zoom_wall" id="zoom_wall"
+                   min="{{ zoom_min }}" max="{{ zoom_max_wall }}" step="0.05"
+                   value="{{ zoom.wall }}">
+          </div>
+        </div>
+
+        <div class="setting">
+          <label class="setting__label" for="zoom_kiosk">The 10.1&quot; touchscreen
+            <span class="setting__hint">Held at arm's length, so 1 is usually
+              right. Above {{ zoom_max_kiosk }} its layout gets too narrow for
+              the buttons.</span>
+          </label>
+          <div class="setting__control">
+            <input type="number" name="zoom_kiosk" id="zoom_kiosk"
+                   min="{{ zoom_min }}" max="{{ zoom_max_kiosk }}" step="0.05"
+                   value="{{ zoom.kiosk }}">
+          </div>
+        </div>
+
+        <div class="settings__actions">
+          <button class="btn btn-primary" type="submit">Save screen sizes</button>
+        </div>
+      </form>
     </section>
 
     <section class="settings__group">
