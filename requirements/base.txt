@@ -28,6 +28,12 @@ django-storages>=1.14
 anthropic>=0.40                 # Claude API
 mcp>=1.2                        # Model Context Protocol server
 
+# --- Speech ---
+# Hosted TTS (Orpheus), so the Pi needs no local model, GPU or audio toolchain.
+# Optional in practice: with NORA_HOME_TTS_PROVIDER=none the house never imports
+# it, and nora_home/notifications/tts.py degrades to its stub.
+groq>=0.11
+
 # --- Slack (Socket Mode) ---
 # The Pi is behind home NAT with a self-signed cert, so Slack can never call in.
 # Socket Mode dials out instead; slack_sdk's SocketModeClient needs

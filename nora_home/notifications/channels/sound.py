@@ -62,17 +62,12 @@ class SoundChannel(BaseChannel):
         return True
 
     def send(self, notification, delivery) -> dict:
-        task_id = (notification.context or {}).get("alarm_task_id")
-        if not task_id:
-            raise ChannelError("This notification carries no alarm_task_id.")
-
-        from nora_home.todo.alarms import resolve_alarm
-        from nora_home.todo.models import Task
-
-        task = Task.objects.filter(pk=task_id).first()
-        audio = resolve_alarm(task) if task else None
+        context = notification.context or {}
+        audio = self._resolve(context)
         if audio is None:
-            raise ChannelError(f"No alarm audio could be resolved for task {task_id}.")
+            raise ChannelError(
+                "This notification carries neither an alarm_task_id nor "
+                "speech_text, so there is nothing to play.")
 
         data, content_type = audio
         extension = EXTENSIONS.get(content_type, ".bin")
@@ -84,6 +79,48 @@ class SoundChannel(BaseChannel):
         (cache_dir / filename).write_bytes(data)
 
         return {"target": "wall-speakers", "ref": filename}
+
+    def _resolve(self, context: dict) -> tuple[bytes, str] | None:
+        """The audio this notification is asking for, from whichever of the two
+        sources it names — or `None` if it names neither.
+
+        **Two sources, both references rather than bytes**, for the reason in
+        this module's docstring: `context` is a JSONField.
+
+        * `alarm_task_id` — Todo's own alarms. The task's `alarm_kind` decides
+          what it resolves to, and it is re-resolved here rather than at queue
+          time because the task's alarm could have changed in between.
+        * `speech_text` — anything in the house calling
+          `nora_home.notifications.speech.speak()`. Synthesised here, in the
+          worker, for the same reason: this is where the vendor call belongs,
+          off whatever request or sweep asked for it.
+        """
+        task_id = context.get("alarm_task_id")
+        if task_id:
+            from nora_home.todo.alarms import resolve_alarm
+            from nora_home.todo.models import Task
+
+            task = Task.objects.filter(pk=task_id).first()
+            audio = resolve_alarm(task) if task else None
+            if audio is None:
+                raise ChannelError(
+                    f"No alarm audio could be resolved for task {task_id}.")
+            return audio
+
+        text = (context.get("speech_text") or "").strip()
+        if text:
+            from nora_home.notifications.tts import TTSError, get_provider
+
+            try:
+                return get_provider().synthesize(text)
+            except TTSError as exc:
+                # A ChannelError, not a silent pass: unlike a Todo alarm — which
+                # degrades to "this task has no alarm" — somebody explicitly
+                # asked the house to say this, so the failure is worth a failed
+                # Delivery row and a line on the House log.
+                raise ChannelError(f"Could not synthesise speech: {exc}") from exc
+
+        return None
 
 
 def _prune_stale(cache_dir: Path) -> None:

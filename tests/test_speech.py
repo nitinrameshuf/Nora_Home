@@ -1,0 +1,318 @@
+"""
+The house's voice — `nora_home.notifications.tts` and `.speech`.
+
+Two things are worth testing here and neither is "does Groq work". The vendor
+call is mocked throughout: hitting a paid API from a suite that has to run
+offline, on every laptop, in seconds, would trade every property this suite has
+for a fact one manual run establishes better.
+
+What is tested is **everything around** the vendor: that a missing key degrades
+instead of raising, that quiet hours are respected, that the text — never the
+audio — is what travels through the notification, and that a vendor failure
+lands as a failed Delivery rather than taking a reminder sweep down with it.
+"""
+
+from __future__ import annotations
+
+import sys
+import types
+
+import pytest
+
+from nora_home.notifications import speech
+from nora_home.notifications.tts import (
+    GroqTTS,
+    TTSError,
+    UnconfiguredTTS,
+    get_provider,
+    is_configured,
+)
+
+pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture
+def fake_groq(monkeypatch):
+    """A stand-in for the `groq` package, injected into `sys.modules`.
+
+    `GroqTTS.synthesize()` imports it inside the method (it is an optional
+    dependency), so this is enough to intercept it without the real package
+    being installed at all — which is also what makes this test file safe on a
+    machine that has never run `pip install groq`.
+    """
+    calls = []
+
+    class _Response:
+        def read(self):
+            return b"RIFF....fake wav bytes"
+
+    class _Speech:
+        def create(self, **kwargs):
+            calls.append(kwargs)
+            return _Response()
+
+    class _Audio:
+        speech = _Speech()
+
+    class _Client:
+        def __init__(self, api_key=None):
+            calls.append({"api_key": api_key})
+            self.audio = _Audio()
+
+    module = types.ModuleType("groq")
+    module.Groq = _Client
+    monkeypatch.setitem(sys.modules, "groq", module)
+    return calls
+
+
+# ── choosing a provider ──────────────────────────────────────────────────────
+
+def test_the_house_ships_without_a_voice(settings):
+    """"none" is the default so a fresh install boots and runs reminders with
+    no key at all — only spoken alarms go quiet."""
+    settings.NORA_HOME_TTS_PROVIDER = "none"
+
+    assert isinstance(get_provider(), UnconfiguredTTS)
+    assert is_configured() is False
+
+
+def test_choosing_groq_gives_the_groq_provider(settings):
+    settings.NORA_HOME_TTS_PROVIDER = "groq"
+    settings.NORA_HOME_GROQ_API_KEY = "gsk_test"
+
+    provider = get_provider()
+
+    assert isinstance(provider, GroqTTS)
+    assert is_configured() is True
+
+
+def test_an_unknown_provider_name_falls_back_rather_than_raising(settings):
+    """A typo in .env must not take down whatever imported this module — on the
+    reminder path that is the whole sweep."""
+    settings.NORA_HOME_TTS_PROVIDER = "elevenlabs-maybe"
+
+    assert isinstance(get_provider(), UnconfiguredTTS)
+
+
+def test_a_provider_that_cannot_be_built_falls_back(settings, monkeypatch):
+    settings.NORA_HOME_TTS_PROVIDER = "groq"
+
+    def explode(*args, **kwargs):
+        raise RuntimeError("no")
+
+    monkeypatch.setattr("nora_home.notifications.tts.GroqTTS.__init__", explode)
+
+    assert isinstance(get_provider(), UnconfiguredTTS)
+
+
+# ── the Groq provider itself ─────────────────────────────────────────────────
+
+def test_groq_without_a_key_is_a_configuration_gap_not_a_crash(settings):
+    settings.NORA_HOME_GROQ_API_KEY = ""
+
+    with pytest.raises(TTSError) as caught:
+        GroqTTS().synthesize("anything")
+
+    assert "NORA_HOME_GROQ_API_KEY" in str(caught.value)
+
+
+def test_groq_refuses_to_synthesise_nothing(settings):
+    settings.NORA_HOME_GROQ_API_KEY = "gsk_test"
+
+    with pytest.raises(TTSError):
+        GroqTTS().synthesize("   ")
+
+
+def test_groq_returns_wav_bytes_and_says_so(settings, fake_groq):
+    settings.NORA_HOME_GROQ_API_KEY = "gsk_test"
+    settings.NORA_HOME_TTS_VOICE = "hannah"
+    settings.NORA_HOME_TTS_MODEL = "canopylabs/orpheus-v1-english"
+
+    audio, content_type = GroqTTS().synthesize("the bins go out tonight")
+
+    assert audio.startswith(b"RIFF")
+    # WAV, not MP3, on purpose: `aplay` on the host plays it natively, so
+    # nothing extra has to be installed on the Pi for this one path.
+    assert content_type == "audio/wav"
+    request = [c for c in fake_groq if "input" in c][0]
+    assert request["voice"] == "hannah"
+    assert request["response_format"] == "wav"
+
+
+def test_every_vendor_failure_becomes_one_kind_of_error(settings, monkeypatch):
+    """The SDK raises a family of types for auth, rate limits and timeouts, and
+    all of them mean the same thing to the caller: this has no voice, carry on."""
+    settings.NORA_HOME_GROQ_API_KEY = "gsk_test"
+
+    class _Boom:
+        def __init__(self, api_key=None):
+            raise ValueError("rate limited")
+
+    module = types.ModuleType("groq")
+    module.Groq = _Boom
+    monkeypatch.setitem(sys.modules, "groq", module)
+
+    with pytest.raises(TTSError) as caught:
+        GroqTTS().synthesize("hello")
+
+    assert "rate limited" in str(caught.value)
+
+
+# ── speak() ──────────────────────────────────────────────────────────────────
+
+def test_speak_says_nothing_without_a_provider(settings):
+    settings.NORA_HOME_TTS_PROVIDER = "none"
+
+    assert speech.speak("the bins go out tonight") is False
+
+
+def test_speak_says_nothing_when_there_is_nothing_to_say(settings):
+    settings.NORA_HOME_TTS_PROVIDER = "groq"
+    settings.NORA_HOME_GROQ_API_KEY = "gsk_test"
+
+    assert speech.speak("") is False
+    assert speech.speak("   ") is False
+
+
+def test_speak_queues_the_text_not_the_audio(settings):
+    """`Notification.context` is a JSONField — SoundChannel's own docstring is
+    explicit that raw audio cannot survive the round trip. The text goes in and
+    synthesis happens on delivery, exactly as a task's alarm is re-resolved
+    there."""
+    from nora_home.notifications.models import Notification
+
+    settings.NORA_HOME_TTS_PROVIDER = "groq"
+    settings.NORA_HOME_GROQ_API_KEY = "gsk_test"
+
+    assert speech.speak("the bins go out tonight", app_slug="todo") is True
+
+    notification = Notification.objects.latest("created_at")
+    assert notification.context["speech_text"] == "the bins go out tonight"
+    assert "speech_audio" not in notification.context
+    assert notification.app_slug == "todo"
+
+
+def test_speak_respects_quiet_hours(settings):
+    from nora_home.core.settings_store import set_setting
+
+    settings.NORA_HOME_TTS_PROVIDER = "groq"
+    settings.NORA_HOME_GROQ_API_KEY = "gsk_test"
+    # 0-24 is quiet at every hour, so this cannot depend on when the suite runs
+    # — the same trap that made the alarm tests fail at midnight.
+    set_setting("notifications.quiet_hours", {"start": 0, "end": 24},
+                app_slug="notifications")
+
+    assert speech.speak("shh") is False
+
+
+def test_something_urgent_can_override_quiet_hours(settings):
+    from nora_home.core.settings_store import set_setting
+
+    settings.NORA_HOME_TTS_PROVIDER = "groq"
+    settings.NORA_HOME_GROQ_API_KEY = "gsk_test"
+    set_setting("notifications.quiet_hours", {"start": 0, "end": 24},
+                app_slug="notifications")
+
+    assert speech.speak("the smoke alarm is going off",
+                        respect_quiet_hours=False) is True
+
+
+def test_a_long_announcement_is_trimmed(settings):
+    from nora_home.notifications.models import Notification
+
+    settings.NORA_HOME_TTS_PROVIDER = "groq"
+    settings.NORA_HOME_GROQ_API_KEY = "gsk_test"
+
+    speech.speak("word " * 500)
+
+    spoken = Notification.objects.latest("created_at").context["speech_text"]
+    assert len(spoken) <= speech.MAX_SPEECH_CHARS
+
+
+def test_the_title_shows_the_words_that_were_spoken(settings):
+    from nora_home.notifications.models import Notification
+
+    settings.NORA_HOME_TTS_PROVIDER = "groq"
+    settings.NORA_HOME_GROQ_API_KEY = "gsk_test"
+
+    speech.speak("the bins go out tonight")
+
+    assert "bins" in Notification.objects.latest("created_at").title
+
+
+def test_a_long_title_is_shortened_not_wrapped():
+    assert speech._shorten("x" * 200).endswith("…")
+    assert len(speech._shorten("x" * 200)) <= 60
+
+
+# ── SoundChannel's second source ─────────────────────────────────────────────
+
+def test_the_sound_channel_synthesises_speech_text(settings, fake_groq, tmp_path):
+    from nora_home.notifications.channels.sound import SoundChannel
+    from nora_home.notifications.models import Delivery, Notification
+
+    settings.NORA_HOME_TTS_PROVIDER = "groq"
+    settings.NORA_HOME_GROQ_API_KEY = "gsk_test"
+    settings.NORA_HOME_ALARM_CACHE_DIR = str(tmp_path)
+
+    notification = Notification.objects.create(
+        title="Bins", app_slug="core", context={"speech_text": "the bins go out"})
+    delivery = Delivery.objects.create(notification=notification, channel="sound")
+
+    result = SoundChannel().send(notification, delivery)
+
+    assert result["ref"].endswith(".wav")
+    assert (tmp_path / result["ref"]).read_bytes().startswith(b"RIFF")
+
+
+def test_a_notification_naming_neither_source_is_an_error(settings, tmp_path):
+    from nora_home.notifications.channels import ChannelError
+    from nora_home.notifications.channels.sound import SoundChannel
+    from nora_home.notifications.models import Delivery, Notification
+
+    settings.NORA_HOME_ALARM_CACHE_DIR = str(tmp_path)
+    notification = Notification.objects.create(title="Nothing", app_slug="core")
+    delivery = Delivery.objects.create(notification=notification, channel="sound")
+
+    with pytest.raises(ChannelError):
+        SoundChannel().send(notification, delivery)
+
+
+def test_a_vendor_failure_on_delivery_is_a_failed_delivery(settings, tmp_path, monkeypatch):
+    """Unlike a Todo alarm — which degrades to "this task has no alarm" —
+    somebody explicitly asked the house to say this, so it earns a failed
+    Delivery row and a line on the House log rather than silence."""
+    from nora_home.notifications.channels import ChannelError
+    from nora_home.notifications.channels.sound import SoundChannel
+    from nora_home.notifications.models import Delivery, Notification
+
+    settings.NORA_HOME_TTS_PROVIDER = "groq"
+    settings.NORA_HOME_GROQ_API_KEY = ""      # configured provider, no key
+    settings.NORA_HOME_ALARM_CACHE_DIR = str(tmp_path)
+
+    notification = Notification.objects.create(
+        title="Bins", app_slug="core", context={"speech_text": "the bins go out"})
+    delivery = Delivery.objects.create(notification=notification, channel="sound")
+
+    with pytest.raises(ChannelError):
+        SoundChannel().send(notification, delivery)
+
+
+def test_a_task_alarm_still_takes_precedence(settings, tmp_path, member):
+    """The original source has to keep working untouched — this channel served
+    Todo's alarms before it ever spoke."""
+    from nora_home.notifications.channels.sound import SoundChannel
+    from nora_home.notifications.models import Delivery, Notification
+    from nora_home.todo.models import AlarmKind, Priority, Task
+
+    settings.NORA_HOME_ALARM_CACHE_DIR = str(tmp_path)
+    task = Task.objects.create(title="Medicine", owner=member, priority=Priority.P1,
+                               alarm_kind=AlarmKind.CHIME, alarm_ref="default")
+
+    notification = Notification.objects.create(
+        title="Alarm", app_slug="todo", context={"alarm_task_id": task.pk})
+    delivery = Delivery.objects.create(notification=notification, channel="sound")
+
+    result = SoundChannel().send(notification, delivery)
+
+    assert result["ref"].endswith(".wav")

@@ -318,6 +318,21 @@ NORA_HOME_AI_MONTHLY_BUDGET_USD = env_int("NORA_HOME_AI_MONTHLY_BUDGET_USD", 25)
 NORA_HOME_AI_ENABLED = bool(ANTHROPIC_API_KEY)
 
 
+# ── Speech ─────────────────────────────────────────────────────────────────────
+# The house's voice. "none" is the shipped default so a fresh install boots and
+# runs without a key — only *speech* alarms go quiet, and chime/file alarms are
+# unaffected (nora_home/notifications/tts.py).
+#
+# Groq's Orpheus was chosen because it needs no local model, no GPU and no audio
+# toolchain on the Pi: HTTPS in, WAV out, which is the one format the host's
+# `aplay` and SoundChannel already handle.
+NORA_HOME_TTS_PROVIDER = env("NORA_HOME_TTS_PROVIDER", "none")
+NORA_HOME_GROQ_API_KEY = env("NORA_HOME_GROQ_API_KEY", "")
+NORA_HOME_TTS_MODEL = env("NORA_HOME_TTS_MODEL", "canopylabs/orpheus-v1-english")
+# autumn | diana | hannah | austin | daniel | troy
+NORA_HOME_TTS_VOICE = env("NORA_HOME_TTS_VOICE", "hannah")
+
+
 # ── MCP ────────────────────────────────────────────────────────────────────────
 NORA_HOME_MCP_ENABLED = env_bool("NORA_HOME_MCP_ENABLED", True)
 NORA_HOME_MCP_TOKEN = env("NORA_HOME_MCP_TOKEN", "")
