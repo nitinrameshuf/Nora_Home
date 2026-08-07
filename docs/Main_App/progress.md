@@ -3073,27 +3073,64 @@ small laptop and then magnified — one tile per row, the greeting spanning
 everything.
 
 **Then the better question: "should that not scale automatically by display
-size?"** Half of it can, and the half that cannot is the interesting half. What
-decides type size is *angular* size — physical height over viewing distance —
-and CSS can measure neither. This 24" and somebody's laptop both report
-1920×1080, so a rule driven by viewport alone would render the laptop at wall
-size. That is what `data-surface` is actually for: declaring the wall
-server-side is declaring the **~3 metres**, which no media query can supply.
+size?"** It reshaped the fix. **A CSS pixel is already a *reference pixel*** —
+the visual angle of one pixel on a 96dpi screen at arm's length — and the
+browser normalises for physical size through `devicePixelRatio`, which is why a
+460ppi phone reports ~390 CSS px rather than 1170. Websites get physical-size
+normalisation for free; they get it for the one distance the web assumes. The
+input nothing can measure is **viewing distance**, and the 24" and a laptop both
+report 1920×1080. That is what `data-surface="wall"` actually carries: not
+pixels, but ~3 metres.
 
-Given the distance, the best available proxy for physical size is viewport
-fraction, so the wall's root is now `clamp(18px, 1.125vw, 28px)`. That makes
-type a constant *share of the screen* rather than a fixed pixel count: 21.6px at
-1920 — identical to the 135% it replaced, so nothing changed visually on this
-house's wall — but the same physical panel stays right if it is ever driven at a
-different resolution, with the clamp stopping an odd display going unreadable in
-either direction. **Known limit:** a different-sized panel at the same distance
-would still be wrong, and `vw` slightly over-corrects there (a 32" would get
-physically larger text when it should get the same). Changing the panel, rather
-than its resolution, means revisiting the number.
+**The platforms with this problem solve it one layer down, so we do now too.**
+TV and signage never magnify a desktop layout — a 4K TV browser reports 1280 CSS
+px and lets the compositor upscale. Chromium exposes the same lever, and the
+wall's launch script now uses `--force-device-scale-factor`. The kiosk stays at
+1: a touchscreen at arm's length is the default case.
 
-`tests/test_ui.py` now reads the stylesheet as text: the wall scale must be a
-clamped `vw` expression that resolves into range on this house's own 1920px
-wall, and `--nav-width`/`--tap`/the card-grid minimum must be `rem`. No unit
+**Every CSS version was wrong for the same reason, and the `vw` one included.**
+Scaling the root font-size grows each `rem` while borders, shadows and corner
+radii stay 1-device-pixel hairlines. The proportions come apart and it reads as
+*zoomed* even when the text size is right — which is exactly what was reported,
+twice. 1.5 was tried first and overshot: it reports a 1280px viewport, narrow
+enough that the topbar wrapped the profile icon under the greeting, and it landed
+physically *larger* than the 135% it replaced (60 vs 54 device px on an h1) when
+the whole complaint was that the wall looked zoomed. **1.25** reports 1536 — an
+ordinary laptop width — so the wall gets a real laptop layout rendered slightly
+larger rather than a compressed one. Worth knowing before reaching higher:
+nothing in this range makes body text readable at three metres; that needs
+roughly 90px type. The wall is a glance surface.
+
+**Which exposed an operational hole, and closed it.** `~/.nora/start-*.sh` are
+*generated* by `provision-pi.sh`, so a new Chromium flag does not reach the
+running screens through a deploy, a page reload, or a reboot. That had already
+caught this project once — when HTTPS moved the app off `:8000` and the wall was
+still opening the old URL — and was fixed by hand both times. **`./nora screens
+relaunch`** now regenerates both scripts and restarts both browsers. It re-runs
+only `launch_script()` out of the provisioner (the rest is already satisfied on a
+running house, and several steps need sudo a non-interactive session cannot
+answer), and reads *both* the function and its call lines from that file so it
+cannot drift — a throwaway version of this used while fixing the wall hardcoded
+the scale factor and silently regenerated the old value after it had changed.
+
+**And the suite turned out to fail after midnight.** Running it at 00:07 gave 11
+failures across reminders and alarms; the identical code passed when only the
+timezone was shifted so "now" was 10:09. Two independent clock dependencies, both
+of them the tests being vague rather than the code being wrong: a task with a due
+date and no due time falls due at the 09:00 default hour, so nothing due "today"
+has come due yet before breakfast; and sound follows the house-wide quiet-hours
+window, which defaults to 22:00–07:00, so `queue_alarm()` rightly refuses to make
+a noise at midnight. Both fixtures now state their assumption — `due_time` pinned
+to midnight, and an autouse fixture setting `start == end`, which `is_quiet_now()`
+reads as never quiet. **Verified by running the full suite at 00:14, the hour
+that had been failing: 891 green.** This had been noticed once before and filed;
+it is now fixed, because CLAUDE.md's claim that the suite "gives the same answer
+on a laptop and on the Pi" has to mean at any hour too.
+
+`tests/test_ui.py` now reads the stylesheet and the launch script as text: the
+wall's scale factor must be in `provision-pi.sh` and in range, the kiosk must not
+be scaled, the scale must *not* have come back in CSS, and
+`--nav-width`/`--tap`/the card-grid minimum must be `rem`. No unit
 test can see a browser layout — both instances of this bug were found by
 looking at the physical screen — but the class is catchable even when the
 instance is not, and that is what was missing. `tests/test_dashboard.py` also

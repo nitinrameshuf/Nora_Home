@@ -116,6 +116,23 @@ The report is built to never lie about a green run: a collection error (a bad
 import, a missing dependency) reports `BROKEN`, and any other non-zero exit
 reports `NOT OK` rather than `ALL PASSED`. If it says `ALL PASSED`, it ran.
 
+### The suite must give the same answer at any hour
+
+Two clock dependencies were found on 2026-08-06 by running the suite at 00:07
+and getting 11 failures that had passed at 19:35. Both were the *tests* being
+vague, not the code being wrong:
+
+- A task with a due date and no due time falls due at the **09:00 default
+  hour**, so nothing due "today" has come due yet before breakfast.
+- Sound follows the house-wide **quiet-hours window, 22:00–07:00**, so
+  `queue_alarm()` correctly refuses to make a noise at midnight.
+
+Both fixtures now state their assumption rather than inheriting the default.
+**If you write a test that depends on what time it is, pin the time.** The
+cheapest way to prove a failure is clock-shaped is to re-run with the timezone
+moved — `DJANGO_TIME_ZONE=Asia/Dhaka ./nora test <file>` — which is how these
+were diagnosed before anything was changed.
+
 ### What is covered
 
 | File | Covers |
@@ -124,6 +141,7 @@ reports `NOT OK` rather than `ALL PASSED`. If it says `ALL PASSED`, it ran.
 | `test_core.py` | Settings store + cache, soft delete, audit, device tokens, health probes |
 | `test_accounts.py` | Roles → admin flags, quiet hours across midnight, escalation chains |
 | `test_todo_escalation.py` | The ladder: climbing, stopping, audiences, resilience — and, since Story 40, that `EscalationPolicy` belongs to Todo |
+| `test_ui.py` | Surface detection, the home bot, and — read as *text*, since no unit test can see a browser layout — that the wall's scale factor lives in the launch script and has not crept back into CSS, and that the layout tokens are `rem` |
 | `test_houselog.py` | The House log's editorial rule — that a run of healthy snapshots and a stream of successful integration runs produce **no** entries — plus merging, filtering and the charts |
 | `test_notifications.py` | Routing, dedupe, quiet hours, delivery receipts, retries |
 | `test_telemetry.py` | Series, thresholds, alert suppression, history windows |

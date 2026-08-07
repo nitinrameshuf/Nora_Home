@@ -508,39 +508,52 @@ git clone <repo> && cd nora-home
 
 Read this section before changing architecture. Each of these was a real fork.
 
-**The wall's type scale can only ever be half-automatic (2026-08-06).**
+**The wall's type scale belongs to Chromium, not to CSS (2026-08-06).**
 Asked directly — "should that not scale automatically by display size?" — and
-the answer is worth keeping, because the intuition is right and the limit is
-not obvious. What decides how big text needs to be is its **angular** size:
-physical height over viewing distance. CSS can measure neither. It cannot ask
-how many inches the panel is, and it certainly cannot ask how far away somebody
-is standing — **the 24" wall and a laptop both report 1920×1080**. A rule driven
-by viewport alone would therefore render the laptop at wall size.
+the answer reshaped this. **A CSS pixel is already a *reference pixel***: the
+visual angle of one pixel on a 96dpi screen at arm's length. The browser
+normalises for physical size through `devicePixelRatio`, which is why a 460ppi
+phone reports ~390 CSS px and not 1170. Sites get physical-size normalisation
+for free — for the one distance the web assumes.
 
-That is what `data-surface` is actually for. Declaring the wall server-side is
-not a statement about pixels, it is a statement about **~3 metres**, and that is
-the one input no media query can supply. Surface detection is not a workaround
-for missing CSS features; it carries information the browser does not have.
+The input nothing can measure is **viewing distance**. The 24" wall and a laptop
+both report 1920×1080. That is what `data-surface="wall"` is really carrying:
+not pixels, but *~3 metres*. Surface detection is not a workaround for a missing
+media query; it supplies information the browser does not have.
 
-Given the distance, viewport fraction is the best available proxy for physical
-size, so the wall's root is `clamp(18px, 1.125vw, 28px)` rather than a fixed
-percentage — type becomes a constant *share of the screen*, so the same physical
-panel stays right if it is ever driven at a different resolution, and the clamp
-stops an odd display going unreadable in either direction. **Known limit:** a
-different-sized panel at the same distance is still wrong, and `vw` slightly
-over-corrects there (a 32" would get physically larger text when it should get
-the same). Changing the panel, rather than its resolution, means revisiting it.
+**The platforms with this problem solve it one layer down, and so do we now.**
+TV and signage don't magnify a desktop layout — a 4K TV browser will report 1280
+CSS px so the page lays out small and the compositor upscales. Chromium exposes
+the same lever, and the wall's launch script uses it:
+`--force-device-scale-factor=1.25` (`scripts/lib/provision-pi.sh` §7), so it
+reports a 1536px viewport and renders at 1.25× on the real panel. The kiosk stays
+at 1 — a touchscreen at arm's length is exactly the default case.
 
-**And the thing that makes all of it work is fragile in a specific way.** One
-root declaration scales everything *only* while every other size is `rem`. That
-has now broken twice, both times found by looking at the physical screen and
-never by a test: Gridstack's `cellHeight: 80` clipped the stat tiles, and
-`--nav-width: 244px` clipped "Measurements" in the sidebar — the second one
-after the first had already been found, written up, and filed as a lesson. Fixing
-the instance is not fixing the class. `tests/test_ui.py` now reads the stylesheet
-as text and asserts the tokens are `rem`; it cannot see a browser layout, so it
-guards the known tokens and nothing else. **If you add a fixed pixel size to
-anything that holds text, you are adding the third instance.**
+**Why the CSS approach was worse, having been tried twice (160%, then 135%, then
+briefly a `clamp()` on `vw`):** scaling the root font-size grows every `rem`
+while borders, shadows and corner radii stay 1-device-pixel hairlines. The
+proportions come apart, and it reads as *zoomed* even when the text size is
+right. That is precisely what the user reported, twice. With a device scale
+factor everything scales together. `html[data-surface="wall"]` is left in the
+stylesheet as an empty rule carrying the explanation, so the next person to look
+for the type scale finds the answer rather than its absence.
+
+**Do not reach for a bigger number expecting readable prose.** Nothing in this
+range makes body text legible at three metres — that needs roughly 90px type,
+five times this. The wall is a glance surface; what carries at distance is the
+large stat values. Scale for coherence, not for reading.
+
+**And the scaling only works because everything else is `rem`.** That has broken
+twice, both times found by looking at the physical screen and never by a test:
+Gridstack's `cellHeight: 80` clipped the stat tiles, and `--nav-width: 244px`
+clipped "Measurements" — the second *after* the first had been found, written
+up, and filed. Fixing the instance is not fixing the class. `tests/test_ui.py`
+now asserts the tokens are `rem` and that the scale has **not** come back in CSS.
+
+**Changing any launch flag needs `./nora screens relaunch`.** The scripts in
+`~/.nora/` are generated by `provision-pi.sh`, so a deploy, a page reload and
+even a reboot all leave the old flags in place. That caught this project twice —
+the HTTPS port move, and this — before the command existed.
 
 **Editing an applied migration, once, to delete an app (2026-08-06).**
 CLAUDE.md §6 says never edit an applied migration. Story 40 had to, and the
