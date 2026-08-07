@@ -552,6 +552,38 @@ git clone <repo> && cd nora-home
 
 Read this section before changing architecture. Each of these was a real fork.
 
+**The wall is a screen someone stands at, not a poster (2026-08-07).** Two
+rules were written when the 24" was a passive ambient view, and both outlived
+that. Worth knowing as a pair, because the next thing dating from the same
+assumption will fail the same way.
+
+**It hid the mouse pointer outright.** The wall is the real app now and gets
+driven from its own sidebar, so that means aiming blind. It also hid
+*inconsistently*: **`cursor` is inherited, and an inherited value loses to any
+directly-declared one — including the browser's own `a:link { cursor:
+pointer }`.** The pointer vanished over the body and reappeared over every
+link. It is now hidden only while the mouse is *still*, and the rule needs
+`body, body *` to beat those declarations rather than inherit past them.
+
+**And it only counted as "the wall" on the first hop.** The wall iframes the
+real app, so the app is fetched at its own ordinary URL and needs
+`Sec-Fetch-Dest: iframe` plus a referer to be recognised. That referer names
+the wall's shell exactly once — the moment the kiosk points it somewhere.
+**Click a link on the 24" itself and the referer is the previous app page**, so
+detection fell back to User-Agent and the wall rendered at laptop type scale
+with its zoom dropped. Silently. Any same-origin iframed document now counts.
+
+Same-origin is the boundary, and it is stateless on purpose: a cookie would
+risk a laptop that once visited the wall's URL getting stuck wall-sized. It
+assumes **nothing in this house iframes an app page except the wall** — true
+today, and the thing to check before adding a second iframe.
+
+**The lesson is the detection, not the pointer.** A wall silently rendering at
+laptop scale announces itself in no other way — this is the second such bug
+after `--nav-width: 244px`, and both were invisible to the suite and obvious on
+the glass. The pointer is the one wall behaviour that is not a *size*, which is
+the only reason a human noticed this one at all.
+
 **The base app shows the weather; a house app shows the work (2026-08-07).**
 Two surfaces, two jobs, and conflating them was making apps unreadable.
 

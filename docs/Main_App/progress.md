@@ -3351,6 +3351,64 @@ test asserts it so the next key added cannot reopen the hole.
 
 ---
 
+## 2026-08-07 (later still) — a missing mouse pointer, and the bug behind it
+
+Reported as one oddity about the pointer on the 24": invisible over the main
+body after the **kiosk** drove the wall somewhere, visible over the sidebar at
+the same time, and visible everywhere when navigating on the 24" **itself**.
+Three behaviours, so the question was which pair to explain. Both were bugs.
+
+**The pointer.** `:root[data-surface="wall"] body { cursor: none }` dated from
+when the wall was a passive ambient view nobody pointed at. It is the real app
+now and gets driven from its own sidebar, so hiding it outright means aiming
+blind. It also hid *inconsistently*, and that is the part worth keeping:
+`cursor` is inherited, and **an inherited value loses to any directly-declared
+one — including the browser's own `a:link { cursor: pointer }`.** So the
+pointer vanished over the page body and came back over every link. Now hidden
+only while the mouse is still (4s), cleared on the first move, which is what a
+video player does and for the same reason. The rule needs `body, body *` to
+beat those link and `.card` declarations rather than merely inherit past them.
+
+**The surface.** The wall shows the real app through an iframe, and the app
+inside is fetched at its own ordinary URL, so `Sec-Fetch-Dest: iframe` plus a
+referer naming the wall's shell is what promoted it to `wall`. **Only the first
+hop carries the shell as its referer.** Click a link inside the iframe and the
+referer is the previous *app* page, the check missed, and detection fell all
+the way back to User-Agent: the 24" rendered at laptop type scale with its zoom
+dropped, silently, until the kiosk drove it again. Any same-origin iframed
+document now counts, which covers every later hop.
+
+Proved before changing anything, because the middleware puts the answer on
+every response as `X-Nora-Surface`:
+
+```
+Referer=/home/displays/wall/  -> wall        # kiosk-driven, the case that worked
+Referer=/todo/                -> desktop     # a click on the 24", the bug
+```
+
+and again after, with two guards that must not move — a laptop clicking a link
+(`Sec-Fetch-Dest: document`, same-origin referer) stays `desktop`, and another
+origin iframing the house stays `desktop`.
+
+**This is the second time a wall-scale bug has been invisible to the whole test
+suite and obvious on the glass** — after `--nav-width: 244px`. The pointer was
+the only reason anyone noticed: it is the one thing that behaves differently
+between `wall` and `desktop` *without* being a size, so it made a silent
+surface change audible. Nothing else about a wall rendering at laptop scale
+announces itself.
+
+Seen on the hardware, not inferred: `scrot -p` over the wall's main body with
+the mouse moving (pointer drawn) and after 7s still (gone), the same pair over
+a sidebar link — where the hover highlight stays lit under a hidden pointer,
+which is exactly the combination the old rule could not produce — and the
+System page reached **by clicking the wall's own sidebar**, still at full wall
+type scale.
+
+940 tests green (+3: the in-iframe hop, the two guards, and a stylesheet check
+that no `cursor: none` escapes the idle flag).
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**

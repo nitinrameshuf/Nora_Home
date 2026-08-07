@@ -19,7 +19,7 @@ viewports in JavaScript.
 
 | Surface | Device | Detected by |
 |---|---|---|
-| `wall` | 24" 1080p, HDMI-0, always on | URL |
+| `wall` | 24" 1080p, HDMI-0, always on | URL, or an iframe of it — see below |
 | `kiosk` | 10.1" 1024×600 touchscreen, HDMI-1 | URL |
 | `phone` | iPhone / Android | User-Agent |
 | `tablet` | iPad | User-Agent |
@@ -28,6 +28,49 @@ viewports in JavaScript.
 `request.nh_surface` and `request.nh_is_touch` are available in every view; an
 `nh_surface` cookie overrides detection for testing. Full guidance in
 [`../DEVELOPMENT.md`](../DEVELOPMENT.md) § The five surfaces.
+
+### The wall's iframe
+
+"URL" covers the wall's *shell* page only. The shell is a bare frame around an
+iframe of the real app (see [`displays.md`](displays.md)), and the app inside is
+requested at its own ordinary URL — `/home/`, `/todo/` — with no "wall" in the
+path at all. Two signals promote those requests:
+
+| Signal | Covers |
+|---|---|
+| `Sec-Fetch-Dest: iframe` + a referer naming the wall's shell | the first hop, when the kiosk points the wall somewhere |
+| `Sec-Fetch-Dest: iframe` + **any same-origin** referer | every hop after that |
+
+The second was missing until 2026-08-07 and its absence was invisible: only
+the first hop carries the shell as its referer, so **clicking a link on the
+24" itself dropped the wall surface** — laptop type scale, wall zoom gone,
+nothing logged. It only showed up because the mouse pointer, which the wall
+hides and a laptop does not, started behaving differently depending on how the
+page had been reached.
+
+Same-origin is the boundary because a page on another origin embedding the
+house either sends no `Referer` or sends its own, and fails the host check
+either way. What it does assume is that **nothing in this house iframes an app
+page except the wall** — true today, and the thing to check before adding a
+second iframe anywhere.
+
+Still stateless — no cookie — so someone opening the app on their own laptop
+can never get stuck wall-sized.
+
+### The wall's mouse pointer
+
+The wall hides its pointer **only while the mouse is still** (4s), via
+`data-cursor="idle"` on `<html>`, set by `wireWallCursor()` in `nh-app.js` and
+acted on in `nora-home.css`. It hid the pointer outright until 2026-08-07,
+which dated from when the wall was a passive ambient view; it is the real app
+now and gets driven from its own sidebar, so a permanently invisible pointer
+means aiming blind.
+
+The CSS is `body, body *` rather than just `body` on purpose: `cursor` is
+inherited, and an inherited value loses to any directly-declared one —
+including the browser's own `a:link { cursor: pointer }`. That is why the old
+rule hid the pointer over the page body and let it reappear over every link,
+which reads as a rendering fault rather than as a choice.
 
 ## The living background — "Almanac"
 
