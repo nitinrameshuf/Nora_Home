@@ -46,19 +46,12 @@ def _clean_settings_cache():
 
 @pytest.fixture
 def make_task(member):
-    """Every task here pins `due_time` to midnight, and that is load-bearing.
+    """Pins `due_time` so a task due "today" is due from midnight, not 09:00.
 
-    A task with a due date and no time falls due at the per-member default hour
-    — 09:00 (`recurrence.FALLBACK_DUE_HOUR`). So a task due *today* has not
-    actually come due until 09:00 today, and every test asserting that a
-    reminder or alarm fires would fail for anyone running the suite between
-    midnight and breakfast. That is not hypothetical: it failed on the Pi at
-    00:07, and the identical code passed when only the timezone was shifted so
-    "now" was 10:09. CLAUDE.md's claim that this suite "gives the same answer on
-    a laptop and on the Pi" has to mean at any hour, too.
-
-    Midnight rather than a time computed from `now`, because a fixed value is
-    what makes the test read the same at 3am as at 3pm.
+    `alarm_task` below sets `due_at` directly and does not need this; the other
+    tests here that call `materialize()` do. See that fixture's docstring, and
+    `_never_quiet` below — this file has *two* independent ways of depending on
+    what time the suite runs.
     """
     def _make(**kwargs):
         kwargs.setdefault("due_time", time(0, 0))
@@ -188,6 +181,27 @@ def test_quiet_hours_is_house_wide_not_per_member(make_task, member):
 
 
 # ── queueing an alarm ────────────────────────────────────────────────────────
+
+@pytest.fixture(autouse=True)
+def _never_quiet(db):
+    """Take the house out of quiet hours for every test in this file.
+
+    Sound follows the house-wide `notifications.quiet_hours` window, which
+    defaults to 22:00-07:00 — so `queue_alarm()` correctly refuses to make a
+    noise at midnight, and four tests here that assert an alarm *does* queue
+    failed on the Pi at 00:12 for that reason. They were right about the code
+    and wrong to leave the window implicit.
+
+    start == end reads as "never quiet" in `is_quiet_now()`: the non-wrapping
+    branch evaluates `0 <= hour < 0`, which no hour satisfies. The three tests
+    that are genuinely *about* quiet hours set their own window and override
+    this.
+    """
+    from nora_home.core.settings_store import set_setting
+
+    set_setting("notifications.quiet_hours", {"start": 0, "end": 0},
+                app_slug="notifications")
+
 
 @pytest.fixture
 def alarm_task(make_task):
