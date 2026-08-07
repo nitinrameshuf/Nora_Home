@@ -320,6 +320,8 @@ cmd_app() {
 }
 
 cmd_screens() {
+    [ "${1:-}" = "relaunch" ] && { screens_relaunch; return; }
+
     # The wall and kiosk hold a page until they are told otherwise, so a deploy
     # that changes a template leaves them showing the old one. This is that
     # nudge. Hard-reload, because a soft one can serve the cached page.
@@ -341,6 +343,56 @@ cmd_screens() {
         fi
     done
     [ "$found" -gt 0 ] || hint "Searching by class instead of name matches Chromium's helper windows, not the pages — that is why this looks for the titles."
+}
+
+# `screens relaunch` — rewrite the launch scripts and restart both browsers.
+#
+# The launch scripts in ~/.nora/ are *generated* by provision-pi.sh, so a change
+# to the flags Chromium starts with does not reach the running screens through a
+# deploy, a page reload, or even a reboot. That has now caught this project
+# twice: once when HTTPS moved the app off :8000 and the wall was still opening
+# the old URL, and again when the wall gained a device scale factor. Both times
+# it was fixed by hand. This is the supported way to do it.
+#
+# It re-runs only `launch_script()` out of provision-pi.sh, never the whole
+# provisioner: every other step there is already satisfied on a running house
+# and several need sudo, which a non-interactive SSH session cannot answer. Both
+# the function *and* its call lines are read from that file, so this cannot
+# drift from the values provisioning would actually use.
+screens_relaunch() {
+    local provision="scripts/lib/provision-pi.sh"
+    [ -f "$provision" ] || die "$provision not found — run this from the checkout on the Pi."
+    command -v xdotool >/dev/null 2>&1 || die "xdotool is not installed — run ./nora install."
+
+    step "Regenerating the wall and kiosk launch scripts"
+    NORA_HOME_HTTPS_PORT="${NORA_HOME_HTTPS_PORT:-443}"
+    WALL_URL="https://localhost:${NORA_HOME_HTTPS_PORT}/home/displays/wall/"
+    KIOSK_URL="https://localhost:${NORA_HOME_HTTPS_PORT}/home/displays/kiosk/"
+    export NORA_HOME_HTTPS_PORT WALL_URL KIOSK_URL
+
+    eval "$(awk '/^launch_script\(\) \{/,/^\}/' "$provision")"
+    eval "$(grep -E '^launch_script "(wall|kiosk)"' "$provision")"
+    chmod +x "$HOME/.nora/start-wall.sh" "$HOME/.nora/start-kiosk.sh"
+    ok "wrote ~/.nora/start-wall.sh and start-kiosk.sh"
+
+    for name in wall kiosk; do
+        local window pid
+        window="$(DISPLAY=:0 xdotool search --name "$name - Chromium" 2>/dev/null | head -1 || true)"
+        if [ -n "$window" ]; then
+            pid="$(DISPLAY=:0 xdotool getwindowpid "$window" 2>/dev/null || true)"
+            # Kill the children too: Chromium's zygote and renderers outlive the
+            # browser process and will keep the profile lock if left behind.
+            [ -n "$pid" ] && { pkill -P "$pid" 2>/dev/null || true; kill "$pid" 2>/dev/null || true; }
+            sleep 3
+        else
+            warn "no '$name' window was running — starting it anyway"
+        fi
+        DISPLAY=:0 nohup "$HOME/.nora/start-$name.sh" >"/tmp/nora-$name.log" 2>&1 &
+        ok "relaunched $name"
+    done
+
+    hint "Each screen waits for the app to answer health before opening a window,"
+    hint "so give them up to a minute before deciding something is wrong."
 }
 
 cmd_cert() {
@@ -408,6 +460,10 @@ Day to day
                        a plain restart will NOT pick up config changes
   upgrade              Backup, pull, rebuild, migrate, restart. The update command
   screens              Hard-reload the wall and kiosk browsers after a deploy
+  screens relaunch     Rebuild both launch scripts from provision-pi.sh and
+                       restart Chromium. Needed after any change to the flags
+                       the screens start with (a URL, a device scale factor) —
+                       a plain deploy or reboot will not pick those up
 
 Data
   backup               Full backup now (SQL, Mongo, media, fixtures)
