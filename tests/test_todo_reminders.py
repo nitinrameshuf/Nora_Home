@@ -7,7 +7,7 @@ carefully, because a reminder that nags is worse than one that says nothing.
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, time, timedelta
 
 import pytest
 from django.utils import timezone
@@ -29,7 +29,22 @@ TODAY = timezone.localdate()
 
 @pytest.fixture
 def make_task(member):
+    """Every task here pins `due_time` to midnight, and that is load-bearing.
+
+    A task with a due date and no time falls due at the per-member default hour
+    — 09:00 (`recurrence.FALLBACK_DUE_HOUR`). So a task due *today* has not
+    actually come due until 09:00 today, and every test asserting that a
+    reminder fires would fail for anyone running the suite between midnight and
+    breakfast. That is not hypothetical: it failed on the Pi at 00:07, and the
+    identical code passed when only the timezone was shifted so "now" was
+    10:09. CLAUDE.md's claim that this suite "gives the same answer on a laptop
+    and on the Pi" has to mean at any hour, too.
+
+    Midnight rather than a time computed from `now`, because a fixed value is
+    the thing that makes the test read the same at 3am as at 3pm.
+    """
     def _make(**kwargs):
+        kwargs.setdefault("due_time", time(0, 0))
         kwargs.setdefault("title", "A thing")
         kwargs.setdefault("owner", member)
         kwargs.setdefault("priority", Priority.P2)

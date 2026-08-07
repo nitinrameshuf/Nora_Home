@@ -18,6 +18,8 @@ and the whole point of the design is that Django never assumes it does.
 
 from __future__ import annotations
 
+from datetime import time
+
 import pytest
 from django.core.cache import cache
 from django.utils import timezone
@@ -44,7 +46,22 @@ def _clean_settings_cache():
 
 @pytest.fixture
 def make_task(member):
+    """Every task here pins `due_time` to midnight, and that is load-bearing.
+
+    A task with a due date and no time falls due at the per-member default hour
+    — 09:00 (`recurrence.FALLBACK_DUE_HOUR`). So a task due *today* has not
+    actually come due until 09:00 today, and every test asserting that a
+    reminder or alarm fires would fail for anyone running the suite between
+    midnight and breakfast. That is not hypothetical: it failed on the Pi at
+    00:07, and the identical code passed when only the timezone was shifted so
+    "now" was 10:09. CLAUDE.md's claim that this suite "gives the same answer on
+    a laptop and on the Pi" has to mean at any hour, too.
+
+    Midnight rather than a time computed from `now`, because a fixed value is
+    what makes the test read the same at 3am as at 3pm.
+    """
     def _make(**kwargs):
+        kwargs.setdefault("due_time", time(0, 0))
         kwargs.setdefault("title", "Take the medicine")
         kwargs.setdefault("owner", member)
         kwargs.setdefault("priority", Priority.P2)
