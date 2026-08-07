@@ -67,8 +67,14 @@ nora_home/ui/zoom.py for the measurements behind the choice.
       </div>
     {% endif %}
 
-    <div class="nav-group">
-      {% if nh_app %}<div class="nav-group-label">The house</div>{% endif %}
+    {% comment %}
+    A rule, not a heading. Labelling this group "The house" put the words
+    "THE HOUSE" directly above the registry's own "HOUSE" category — two
+    near-identical headings touching, which reads as a bug rather than as
+    structure. The divider says the same thing without competing with a label
+    that already exists.
+    {% endcomment %}
+    <div class="nav-group{% if nh_app %} nav-group--after-app{% endif %}">
       <a class="nav-link" href="{% url 'core:dashboard' %}"
          {% if request.path == '/home/' %}aria-current="page"{% endif %}>Home</a>
       <a class="nav-link" href="{% url 'notifications:inbox' %}">

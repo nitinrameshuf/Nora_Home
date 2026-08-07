@@ -208,6 +208,14 @@ pre {
 }
 
 .nav-group { margin-bottom: 1.35rem; }
+/* Separates the app's own sections from the house's nav below them. A rule
+   rather than another heading: the group underneath already carries the
+   registry's category labels, and "The house" above "House" read as a
+   duplication bug. */
+.nav-group--after-app {
+  border-top: 1px solid var(--border);
+  padding-top: 1.1rem;
+}
 .nav-group-label {
   font-size: 0.72rem;
   text-transform: uppercase;

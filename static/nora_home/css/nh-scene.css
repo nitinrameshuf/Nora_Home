@@ -258,16 +258,19 @@ body { background: transparent; }
 :root { --pane-app: 0.93; }
 :root[data-theme="light"] { --pane-app: 0.95; }
 
-:root[data-app] .card,
-:root[data-app] .main,
-:root[data-app] .dash-tile {
-  background: rgba(var(--pane-rgb), var(--pane-app));
-}
+/* Content panes go near-opaque; the *surface behind them* does not. Taking
+   `.main` to the same 0.93 was tried first and flattened the whole page to
+   near-black — the scene disappeared entirely rather than settling back, and
+   an app stopped looking like part of this house at all. At 0.5 the sky is
+   still legibly there in the gaps between columns, and the columns are still
+   solid to read against, which is what was actually asked for. */
+:root[data-app] .card { background: rgba(var(--pane-rgb), var(--pane-app)); }
+:root[data-app] .main { background: rgba(var(--pane-rgb), 0.5); }
 
-/* The sidebar keeps a little more of the scene than the content does: it is
-   chrome, it holds short labels rather than dense data, and letting the whole
-   left edge go flat is what makes an app stop looking like part of the house. */
-:root[data-app] .sidebar { background: rgba(var(--pane-rgb), 0.62); }
+/* The sidebar keeps more of the scene than the content does: it is chrome, it
+   holds short labels rather than dense data, and letting the whole left edge go
+   flat is what makes an app stop looking like part of the house. */
+:root[data-app] .sidebar { background: rgba(var(--pane-rgb), 0.55); }
 
 /* Kiosk: same material, on its own fixed-purpose page (not base.html). */
 .kiosk { position: relative; z-index: 1; background: transparent; }
