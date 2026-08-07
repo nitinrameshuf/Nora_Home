@@ -236,6 +236,39 @@ body { background: transparent; }
 :root[data-theme="light"] .sidebar { border-right-color: rgba(20, 24, 32, 0.08); }
 :root[data-theme="light"] .card { border-color: rgba(20, 24, 32, 0.1); }
 
+/* ── House apps are functionality-first ──────────────────────────────────────
+ *
+ * The living background is the point on the base app's pages — that is the
+ * whole "charm outside, polish inside" idea, and CLAUDE.md §4 is explicit that
+ * the weather and the time of day should be *clearly seen* there.
+ *
+ * An app is a different job. Somebody opening Todo came to read a board, not
+ * to admire the sky, and at 0.3 the columns and cards were washing out against
+ * a bright afternoon — reported directly, and visible in a screenshot as text
+ * floating on blue with nothing holding it.
+ *
+ * So the scene stays (an app is still recognisably part of this house, not a
+ * different website) and the panes over it go near-opaque. One rule, keyed on
+ * `data-app`, which nora_home.ui.context_processors sets from the URL — so any
+ * app gets this automatically and no app has to style itself to be readable.
+ *
+ * `--pane-app` rather than editing --pane-rgb: the *colour* is the same house
+ * material either way, only how much sky comes through changes.
+ */
+:root { --pane-app: 0.93; }
+:root[data-theme="light"] { --pane-app: 0.95; }
+
+:root[data-app] .card,
+:root[data-app] .main,
+:root[data-app] .dash-tile {
+  background: rgba(var(--pane-rgb), var(--pane-app));
+}
+
+/* The sidebar keeps a little more of the scene than the content does: it is
+   chrome, it holds short labels rather than dense data, and letting the whole
+   left edge go flat is what makes an app stop looking like part of the house. */
+:root[data-app] .sidebar { background: rgba(var(--pane-rgb), 0.62); }
+
 /* Kiosk: same material, on its own fixed-purpose page (not base.html). */
 .kiosk { position: relative; z-index: 1; background: transparent; }
 .kiosk-header {

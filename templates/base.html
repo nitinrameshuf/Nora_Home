@@ -16,6 +16,7 @@ mismatch is what reads as "zoomed in". Set in Settings > Screens; see
 nora_home/ui/zoom.py for the measurements behind the choice.
 {% endcomment %}
 <html lang="en" data-surface="{{ surface }}" data-theme="dark"
+      {% if nh_app %}data-app="{{ nh_app.slug }}"{% endif %}
       {% if nh_zoom %}style="zoom: {{ nh_zoom }}"{% endif %}
       data-season="{{ nh_season }}" data-daypart="{{ nh_daypart }}" data-weather="{{ nh_weather }}"
       {% if not nh_bot_enabled %}data-nh-bot="off"{% endif %}>
@@ -45,7 +46,29 @@ nora_home/ui/zoom.py for the measurements behind the choice.
     app is the only thing needed to make it appear here. Nothing is hardcoded that
     an app could provide for itself.
     {% endcomment %}
+    {% comment %}
+    Inside an app, its own sections come first — without this the sidebar showed
+    the house's pages and nothing else no matter where you were, so an app's
+    sub-pages (Todo's calendar, reporting, labels) were reachable only by typing
+    a URL. The house nav stays underneath rather than being replaced: navigation
+    must never become a dead end, and "back to the house" should not be a
+    special case an app has to remember to provide.
+
+    Any app gets this by declaring `nora_sections` on its NoraAppConfig — see
+    docs/Main_App/DEVELOPMENT.md.
+    {% endcomment %}
+    {% if nh_app_sections %}
+      <div class="nav-group nav-group--app">
+        <div class="nav-group-label">{{ nh_app.title }}</div>
+        {% for section in nh_app_sections %}
+          <a class="nav-link" href="{{ section.path }}"
+             {% if request.path == section.path %}aria-current="page"{% endif %}>{{ section.title }}</a>
+        {% endfor %}
+      </div>
+    {% endif %}
+
     <div class="nav-group">
+      {% if nh_app %}<div class="nav-group-label">The house</div>{% endif %}
       <a class="nav-link" href="{% url 'core:dashboard' %}"
          {% if request.path == '/home/' %}aria-current="page"{% endif %}>Home</a>
       <a class="nav-link" href="{% url 'notifications:inbox' %}">

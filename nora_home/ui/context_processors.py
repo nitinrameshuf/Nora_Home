@@ -4,10 +4,19 @@ from django.conf import settings
 
 
 def surface(request):
+    from nora_home.core.registry import app_for_path
     from nora_home.ui import zoom as zoom_settings
 
     current = getattr(request, "nh_surface", "desktop")
+    # Which app this page belongs to, or None on the platform's own pages.
+    # Drives two things in base.html: the sidebar showing that app's sections
+    # instead of only the house's, and `data-app`, which CSS uses to make the
+    # panes near-opaque — a house app is functionality-first, and the living
+    # background is the point on the base app's pages, not behind a task board.
+    inside = app_for_path(request.path)
     return {
+        "nh_app": inside,
+        "nh_app_sections": list(inside.sections) if inside else [],
         "surface": current,
         # None on a phone or laptop, so their markup carries no zoom at all —
         # those are held at arm's length, which is what the browser already

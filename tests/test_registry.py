@@ -260,3 +260,67 @@ def test_scope_members_excludes_deactivated_people(rf, household):
     request.session = {"nh_view_scope": "all"}
 
     assert household["adult"] not in scope_members(request)
+
+
+# ── which app is a page inside? ──────────────────────────────────────────────
+# Drives two things in base.html: the sidebar showing an app's own sections, and
+# `data-app`, which makes the panes near-opaque. Both hinge on this being right,
+# and "right" is not obvious — see the function's own docstring.
+
+def test_a_todo_page_is_inside_the_todo_app():
+    from nora_home.core.registry import app_for_path
+
+    meta = app_for_path("/todo/calendar/")
+
+    assert meta is not None
+    assert meta.slug == "todo"
+
+
+@pytest.mark.parametrize("path", [
+    "/home/", "/home/settings/", "/home/log/", "/home/alerts/",
+    "/home/measurements/", "/home/displays/wall/",
+])
+def test_the_platforms_own_pages_are_not_inside_an_app(path):
+    """Anything under /home/ is the base app. Several of those pages belong to
+    separate Django apps internally (notifications at /home/alerts/, telemetry
+    at /home/measurements/) purely for code organisation — but nobody "went
+    into" an app by opening Alerts, and the living background is meant to be
+    the point on those pages (CLAUDE.md §4)."""
+    from nora_home.core.registry import app_for_path
+
+    assert app_for_path(path) is None
+
+
+def test_an_unknown_path_is_not_inside_an_app():
+    from nora_home.core.registry import app_for_path
+
+    assert app_for_path("/nothing-here/") is None
+    assert app_for_path("/") is None
+
+
+def test_todo_declares_the_sections_its_sidebar_needs():
+    """Without these, an app's sub-pages are reachable only by typing a URL —
+    which is exactly how Todo shipped until this was noticed."""
+    from nora_home.core.registry import app_for_path
+
+    paths = [s["path"] for s in app_for_path("/todo/").sections]
+
+    assert "/todo/calendar/" in paths
+    assert "/todo/reporting/" in paths
+    assert len(paths) >= 5
+
+
+@pytest.mark.django_db
+def test_every_declared_section_points_somewhere_real(client, admin_member):
+    """A section that 404s is worse than a missing one: it looks like
+    navigation and is a dead end."""
+    from nora_home.core.registry import registered_apps
+
+    client.force_login(admin_member)
+    broken = []
+    for meta in registered_apps():
+        for section in meta.sections:
+            if client.get(section["path"], secure=True).status_code >= 400:
+                broken.append(f"{meta.slug}: {section['path']}")
+
+    assert not broken, "sections that do not resolve: " + ", ".join(broken)

@@ -53,6 +53,19 @@ class TodoConfig(NoraAppConfig):
     # §6: "Two levels, and both are required" — this is the second, the
     # buttons the kiosk shows once the wall has switched to Todo. All five of
     # the design doc's, now that Story 36 gives System tasks a page to point at.
+    # What the sidebar shows while you are inside Todo. Everything a person can
+    # actually get to — unlike the kiosk list below, which is five big touch
+    # targets for driving the wall and deliberately fewer.
+    nora_sections = [
+        {"title": "Tasks", "path": "/todo/"},
+        {"title": "Calendar", "path": "/todo/calendar/"},
+        {"title": "Search", "path": "/todo/search/"},
+        {"title": "Labels", "path": "/todo/labels/"},
+        {"title": "Reporting", "path": "/todo/reporting/"},
+        {"title": "System tasks", "path": "/todo/system/"},
+        {"title": "Settings", "path": "/todo/settings/"},
+    ]
+
     nora_kiosk_controls = [
         {"title": "Tasks", "path": "/todo/"},
         {"title": "Due today", "path": "/todo/?due=today"},

@@ -110,6 +110,16 @@ class NoraAppConfig(AppConfig):
     # app — e.g. [{"title": "Log a set", "path": "/workout/log/"}]. Optional:
     # an app with none just gets the default single tile that switches to it.
     nora_kiosk_controls: list[dict] = []
+    # The app's own pages, shown in the sidebar while someone is inside it —
+    # e.g. [{"title": "Calendar", "path": "/todo/calendar/"}]. Same shape as
+    # nora_kiosk_controls but a different job, and deliberately not the same
+    # list: the kiosk gets a handful of big touch targets for driving the wall,
+    # a sidebar can afford every section an app has.
+    #
+    # Without this an app's sub-pages are reachable only by typing a URL. The
+    # sidebar is the platform's navigation, and until 2026-08-07 it showed the
+    # house's own pages and nothing else no matter where you were.
+    nora_sections: list[dict] = []
 
     # Capability flags the platform uses to decide what to wire up
     nora_provides_mcp_tools: bool = False
@@ -146,6 +156,7 @@ class NoraAppConfig(AppConfig):
             dashboard_cards=list(self.nora_dashboard_cards),
             widgets=list(self.nora_widgets),
             kiosk_controls=list(self.nora_kiosk_controls),
+            sections=list(self.nora_sections),
             provides_mcp_tools=self.nora_provides_mcp_tools,
             telemetry_series=list(self.nora_owns_telemetry_series),
             minimum_role=self.nora_minimum_role,
@@ -171,6 +182,7 @@ class AppMetadata:
     dashboard_cards: list[str] = field(default_factory=list)
     widgets: list[str] = field(default_factory=list)
     kiosk_controls: list[dict] = field(default_factory=list)
+    sections: list[dict] = field(default_factory=list)
     provides_mcp_tools: bool = False
     telemetry_series: list[str] = field(default_factory=list)
     minimum_role: str = "member"
@@ -220,6 +232,38 @@ def navigation(role: str = "member") -> list[dict]:
         for key in Category.ORDER
         if key in groups
     ]
+
+
+def app_for_path(path: str) -> "AppMetadata | None":
+    """Which app this URL is *inside*, or `None` on the platform's own pages.
+
+    This is the distinction the sidebar and the pane opacity both key off, so
+    what counts as "an app" matters:
+
+    **Anything mounted under `/home/` is the base platform, not an app.** The
+    house's own pages live there — the dashboard, Alerts, Measurements, the
+    House log, Settings — and several are separate Django apps internally
+    (`notifications` at `/home/alerts/`, `telemetry` at `/home/measurements/`)
+    purely for code organisation. Nobody "went into" an app by opening Alerts,
+    and the living background is meant to be the point on those pages.
+
+    An app is something with its own top-level slug: Todo at `/todo/`, and every
+    house app under `houseapps/`. Level is deliberately *not* the test — Todo is
+    Level 2 and `is_platform`, but it is an app in every way a person cares
+    about.
+
+    Longest prefix wins, so a future `/todo/reports/` app would beat `/todo/`.
+    """
+    path = "/" + (path or "").lstrip("/")
+    candidates = [
+        meta for meta in registered_apps()
+        if meta.has_page
+        and not meta.url_prefix.strip("/").startswith("home")
+        and path.startswith("/" + meta.url_prefix.strip("/") + "/")
+    ]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda m: len(m.url_prefix))
 
 
 # Prefixes the platform owns. A house app may not claim one of these, because its

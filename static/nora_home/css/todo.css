@@ -30,7 +30,17 @@
   flex-direction: column;
   gap: 0.6rem;
   min-height: 0;
+  /* A column is a container and should look like one. It had no background at
+     all until 2026-08-07 — four headings and their cards floating directly on
+     the sky, with nothing to say where one priority ended and the next began.
+     Uses the app pane opacity (nh-scene.css) so it tracks the same rule every
+     other surface in an app follows. */
+  padding: 0.7rem 0.7rem 0.9rem;
+  border-radius: var(--radius);
+  background: rgba(var(--pane-rgb), var(--pane-app, 0.93));
+  border: 1px solid rgba(255, 255, 255, 0.10);
 }
+:root[data-theme="light"] .todo-col { border-color: rgba(20, 24, 32, 0.09); }
 
 .todo-col__head {
   display: flex;
@@ -71,19 +81,23 @@
   border-radius: var(--radius-sm);
   text-decoration: none;
   color: inherit;
-  /* The same glass material as .card (nh-scene.css), copied rather than
-     applied via class="card" because .todo-card already carries its own
-     padding and radius. Found missing entirely by Story 41's QA sweep: with
-     no pane at all, a task card sat directly on the living background, and
-     dark theme's near-white text measured as low as 2.04:1 against a bright
-     midday sky — the exact "washed out" failure the light theme hit once
-     before, just on the theme that is supposed to be safe from it. */
-  background: rgba(var(--pane-rgb), 0.3);
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-  border: 1px solid rgba(255, 255, 255, 0.13);
+  /* A card sits *inside* an already near-opaque column, so it needs to separate
+     itself from that column — not from the sky. A plain tint does that; the
+     glass treatment it briefly had (0.3 + backdrop-filter, added when the card
+     was the only thing between text and the background) is now blurring an
+     opaque parent for no visible result, at real cost on a Pi driving two
+     screens continuously.
+
+     Story 41's QA sweep is why the card had a pane at all: with nothing behind
+     it, dark theme's near-white text measured 2.04:1 against a bright midday
+     sky. The column now solves that for every card in it. */
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.07);
 }
-:root[data-theme="light"] .todo-card { border-color: rgba(20, 24, 32, 0.1); }
+:root[data-theme="light"] .todo-card {
+  background: rgba(20, 24, 32, 0.035);
+  border-color: rgba(20, 24, 32, 0.08);
+}
 
 .todo-card:hover { text-decoration: none; }
 
@@ -491,21 +505,22 @@
 }
 
 .todo-figure {
-  /* Same gap this file's .todo-card had, and the same fix: no pane at all, so
-     a stat sat directly on the living background. It measured as low as
-     4.11:1 in dark theme at midday — borderline rather than badly broken,
-     because the text colour itself was already right (var(--text), inherited)
-     and only the missing backing pushed it under 4.5:1 depending on exactly
-     how bright the sky was. Found by Story 41's QA contrast sweep, the same
-     way the board-card version of this bug was found minutes earlier. */
+  /* A tint on top of an already near-opaque `.main`, for the same reason
+     `.todo-card` is one: this needs to separate from the surface it sits on,
+     not from the sky. It briefly carried the full glass treatment, added when
+     it *was* sitting on the sky and measured 4.11:1 in dark theme at midday —
+     borderline rather than broken, since the text colour was already right and
+     only the missing backing pushed it under 4.5:1. Found by Story 41's QA
+     contrast sweep, the same way the board-card version was. */
   padding: 0.7rem 0.9rem;
   border-radius: var(--radius-sm);
-  background: rgba(var(--pane-rgb), 0.3);
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-  border: 1px solid rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.07);
 }
-:root[data-theme="light"] .todo-figure { border-color: rgba(20, 24, 32, 0.1); }
+:root[data-theme="light"] .todo-figure {
+  background: rgba(20, 24, 32, 0.035);
+  border-color: rgba(20, 24, 32, 0.08);
+}
 
 .todo-figure__value {
   font-size: var(--step-3);
