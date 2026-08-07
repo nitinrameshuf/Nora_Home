@@ -3217,6 +3217,75 @@ left there. 906 tests green.
 
 ---
 
+## 2026-08-07 — Story 41: Tests, Docs & Deploy — Phase 7 complete
+
+87 new browser tests, `tests/qa/test_todo_qa.py` — the layer `./nora test`
+cannot reach: rendered pages, `todo.js` actually running, real clicks. Board,
+calendar, reporting, search, labels, settings, create and system pages all
+smoke-tested the same way `test_smoke.py` covers the platform; a task created,
+completed and archived **through the browser and reloaded**, the same pattern
+`test_journeys.py`'s widget test uses and for the same reason — a POST that
+403s and gets ignored by `fetch()` looks identical to success until the page is
+asked again; no sideways scroll at the five real screen sizes; card and figure
+contrast measured from pixels across every theme × daypart.
+
+**It found two real accessibility bugs the whole session's worth of unit tests
+never could, because neither is expressible as a Python assertion.**
+
+`.todo-card` had no glass pane at all — unlike every other surface in the
+design system, a task card sat directly on the raw living background. Dark
+theme's near-white text measured as low as **2.04:1** against a bright midday
+sky. A second, smaller bug compounded it: the title's `<a>` inherited the
+global `a { color: var(--accent) }` rule with nothing in `todo.css` to stop it
+— the exact bug `.brand` had (CLAUDE.md, 2026-08-04), never fixed here. Giving
+`.todo-card` the same `rgba(var(--pane-rgb), 0.3)` + `backdrop-filter` pane
+every other card in the house already has, and setting the link's colour to
+`var(--text)` explicitly, cleared every theme × daypart combination at **8:1 or
+better** — measured, not eyeballed, the same way the light-theme dusk bug was
+fixed in an earlier session. Reporting's `.todo-figure` stat strip had the
+identical gap (no pane, correct text colour, so **borderline** rather than
+badly broken — 4.11:1 against the 4.5:1 line) and got the same fix.
+
+**Then a real scare that turned out to be a false alarm, and the process for
+telling the two apart is worth keeping.** A full run of the 87 tests
+consistently seemed to leave three tasks behind — titled uniquely, one per
+creation test, surviving every re-run despite each test's own `finally:`
+cleanup. Chased for over an hour: verified the delete endpoint directly
+(`page.request.post`, a real 200, confirmed gone from the board); found and
+fixed a genuine narrower bug along the way (a *done* one-shot task "leaves the
+board entirely" per `api.py`'s own contract, so cleanup that only checked the
+open board and the archived column had a blind spot — fixed by capturing the
+task's href at creation instead of re-finding it afterward); added a
+session-level teardown sweep as a second guarantee regardless. And still, after
+all of that, a fresh full run appeared to leave three behind.
+
+**The bug was in the verification, not the product or the tests.**
+`Task.delete()` is `SoftDeleteModel`'s — it sets `deleted_at`, it does not
+remove the row — and every "is there still litter?" check used
+`Task.objects.filter(...)` without `.alive()`. `Task.objects.alive().filter(
+title__icontains="QA")` was **0** the entire time; the per-test cleanup worked
+on every single run. The lesson worth keeping: when a verification and the
+thing it is verifying disagree for longer than it takes to check the
+verification's own assumptions, check the assumptions first — `.alive()` is
+exactly the kind of default that is invisible until you go looking for it,
+which is the same shape of trap `docs/Main_App/subsystems/todo.md` §13 already
+warns about for cached counters.
+
+**Deployed and confirmed on the Pi over SSH**, since Playwright needs a real
+Chromium and this Mac has neither Python nor a browser toolchain installed —
+`~/.nora-qa-venv` (one-time `pip install -r requirements/dev.txt && python -m
+playwright install chromium`, ARM64 build, ~111MB) runs `./nora qa`'s
+equivalent directly on the Pi against `https://localhost`, which is the
+documented pattern (`docs/Main_App/testing.md`, "run from a laptop against a
+running house") stretched to the one machine that actually had everything
+already in place. 226 QA checks total now (139 platform, 87 Todo's own).
+
+**Phase 7 is complete — 15 of 15.** `docs/Main_App/subsystems/todo-build-brief.md`
+said to delete itself once the build finished, and it is gone.
+
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**

@@ -169,9 +169,10 @@ were diagnosed before anything was changed.
 
 ## The QA suite — a real browser
 
-`./nora qa`. 106 checks, ~4 minutes, run **from a laptop against a running
-house** (not inside the Pi's container — no browser there, and testing the house
-from outside is how anyone actually uses it).
+`./nora qa`. 226 checks (139 platform, 87 Todo's own — Story 41), ~8 minutes,
+run **from a laptop against a running house** (not inside the Pi's container —
+no browser there, and testing the house from outside is how anyone actually
+uses it).
 
 ```bash
 ./nora qa                        # the Pi
@@ -190,6 +191,7 @@ project has lived while the unit tests stayed green.
 | `test_journeys.py` | Add a widget **and reload**, save Settings, the profile menu, every nav link resolving, the five surface sizes |
 | `test_screens.py` | The wall and kiosk open **at once** — a kiosk tap moving the wall's iframe, the kiosk staying on its own buttons, no dead controls, no error toast |
 | `test_accessibility.py` | axe-core on every page, plus contrast measured from pixels across themes, dayparts, seasons and both screen sizes |
+| `test_todo_qa.py` | Todo's own pages (not in `PLATFORM_PAGES` — Level 2, mounted at its own top-level slug): board, calendar, reporting, search, labels, settings, create, system. Creating, completing and archiving a task **through the browser and reloaded**; the calendar renders a real grid; Reporting never says "could not load" and every card is a chart, a table, or an explicit empty sentence; no sideways scroll at the five real sizes; card-title contrast across every theme × daypart |
 
 ### Contrast is measured from pixels, not from the DOM
 
@@ -241,6 +243,19 @@ broken.
 - **Chromium only.** WebKit cannot reach this Pi (see above).
 - **Nothing here judges how it looks.** Contrast is not legibility at three
   metres, and no tool has an opinion on whether a design is any good.
+- **This Mac has neither Python nor a browser toolchain.** `test_todo_qa.py`
+  (Story 41) was written and debugged by copying files to the Pi over `scp`
+  and running Playwright from a one-time venv there (`~/.nora-qa-venv`), not
+  from a laptop. It is the same "real browser against a running house" pattern
+  the rest of this section describes, on the one machine that had a viable
+  Chromium build (arm64) already reachable.
+- **If a test writes data, `Task.objects.filter(...)` is not "does it still
+  exist".** `SoftDeleteModel.delete()` sets `deleted_at`; it does not remove
+  the row. A cleanup-verification chase that cost over an hour during Story 41
+  turned out to be checking litter with a query that never called `.alive()`
+  — the rows it kept "finding" were successfully deleted history, not survivors.
+  When a test's own cleanup and a manual check of "did it work" disagree for
+  longer than it takes to re-read the check, suspect the check first.
 
 ### Known gaps
 

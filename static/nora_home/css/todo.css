@@ -71,9 +71,29 @@
   border-radius: var(--radius-sm);
   text-decoration: none;
   color: inherit;
+  /* The same glass material as .card (nh-scene.css), copied rather than
+     applied via class="card" because .todo-card already carries its own
+     padding and radius. Found missing entirely by Story 41's QA sweep: with
+     no pane at all, a task card sat directly on the living background, and
+     dark theme's near-white text measured as low as 2.04:1 against a bright
+     midday sky — the exact "washed out" failure the light theme hit once
+     before, just on the theme that is supposed to be safe from it. */
+  background: rgba(var(--pane-rgb), 0.3);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.13);
 }
+:root[data-theme="light"] .todo-card { border-color: rgba(20, 24, 32, 0.1); }
 
 .todo-card:hover { text-decoration: none; }
+
+/* The title is a plain <div> around an <a>, and nora-home.css's global
+   `a { color: var(--accent) }` reached it with nothing here to stop it — the
+   same bug .brand had (CLAUDE.md, "the house name is text, and --text is the
+   token that already tracks the theme"), just never fixed here. Measured
+   2.04-3.95:1 depending on theme/daypart before this; --text clears every
+   combination at 8:1 or better. */
+.todo-card__title a { color: var(--text); }
 
 .todo-card__dot {
   flex: none;
@@ -466,9 +486,26 @@
 .todo-figures {
   display: flex;
   flex-wrap: wrap;
-  gap: 2rem;
+  gap: 0.9rem;
   padding: 0 0.2rem var(--gap);
 }
+
+.todo-figure {
+  /* Same gap this file's .todo-card had, and the same fix: no pane at all, so
+     a stat sat directly on the living background. It measured as low as
+     4.11:1 in dark theme at midday — borderline rather than badly broken,
+     because the text colour itself was already right (var(--text), inherited)
+     and only the missing backing pushed it under 4.5:1 depending on exactly
+     how bright the sky was. Found by Story 41's QA contrast sweep, the same
+     way the board-card version of this bug was found minutes earlier. */
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-sm);
+  background: rgba(var(--pane-rgb), 0.3);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+}
+:root[data-theme="light"] .todo-figure { border-color: rgba(20, 24, 32, 0.1); }
 
 .todo-figure__value {
   font-size: var(--step-3);

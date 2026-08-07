@@ -159,20 +159,20 @@ reference implementation.
   reminders and a ported escalation ladder, a Reporting page and tone presets,
   and a system-tasks board fed by telemetry thresholds and failing
   integrations, all with a real front end at `/todo/` and a two-level kiosk
-  screen (all five documented buttons now exist). 11 of 15 Phase 7 stories
-  built (28–37 and 40, plus 42 out of number order — see its own warning), including
-  Slack in both directions: reminders arrive as DMs with Done/Skip/Snooze/
-  Reassign buttons, and `/todo` answers back over Socket Mode. **Full
-  design, decision log, and per-story "as built" notes**:
+  screen (all five documented buttons now exist). **Phase 7 is complete — 15
+  of 15 stories built**, including Slack in both directions: reminders arrive
+  as DMs with Done/Skip/Snooze/Reassign buttons, and `/todo` answers back over
+  Socket Mode. **Full design, decision log, and per-story "as built" notes**:
   [`docs/Main_App/subsystems/todo.md`](docs/Main_App/subsystems/todo.md).
-  Build order and what's left: [`docs/Main_App/subsystems/todo-build-brief.md`](docs/Main_App/subsystems/todo-build-brief.md).
   Story-by-story status: the dashboard. **Stories 35 and 36 have run on the Pi
   against MySQL** — Reporting, settings and the system board all rendered
   there, the priority-mix query and the system-task dedupe both checked against
   MySQL specifically, and each seen on the physical wall and kiosk through the
   kiosk's own navigation. Stories 28–34 and 42 have still only run against
-  SQLite on a laptop. **Story 40 (Tracker Removal & House Log) is unblocked**
-  — its only dependencies were 35 and 36.
+  SQLite on a laptop. **Story 41 (Tests, Docs & Deploy) closed the phase**:
+  87 new browser tests (`tests/qa/test_todo_qa.py`), and found two real
+  accessibility bugs the whole session's worth of unit tests never could —
+  see the dated entry below.
 - **Notifications** (`nora/notifications/`) — Slack (bot token *or* webhook), in-app,
   wall display, console. Delivery receipts and retries.
 - **AI** (`nora/ai/`) — Claude via the Anthropic SDK, three model tiers, prompt
@@ -320,20 +320,17 @@ button grid, connected, with no certificate-warning interstitial on either
 screen (`--ignore-certificate-errors` did its job).
 
 ### Not done — pick up here
-0. **Phase 7 — Todo, 14 of 15 (93%). Two pieces left:** **Story 24** (house
-   maintenance, the first real family app, unblocked since Story 27) is what
-   actually proves the platform was worth building rather than another platform
-   story — and **its `requirements.md` needs your approval before any code**,
-   the first of DEVELOPMENT.md's three gates; **Story 41** (Tests, Docs &
-   Deploy, Sonnet, ~6h) is now unblocked and is volume rather than difficulty.
-   Stories 28–40 built and green (**884 tests**), plus Story 42 (Shared Tasks &
-   Approval, built out of number order — see its own entry for why). Read
-   [`docs/Main_App/subsystems/todo.md`](docs/Main_App/subsystems/todo.md)
-   before touching this app — it is the approved design and the record of every
-   decision made building it; do not re-derive anything already settled there.
-   [`docs/Main_App/subsystems/todo-build-brief.md`](docs/Main_App/subsystems/todo-build-brief.md)
-   has the remaining phases in build order. **Three things a fresh session needs
-   to know before doing anything else:**
+0. **Phase 7 — Todo, complete (15 of 15).** What is left is not another Todo
+   story — it is **Story 24** (house maintenance, the first real family app,
+   unblocked since Story 27), which is what actually proves the platform was
+   worth building rather than another platform story. **Its `requirements.md`
+   needs your approval before any code**, the first of DEVELOPMENT.md's three
+   gates. Read [`docs/Main_App/subsystems/todo.md`](docs/Main_App/subsystems/todo.md)
+   before touching Todo itself — it is the approved design and the record of
+   every decision made building it; do not re-derive anything already settled
+   there. `docs/Main_App/subsystems/todo-build-brief.md` is gone — it said to
+   delete itself once the build finished, and Story 41 did. **Three things a
+   fresh session needs to know before doing anything else:**
    - **`.env` and `db.sqlite3` were both briefly tracked in git; both are fixed
      now** (`.gitignore` reads `.env`/`.env.*` and `db.sqlite3`). While `.env`
      was tracked, `git pull` on the Pi replaced the house's real configuration
@@ -416,7 +413,7 @@ screen (`--ignore-certificate-errors` did its job).
    those. Only the `slack` container reads it.
 
    **AI and MCP remain untested against live services** — no keys supplied.
-4. **Tests: 891, one file per subsystem, green.** `./scripts/run-tests.sh` (or
+4. **Tests: 906, one file per subsystem, green.** `./scripts/run-tests.sh` (or
    `make test`; `make test-pi` runs it inside the container on the Pi). Runs in
    ~30s with no containers, no network, and no credentials — SQLite, in-memory
    channel layer, eager Celery — so it gives the same answer on a laptop and on
@@ -428,16 +425,22 @@ screen (`--ignore-certificate-errors` did its job).
    beat actually firing, Slack/AI/MCP against live services, Mongo/MinIO, and
    the websocket consumers. See
    [`docs/Main_App/testing.md`](docs/Main_App/testing.md) § Known gaps.
-   **`./nora qa`** is the second layer: 106 checks driving a real Chromium
+   **`./nora qa`** is the second layer: 226 checks driving a real Chromium
    against the running house — every page rendered and checked for console
    errors, the journeys clicked through, both screens open at once so a kiosk tap
-   can be seen moving the wall, and contrast measured from pixels. ~4 minutes,
+   can be seen moving the wall, and contrast measured from pixels. ~8 minutes,
    run from a laptop, deliberately separate from the fast suite. It found two
    real bugs on its first run — a checkbox with no accessible name, and the
    light theme unreadable at dusk (2.06:1); **both fixed** — plus one about the
    tools: axe's colour-contrast rule is unusable against `backdrop-filter` over a
    living gradient, and believing it would have meant degrading readable text.
-   Contrast is measured from pixels instead.
+   Contrast is measured from pixels instead. **Story 41's 87 new Todo tests
+   found two more the same way**: `.todo-card` had no glass pane at all, unlike
+   every other surface in the house, measuring as low as 2.04:1 in dark theme —
+   fixed with the same pane treatment every other card already has. This Mac has
+   no Python or browser toolchain, so the suite runs on the Pi itself over SSH
+   (`~/.nora-qa-venv`), not from a laptop — the one exception to "run from a
+   laptop" that the hardware available actually allows.
 5. **PWA manifest and service worker** — decided (§5) but not written.
 6. **No favicon** — the logs show steady `/favicon.ico` 404s.
 7. ~~**Kiosk-drives-wall redesign and the Settings tab — built, unverified.**~~
