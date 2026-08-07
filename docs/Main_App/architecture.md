@@ -28,7 +28,7 @@ graph TB
 
     subgraph Platform["nora_home/ — the platform"]
         TODO[todo<br/>tasks · schedules · escalation]
-        NOT[notifications<br/>slack · display · in-app]
+        NOT[notifications<br/>slack · display · in-app · sound]
         DASH[dashboard<br/>widgets · layouts]
         TEL[telemetry<br/>time series · thresholds]
         AI[ai<br/>Claude · budget]
@@ -342,6 +342,7 @@ Rules that keep the system able to lose a part without losing the whole.
 | **App ↔ environment** | No app reads `os.environ`. Settings go in `config/settings/base.py` with a default. |
 | **Secrets ↔ database** | Credentials live in `.env` only. A database dump shared for debugging carries no tokens. |
 | **Failure ↔ blast radius** | A card that raises renders "unavailable". A broken house app is skipped at mount. A dead Mongo is *degraded*, not *down*. The wall display survives everything. |
+| **Container ↔ host hardware** | Django cannot touch the Pi's own devices. The speakers are on HDMI and the screens' power is an X11 call, so both cross the boundary by *writing something the host reads*: `SoundChannel` drops audio in a bind-mounted cache for a systemd timer running `aplay`, and `wall_power_state` is polled the same way. Anything new that needs real hardware follows that shape — the container decides, the host acts. |
 | **Nora Home ↔ Nora (robot)** | Two touchpoints only: the robot may post to `/api/homebot/say/` to put a line on the house screens, and it may read the MCP tools with a scoped device token. Nothing else is shared. |
 
 ---
@@ -354,7 +355,7 @@ nora_home/              THE PLATFORM
   core/                 registry, base models, cards, health, audit, logging, API
   dashboard/            widget base classes, per-member layouts
   accounts/             HouseMember (AUTH_USER_MODEL), roles, escalation contacts
-  notifications/        channels, delivery receipts
+  notifications/        channels, delivery receipts, TTS + speak()
   todo/                 tasks, instances, recurrence, reminders, escalation
   ai/                   Claude client, model tiers, cost accounting
   mcpserver/            MCP tool registry, stdio server, HTTP transport

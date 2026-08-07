@@ -94,6 +94,7 @@ does the hard parts:
 | Reminders, due dates, "did they do it" | `nora_home.todo` — **but read [the caveat](#tracking-reminders-and-escalation) first: the app-facing call was deleted with the tracker and its successor is Story 24's to design** |
 | Nagging people who forget | The escalation ladder — automatic |
 | Slack messages | `nora_home.notifications.api.notify()` |
+| Making the house say something out loud | `nora_home.notifications.speech.speak()` — synthesises, respects house-wide quiet hours, and gets the audio out to the host's speakers. Never call the TTS provider yourself: you would get correct audio, inside a container, that nobody can hear |
 | A charts table and a chart library | `nora_home.telemetry.api.record_reading()` + a `ChartWidget` |
 | Calling Claude | `nora_home.ai.client.ask()` |
 | File uploads to S3 | A normal Django `FileField` |
