@@ -3153,6 +3153,70 @@ rather than only in the design doc.
 
 ---
 
+## 2026-08-07 — screen size becomes a setting, and two commands that lied
+
+"just allow me to set the zoom level for the 24inch and the 10inch display in
+the screen section in settings... for displays like laptop or phone, it already
+looks fine, so why mess with it." Right on both counts, and it settled a
+question three previous answers had got wrong.
+
+**Settings → Screens now has a zoom per fixed screen** (`nora_home/ui/zoom.py`,
+stored in `HouseSetting`, applied as CSS `zoom` on `<html>`). Phones and laptops
+are untouched — `nh_zoom` is `None` for them and no attribute is emitted at all.
+
+**Why CSS `zoom` and not the device scale factor**, having argued the opposite
+hours earlier: `--force-device-scale-factor` is the more native mechanism and
+what TV and signage platforms use, but a launch flag can only be changed by
+regenerating the launch script and restarting Chromium — an SSH session. A number
+a family member is expected to tune has to live where they can reach it. Both
+screens now launch at scale 1 so the two cannot multiply.
+
+**It was measured before it was chosen**, on the Pi's own Chromium, because
+"zoom scales everything" needed to be a fact rather than a hope:
+
+    a 100px box with 10px borders   plain 120px  ->  zoom 1.25  150px
+    html { zoom: 1.25 } on 1920     documentElement.clientWidth   1536
+
+Both match `--force-device-scale-factor=1.25` exactly. That is the property
+scaling the root font-size never had, and the whole reason it read as "zoomed"
+at 160% and again at 135%: `zoom` grows borders, shadows and radii with the
+text instead of leaving them as 1-device-pixel hairlines. One difference worth
+writing down rather than rediscovering: media queries still evaluate against the
+*unzoomed* viewport, which is immaterial on the wall but would matter on the
+1024px kiosk — hence its lower ceiling.
+
+**And then the feature appeared not to work, which found two commands that were
+lying.**
+
+Storing 1.05, then 1.8, then reloading, changed nothing on the wall. The tests
+passed, the setting stored correctly, and the served HTML carried the right
+`zoom`. The evidence that settled it was nginx's access log: **the wall requested
+its pages once, when it launched, and never again** — across several runs of
+`./nora screens` that each reported "ok reloaded wall".
+
+`./nora screens` sent `ctrl+shift+R` with xdotool. Chromium in `--kiosk` ignores
+the reload shortcut, so it had been reporting success and doing nothing —
+including after every deploy that changed a template, for as long as it has
+existed. It now broadcasts a `refresh` on the displays bus, which is the same
+websocket the kiosk already uses to drive the wall and which both screens handle
+by calling `window.location.reload()` themselves. No window focus, no X server,
+no guessing at window titles, and it fails loudly if the bus is unreachable.
+
+The other was mine, and smaller: the throwaway helper used to regenerate the
+launch scripts hardcoded the scale factor, so after the value changed it
+silently rewrote the old one. **`./nora screens relaunch`** now exists as a
+supported command, and reads both `launch_script()` *and* its call lines out of
+`provision-pi.sh` so it cannot drift from what provisioning would actually do.
+That gap — the launch scripts being generated, so a new flag never reaches a
+running screen through a deploy or even a reboot — had already caught this
+project once, when HTTPS moved the app off `:8000`.
+
+Verified end to end on the hardware: zoom set through the real form, `./nora
+screens`, and the wall visibly smaller in the screenshot; then set to 1.15 and
+left there. 906 tests green.
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**
