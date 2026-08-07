@@ -101,21 +101,28 @@
 html { -webkit-text-size-adjust: 100%; }
 
 /* §11.1 — the wall is read from three metres, everything else from arm's
- * length. One root font-size multiplier, not six new sizes: every rem-based
- * value in this file (--step-0 through --step-4, --space, --gap, and every
- * ad-hoc 0.7xrem/0.85rem scattered through component rules) scales together
- * automatically, because rem is always relative to *this* element. The
- * templates, the components and every other CSS file are untouched — "same
- * templates, same CSS, one variable" (todo.md §"The 24" wall").
+ * length. One root font-size declaration, not six new sizes: every rem-based
+ * value in this file (--step-0 through --step-4, --space, --gap, --nav-width,
+ * --tap, and every ad-hoc 0.7xrem/0.85rem scattered through component rules)
+ * scales together automatically, because rem is always relative to *this*
+ * element. The templates, the components and every other CSS file are
+ * untouched — "same templates, same CSS, one variable" (todo.md §"The 24"
+ * wall").
+ *
+ * **That only holds for as long as nothing here is sized in px.** It has been
+ * broken twice: Gridstack's `cellHeight: 80` clipped the stat tiles, and
+ * `--nav-width: 244px` clipped "Measurements" in the sidebar. If you add a
+ * fixed pixel size to anything that holds text, you are adding the third.
+ * tests/test_ui.py guards the tokens; it cannot guard your new rule.
  *
  * `data-surface` on `<html>` is set by SurfaceMiddleware from the request
  * path for the wall's own shell page, and — for the real app content the
  * wall shows through its iframe — from a same-origin Sec-Fetch-Dest check
  * (see nora_home/ui/middleware.py). Nothing here needs to know which case
  * it is; both produce the same attribute.
- */
-/* Viewport-relative, not a fixed percentage — and the distinction is the whole
-   point of this rule.
+ *
+ * Viewport-relative, not a fixed percentage — and the distinction is the whole
+ * point of the value below.
  *
  * What decides how big text needs to be is its *angular* size: physical height
  * divided by viewing distance. CSS can measure neither. It cannot ask how many
@@ -340,6 +347,32 @@ pre {
 }
 .switcher-option:hover { background: var(--ink-700); }
 :root[data-theme="light"] .switcher-option:hover { background: var(--bg-sunken); }
+
+/* "Everyone" and the wall change what you are *looking at*; the names above
+   them change who you *are*. Same button, so the group heading and the hint
+   line are what carry the difference — without them "Wall" reads as a fourth
+   person in the household, which is exactly how it was read. */
+.profile-dropdown__label {
+  padding: 0.7rem 0.7rem 0.3rem;
+  margin-top: 0.3rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  font-weight: 650;
+}
+.switcher-option__hint {
+  display: block;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  color: var(--text-faint);
+  margin-top: 0.1rem;
+  /* The hint must not stretch the dropdown; it wraps inside the width the
+     names already established. */
+  max-width: 22ch;
+  white-space: normal;
+}
 
 /* ── Cards ────────────────────────────────────────────────────────────────── */
 .card-grid {

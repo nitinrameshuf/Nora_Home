@@ -99,16 +99,36 @@ viewport measuring in JavaScript.
                     </form>
                   {% endif %}
                 {% endfor %}
+                {% comment %}
+                "Everyone" and "Wall" are not people, and until now they sat in
+                the same flat list as the household with nothing to say so —
+                "Wall" read as a fourth family member. They change *what you are
+                looking at*, not *who you are*, so they get their own labelled
+                group and a line of explanation each.
+                {% endcomment %}
+                {% comment %}
+                Unconditional: whichever scope you are in, at least one of the
+                two below is always offered, so the heading never orphans.
+                {% endcomment %}
+                <div class="profile-dropdown__label">Show me</div>
                 {% if nh_view_scope != "all" %}
                   <form method="post" action="{% url 'accounts:switch_to_everyone' %}">
                     {% csrf_token %}
-                    <button class="switcher-option" type="submit">Everyone</button>
+                    <button class="switcher-option" type="submit">
+                      Everyone
+                      <span class="switcher-option__hint">The whole household's
+                        tasks and numbers, combined</span>
+                    </button>
                   </form>
                 {% endif %}
                 {% if nh_view_scope != "wall" %}
                   <form method="post" action="{% url 'accounts:switch_to_wall' %}">
                     {% csrf_token %}
-                    <button class="switcher-option" type="submit">Wall</button>
+                    <button class="switcher-option" type="submit">
+                      The 24&quot; wall
+                      <span class="switcher-option__hint">What the big screen
+                        shows &mdash; rearrange its tiles from here</span>
+                    </button>
                   </form>
                 {% endif %}
               </div>

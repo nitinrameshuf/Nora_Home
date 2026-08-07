@@ -416,7 +416,7 @@ screen (`--ignore-certificate-errors` did its job).
    those. Only the `slack` container reads it.
 
    **AI and MCP remain untested against live services** — no keys supplied.
-4. **Tests: 884, one file per subsystem, green.** `./scripts/run-tests.sh` (or
+4. **Tests: 891, one file per subsystem, green.** `./scripts/run-tests.sh` (or
    `make test`; `make test-pi` runs it inside the container on the Pi). Runs in
    ~30s with no containers, no network, and no credentials — SQLite, in-memory
    channel layer, eager Celery — so it gives the same answer on a laptop and on
@@ -507,6 +507,40 @@ git clone <repo> && cd nora-home
 ## 4. Decisions, and why
 
 Read this section before changing architecture. Each of these was a real fork.
+
+**The wall's type scale can only ever be half-automatic (2026-08-06).**
+Asked directly — "should that not scale automatically by display size?" — and
+the answer is worth keeping, because the intuition is right and the limit is
+not obvious. What decides how big text needs to be is its **angular** size:
+physical height over viewing distance. CSS can measure neither. It cannot ask
+how many inches the panel is, and it certainly cannot ask how far away somebody
+is standing — **the 24" wall and a laptop both report 1920×1080**. A rule driven
+by viewport alone would therefore render the laptop at wall size.
+
+That is what `data-surface` is actually for. Declaring the wall server-side is
+not a statement about pixels, it is a statement about **~3 metres**, and that is
+the one input no media query can supply. Surface detection is not a workaround
+for missing CSS features; it carries information the browser does not have.
+
+Given the distance, viewport fraction is the best available proxy for physical
+size, so the wall's root is `clamp(18px, 1.125vw, 28px)` rather than a fixed
+percentage — type becomes a constant *share of the screen*, so the same physical
+panel stays right if it is ever driven at a different resolution, and the clamp
+stops an odd display going unreadable in either direction. **Known limit:** a
+different-sized panel at the same distance is still wrong, and `vw` slightly
+over-corrects there (a 32" would get physically larger text when it should get
+the same). Changing the panel, rather than its resolution, means revisiting it.
+
+**And the thing that makes all of it work is fragile in a specific way.** One
+root declaration scales everything *only* while every other size is `rem`. That
+has now broken twice, both times found by looking at the physical screen and
+never by a test: Gridstack's `cellHeight: 80` clipped the stat tiles, and
+`--nav-width: 244px` clipped "Measurements" in the sidebar — the second one
+after the first had already been found, written up, and filed as a lesson. Fixing
+the instance is not fixing the class. `tests/test_ui.py` now reads the stylesheet
+as text and asserts the tokens are `rem`; it cannot see a browser layout, so it
+guards the known tokens and nothing else. **If you add a fixed pixel size to
+anything that holds text, you are adding the third instance.**
 
 **Editing an applied migration, once, to delete an app (2026-08-06).**
 CLAUDE.md §6 says never edit an applied migration. Story 40 had to, and the

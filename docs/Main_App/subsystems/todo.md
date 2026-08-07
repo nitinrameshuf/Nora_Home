@@ -496,11 +496,43 @@ same CSS, one variable. Not a separate layout and not separate components.
 ### As built (Story 39, 2026-08-06)
 
 **One line of CSS is the whole type scale**: `html[data-surface="wall"] {
-font-size: 160%; }`. Every size in `nora-home.css` — `--step-0` through
-`--step-4`, `--space`, `--gap`, and every ad-hoc `0.72rem`/`0.85rem` scattered
-through component rules — is already `rem`, and `rem` is always relative to
-the root element. One multiplier there, and the whole system grows together,
-which is what "throughout" actually meant.
+font-size: clamp(18px, 1.125vw, 28px); }`. Every size in `nora-home.css` —
+`--step-0` through `--step-4`, `--space`, `--gap`, and every ad-hoc
+`0.72rem`/`0.85rem` scattered through component rules — is `rem`, and `rem` is
+always relative to the root element. One declaration there, and the whole
+system grows together, which is what "throughout" actually meant.
+
+> **Corrected 2026-08-06, the same day.** This section originally read
+> `font-size: 160%` and claimed "every size in `nora-home.css` is *already*
+> rem". **Both halves were wrong**, and the user found it before anyone else
+> did — the 24" came back "all zoomed in, text huge and overflowing".
+>
+> `--nav-width: 244px` and `--tap: 44px` were pixels, so the sidebar held
+> laptop width while the labels inside it grew 1.6× and "Measurements" was
+> clipped mid-word. That is the *same trap* documented two paragraphs below as
+> Story 39's own second bug (Gridstack's `cellHeight: 80`) — found, written up,
+> and then missed again in the same file on the same day, because the fix was
+> applied to the instance rather than to the class. The card grid's
+> `minmax(280px, 1fr)` and the ornaments that sit beside text had it too. All
+> `rem` now.
+>
+> And 160% was too large on its own terms once the clipping stopped hiding it:
+> it leaves a 1920px screen only ~1200px of usable CSS width, so the page is
+> laid out as a small laptop and then magnified — one tile per row, the
+> greeting spanning the full width.
+>
+> The replacement is **viewport-relative rather than a fixed percentage**,
+> which is the actual answer to "shouldn't this scale by display size?" — see
+> CLAUDE.md §4 for why it can only ever be half-automatic. `1.125vw` is 21.6px
+> at 1920 (the 135% that measured right on the real screen) and keeps type a
+> constant *share* of the wall at any other resolution; the clamp is the guard
+> rail at both ends.
+>
+> `tests/test_ui.py` now reads the stylesheet as text and asserts that the
+> layout tokens are `rem` and that the wall scale resolves into range on this
+> house's own wall. No unit test can see a browser layout — both instances of
+> this bug were found by looking at the screen — but the *class* is now
+> catchable, which is the part that was missing.
 
 **The gap that made that one line insufficient by itself**: the wall's shell
 page (`/home/displays/wall/`) matches `data-surface="wall"` correctly, but the
@@ -548,7 +580,7 @@ a non-wall-safe key directly cannot get it onto the wall either, the same
 dependency on anything here, left for whoever picks it up next rather than
 folded in under this story's name.
 
-38 new tests, 971 green.
+38 new tests, 971 green at the time (884 after Story 40 deleted the tracker's three test files, 891 with this fix's own).
 
 **A second bug, found by looking at the deployed wall rather than by
 reading the diff:** the "House health" tile's value rendered clipped — the

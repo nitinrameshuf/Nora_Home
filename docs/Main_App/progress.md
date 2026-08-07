@@ -3035,6 +3035,87 @@ pointing at a function that no longer exists.
 
 ---
 
+## 2026-08-06 (later) — the wall, after the tracker went
+
+The user looked at the 24" and said it was "all zoomed in, text huge and
+overflowing", with the laptop and the 10.1" kiosk both fine. Two unrelated
+faults, one of them a regression from Story 40 earlier the same day.
+
+**Every stored layout still named the tracker's widgets.** `DashboardLayout`
+skips a key it cannot resolve rather than raising — right for an app somebody
+uninstalled, and wrong here. Deleting the tracker silently stripped three or
+four tiles from *every* home screen in the house, the always-on wall included,
+which was left showing one card. The Story 40 commit even documented this
+behaviour approvingly ("tiles quietly disappear rather than getting an error
+page"), which is the mistake: graceful degradation is not the goal when the
+widget has an exact successor sitting right there. `dashboard/0002` retargets
+them — `TodayWidget → todo.DueNextWidget`, `OverdueWidget → todo.OpenLoadWidget`,
+`ReliabilityWidget → todo.CompletionHeatmapWidget`, `StreakWidget →
+todo.StreakWidget` — matching *kind* for kind, because a layout is a grid of
+boxes with stored widths and heights and a stat dropped into a box drawn for a
+list is a different bug. It drops duplicates rather than rendering the same
+widget twice. Confirmed on the Pi: all four layouts (both people's, the shared
+one, and the wall's) now carry only keys that resolve.
+
+**The type scale never actually reached the layout.** Story 39's write-up said
+one CSS rule scales everything "because every size in `nora-home.css` is already
+rem". It was not: `--nav-width: 244px` and `--tap: 44px` were pixels, so the
+sidebar held laptop width while its labels grew 1.6× — "Measurements" was cut
+off mid-word. **That is the same trap Story 39 itself found and fixed hours
+earlier** in Gridstack's `cellHeight: 80`, in the same stylesheet, written up in
+its own as-built notes. Fixing the instance and not the class is how it came
+back. `--nav-width`, `--tap`, the card grid's `minmax(280px, 1fr)` and the
+ornaments that sit beside text are all `rem` now.
+
+With the clipping gone, 160% was still too much on its own terms: it leaves a
+1920px screen only ~1200px of usable CSS width, so the page is laid out as a
+small laptop and then magnified — one tile per row, the greeting spanning
+everything.
+
+**Then the better question: "should that not scale automatically by display
+size?"** Half of it can, and the half that cannot is the interesting half. What
+decides type size is *angular* size — physical height over viewing distance —
+and CSS can measure neither. This 24" and somebody's laptop both report
+1920×1080, so a rule driven by viewport alone would render the laptop at wall
+size. That is what `data-surface` is actually for: declaring the wall
+server-side is declaring the **~3 metres**, which no media query can supply.
+
+Given the distance, the best available proxy for physical size is viewport
+fraction, so the wall's root is now `clamp(18px, 1.125vw, 28px)`. That makes
+type a constant *share of the screen* rather than a fixed pixel count: 21.6px at
+1920 — identical to the 135% it replaced, so nothing changed visually on this
+house's wall — but the same physical panel stays right if it is ever driven at a
+different resolution, with the clamp stopping an odd display going unreadable in
+either direction. **Known limit:** a different-sized panel at the same distance
+would still be wrong, and `vw` slightly over-corrects there (a 32" would get
+physically larger text when it should get the same). Changing the panel, rather
+than its resolution, means revisiting the number.
+
+`tests/test_ui.py` now reads the stylesheet as text: the wall scale must be a
+clamped `vw` expression that resolves into range on this house's own 1920px
+wall, and `--nav-width`/`--tap`/the card-grid minimum must be `rem`. No unit
+test can see a browser layout — both instances of this bug were found by
+looking at the physical screen — but the class is catchable even when the
+instance is not, and that is what was missing. `tests/test_dashboard.py` also
+now asserts that no stored layout and nothing in `STARTER_LAYOUT` names a
+widget that does not resolve.
+
+891 tests green on the Pi, all ten services healthy, and the wall re-screenshotted
+showing the full nav uncut and four tiles in a proper grid.
+
+**And one more thing the user found by simply reading the screen: "there is
+nitin, priya, everybody, what's that other user named wall?"** The profile
+switcher listed *Everyone* and *Wall* as plain buttons in the same flat list as
+the household, under a heading that said "signed in as nitin" — so a view scope
+read as a fourth family member. They are not people: they change *what you are
+looking at*, not *who you are*. Both now sit under their own "Show me" heading,
+separated by a rule, each with a line saying what it does; "Wall" is now
+`The 24" wall — what the big screen shows, rearrange its tiles from here`,
+which also finally explains §11.2's remote layout editor at the point of use
+rather than only in the design doc.
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**
