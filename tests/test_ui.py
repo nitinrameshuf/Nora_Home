@@ -250,3 +250,55 @@ def test_the_bot_message_type_matches_its_consumer():
 
     assert hasattr(HomeBotConsumer, expected_method), (
         f"HomeBotConsumer has no {expected_method}() for type {bot.BOT_MESSAGE_TYPE!r}")
+
+
+# ── the wall's type scale, and what it silently depends on ───────────────────
+#
+# `html[data-surface="wall"] { font-size: N% }` only works because *everything
+# else* is rem. Anything sized in px keeps its laptop size while the text around
+# it grows, and the result is not "slightly off" — it clips. This has now been
+# found twice on the real 24" (Gridstack's cellHeight: 80, then --nav-width:
+# 244px cutting "Measurements" mid-word), both times by looking at the physical
+# screen rather than at the diff, because no unit test could see a browser
+# layout. These read the stylesheet as text, which is the part a test *can* see.
+
+def _stylesheet() -> str:
+    from pathlib import Path
+
+    from django.conf import settings
+
+    css = Path(settings.BASE_DIR) / "static" / "nora_home" / "css" / "nora-home.css"
+    return css.read_text(encoding="utf-8")
+
+
+def test_the_wall_still_has_a_type_scale():
+    import re
+
+    match = re.search(r'html\[data-surface="wall"\]\s*\{\s*font-size:\s*(\d+)%',
+                      _stylesheet())
+
+    assert match, "the wall's root font-size rule is gone"
+    assert 110 <= int(match.group(1)) <= 200, (
+        "a wall scale outside 110-200% is either pointless or unusable at 1920x1080")
+
+
+@pytest.mark.parametrize("token", ["--nav-width", "--tap"])
+def test_layout_tokens_are_rem_so_the_wall_scale_reaches_them(token):
+    """A px value here is the bug that clipped the sidebar. Both of these size
+    boxes that hold text, so both have to grow when the text does."""
+    import re
+
+    match = re.search(rf"{token}:\s*([^;]+);", _stylesheet())
+
+    assert match, f"{token} is no longer defined"
+    value = match.group(1).strip()
+    assert value.endswith("rem"), (
+        f"{token} is {value!r} — a fixed pixel size does not follow the wall's "
+        f"root font-size, so its box stays laptop-sized while its contents grow")
+
+
+def test_the_card_grid_minimum_is_rem_not_px():
+    """`minmax(280px, 1fr)` would hold cards at laptop width on the wall while
+    their contents ran larger inside them."""
+    assert "minmax(17.5rem, 1fr)" in _stylesheet(), (
+        "the card grid's minimum column width must be rem — see --nav-width")

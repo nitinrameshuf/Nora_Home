@@ -66,8 +66,14 @@
   --step-3: 1.85rem;
   --step-4: 2.5rem;
 
-  --nav-width: 244px;
-  --tap: 44px;
+  /* rem, not px, and that matters: the wall scales the root font-size (see
+     html[data-surface="wall"] below), so a sidebar fixed at 244px kept its
+     width while the nav labels inside it grew — "Measurements" was clipped
+     mid-word on the 24" for exactly this reason. Same trap the dashboard grid's
+     cellHeight fell into. 15.25rem is 244px at the normal root, so nothing
+     changes anywhere else. */
+  --nav-width: 15.25rem;
+  --tap: 2.75rem;
 }
 
 :root[data-theme="light"] {
@@ -108,7 +114,14 @@ html { -webkit-text-size-adjust: 100%; }
  * (see nora_home/ui/middleware.py). Nothing here needs to know which case
  * it is; both produce the same attribute.
  */
-html[data-surface="wall"] { font-size: 160%; }
+/* Was 160%, which measured too large on the real 24" once the clipping above
+   was fixed: at 160% a 1920px screen has only ~1200px of usable CSS width, so
+   the page is laid out as if it were a small laptop and then magnified — the
+   greeting alone ran the full width and the dashboard fitted one tile per row.
+   135% keeps 3-metre legibility while leaving the wall enough columns to still
+   look like a dashboard. One number, deliberately: everything else in this file
+   is rem and follows it. */
+html[data-surface="wall"] { font-size: 135%; }
 
 body {
   margin: 0;
@@ -171,8 +184,8 @@ pre {
   letter-spacing: -0.01em;
 }
 .brand-mark {
-  width: 30px;
-  height: 30px;
+  width: 1.875rem;
+  height: 1.875rem;
   border-radius: 10px;
   background: linear-gradient(145deg, var(--nh-400), var(--nh-600));
   box-shadow: 0 0 18px var(--nh-glow);
@@ -230,8 +243,8 @@ pre {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 50%;
   background: var(--bg-raised);
   border: 1px solid var(--border);
@@ -255,7 +268,7 @@ pre {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
-  min-width: 200px;
+  min-width: 12.5rem;
   padding: 0.4rem;
   background: var(--bg-raised);
   border: 1px solid var(--border);
@@ -313,7 +326,9 @@ pre {
 /* ── Cards ────────────────────────────────────────────────────────────────── */
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  /* rem for the same reason as --nav-width: a 280px minimum would hold cards at
+     laptop width on the wall while their contents ran 1.6x larger inside them. */
+  grid-template-columns: repeat(auto-fill, minmax(17.5rem, 1fr));
   gap: var(--gap);
   align-items: start;
 }
@@ -361,9 +376,9 @@ pre {
 .item.is-overdue .item-title { color: var(--alert); }
 
 .tick {
-  width: 26px;
-  height: 26px;
-  min-width: 26px;
+  width: 1.625rem;
+  height: 1.625rem;
+  min-width: 1.625rem;
   border-radius: 50%;
   border: 2px solid var(--ink-500);
   background: transparent;
@@ -484,7 +499,7 @@ th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; colo
   --step-1: 1.3rem;
   --step-2: 1.6rem;
   --step-3: 2rem;
-  --tap: 64px;
+  --tap: 4rem;
   --radius: 18px;
 }
 :root[data-surface="kiosk"] body { overflow: hidden; }
@@ -582,10 +597,10 @@ th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; colo
 }
 /* Inputs default to width:100% for forms; inside a row they should be only as
    wide as the value they hold, or the control column stops being a column. */
-.setting__control input[type="number"] { width: 5.5rem; min-height: 40px; }
+.setting__control input[type="number"] { width: 5.5rem; min-height: 2.5rem; }
 .setting__control input[type="text"],
-.setting__control select { width: auto; min-width: 10rem; min-height: 40px; }
-.setting__control input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent); }
+.setting__control select { width: auto; min-width: 10rem; min-height: 2.5rem; }
+.setting__control input[type="checkbox"] { width: 1.25rem; height: 1.25rem; accent-color: var(--accent); }
 
 .settings__actions {
   display: flex;
@@ -653,7 +668,7 @@ th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; colo
   min-height: var(--tap);
   cursor: pointer;
 }
-.log-source input { width: 20px; height: 20px; accent-color: var(--accent); }
+.log-source input { width: 1.25rem; height: 1.25rem; accent-color: var(--accent); }
 
 .log-charts {
   display: grid;

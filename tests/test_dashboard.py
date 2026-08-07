@@ -507,3 +507,48 @@ def test_the_catalog_lists_every_widget(client, adult):
     payload = client.get("/home/dashboard/catalog/").json()
 
     assert len(payload["widgets"]) == len(all_widgets("admin"))
+
+
+# ── the tracker's widgets, after Story 40 deleted them ───────────────────────
+
+def test_no_stored_layout_still_points_at_a_tracker_widget():
+    """dashboard/0002 retargets them. A key that no longer resolves is skipped
+    at render time rather than erroring — which is right for an uninstalled app,
+    and was wrong here: it silently emptied every home screen in the house,
+    including the always-on wall, of three or four tiles."""
+    from nora_home.dashboard.models import STARTER_LAYOUT, DashboardLayout
+
+    stored = [item["key"]
+              for layout in DashboardLayout.objects.all()
+              for item in layout.items]
+
+    assert not [key for key in stored + [i["key"] for i in STARTER_LAYOUT]
+                if key.startswith("tracker.")]
+
+
+def test_every_starter_widget_actually_resolves():
+    """The starter layout is what a new member's first screen is made of. A key
+    with a typo in it produces an empty dashboard and no error anywhere."""
+    from nora_home.core.registry import get_widget
+    from nora_home.dashboard.models import STARTER_LAYOUT
+
+    missing = [item["key"] for item in STARTER_LAYOUT if get_widget(item["key"]) is None]
+
+    assert not missing, f"STARTER_LAYOUT names widgets that do not exist: {missing}"
+
+
+def test_the_migration_maps_each_tracker_widget_to_one_that_exists():
+    """A replacement that does not resolve would leave the tile just as gone as
+    before, only now with the migration having claimed to fix it."""
+    import importlib
+
+    from nora_home.core.registry import get_widget
+
+    # importlib, not `import`: a module name starting with a digit is not a
+    # valid Python identifier, and every migration's is.
+    migration = importlib.import_module(
+        "nora_home.dashboard.migrations.0002_retarget_tracker_widgets")
+
+    missing = [key for key in migration.REPLACEMENTS.values() if get_widget(key) is None]
+
+    assert not missing, f"the migration points at widgets that do not exist: {missing}"
