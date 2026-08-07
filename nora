@@ -323,26 +323,27 @@ cmd_screens() {
     [ "${1:-}" = "relaunch" ] && { screens_relaunch; return; }
 
     # The wall and kiosk hold a page until they are told otherwise, so a deploy
-    # that changes a template leaves them showing the old one. This is that
-    # nudge. Hard-reload, because a soft one can serve the cached page.
+    # that changes a template leaves them showing the old one. This is that nudge.
+    #
+    # It goes over the displays bus — the same websocket the kiosk uses to drive
+    # the wall — and NOT by sending ctrl+shift+R with xdotool, which is what this
+    # did until 2026-08-07. That version reported "ok reloaded wall" every time
+    # and reloaded nothing: Chromium in --kiosk ignores the reload shortcut, and
+    # nginx's access log showed zero requests from either screen across several
+    # "successful" runs. Both screens already handle a `refresh` message by
+    # calling window.location.reload() themselves (wall-live.js, kiosk.js), which
+    # actually works and needs no window focus, no X server, and no guessing at
+    # window titles.
     step "Reloading the wall and kiosk browsers"
-    command -v xdotool >/dev/null 2>&1 || die "xdotool is not installed — run ./nora install, or reload the screens by hand."
-    local found=0
-    for name in "wall - Chromium" "kiosk - Chromium"; do
-        local window
-        window="$(DISPLAY=:0 xdotool search --name "$name" 2>/dev/null | head -1 || true)"
-        if [ -n "$window" ]; then
-            DISPLAY=:0 xdotool windowactivate --sync "$window"
-            sleep 1
-            DISPLAY=:0 xdotool key --clearmodifiers ctrl+shift+R
-            ok "reloaded ${name%% - *}"
-            found=$((found + 1))
-            sleep 2
-        else
-            warn "no window called '$name' — is that screen running?"
-        fi
-    done
-    [ "$found" -gt 0 ] || hint "Searching by class instead of name matches Chromium's helper windows, not the pages — that is why this looks for the titles."
+    running || die "the house is not running — start it with ./nora up"
+    $COMPOSE exec -T web python manage.py shell -c "
+from nora_home.displays.bus import broadcast
+raise SystemExit(0 if broadcast({'type': 'refresh'}) else 1)
+" >/dev/null 2>&1 \
+        && ok "asked every connected screen to reload" \
+        || die "could not reach the displays bus — is the channel layer up?"
+    hint "A screen that is not currently connected will not have heard this."
+    hint "Use './nora screens relaunch' if one needs restarting outright."
 }
 
 # `screens relaunch` — rewrite the launch scripts and restart both browsers.
