@@ -1,9 +1,13 @@
 /*
  * Nora Home — the house design system.
  *
- * One stylesheet for five surfaces. Sizing is driven by `data-surface` on <html>,
- * set server-side by nora_home.ui.middleware, so the wall display gets 3-metre type and
- * the kiosk gets thumb-sized targets without any JavaScript measuring viewports.
+ * One stylesheet for five surfaces. `data-surface` on <html>, set server-side by
+ * nora_home.ui.middleware, is what lets the kiosk get thumb-sized targets and the
+ * wall lose its editing affordances, without any JavaScript measuring viewports.
+ *
+ * The wall's *type scale* is deliberately NOT here — it is a device scale factor
+ * on that screen's own Chromium (see the note above the empty
+ * html[data-surface="wall"] rule below, and scripts/lib/provision-pi.sh §7).
  *
  * No web fonts and no CDN: the Pi has to render this with the internet down.
  */
@@ -66,12 +70,14 @@
   --step-3: 1.85rem;
   --step-4: 2.5rem;
 
-  /* rem, not px, and that matters: the wall scales the root font-size (see
-     html[data-surface="wall"] below), so a sidebar fixed at 244px kept its
-     width while the nav labels inside it grew — "Measurements" was clipped
-     mid-word on the 24" for exactly this reason. Same trap the dashboard grid's
-     cellHeight fell into. 15.25rem is 244px at the normal root, so nothing
-     changes anywhere else. */
+  /* rem, not px. This mattered acutely while the wall scaled the root font-size
+     — a sidebar fixed at 244px kept its width while the nav labels inside it
+     grew, and "Measurements" was clipped mid-word on the 24". That scaling now
+     happens at the device level instead, which would have hidden the bug rather
+     than fixed it, so these stay rem: the kiosk still overrides --tap on its
+     own, and browser zoom (which a person can still apply anywhere) has exactly
+     the same effect the wall's old rule did. 15.25rem is 244px at the default
+     root, so nothing changes anywhere else. */
   --nav-width: 15.25rem;
   --tap: 2.75rem;
 }
@@ -101,52 +107,36 @@
 html { -webkit-text-size-adjust: 100%; }
 
 /* §11.1 — the wall is read from three metres, everything else from arm's
- * length. One root font-size declaration, not six new sizes: every rem-based
- * value in this file (--step-0 through --step-4, --space, --gap, --nav-width,
- * --tap, and every ad-hoc 0.7xrem/0.85rem scattered through component rules)
- * scales together automatically, because rem is always relative to *this*
- * element. The templates, the components and every other CSS file are
- * untouched — "same templates, same CSS, one variable" (todo.md §"The 24"
- * wall").
+ * length. **That scaling no longer happens here.** It is done one layer down,
+ * by --force-device-scale-factor=1.5 on the wall's own Chromium
+ * (scripts/lib/provision-pi.sh §7), and this rule is deliberately left empty
+ * rather than deleted, so the next person to wonder where the wall's type
+ * scale went finds the answer instead of the absence.
  *
- * **That only holds for as long as nothing here is sized in px.** It has been
- * broken twice: Gridstack's `cellHeight: 80` clipped the stat tiles, and
- * `--nav-width: 244px` clipped "Measurements" in the sidebar. If you add a
- * fixed pixel size to anything that holds text, you are adding the third.
- * tests/test_ui.py guards the tokens; it cannot guard your new rule.
+ * Why there and not here. A CSS pixel is already a *reference pixel* — the
+ * visual angle of one pixel on a 96dpi screen at arm's length — and the
+ * browser normalises for physical size through devicePixelRatio. The one thing
+ * it cannot know is the viewing distance, so it assumes the web's default and
+ * reports a plain 1920 for this panel. A device scale factor is how you tell
+ * it otherwise: Chromium then reports ~1280 CSS px and renders at 1.5x, so the
+ * app lays out for 1280 and *everything* scales together.
+ *
+ * Scaling the root font-size here was tried first and was worse, for a reason
+ * worth keeping: it grows every rem while borders, shadows and corner radii
+ * stay 1-device-pixel hairlines. The proportions come apart, and the result
+ * reads as "zoomed in" even when the text size itself is right. That is what
+ * the 24" actually looked like, twice, at 160% and then at 135%.
+ *
+ * `data-surface="wall"` has NOT gone away and still matters — it selects the
+ * wall's own DashboardLayout, strips the drag/remove affordances a screen with
+ * no input devices cannot use, and hides the ambient orb. It simply no longer
+ * carries the type scale.
  *
  * `data-surface` on `<html>` is set by SurfaceMiddleware from the request
  * path for the wall's own shell page, and — for the real app content the
  * wall shows through its iframe — from a same-origin Sec-Fetch-Dest check
- * (see nora_home/ui/middleware.py). Nothing here needs to know which case
- * it is; both produce the same attribute.
- *
- * Viewport-relative, not a fixed percentage — and the distinction is the whole
- * point of the value below.
- *
- * What decides how big text needs to be is its *angular* size: physical height
- * divided by viewing distance. CSS can measure neither. It cannot ask how many
- * inches the panel is, and it certainly cannot ask how far away someone is
- * standing — this 24" wall and somebody's laptop both report 1920x1080. That is
- * why the surface has to be declared server-side rather than sniffed:
- * `data-surface="wall"` is really a statement about *distance* (~3 metres),
- * which is the input no media query can provide.
- *
- * Given the distance, the best available proxy for physical size is the
- * viewport fraction. `vw` makes type a constant *share of the screen* rather
- * than a constant number of pixels, so the same physical wall stays legible if
- * it is ever driven at a different resolution — 1.125vw is 21.6px at 1920
- * (the 135% that measured right on the real screen) and stays proportionate at
- * 1280 or 2560 without anyone re-tuning a magic number.
- *
- * The clamp is the guard rail: an unexpectedly narrow display cannot shrink the
- * house below readable, and an ultrawide cannot blow it up to absurdity. px
- * here rather than rem, deliberately — this rule *defines* what a rem is, and
- * on the root element rem would resolve against the initial font size, which
- * reads like a circular definition even though it is legal.
- *
- * Everything else in this file is rem and follows from this one declaration. */
-html[data-surface="wall"] { font-size: clamp(18px, 1.125vw, 28px); }
+ * (see nora_home/ui/middleware.py).
+ */
 
 body {
   margin: 0;

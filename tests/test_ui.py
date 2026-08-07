@@ -271,31 +271,40 @@ def _stylesheet() -> str:
     return css.read_text(encoding="utf-8")
 
 
-def test_the_wall_scales_with_its_viewport_not_a_fixed_number():
-    """`vw`, so the same physical wall stays legible at a different resolution.
-    A bare percentage here would be pinned to this house's 1080p panel."""
+def test_the_walls_type_scale_is_a_device_scale_factor_not_css():
+    """The wall is read from three metres, and that is a *distance* — the one
+    thing CSS cannot measure. It is declared to Chromium instead, which is what
+    TV and signage platforms do.
+
+    Scaling the root font-size here was tried twice (160%, then 135%) and was
+    worse both times: it grows every rem while borders, shadows and radii stay
+    1-device-pixel hairlines, so the proportions come apart and it reads as
+    zoomed. This asserts the scale lives in the launch script and *not* in the
+    stylesheet, because putting it back in CSS is the tempting wrong move.
+    """
     import re
+    from pathlib import Path
 
-    match = re.search(
-        r'html\[data-surface="wall"\]\s*\{\s*font-size:\s*clamp\(\s*'
-        r'(\d+(?:\.\d+)?)px\s*,\s*(\d+(?:\.\d+)?)vw\s*,\s*(\d+(?:\.\d+)?)px\s*\)',
-        _stylesheet())
+    from django.conf import settings
 
-    assert match, "the wall's root font-size is no longer a clamped vw scale"
-    floor, vw, ceiling = (float(g) for g in match.groups())
+    provision = (Path(settings.BASE_DIR) / "scripts" / "lib" / "provision-pi.sh"
+                 ).read_text(encoding="utf-8")
 
-    # The clamp is the guard rail: an odd display must not be able to make the
-    # house unreadable in either direction.
-    assert 16 <= floor < ceiling <= 32, f"clamp bounds {floor}-{ceiling}px are wrong"
+    assert "--force-device-scale-factor=$scale" in provision, (
+        "the wall's Chromium no longer takes a device scale factor")
 
-    # And at the wall this house actually has, it must land where it was
-    # measured. 1.125vw on 1920 is 21.6px — the 135% that read correctly from
-    # three metres once the sidebar stopped clipping.
-    at_1920 = vw / 100 * 1920
-    assert floor <= at_1920 <= ceiling, "the clamp excludes this house's own wall"
-    assert 20 <= at_1920 <= 23, (
-        f"{vw}vw resolves to {at_1920}px on the 24\" wall; 21.6px was what "
-        f"measured right on the real screen")
+    wall = re.search(r'launch_script\s+"wall"\s+\S+\s+\S+\s+\S+\s+([\d.]+)', provision)
+    assert wall, "the wall is no longer launched with an explicit scale factor"
+    assert 1.25 <= float(wall.group(1)) <= 2.0, (
+        f"a wall scale factor of {wall.group(1)} is either pointless or unusable")
+
+    # The kiosk is a touchscreen at arm's length — the case the web's defaults
+    # already assume. Scaling it would be scaling for no reason.
+    kiosk = re.search(r'launch_script\s+"kiosk"\s+\S+\s+\S+\s+\S+\s*([\d.]*)', provision)
+    assert kiosk and not kiosk.group(1).strip(), "the kiosk should not be scaled"
+
+    assert not re.search(r'html\[data-surface="wall"\]\s*\{\s*font-size', _stylesheet()), (
+        "the wall's type scale is back in CSS — see the comment on that rule")
 
 
 @pytest.mark.parametrize("token", ["--nav-width", "--tap"])

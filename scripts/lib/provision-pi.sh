@@ -153,7 +153,8 @@ info "Configuring both displays for kiosk mode"
 mkdir -p "$HOME/.config/autostart" "$HOME/.nora"
 
 launch_script() {
-    local name="$1" url="$2" position="$3" size="$4" profile="$HOME/.nora/chromium-$1"
+    local name="$1" url="$2" position="$3" size="$4" scale="${5:-1}"
+    local profile="$HOME/.nora/chromium-$1"
     cat > "$HOME/.nora/start-$name.sh" <<SCRIPT
 #!/usr/bin/env bash
 # Wait for the app to answer before opening a window; a kiosk showing a
@@ -194,6 +195,7 @@ fi
     --user-data-dir="$profile" \\
     --window-position=$position \\
     --window-size=$size \\
+    --force-device-scale-factor=$scale \\
     --ozone-platform=x11 \\
     --noerrdialogs \\
     --disable-infobars \\
@@ -242,7 +244,25 @@ X-GNOME-Autostart-enabled=true
 DESKTOP
 }
 
-launch_script "wall"  "$WALL_URL"  "0,0"    "1920,1080"
+# The 1.5 on the wall is how this house tells the browser about the one thing
+# CSS cannot measure: the 24" is read from about three metres, not from arm's
+# length. A CSS pixel is defined as a *reference pixel* — the visual angle of a
+# pixel on a 96dpi screen held at arm's length — and the browser already
+# normalises for physical size through devicePixelRatio. What it cannot know is
+# the distance, so it assumes the web's default and reports a plain 1920.
+#
+# --force-device-scale-factor=1.5 makes Chromium report ~1280 CSS px and render
+# at 1.5x on the real 1920 panel. This is what TV and signage platforms do (a 4K
+# TV browser will happily tell a page it is 1280 wide), and it is meaningfully
+# better than scaling the root font-size in CSS, which was tried first: that
+# grows the text while every border, shadow and corner radius stays a
+# 1-device-pixel hairline, so the proportions come apart and the result reads as
+# "zoomed in" even when the text size itself is right. Here everything scales
+# together, and the app lays out for 1280 rather than being magnified from 1920.
+#
+# The kiosk stays at 1 — it is a touchscreen at arm's length, which is exactly
+# the case the web's defaults already assume.
+launch_script "wall"  "$WALL_URL"  "0,0"    "1920,1080" 1.5
 launch_script "kiosk" "$KIOSK_URL" "1920,0" "1024,600"
 
 # Never blank on idle. DPMS itself stays ON (not disabled) — the wall power
