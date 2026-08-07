@@ -160,8 +160,47 @@ notifications.notify_house(title=..., body=..., severity="alert", app_slug=...)
 | `alert` | Ignores quiet hours |
 | `critical` | Ignores quiet hours; holds the wall until replaced |
 
-**Channels:** `slack`, `inapp`, `display` (the 24" wall), `console`. Pass
-`channels=[...]` only to force one — normally let the platform resolve it.
+**Channels:** `slack`, `inapp`, `display` (the 24" wall), `console`, `sound`.
+Pass `channels=[...]` only to force one — normally let the platform resolve it.
+
+### Speech — making the house say something out loud
+
+`from nora_home.notifications.speech import speak`
+
+```python
+speak("The bins go out tonight.")                      # -> bool
+
+speak("The smoke alarm is going off.",
+      app_slug="safety",
+      respect_quiet_hours=False,   # only for things that genuinely outrank it
+      sync=True)                   # skip the worker; for a shell or a test
+```
+
+Returns whether a sound was **queued** — `False` covers no text, no TTS provider
+configured, and quiet hours alike, because the caller only needs to know whether
+the house is about to speak. **It never raises**: asking for a voice at 3am, or
+before anyone has set an API key, must not be able to break the app that asked.
+
+**Call this rather than `nora_home.notifications.tts` directly.** Three things sit
+between text and a noise in the kitchen and only one is synthesis: quiet hours are
+house-wide (sound comes out of the 24" for whoever is in the room), and the audio
+has to reach the *host*, because the speakers are wired to the Pi's HDMI and Django
+runs in a container with no path to them. An app calling the provider itself would
+get correct audio, inside a container, at 3am, that nobody would ever hear.
+
+Todo's `alarm_kind="speech"` uses the same provider through
+`nora_home.todo.alarms`; there is no second implementation.
+
+> **No queueing or mixing.** The house has one pair of speakers and one file is
+> written at a time, so two `speak()` calls a second apart are two sounds a second
+> apart. Collapsing a burst is the caller's job, because only the caller knows
+> whether its eight things are eight announcements or one — see Todo §10.4, which
+> turns a backlog of alarms into a single "you missed 8 reminders".
+
+**Configured in `.env`**, not the database (CLAUDE.md §4): `NORA_HOME_TTS_PROVIDER`
+(`none` | `groq`), `NORA_HOME_GROQ_API_KEY`, `NORA_HOME_TTS_VOICE`. With no
+provider the house still boots and still runs reminders — only spoken alarms go
+quiet.
 
 ---
 

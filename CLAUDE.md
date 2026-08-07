@@ -319,6 +319,47 @@ stack survived the restart, not just nginx — and the kiosk shows its normal
 button grid, connected, with no certificate-warning interstitial on either
 screen (`--ignore-certificate-errors` did its job).
 
+### Verified on the Pi (2026-08-07) — the observe pass, and the house's voice
+
+**Story 41 was marked Complete before this was done, and that was wrong.** The
+87 browser tests were real and green, but §13.4 is explicit that the phase is
+not Complete until four things are *seen*, and none of them had been. The
+database said so plainly when finally asked: **0 live tasks, 0 sound deliveries
+ever.** The chime heard on 2026-08-06 was the host script invoked by hand, not
+an alarm that travelled the pipeline. Recording this because the failure was not
+the testing — it was calling something Complete on the strength of a green suite,
+which is the exact distinction CLAUDE.md's status vocabulary exists to prevent.
+
+All four are now observed, with three real tasks seeded on the family's board
+(bins, water filter, boiler service — kept, not test litter):
+
+| §13.4 | How it was seen |
+|---|---|
+| The board renders on the wall | Screenshotted: "Take the bins out" in red as overdue, all three cards, real due dates |
+| The wall shows the chosen widgets | Same screenshot — Due next, Open now ("3 open"), the year heatmap, House health |
+| A reminder arrives in Slack | `send_reminders()` run for real: `Delivery(channel="slack", status="sent")` |
+| An alarm plays through the 24"'s speakers | A **speech** alarm: Groq synthesised it, `SoundChannel` wrote `36.wav` to the bind mount, the host timer played it |
+
+**The house can speak** (`nora_home/notifications/speech.py`). Story 38 shipped
+the TTS seam and a stub that raised, deliberately leaving the vendor unchosen;
+Groq's Orpheus went in behind it on 2026-08-07 and **no call site changed** —
+which is what the seam was for. `speak("...")` is the published API, callable
+from any app; Todo's `alarm_kind="speech"` uses the same provider. Chosen because
+it needs no local model, GPU or audio toolchain on the Pi: HTTPS in, WAV out, and
+WAV specifically because the host's `aplay` plays it natively. With
+`NORA_HOME_TTS_PROVIDER=none` the house still boots and still reminds — only
+spoken alarms go quiet.
+
+**One real bug this surfaced, worth more than the feature.** `env()` reads the
+real environment and Compose passes every `.env` value into the container, so on
+the Pi `./nora test` inherited the live `NORA_HOME_TTS_PROVIDER=groq` and **made
+a billable API call inside a unit test.** It showed up only because two tests
+asserting the degraded path started failing with genuine WAV bytes; written any
+looser it would have been silent, and the suite would have been quietly spending
+money and requiring network on every run. `config/settings/test.py` now forces
+the TTS, Groq and Anthropic keys off rather than leaving them unset, and a test
+asserts it so the next credential added cannot reopen the hole.
+
 ### Not done — pick up here
 0. **Phase 7 — Todo, complete (15 of 15).** What is left is not another Todo
    story — it is **Story 24** (house maintenance, the first real family app,

@@ -3286,6 +3286,71 @@ said to delete itself once the build finished, and it is gone.
 
 ---
 
+## 2026-08-07 (later) — the house speaks, and the observe pass that was skipped
+
+Asked two things: *"did you add example tasks on the board and see it to
+completion to know it is all working well?"* and *"build the TTS capability into
+the home base app."* The first was the more important question.
+
+**The honest answer was no, and Story 41 had been marked Complete anyway.** The
+87 browser tests were real, but they create a task, assert, and delete it inside
+a headless browser — nothing had ever been *watched*. §13.4 lists four things
+that must be seen before the phase is Complete, and the database settled it
+plainly: **0 live tasks, 0 sound deliveries ever.** The chime heard the previous
+night was the host script run by hand, not an alarm that travelled the pipeline.
+Recording this because the mistake was not in the testing — it was treating a
+green suite as sufficient, which is precisely the distinction the status
+vocabulary in CLAUDE.md §0 exists to prevent, applied to the one story whose
+whole job was to enforce it.
+
+**All four are now observed**, with three real tasks seeded and kept (bins, water
+filter, boiler service — a family's board, not test litter): the wall
+screenshotted showing "Take the bins out" in red as overdue alongside the other
+two and the Open now / heatmap / House health widgets; `send_reminders()` run for
+real producing `Delivery(channel="slack", status="sent")`; and a **speech** alarm
+synthesised, written to the bind mount as `36.wav`, and played by the host timer
+through the 24"'s speakers.
+
+**Groq Orpheus went in behind Story 38's TTS seam, and no call site changed** —
+which is exactly what that seam was built for. Story 38 shipped a stub that
+raised and stopped there on purpose; this is the vendor it was waiting for.
+
+`nora_home/notifications/speech.py` is the published API: `speak("the bins go out
+tonight")`, callable from any app. It exists rather than letting apps reach for
+the provider because three things sit between text and a noise in the kitchen and
+only one is synthesis — quiet hours are house-wide (the sound comes out of the
+24" for whoever is in the room), and the audio has to reach the *host*, since the
+speakers are on the Pi's HDMI and Django runs in a container with no path to
+them. An app calling the provider directly would get correct audio, inside a
+container, at 3am, that nobody would ever hear.
+
+The **text** travels in `Notification.context`, never the audio: that field is a
+`JSONField` and raw WAV does not survive the round trip — the same reason
+`SoundChannel` already re-resolved a task's alarm on delivery rather than
+carrying bytes. So synthesis happens in the worker, and `SoundChannel` now has
+two sources, `alarm_task_id` and `speech_text`.
+
+Groq because it needs no local model, no GPU and no audio toolchain on the Pi:
+HTTPS in, WAV out — WAV specifically because the host's `aplay` plays it
+natively and an MP3 would mean installing a decoder for one path. With
+`NORA_HOME_TTS_PROVIDER=none` (the default) the house still boots and still
+reminds; only spoken alarms go quiet.
+
+**And the feature surfaced a bug worth more than itself.** `env()` reads the real
+environment, Compose passes every `.env` value into the container, so on the Pi
+`./nora test` inherited the live `NORA_HOME_TTS_PROVIDER=groq` and **made a
+billable API call to synthesise speech inside a unit test.** It surfaced only
+because two tests asserting the *degraded* path started failing with genuine WAV
+bytes — had they been written any looser it would have been silent, and the suite
+would have been quietly spending money and requiring network on every run, which
+is not the thing CLAUDE.md §2.4 promises. `config/settings/test.py` now forces
+the TTS, Groq and Anthropic credentials off rather than leaving them unset, and a
+test asserts it so the next key added cannot reopen the hole.
+
+927 tests green.
+
+---
+
 ## Next
 
 1. **Living background: check it holds up over hours, not just minutes.**

@@ -36,15 +36,44 @@ reach anyone"* answerable.
 | `slack` | Bot token **or** webhook. The token path gives DMs and threading, which the escalation ladder is designed around |
 | `inapp` | The bell in the topbar, over websocket |
 | `display` | A banner across the top of the 24" wall |
+| `sound` | The 24"'s speakers. **The one channel that cannot deliver anything itself** — the speakers are on the host and Django is in a container, so it writes audio to a bind-mounted cache and a systemd timer on the host runs `aplay`. Two sources: a Todo task's alarm, or spoken text (below) |
 | `console` | Development |
 
 **Quiet hours** are per-member and are ignored at `alert` and above. Duplicate
 suppression is by `dedupe_key` within a window, so a sweep that runs every five
 minutes does not produce twelve messages an hour.
 
+## Speech
+
+The house has a voice. `nora_home.notifications.speech.speak("...")` is the whole
+published surface; Todo's `alarm_kind="speech"` goes through the same provider.
+
+**Two layers, deliberately.** `tts.py` is the vendor — `TTSProvider.synthesize()`
+takes text and returns `(bytes, content_type)`, and nothing above it knows which
+company produced the audio. `speech.py` is the house: it checks quiet hours,
+queues through `notify_house(channels=["sound"])`, and lets `SoundChannel` get the
+audio to the host. An app that reached for the provider directly would get correct
+audio, inside a container, at 3am, that nobody would ever hear.
+
+**The text travels in `Notification.context`, never the audio.** `context` is a
+`JSONField` and raw WAV does not survive the round trip, so synthesis happens on
+*delivery*, in the worker — the same reason a task's alarm is re-resolved there
+rather than at queue time.
+
+Story 38 shipped only the seam and a stub that raised, on purpose. Groq's Orpheus
+was wired in on 2026-08-07 and **no call site changed**, which is what the seam was
+for. It was chosen because it needs no local model, no GPU and no audio toolchain
+on the Pi — HTTPS in, WAV out, and WAV specifically because the host's `aplay`
+plays it natively.
+
+With `NORA_HOME_TTS_PROVIDER=none` (the shipped default) the house still boots and
+still runs every reminder; only *spoken* alarms go quiet. A missing key is a
+configuration gap, never an exception on the reminder path.
+
 ## What it offers other apps
 
-`nora_home.notifications.api` — `notify()`, `notify_house()`. Signatures in
+`nora_home.notifications.api` — `notify()`, `notify_house()`.
+`nora_home.notifications.speech` — `speak()`. Signatures in
 [`../cross-functionality.md`](../cross-functionality.md#notifications).
 
 Rendered manually in the sidebar as **Alerts** with an unread badge, above the
@@ -67,6 +96,10 @@ registry-driven nav loop.
 | `NORA_HOME_SLACK_ESCALATION_CHANNEL` | Where the top of the ladder shouts |
 | `NORA_HOME_NOTIFICATION_CHANNELS` | Which channels exist at all |
 | `NORA_HOME_NOTIFICATION_DEFAULT_CHANNELS` | Default set, currently `inapp,slack` |
+| `NORA_HOME_TTS_PROVIDER` | `none` (default) or `groq` — whether the house has a voice |
+| `NORA_HOME_GROQ_API_KEY` | Groq key, for the `groq` provider |
+| `NORA_HOME_TTS_MODEL` / `NORA_HOME_TTS_VOICE` | Orpheus model and voice (`hannah` by default; also autumn, diana, austin, daniel, troy) |
+| `NORA_HOME_ALARM_CACHE_DIR` | Where `SoundChannel` writes; must match the bind mount in `docker-compose.yml` |
 
 Secrets live in `.env` only, never the database — a shared dump carries no tokens.
 
