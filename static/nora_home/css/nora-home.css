@@ -114,14 +114,32 @@ html { -webkit-text-size-adjust: 100%; }
  * (see nora_home/ui/middleware.py). Nothing here needs to know which case
  * it is; both produce the same attribute.
  */
-/* Was 160%, which measured too large on the real 24" once the clipping above
-   was fixed: at 160% a 1920px screen has only ~1200px of usable CSS width, so
-   the page is laid out as if it were a small laptop and then magnified — the
-   greeting alone ran the full width and the dashboard fitted one tile per row.
-   135% keeps 3-metre legibility while leaving the wall enough columns to still
-   look like a dashboard. One number, deliberately: everything else in this file
-   is rem and follows it. */
-html[data-surface="wall"] { font-size: 135%; }
+/* Viewport-relative, not a fixed percentage — and the distinction is the whole
+   point of this rule.
+ *
+ * What decides how big text needs to be is its *angular* size: physical height
+ * divided by viewing distance. CSS can measure neither. It cannot ask how many
+ * inches the panel is, and it certainly cannot ask how far away someone is
+ * standing — this 24" wall and somebody's laptop both report 1920x1080. That is
+ * why the surface has to be declared server-side rather than sniffed:
+ * `data-surface="wall"` is really a statement about *distance* (~3 metres),
+ * which is the input no media query can provide.
+ *
+ * Given the distance, the best available proxy for physical size is the
+ * viewport fraction. `vw` makes type a constant *share of the screen* rather
+ * than a constant number of pixels, so the same physical wall stays legible if
+ * it is ever driven at a different resolution — 1.125vw is 21.6px at 1920
+ * (the 135% that measured right on the real screen) and stays proportionate at
+ * 1280 or 2560 without anyone re-tuning a magic number.
+ *
+ * The clamp is the guard rail: an unexpectedly narrow display cannot shrink the
+ * house below readable, and an ultrawide cannot blow it up to absurdity. px
+ * here rather than rem, deliberately — this rule *defines* what a rem is, and
+ * on the root element rem would resolve against the initial font size, which
+ * reads like a circular definition even though it is legal.
+ *
+ * Everything else in this file is rem and follows from this one declaration. */
+html[data-surface="wall"] { font-size: clamp(18px, 1.125vw, 28px); }
 
 body {
   margin: 0;

@@ -271,15 +271,31 @@ def _stylesheet() -> str:
     return css.read_text(encoding="utf-8")
 
 
-def test_the_wall_still_has_a_type_scale():
+def test_the_wall_scales_with_its_viewport_not_a_fixed_number():
+    """`vw`, so the same physical wall stays legible at a different resolution.
+    A bare percentage here would be pinned to this house's 1080p panel."""
     import re
 
-    match = re.search(r'html\[data-surface="wall"\]\s*\{\s*font-size:\s*(\d+)%',
-                      _stylesheet())
+    match = re.search(
+        r'html\[data-surface="wall"\]\s*\{\s*font-size:\s*clamp\(\s*'
+        r'(\d+(?:\.\d+)?)px\s*,\s*(\d+(?:\.\d+)?)vw\s*,\s*(\d+(?:\.\d+)?)px\s*\)',
+        _stylesheet())
 
-    assert match, "the wall's root font-size rule is gone"
-    assert 110 <= int(match.group(1)) <= 200, (
-        "a wall scale outside 110-200% is either pointless or unusable at 1920x1080")
+    assert match, "the wall's root font-size is no longer a clamped vw scale"
+    floor, vw, ceiling = (float(g) for g in match.groups())
+
+    # The clamp is the guard rail: an odd display must not be able to make the
+    # house unreadable in either direction.
+    assert 16 <= floor < ceiling <= 32, f"clamp bounds {floor}-{ceiling}px are wrong"
+
+    # And at the wall this house actually has, it must land where it was
+    # measured. 1.125vw on 1920 is 21.6px — the 135% that read correctly from
+    # three metres once the sidebar stopped clipping.
+    at_1920 = vw / 100 * 1920
+    assert floor <= at_1920 <= ceiling, "the clamp excludes this house's own wall"
+    assert 20 <= at_1920 <= 23, (
+        f"{vw}vw resolves to {at_1920}px on the 24\" wall; 21.6px was what "
+        f"measured right on the real screen")
 
 
 @pytest.mark.parametrize("token", ["--nav-width", "--tap"])
