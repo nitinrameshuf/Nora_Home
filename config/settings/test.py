@@ -67,6 +67,26 @@ STORAGES = {
 NORA_HOME_MONGO_ENABLED = False
 NORA_HOME_S3_ENABLED = False
 
+# ── No credentials, ever ──────────────────────────────────────────────────────
+# These are forced off rather than merely left unset, because `env()` reads the
+# real environment and Compose passes every value in `.env` straight into the
+# container — so on the Pi, `./nora test` inherits the house's live keys.
+#
+# That is not hypothetical. When Groq TTS was wired in (2026-08-07) the suite
+# picked up NORA_HOME_TTS_PROVIDER=groq from the running house and **made a real,
+# billable API call to synthesise speech inside a unit test**, which surfaced
+# only because two tests asserting the degraded path started failing with actual
+# WAV bytes. A suite that reaches the internet is no longer the thing CLAUDE.md
+# §2.4 promises — "no containers, no network, and no credentials ... the same
+# answer on a laptop and on the Pi."
+#
+# Anything testing a real provider mocks the vendor and sets the provider on the
+# `settings` fixture per-test (see tests/test_speech.py).
+NORA_HOME_TTS_PROVIDER = "none"
+NORA_HOME_GROQ_API_KEY = ""
+ANTHROPIC_API_KEY = ""
+NORA_HOME_AI_ENABLED = False
+
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + NORA_HOME_PLATFORM_APPS + NORA_HOME_HOUSE_APPS
 
 # Fast and deterministic: the real hasher is deliberately slow, and no test here

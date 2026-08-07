@@ -316,3 +316,25 @@ def test_a_task_alarm_still_takes_precedence(settings, tmp_path, member):
     result = SoundChannel().send(notification, delivery)
 
     assert result["ref"].endswith(".wav")
+
+
+# ── the suite must not reach the internet ────────────────────────────────────
+
+def test_the_test_settings_have_no_real_credentials(settings):
+    """`env()` reads the real environment and Compose passes every `.env` value
+    into the container, so on the Pi `./nora test` inherits the house's live
+    keys unless the test settings force them off.
+
+    This is not hypothetical: wiring Groq in (2026-08-07) made the suite pick up
+    the running house's provider and **make a real, billable API call inside a
+    unit test**. It surfaced only because two tests asserting the degraded path
+    started failing with genuine WAV bytes — had they been written any looser it
+    would have been silent, and the suite would have been quietly spending money
+    and requiring network on every run.
+    """
+    from django.conf import settings as django_settings
+
+    assert django_settings.NORA_HOME_TTS_PROVIDER == "none"
+    assert django_settings.NORA_HOME_GROQ_API_KEY == ""
+    assert django_settings.ANTHROPIC_API_KEY == ""
+    assert django_settings.NORA_HOME_AI_ENABLED is False
