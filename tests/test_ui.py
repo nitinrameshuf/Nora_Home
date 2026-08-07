@@ -92,11 +92,38 @@ def test_the_same_page_opened_directly_is_not_the_wall(rf):
     assert surface["surface"] == "desktop"
 
 
-def test_an_iframe_from_somewhere_else_is_not_the_wall(rf):
+def test_a_link_clicked_inside_the_walls_iframe_is_still_the_wall(rf):
+    """The regression test for the bug that made the 24" quietly stop being
+    the 24".
+
+    Only the *first* hop carries the shell page as its referer. Navigate by
+    clicking the sidebar on the wall itself and the referer is the previous
+    app page, so the shell-prefix check above misses and the surface fell all
+    the way back to User-Agent — laptop type scale, wall zoom dropped, no
+    error anywhere. Same-origin plus Sec-Fetch-Dest is what covers this hop.
+    """
+    surface = _surface(rf, "/todo/calendar/", MAC, HTTP_SEC_FETCH_DEST="iframe",
+                       HTTP_REFERER="http://testserver/todo/")
+
+    assert surface["surface"] == "wall"
+
+
+def test_an_iframe_from_another_origin_is_not_the_wall(rf):
     """Sec-Fetch-Dest alone is not enough — anything could iframe the app.
-    Only a referer naming the wall's own page counts."""
+    Same-origin is the line: a page elsewhere embedding the house either sends
+    no Referer or sends its own, and fails this either way."""
     surface = _surface(rf, "/home/", MAC, HTTP_SEC_FETCH_DEST="iframe",
-                       HTTP_REFERER="https://nora.home/some/other/page/")
+                       HTTP_REFERER="https://somewhere-else.example/page/")
+
+    assert surface["surface"] == "desktop"
+
+
+def test_an_ordinary_click_on_a_laptop_is_not_the_wall(rf):
+    """The guard on the rule above. Every normal navigation also carries a
+    same-origin referer — it is Sec-Fetch-Dest that says "this document is in
+    a frame", and without it nothing here may promote a page to the wall."""
+    surface = _surface(rf, "/todo/", MAC, HTTP_SEC_FETCH_DEST="document",
+                       HTTP_REFERER="http://testserver/home/")
 
     assert surface["surface"] == "desktop"
 
@@ -281,6 +308,20 @@ def test_the_type_scale_is_not_in_the_stylesheet():
 
     assert not re.search(r'html\[data-surface="wall"\]\s*\{\s*font-size', _stylesheet()), (
         "the wall's type scale is back in CSS — see the comment on that rule")
+
+
+def test_the_wall_only_hides_the_cursor_while_it_is_idle():
+    """The wall hid its pointer outright until 2026-08-07, left over from when
+    it was a passive ambient view. It is the real app now and gets clicked
+    directly, so every `cursor: none` has to stay behind the idle flag that
+    nh-app.js clears on the first mouse move — otherwise the sidebar has to be
+    aimed at blind."""
+    import re
+
+    for selector, body in re.findall(r"([^{}]*)\{([^{}]*)\}", _stylesheet()):
+        if re.search(r"cursor:\s*none", body):
+            assert 'data-cursor="idle"' in selector, (
+                f"`cursor: none` is not gated on the idle flag: {selector.strip()!r}")
 
 
 def test_the_screens_launch_unscaled_so_the_setting_is_the_only_scale():

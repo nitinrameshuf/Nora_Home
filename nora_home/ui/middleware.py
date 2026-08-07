@@ -20,6 +20,7 @@ force a mode from the settings page.
 from __future__ import annotations
 
 import re
+from urllib.parse import urlsplit
 
 WALL_PREFIXES = ("/home/displays/wall",)
 KIOSK_PREFIXES = ("/home/displays/kiosk",)
@@ -52,16 +53,35 @@ class SurfaceMiddleware:
         # (nora_home.displays.views.wall / wall_live.html) — every page that
         # iframe loads needs to know it is rendering for the wall too, not
         # just the shell page above matched by WALL_PREFIXES. Sec-Fetch-Dest
-        # is the browser's own signal that a document was loaded as an
-        # iframe (sent by every Chromium this house's screens run); the
-        # Referer, sent because SECURE_REFERRER_POLICY is "same-origin" and
-        # this is one, confirms the parent was specifically the wall's own
-        # page rather than someone iframing the app for an unrelated reason.
-        # Stateless on purpose — no cookie, so a stray visit to the app from
+        # is the browser's own signal that a document was loaded as an iframe
+        # (sent by every Chromium this house's screens run).
+        #
+        # Two referers count, and the second is not an optimisation:
+        #
+        #   1. the wall's own shell page — the first hop, when the kiosk
+        #      points the iframe somewhere;
+        #   2. *any* same-origin page — every hop after that.
+        #
+        # Only (1) existed until 2026-08-07, and it silently broke the moment
+        # anyone used the 24" directly: clicking a link inside the iframe
+        # leaves the previous *app* page as the referer, not the shell, so the
+        # wall fell back to User-Agent and rendered at laptop scale with the
+        # wall's zoom dropped. Nothing errored; the screen just quietly
+        # stopped being the wall until the kiosk drove it again.
+        #
+        # (2) is safe because it is same-origin: a page on another origin
+        # embedding this app either sends no Referer or sends its own, and
+        # fails the host check either way. What it does trust is that nothing
+        # in this house iframes an app page except the wall — true today, and
+        # worth remembering before adding a second iframe anywhere.
+        #
+        # Still stateless — no cookie — so a stray visit to the app from
         # someone's own laptop is never at risk of getting stuck "wall"-sized.
         if request.META.get("HTTP_SEC_FETCH_DEST") == "iframe":
             referer = request.META.get("HTTP_REFERER", "")
             if any(prefix in referer for prefix in WALL_PREFIXES):
+                return "wall"
+            if self._is_same_origin(request, referer):
                 return "wall"
 
         override = request.COOKIES.get("nh_surface", "")
@@ -74,3 +94,21 @@ class SurfaceMiddleware:
         if TABLET_RE.search(agent):
             return "tablet"
         return "desktop"
+
+    @staticmethod
+    def _is_same_origin(request, referer: str) -> bool:
+        """Does `referer` point back at this same house?
+
+        Hostname only, deliberately ignoring the port: the wall's Chromium is
+        launched at `https://localhost:443/...` while the browser drops the
+        default port from both the Host header and the Referer it sends, so a
+        strict netloc comparison would be comparing values the browser has
+        already normalised differently at each end.
+        """
+        if not referer:
+            return False
+        try:
+            host = urlsplit(referer).hostname
+        except ValueError:      # a malformed Referer is not worth an error page
+            return False
+        return bool(host) and host == request.get_host().partition(":")[0]

@@ -115,11 +115,40 @@
     });
   }
 
+  /* The 24" wall hides its mouse pointer while the mouse is still, and brings
+     it back the moment anyone moves it — the behaviour every video player and
+     signage screen has, and for the same reason. The wall is an always-on
+     display, so a pointer parked mid-screen sits there for days; but it is
+     also the real app now, driven directly from its own sidebar, so hiding it
+     permanently means clicking blind.
+
+     Starts idle rather than visible: a wall nobody has touched should never
+     show a pointer, and there is no mousemove to hide it again if it did. */
+  function wireWallCursor() {
+    var root = document.documentElement;
+    if (root.getAttribute("data-surface") !== "wall") return;
+
+    var timer = null;
+    function wake() {
+      root.removeAttribute("data-cursor");
+      window.clearTimeout(timer);
+      timer = window.setTimeout(function () {
+        root.setAttribute("data-cursor", "idle");
+      }, 4000);
+    }
+
+    ["mousemove", "mousedown", "wheel"].forEach(function (event) {
+      document.addEventListener(event, wake, { passive: true });
+    });
+    root.setAttribute("data-cursor", "idle");
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     wireTicks();
     wireCardRefresh();
     wireTheme();
     wireProfileMenu();
+    wireWallCursor();
   });
 
   window.NoraHome = window.NoraHome || {};

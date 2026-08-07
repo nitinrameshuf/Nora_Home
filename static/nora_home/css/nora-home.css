@@ -564,7 +564,24 @@ th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; colo
   --bg: #05070a;
   --bg-raised: #0c1219;
 }
-:root[data-surface="wall"] body { overflow: hidden; cursor: none; }
+:root[data-surface="wall"] body { overflow: hidden; }
+
+/* The wall hides its mouse pointer only while the mouse is *still*.
+
+   It used to hide it outright, from back when the wall was a passive ambient
+   view nobody pointed at. It is now the real app and gets driven directly, so
+   a permanently invisible pointer means aiming at the sidebar blind. It also
+   hid inconsistently: `cursor: none` here is inherited, and inherited values
+   lose to any directly-declared one — including the browser's own `a:link
+   { cursor: pointer }` — so the pointer vanished over the body and reappeared
+   over every link, which reads as a rendering fault rather than a choice.
+
+   `body *` because of that same cascade: the links and .card rules that set
+   `cursor: pointer` have to be beaten explicitly, not merely inherited past.
+   Set by wireWallCursor() in nh-app.js, which starts idle so an untouched
+   wall never shows a pointer at all. */
+:root[data-surface="wall"][data-cursor="idle"] body,
+:root[data-surface="wall"][data-cursor="idle"] body * { cursor: none; }
 :root[data-surface="wall"] .card { padding: 1.6rem 1.8rem; }
 
 /* Night mode dims the wall without turning it off, so the room stays dark but
