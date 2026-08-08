@@ -28,15 +28,22 @@ nora_home/ui/zoom.py for the measurements behind the choice.
   <title>{% block title %}{% if page_title %}{{ page_title }} · {% endif %}{{ house_name }}{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'nora_home/css/nora-home.css' %}">
   <link rel="stylesheet" href="{% static 'nora_home/css/nh-scene.css' %}">
-  {% comment %}
-  Last, so it wins on equal specificity. nh.css is the compiled design system
-  (assets/css/nora.css); the sheets above are the old hand-written ones it is
-  progressively replacing. Loading it here restyles every page at once, because
-  its components are named for the classes the templates already use.
-  {% endcomment %}
-  <link rel="stylesheet" href="{% static 'nora_home/css/nh.css' %}">
   {% if nh_bot_enabled %}<link rel="stylesheet" href="{% static 'nora_home/css/nh-bot.css' %}">{% endif %}
   {% block head %}{% endblock %}
+  {% comment %}
+  nh.css is the compiled design system (assets/css/nora.css); everything above
+  is the old hand-written CSS it is progressively replacing. Its components are
+  named for the classes the templates already use, so loading it restyles every
+  page at once rather than needing 30 templates rewritten.
+
+  It goes AFTER `block head`, not before, and that placement is the whole
+  reason it works: per-page sheets (todo.css, dashboard.css) are injected into
+  that block, so anything declared before it loads *earlier* and loses on equal
+  specificity. Placed above, this file changed the shell and nothing inside
+  Todo — the priority colours and the ragged column heights both survived
+  because todo.css was simply the later sheet.
+  {% endcomment %}
+  <link rel="stylesheet" href="{% static 'nora_home/css/nh.css' %}">
 </head>
 <body>
 {% block body %}
