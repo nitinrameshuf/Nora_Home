@@ -168,8 +168,19 @@
 
 /* ── 5. components ──────────────────────────────────────────────────────────
    Named for what the templates already call them. A house app should build
-   from these; see docs/Main_App/DEVELOPMENT.md. */
-@layer components {
+   from these; see docs/Main_App/DEVELOPMENT.md.
+
+   Deliberately NOT inside @layer components, and this is the whole reason the
+   first deploy of this file changed almost nothing: an unlayered rule beats a
+   layered one no matter how specific either is, and the old sheets are all
+   unlayered. Layered .btn-primary lost to unlayered .btn-primary — same
+   selector, same specificity, loaded earlier — because the cascade compares
+   layers before it ever looks at specificity.
+
+   The cost is that Tailwind's utilities (in @layer utilities) now lose to
+   these components. That is tolerable while templates use component classes
+   and not utilities, and it goes away the moment the old sheets are deleted
+   and this can move back into a layer. */
 
   /* — shell — */
   .shell {
@@ -467,4 +478,28 @@
     border-radius: var(--radius);
     backdrop-filter: none;
   }
-}
+
+/* ── 6. out-specifying the old sheet ────────────────────────────────────────
+   These exist only because a more specific rule survives in the sheets this
+   one is replacing. Each should be deleted along with its counterpart. */
+
+/* .todo-col--p1 .todo-col__head b is (0,3,0) and colours the heading itself
+   red/amber/blue. The stripe above already carries severity, and a heading
+   that changes colour per column reads as a spreadsheet. */
+.todo-col--p1 .todo-col__head b,
+.todo-col--p2 .todo-col__head b,
+.todo-col--p3 .todo-col__head b,
+.todo-col--archived .todo-col__head b { color: var(--nh-ink); }
+
+/* align-items:start is why four columns of different heights floated in empty
+   space instead of reading as one board. */
+.todo-board { align-items: stretch; }
+
+/* ── 7. the living background ───────────────────────────────────────────────
+   Retired from the app chrome. It was the strongest "hobby project" signal,
+   and content sitting on a moving gradient is exactly what made the panes
+   muddy and inconsistent. The idea is not thrown away — its home is the
+   kiosk's idle screen, which has nothing to read and is where it is charming
+   rather than in the way. The stylesheet and the endpoint stay so that screen
+   can use them. */
+.nh-scene, .nh-bot { display: none !important; }
