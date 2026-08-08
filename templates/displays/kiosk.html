@@ -23,6 +23,12 @@ viewport under the 860px breakpoint while media queries still report 1024.
   <link rel="stylesheet" href="{% static 'nora_home/css/nora-home.css' %}">
   <link rel="stylesheet" href="{% static 'nora_home/css/displays.css' %}">
   <link rel="stylesheet" href="{% static 'nora_home/css/nh-scene.css' %}">
+  {% comment %}
+  Last, and needed explicitly: this template does not extend base.html, so it
+  never picked up the design system and kept rendering the old chrome while
+  every other page had moved on.
+  {% endcomment %}
+  <link rel="stylesheet" href="{% static 'nora_home/css/nh.css' %}">
 </head>
 <body class="kiosk" data-target-display="{{ target }}">
   {% include "partials/scene.html" %}
