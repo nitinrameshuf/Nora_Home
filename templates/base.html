@@ -28,6 +28,13 @@ nora_home/ui/zoom.py for the measurements behind the choice.
   <title>{% block title %}{% if page_title %}{{ page_title }} · {% endif %}{{ house_name }}{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'nora_home/css/nora-home.css' %}">
   <link rel="stylesheet" href="{% static 'nora_home/css/nh-scene.css' %}">
+  {% comment %}
+  Last, so it wins on equal specificity. nh.css is the compiled design system
+  (assets/css/nora.css); the sheets above are the old hand-written ones it is
+  progressively replacing. Loading it here restyles every page at once, because
+  its components are named for the classes the templates already use.
+  {% endcomment %}
+  <link rel="stylesheet" href="{% static 'nora_home/css/nh.css' %}">
   {% if nh_bot_enabled %}<link rel="stylesheet" href="{% static 'nora_home/css/nh-bot.css' %}">{% endif %}
   {% block head %}{% endblock %}
 </head>

@@ -31,6 +31,26 @@ from nora_home.notifications.tts import (
 pytestmark = pytest.mark.django_db
 
 
+@pytest.fixture(autouse=True)
+def never_quiet():
+    """Pin the quiet-hours window open for the whole module.
+
+    `speak()` consults `notifications.quiet_hours`, whose default is 22:00-07:00
+    — so without this, every test that expects a Notification to exist passes by
+    day and fails by night, which is exactly what happened: three failures at
+    00:05 and none at 10:05. A suite must give the same answer at every hour.
+
+    start == end evaluates as `start <= hour < start`, which is never true, so
+    this reads as "never quiet" rather than as a magic pair of numbers. The two
+    tests that are *about* quiet hours set their own window afterwards and win,
+    since they run after fixtures.
+    """
+    from nora_home.core.settings_store import set_setting
+
+    set_setting("notifications.quiet_hours", {"start": 0, "end": 0},
+                app_slug="notifications")
+
+
 @pytest.fixture
 def fake_groq(monkeypatch):
     """A stand-in for the `groq` package, injected into `sys.modules`.
