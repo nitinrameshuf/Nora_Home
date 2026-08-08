@@ -21,9 +21,21 @@ from __future__ import annotations
 from django.core.management.base import BaseCommand
 
 from nora_home.dashboard.models import DashboardLayout
-from nora_home.dashboard.widgets import load_widget
+from nora_home.dashboard.widgets import all_widgets
 
 GRID_COLUMNS = 12
+
+
+def _sizes_by_key() -> dict[str, tuple[int, int]]:
+    """key -> declared default_size, for every widget the house can show.
+
+    Keys stored in a layout are `<app_slug>.<ClassName>` (Widget.key), which is
+    NOT a dotted import path — passing one to load_widget() resolves nothing and
+    silently leaves every layout untouched. Built from `all_widgets("admin")` so
+    the map covers widgets restricted to admins too; this command re-packs
+    geometry and never decides who may see what.
+    """
+    return {w.key: tuple(w.default_size) for w in all_widgets("admin")}
 
 
 class Command(BaseCommand):
@@ -36,20 +48,21 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         dry = options["dry_run"]
         touched = 0
+        sizes = _sizes_by_key()
 
         for layout in DashboardLayout.objects.all():
             packed, x, y, row_height = [], 0, 0, 0
 
             for item in layout.items:
                 key = item.get("key", "")
-                widget = load_widget(key)
-                if widget is None:
+                size = sizes.get(key)
+                if size is None:
                     # Unresolvable key: keep it verbatim so reinstalling the
                     # app restores the tile where it was.
                     packed.append(dict(item))
                     continue
 
-                w, h = widget.default_size
+                w, h = size
                 w = max(1, min(int(w), GRID_COLUMNS))
 
                 # Wrap to the next band once this one is full. Bands are as tall
