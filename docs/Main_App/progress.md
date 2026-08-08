@@ -1001,106 +1001,70 @@ kiosk's, not just reasoned through from the CSS.
 
 ---
 
-## 2026-08-03 — invisible text across most of the app, and a 500 on Status
+## 2026-08-03 — text illegible on the living background: five attempts, and what each one taught
 
-"Pull the visuals for different screens... text is not legible in many
-cases, in either theme." Asked for exactly that rather than guessing: SSH'd
-onto the Pi, screenshotted Home, Tracker, Alerts, Integrations, Status, App
-Directory, and the 404 page, in both themes.
+Reported as "text is not legible in many cases, in either theme." Screenshotted
+Home, Tracker, Alerts, Integrations, Status, App Directory and the 404 in both
+themes on the Pi rather than guessing.
 
-**Root cause**: `.card`/`.sidebar`/`.kiosk-tile` got the living background's
-glass-pane retrofit; nothing else did. Tracker's item list, Alerts' empty
-state, App Directory's table, every `.empty`/`.dash__empty` box, and the
-404/500 pages all put text directly on the scene, using `--text`/
-`--text-faint` colours chosen for contrast against a flat `--bg` — not
-against a sky that swings from near-black at night to near-white at noon,
-*independently* of the light/dark theme toggle. Light theme's dark text
-vanishes on a night sky; dark theme's light text vanishes on a bright one —
-exactly "either theme," and exactly why only some pages looked broken (only
-the ones with real cards were spared).
+**Root cause.** The glass-pane retrofit had only ever been applied to
+`.card`/`.sidebar`/`.kiosk-tile`. Everything else — Tracker's item list, Alerts'
+empty state, the App Directory table, every `.empty` box, the 404/500 pages —
+put text straight onto the scene, using colours chosen for contrast against a
+flat `--bg`. The sky swings from near-black at night to near-white at noon
+*independently of the theme toggle*, so light theme's dark text vanished on a
+night sky and dark theme's light text vanished on a bright one. That is exactly
+why it was "either theme", and why only pages with real cards were spared.
 
-**Fix**: a theme-aware text-shadow halo on `.main` (dark shadow behind light
-text, light shadow behind dark text) as a baseline for anything sitting
-directly on the scene — harmless where a card's own glass already carries
-the contrast. `.empty`/`.dash__empty` also got an actual background, since a
-dashed box with invisible text inside reads as broken chrome, not
-atmosphere.
+**The four failed attempts, each for a different reason:**
 
-**Also found chasing why Status looked blank**: it wasn't contrast there,
-it was a 500. `probe.host|default:probe.reason` in
-`templates/core/system_status.html` raises a hard `VariableDoesNotExist`
-whenever a service dict has neither key (database, disk, cpu_temperature
-never have `host` or `reason`) — Django's `default` filter tolerates a
-missing *primary* variable but not a missing *argument*. Nobody had hit this
-because prior verification passes checked `/home/health/`'s JSON directly,
-never the templated page. Switched to `{% if %}`/`{% elif %}`.
+1. **Blurred `text-shadow` halo.** `--text-faint` (`#62778c`, identical in both
+   themes) sits close to the sky's mid-blues in *both* hue and luminosity, so a
+   soft glow smeared into haze instead of forming an edge.
+2. **`-webkit-text-stroke`.** Looked right in a screenshot, ghosted on the
+   physical 24" and worse on a retina MacBook. **Both attempts shared a flaw
+   only visible once named:** a blurred shadow and a sub-pixel stroke are font
+   *rendering* tricks, and how they rasterise depends on each device's hinting
+   and pixel density — which a stylesheet does not control. Two renderers, two
+   different calls on the same sub-pixel instruction.
+3. **Opaque-ish backdrop on `.main`** (plain alpha compositing, nothing to do
+   with rasterisation). Right mechanism, but tuned against one sky state:
+   `.sidebar` was never bumped at all and stayed worst.
+4. **Flat ~0.86 alpha on every pane.** Guaranteed contrast at the worst-case
+   bright noon sky — and undid the entire premise of the design, since night's
+   already-dark sky got the same near-opaque scrim as noon's. Keying
+   `--pane-alpha` to `data-daypart` fixed that and was **still rejected**, on
+   the grounds that opacity is the wrong lever however it is tuned: it fights
+   the scene to make text readable. Reverted to `28ccbbd`.
 
-Verified by re-screenshotting the exact same pages after deploying — Status
-now renders (200, not 500) with every probe visible, and the previously
-invisible text (Tracker's "Clear for today.", Alerts' "Nothing to report",
-Integrations' lede paragraph, the 404 page's body copy) is legible in both
-themes. This also closes the "light theme on real hardware" item that was
-sitting in Next below — checked directly this session, not assumed.
+**The fix.** Opacity dropped to a low constant 0.2–0.3 (theme-tinted, not
+daypart-tinted) purely as a frosted-glass effect via a shared `--pane-rgb`;
+legibility moved entirely into the text colour tokens.
 
-**Turned out incomplete**: told directly — "looks good in the bright
-theme, but still illegible in the dark theme... so blurry too" — with
-screenshots of both. The blurred `text-shadow` alone wasn't enough:
-`--text-faint` (`#62778c`, identical in both themes) sits close in hue
-*and* luminosity to the sky's own medium-blue tones at a lot of scroll
-positions, so a wide soft glow just smeared into haze around the letters
-rather than an edge — legible in light theme, where the white glow had
-real headroom against that blue, not in dark, where the darker glow was
-too close in value to read as a rim rather than a smudge. Switched the
-primary mechanism to `-webkit-text-stroke`, which traces the actual glyph
-outline (vector, not blurred) so it stays a hard edge regardless of how
-close the fill and the sky happen to be — reset back to nothing inside
-`.card`/`.dash-tile`, where it isn't needed. Verified with a fresh
-screenshot of the same Displays page that was reported broken.
+**Two things only screenshots could have found.**
 
-**Also reported in the same message, unrelated**: the kiosk always showed
-"offline, last heartbeat never" on that same Displays page, despite being
-on and in active use. Root cause: `KioskConsumer` (`nora_home/displays/
-consumers.py`) never registered a `Display` row or handled a heartbeat at
-all — only `DisplayConsumer` (the wall) did both. `kiosk.js` never even
-sent one. Both were genuinely missing, not misconfigured — mirrored the
-wall's registration/heartbeat pattern onto the kiosk consumer and added the
-matching 30s heartbeat send to `kiosk.js`. Verified two ways: querying
-`Display.objects.all()` directly on the Pi after a fresh reconnect (both
-rows `online=True` with matching timestamps) and a screenshot of the same
-Displays page.
+`.dash-tile` was never using any of it. It is built by `dashboard.js`
+(`Dash.add()`), not a template, and never carried `class="card"` — so the home
+dashboard had been sitting on flat opaque `var(--bg-raised)` since the
+background was introduced, through this entire multi-day thread. The Displays
+page (plain `.card` divs) always looked right; the most-viewed page in the house
+never did.
 
----
+And the rule was simpler than the maths said. Eight (theme × daypart) text
+rules were derived from compositing maths; screenshotting all eight showed three
+wrong. Re-derived from the pixels instead: at low fixed opacity the *theme's own
+tint* dominates every daypart — dark glass never gets bright enough to want dark
+text, light glass never dark enough to want light. Daypart is irrelevant to text
+colour. Eight rules became two.
 
-## 2026-08-03 — the text-stroke fix didn't hold up either; replaced the technique
-
-The `-webkit-text-stroke` fix above looked right in a screenshot and was
-still wrong: reported back with photos of the actual 24" panel and a
-MacBook M4's retina screen, both showing the same ghosted/blurry text the
-very first fix had — worse on retina than on the 24".
-
-Both attempts so far had the same flaw in common, just not named yet: a
-blurred `text-shadow` and a sub-pixel `-webkit-text-stroke` are both font
-*rendering* tricks — how they rasterize depends on each device's own font
-hinting and pixel density, which a stylesheet doesn't actually control.
-That's exactly why a fix could look fine in one screenshot and ghost on
-real hardware, worse again at a different DPI: two different renderers
-making two different calls about the same sub-pixel instruction.
-
-Stopped trying to out-tune a technique that was never going to be
-reliable, and used the one mechanism already *proven* to look identical
-everywhere: `.card`'s real, opaque-ish backdrop — plain alpha compositing,
-nothing to do with font rasterization. Moved that onto `.main` itself
-(`background: rgba(...); backdrop-filter: blur(...)`, same as `.card`),
-removing the stroke/shadow entirely. First pass (0.4 opacity) left the
-lede paragraph a little soft specifically where it crossed a bright
-cloud — not a rendering artifact this time, just needed more margin at
-the brightest end of the sky's range — bumped to ~0.5, matching `.card`'s
-own strength. Verified at both 1x and a simulated 2x (retina) scale via
-Playwright before touching the Pi, then confirmed on the physical wall
-itself. Less open sky shows through outside the cards now, a real
-trade-off, but every test so far — both scales, both themes, the actual
-hardware — reads clean, with nothing left riding on how a given screen
-happens to rasterize a stroke.
+**Two unrelated bugs found in the same pass.** Status was returning a 500, not a
+contrast problem: `probe.host|default:probe.reason` raises `VariableDoesNotExist`
+when a dict has neither key, because Django's `default` filter tolerates a
+missing *primary* variable but not a missing *argument*. Prior passes had only
+ever checked `/home/health/`'s JSON, never the templated page. And the kiosk
+always showed "offline, last heartbeat never" because `KioskConsumer` never
+registered a `Display` row or handled a heartbeat, and `kiosk.js` never sent one
+— only the wall's consumer did either. Both mirrored from the wall.
 
 ---
 
@@ -1133,115 +1097,6 @@ hardware behavior are not pytest's job and still need what this session
 did by hand.
 
 ---
-
-## 2026-08-03 — the legibility fix from earlier today didn't hold, root-caused for real this time
-
-Reported again, with fresh screenshots: the Displays page's intro paragraph
-and the sidebar's nav labels were still barely legible in dark theme, and
-asked separately to make dark theme the default.
-
-Checked the default first, directly rather than assuming: `data-theme="dark"`
-is already hardcoded on `<html>` in every template (`base.html`, `kiosk.html`,
-`wall.html`, `wall_live.html`, `accounts/switch.html`), and there is no
-`prefers-color-scheme` media query anywhere in the CSS overriding it — only
-`:root[data-theme="light"]` token overrides. A fresh Playwright context with
-no stored preference confirmed this renders dark. Dark already was the
-default; that wasn't the bug.
-
-The real bug: the backdrop-opacity fix from earlier today's session
-(`.main` at 0.54 alpha, `.sidebar`/`.card`/`.kiosk-*` never touched at all,
-still 0.34/0.46) was tuned against one sky state and never checked against a
-bright one. Worked through the compositing math: at 0.34-0.56 alpha, a
-bright overcast midday sky blended through pulls the composited background
-up into the same mid-grey range as `--text-faint`/`--text-dim`, collapsing
-contrast to near zero — worst on `.sidebar`, which had the lowest opacity of
-all of them and was never bumped in the first fix, matching exactly which
-element the new screenshot flagged as worst.
-
-Fixed two ways together: pushed `.sidebar`/`.card`/`.main`/`.kiosk-header`/
-`.kiosk-tile`/`.kiosk-controls`/`.empty` to ~0.86 alpha (both themes) so the
-composited backdrop stays reliably dark, or paper-white in light theme,
-regardless of daypart/weather instead of chasing one sky state; and
-brightened `--text-dim`/`--text-faint` one token step in dark theme
-(`ink-300`/`ink-400` → `ink-200`/`ink-300`) for real contrast margin against
-that now-darker backdrop, since the user named this specifically as a text
-color issue, not just a background one.
-
-Verified against the live Pi over HTTPS with Playwright, not just reasoned
-through: logged in passwordlessly, screenshotted `/home/displays/` in a
-fresh context (confirming dark-by-default) — the exact page from the report,
-now legible throughout — and again with `data-theme` forced to light,
-confirming the same fix holds there too.
-
-## 2026-08-03 — that fix overcorrected: the living background stopped living
-
-Reported immediately after the above shipped: "thematic elements are barely
-visible now, know? day, night, seasons?" Pushing every glass pane to one
-flat ~0.86 alpha did guarantee contrast at the worst-case sky (bright
-overcast noon), but it applied that same near-opaque scrim at every daypart
-— night's already-dark sky got exactly as much scrim as noon's near-white
-one, so the panes looked identical regardless of season, time of day, or
-weather. That's the entire premise of "Almanac" undone by its own
-legibility fix.
-
-Replaced the flat alpha with `--pane-alpha`, a custom property keyed off
-the `data-daypart` attribute the scene system already sets server-side:
-night ~0.34 (its sky is already close to black, barely needs a scrim),
-dusk/dawn ~0.58-0.68, noon ~0.84 (still the worst case, still needs the
-most). Light theme mirrors this inverted, since there the problem is a dark
-night sky under a near-white pane rather than a bright day sky under a
-near-black one. `.sidebar`/`.card`/`.main`/`.kiosk-*`/`.empty` all read
-from the same variable, so there's one dial instead of duplicated numbers
-per selector.
-
-Verified on the live Pi by forcing `data-daypart` through all four values
-via Playwright and screenshotting each: noon and night are both fully
-legible, and now visibly distinct again — noon a cool charcoal-blue, night
-deep navy with the profile icon showing its moon, dusk warm plum/rose,
-dawn terracotta.
-
-**Reverted, same day.** Told directly: opacity is the wrong lever
-regardless of how it's tuned — flat or daypart-scaled, it's still fighting
-the scene to make text readable, and the fix should live in text color
-instead. `nh-scene.css`/`nora-home.css` rolled back to `28ccbbd` (the
-state before today's opacity work): `.main` alone at its earlier flat
-0.54/0.56 alpha, `.sidebar`/`.card`/`.kiosk-*` back to 0.34/0.46, and
-`--text-dim`/`--text-faint` back to `ink-300`/`ink-400`. Deployed and
-confirmed the revert landed clean. The actual fix — legibility via text
-color rather than backdrop opacity — is still open; not yet designed.
-
-## 2026-08-03 — the real fix: low fixed opacity, plus a bug nobody had found
-
-Designed the text-color approach: opacity on `.sidebar`/`.card`/`.main`/
-`.kiosk-*`/`.empty` dropped to a low, constant 0.2-0.3 (theme-tinted, not
-daypart-tinted) purely as a frosted-glass effect, sharing a new `--pane-rgb`
-variable. Legibility moved entirely to `--text`/`--text-dim`/`--text-faint`,
-first keyed to both `data-theme` and `data-daypart` (eight combinations,
-reasoned from the compositing math) before any of it touched real pixels.
-
-Screenshotting that first version on the live Pi surfaced something the
-math had missed entirely: the Home dashboard's tiles were *never* using any
-of this. `.dash-tile` is built by `dashboard.js` (`Dash.add()`), not the
-template, and never carried `class="card"` — so it had been sitting on a
-flat, opaque `var(--bg-raised)` from `dashboard.css` since the "Almanac"
-background was first introduced, regardless of anything tuned in
-`nh-scene.css` across this entire multi-day thread. The Displays page
-(plain `.card` divs, no dash-tile) always looked right; the actual
-most-viewed page in the house never did. Fixed by giving `.dash-tile` the
-same `--pane-rgb` glass treatment as `.card`.
-
-With the tiles actually translucent, re-screenshotted all eight
-(theme, daypart) pairs for real and three didn't match the predicted
-bucket — dark theme at noon and dawn, light theme at night — all three
-landing in a medium-brightness zone the compositing math called wrong.
-Rather than patch three cells, re-derived the rule from the screenshots
-themselves: at this low, fixed opacity the *theme's own tint* dominates
-every daypart — dark theme's near-black glass never gets bright enough to
-need dark text, light theme's near-white glass never gets dark enough to
-need light text. Daypart doesn't matter for text color at all; simplified
-from eight rules to two. Verified the full grid again after the
-simplification — all eight combinations legible, atmosphere visible
-throughout, no opacity increase anywhere.
 
 ## 2026-08-03 — sidebar simplified: Habits and Tracker out of nav, House/System/You merged
 
@@ -3409,26 +3264,7 @@ that no `cursor: none` escapes the idle flag).
 
 ---
 
-## Next
-
-1. **Living background: check it holds up over hours, not just minutes.**
-   Verified live on the physical wall and kiosk the same session (real
-   weather, both screens in sync, no regression to the kiosk remote-control
-   flow), and the light theme is now checked on real hardware too (see the
-   invisible-text fix above) — what's still not checked is continuous motion
-   (rain/snow/stars, backdrop blur on every pane) holding up over hours
-   rather than minutes on a Pi 5 driving two Chromium instances at once.
-2. **Story 24 — house maintenance**, the first real app, which is what proves the
-   skeleton was worth building. Unblocked since Story 27 (2026-08-02). Its
-   `requirements.md` needs the user's approval before any code is written — the
-   first of DEVELOPMENT.md's three gates. It also has to settle what replaces
-   the tracker's `register_trackable()` for house apps, which Story 40 removed
-   without a successor (see the 2026-08-06 entry).
-3. **Story 41 — Todo: tests, docs, deploy.** Unblocked by Story 40. Browser
-   tests through `./nora qa`, and the deployed-and-observed pass that moves the
-   whole phase from built to Complete.
-
-### 2026-08-08 — the UI rebuilt on a real design system
+## 2026-08-08 — the UI rebuilt on a real design system
 
 Asked why the UI looked "hackey and not professional". The useful part of the
 answer was measurable, not aesthetic. Across 2,615 lines of CSS: `clamp()` used
