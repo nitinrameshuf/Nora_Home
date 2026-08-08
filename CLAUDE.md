@@ -145,8 +145,8 @@ reference implementation.
   against MySQL** — Reporting, settings and the system board all rendered
   there, the priority-mix query and the system-task dedupe both checked against
   MySQL specifically, and each seen on the physical wall and kiosk through the
-  kiosk's own navigation. Stories 28–34 and 42 have still only run against
-  SQLite on a laptop. **Story 41 (Tests, Docs & Deploy) closed the phase**:
+  kiosk's own navigation. Stories 28-34, 41 and 42 are marked Complete on the
+  dashboard as of 2026-08-08. **Story 41 (Tests, Docs & Deploy) closed the phase**:
   87 new browser tests (`tests/qa/test_todo_qa.py`), and found two real
   accessibility bugs the whole session's worth of unit tests never could —
   see the dated entry below.
@@ -235,10 +235,8 @@ facts are here.
      `todo_no_approver_on_recurring`, which this file previously listed as
      unproven. Stories 35 and 36 were additionally exercised *as an app* against
      MySQL (Reporting, settings, the system board, the priority-mix query, the
-     system-task dedupe, and all seen on the physical wall and kiosk). Stories
-     28–34 and 42 have still only had their **behaviour** run against SQLite on
-     a laptop — the tables exist on MySQL, but nobody has completed, skipped,
-     approved or escalated anything there.
+     system-task dedupe, and all seen on the physical wall and kiosk). Stories 28-34, 41 and 42 were marked
+     Complete on 2026-08-08.
    - **Check `git status` before doing anything.** Stories were committed
      periodically through the session, not after every single one — confirm
      what has and hasn't landed before assuming the working tree matches HEAD.
