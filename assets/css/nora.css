@@ -495,6 +495,28 @@
    space instead of reading as one board. */
 .todo-board { align-items: stretch; }
 
+/* ── 6b. the chart palette ──────────────────────────────────────────────────
+   nh-charts.js builds the ECharts house theme by reading CSS custom properties
+   off :root — but the *old* names, which the old sheet still defines. Left
+   alone, every chart in the house keeps the previous palette and sits wrong on
+   the new surfaces, which is what made the year heatmap render pale-on-dark.
+
+   Aliasing is deliberate over editing the JS: charts then follow data-theme
+   for free, because a custom property's computed value has var() already
+   substituted by the time getComputedStyle sees it. */
+:root {
+  --accent:     var(--nh-accent);
+  --info:       var(--nh-calm);
+  --ok:         var(--nh-ok);
+  --warn:       var(--nh-warn);
+  --alert:      var(--nh-crit);
+  --text:       var(--nh-ink);
+  --text-faint: var(--nh-faint);
+  --border:     var(--nh-line);
+  --bg:         var(--nh-ground);
+  --bg-raised:  var(--nh-surface);
+}
+
 /* ── 7. the living background ───────────────────────────────────────────────
    Retired from the app chrome. It was the strongest "hobby project" signal,
    and content sitting on a moving gradient is exactly what made the panes
