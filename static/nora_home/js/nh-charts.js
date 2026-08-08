@@ -77,6 +77,18 @@
         textStyle: { color: text, fontSize: 12 },
         axisPointer: { lineStyle: { color: line }, crossStyle: { color: line } }
       },
+      /* ECharts defaults a calendar cell to solid white. Nothing themed it,
+         because merge() below only ever handled axes, tooltip, legend and
+         grid — so the year heatmap rendered as a bright white grid on a dark
+         wall, which looked like a broken widget rather than a styled one. */
+      calendar: {
+        itemStyle: { color: cssVar("--bg-raised", "#141b24"),
+                     borderColor: line, borderWidth: 2 },
+        dayLabel: { color: dim, fontSize: 10 },
+        monthLabel: { color: dim, fontSize: 10 },
+        yearLabel: { color: dim },
+        splitLine: { show: false }
+      },
       bar: { itemStyle: { borderRadius: [3, 3, 0, 0] } },
       line: { smooth: true, symbolSize: 6, lineStyle: { width: 2 } }
     };
@@ -116,8 +128,19 @@
       merged.yAxis = applyAxis(option.yAxis, theme);
     }
 
+    /* Same shape as the axes above: house styling underneath, anything the
+       widget set on top. itemStyle is merged one level deeper because the
+       heatmap widget sets only borderWidth there and would otherwise drop the
+       cell and border colours the theme supplies. */
+    if (option.calendar) {
+      merged.calendar = Object.assign({}, theme.calendar, option.calendar, {
+        itemStyle: Object.assign({}, theme.calendar.itemStyle,
+                                 option.calendar.itemStyle || {})
+      });
+    }
+
     Object.keys(option).forEach(function (key) {
-      if (["xAxis", "yAxis", "tooltip", "legend", "grid"].indexOf(key) === -1) {
+      if (["xAxis", "yAxis", "tooltip", "legend", "grid", "calendar"].indexOf(key) === -1) {
         merged[key] = option[key];
       }
     });
