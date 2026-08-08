@@ -51,12 +51,12 @@ WORKDIR /build
 COPY package.json ./
 RUN npm install --no-audit --no-fund
 
-COPY static/nora_home/css/src/ static/nora_home/css/src/
+COPY assets/ assets/
 COPY templates/ templates/
 COPY nora_home/ nora_home/
 COPY houseapps/ houseapps/
 RUN mkdir -p /out && npx tailwindcss \
-        -i static/nora_home/css/src/nora.css \
+        -i assets/css/nora.css \
         -o /out/nh.css --minify
 
 # ── final ─────────────────────────────────────────────────────────────────────

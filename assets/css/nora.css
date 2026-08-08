@@ -1,6 +1,13 @@
 /*
- * The house stylesheet — source. Compiled to ../nora-home.css by the `css`
- * stage in the Dockerfile; the runtime image never carries Node.
+ * The house stylesheet — source. Compiled to static/nora_home/css/nh.css by
+ * the `css` stage in the Dockerfile; the runtime image never carries Node.
+ *
+ * This lives in assets/ and NOT under static/, which is not cosmetic: anything
+ * under static/ is walked by collectstatic, and ManifestStaticFilesStorage
+ * rewrites url()/@import targets in every .css it finds. It reads the
+ * `@import "tailwindcss"` below as a relative file path, fails to find it, and
+ * takes the whole web container down on boot with MissingFileError. A build
+ * input is not a static asset.
  *
  * Three layers, in order:
  *
@@ -24,9 +31,9 @@
 /* Django templates live outside this file's tree, so Tailwind is told where to
    look. houseapps/ is included so a family app present at build time gets its
    utilities compiled like anything else. */
-@source "../../../../templates";
-@source "../../../../nora_home";
-@source "../../../../houseapps";
+@source "../../templates";
+@source "../../nora_home";
+@source "../../houseapps";
 
 /* ── 1. runtime tokens ──────────────────────────────────────────────────────
    Dark is the default because the house is on all day and the 24" sits in a
