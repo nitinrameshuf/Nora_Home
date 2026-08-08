@@ -52,6 +52,18 @@ class Command(BaseCommand):
 
         for layout in DashboardLayout.objects.all():
             packed, x, y, row_height = [], 0, 0, 0
+            band: list[dict] = []          # tiles sharing the current row
+
+            def close_band(band=None, height=0):
+                """Give every tile in a finished band the band's height.
+
+                Packing alone only aligns the *tops* of a row. Widgets declare
+                different heights (HouseVitals asks for 5, DiskWidget for 2), so
+                without this the bottoms stay ragged — which is most of what
+                reads as "the widgets are oddly sized".
+                """
+                for tile in band or []:
+                    tile["h"] = height
 
             for item in layout.items:
                 key = item.get("key", "")
@@ -69,12 +81,17 @@ class Command(BaseCommand):
                 # as their tallest tile, which is what stops the next row
                 # starting halfway up the previous one.
                 if x + w > GRID_COLUMNS:
+                    close_band(band, row_height)
                     y += row_height
-                    x, row_height = 0, 0
+                    x, row_height, band = 0, 0, []
 
-                packed.append({"key": key, "x": x, "y": y, "w": w, "h": int(h)})
+                tile = {"key": key, "x": x, "y": y, "w": w, "h": int(h)}
+                packed.append(tile)
+                band.append(tile)
                 x += w
                 row_height = max(row_height, int(h))
+
+            close_band(band, row_height)   # the last band never wraps
 
             if packed == layout.items:
                 continue
