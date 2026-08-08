@@ -909,17 +909,7 @@ and what it deliberately does not cover, is in [`testing.md`](testing.md).
 
 ## What not to do
 
-- **Do not import another app's models.** Signals and published APIs only.
-- **Do not read `os.environ`.** Add a setting to `config/settings/base.py`.
-- **Do not put secrets in the database.** `.env`, always.
-- **Do not build your own reminders, cron, or notification queue.**
 - **Do not call the Anthropic SDK directly.** Use `nora_home.ai.client`.
-- **Do not add npm, a bundler, or a frontend framework.** The Pi does not build
-  assets, and the house must work offline.
-- **Do not use `queue="platform"` or `queue="alerts"`.** Those are the platform's.
-- **Do not let a failure cascade.** Catch, log, degrade. The wall display must
-  survive your app having a bad day.
-- **Do not edit an applied migration.** Add a new one.
 
 ---
 

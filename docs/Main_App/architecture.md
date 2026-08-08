@@ -118,19 +118,6 @@ graph LR
 
 ### Queue separation
 
-> **This does not currently hold, checked 2026-08-08.** The five queues are real
-> and every task is routed to one — but the entrypoint runs a *single* worker
-> across all of them (`--queues=platform,alerts,apps,ai,integrations
-> --concurrency=3`). Queues only isolate when separate workers consume them, so
-> a runaway house-app task occupies a slot an escalation then waits for, which
-> is the exact failure this design exists to prevent. `task_acks_late` and
-> `task_reject_on_worker_lost` are also unset, so a task in flight when a worker
-> dies is lost — the durability RabbitMQ was chosen over Redis *for* is not
-> switched on.
->
-> The fix is worker topology, not a different broker: one worker on
-> `platform,alerts`, another on `apps,ai,integrations`. **Not done yet.**
-
 Five queues, so one app's slowness is never another's outage:
 
 | Queue | Carries | Who may use it |
@@ -140,6 +127,14 @@ Five queues, so one app's slowness is never another's outage:
 | `apps` | Everything a house app schedules | **House apps — use this** |
 | `ai` | Claude calls | Anyone |
 | `integrations` | Outside-world polling | Integration framework |
+
+**The isolation is not switched on yet.** The entrypoint runs a *single* worker
+across all five (`--queues=platform,alerts,apps,ai,integrations
+--concurrency=3`), and queues only isolate when separate workers consume them —
+so a runaway house-app task occupies a slot an escalation then waits for.
+`task_acks_late` and `task_reject_on_worker_lost` are also unset, so a task in
+flight when a worker dies is lost. The fix is worker topology, not a different
+broker: one worker on `platform,alerts`, another on `apps,ai,integrations`.
 
 ---
 

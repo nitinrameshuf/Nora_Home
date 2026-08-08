@@ -36,10 +36,7 @@ about.
 
 ## The test suite
 
-`pytest`, at `tests/`, one file per subsystem. ~500 tests, ~2 seconds. It needs no
-containers, no network, and no credentials: SQLite, the in-memory channel layer,
-eager Celery. That is deliberate — it must give the same answer on a laptop and on
-the Pi, rather than depending on which services happen to be up.
+`pytest`, at `tests/`, one file per subsystem. ~500 tests, ~2 seconds.
 
 ```bash
 ./scripts/run-tests.sh              # everything
@@ -116,42 +113,6 @@ The report is built to never lie about a green run: a collection error (a bad
 import, a missing dependency) reports `BROKEN`, and any other non-zero exit
 reports `NOT OK` rather than `ALL PASSED`. If it says `ALL PASSED`, it ran.
 
-### The suite must give the same answer at any hour
-
-Two clock dependencies were found on 2026-08-06 by running the suite at 00:07
-and getting 11 failures that had passed at 19:35. Both were the *tests* being
-vague, not the code being wrong:
-
-- A task with a due date and no due time falls due at the **09:00 default
-  hour**, so nothing due "today" has come due yet before breakfast.
-- Sound follows the house-wide **quiet-hours window, 22:00–07:00**, so
-  `queue_alarm()` correctly refuses to make a noise at midnight.
-
-Both fixtures now state their assumption rather than inheriting the default.
-**If you write a test that depends on what time it is, pin the time.** The
-cheapest way to prove a failure is clock-shaped is to re-run with the timezone
-moved — `DJANGO_TIME_ZONE=Asia/Dhaka ./nora test <file>` — which is how these
-were diagnosed before anything was changed.
-
-**It happened again on 2026-08-08**, in `test_speech.py`, written *after* the
-above was already documented: three tests called `speak()` and then asserted on
-the Notification it creates, without pinning quiet hours — so they passed by day
-and failed at 00:05. The file already contained two tests that got it right,
-setting the window to `{"start": 0, "end": 24}` with a comment naming this exact
-trap; the three new ones simply did not copy it.
-
-So the rule needs to be structural, not remembered. **Prefer an autouse fixture
-that pins the clock-sensitive setting for the whole module**, and let the few
-tests that are genuinely *about* that setting override it — fixtures run first,
-so a test setting its own window still wins. `test_speech.py::never_quiet` is the
-pattern. Note the inverse of the window above: `start == end` evaluates as
-`start <= hour < start`, which is never true, so `{"start": 0, "end": 0}` reads
-as "never quiet" without being a magic pair of numbers.
-
-Verify across timezones, not just one — `America/New_York`, `Asia/Dhaka`, `UTC`
-and `Pacific/Auckland` between them cover a wide enough spread of local hours
-that a surviving dependency shows up.
-
 ### What is covered
 
 | File | Covers |
@@ -179,9 +140,6 @@ that a surviving dependency shows up.
 - **Say why in the docstring when the why is not obvious** — particularly when the
   test exists because something already broke once. Several here are regression
   guards for bugs in `progress.md`, and the docstring is where that link lives.
-- **Never depend on the wall clock.** Fixed dates, and `make_member` disables quiet
-  hours by default. A routing test written without that passed all day and failed
-  at 22:00 — it was caught while writing this suite, not in production.
 - **Nothing reaches the network.** Integrations are driven with recorded payloads.
 
 ---
@@ -291,13 +249,6 @@ Be honest about these rather than implying the suite proves more than it does.
   dependencies the house degrades without.
 - **No websocket consumer tests.** The bus is tested, and the message-type contract
   between kiosk and wall is tested, but the consumers themselves are not driven.
-- ~~**`example_habit` imports `nora_home.tracker.models` directly**~~ — **fixed
-  2026-08-04**, and both apps have since been deleted (Story 28, Story 40). The
-  helpers it needed were added to that app's own API
-  (`streak_for`, `is_done_today`, `history_for`, `completion_stats`,
-  `trackable_for`), all five files use them, and `KNOWN_MODEL_IMPORT_DEBT` is
-  empty. Confirmed by copying the reference app into a scratch app and running the
-  contract tests against it — clean.
 - **None of it says anything about how the house looks.** See "What this cannot
   catch" below. A green suite is not a deployed, seen-working feature.
 

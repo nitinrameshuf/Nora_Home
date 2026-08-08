@@ -70,9 +70,6 @@ The dashboard is the main view — the same shape as the Nora robot project's, s
 read alike. Its story data lives in one `STORIES` object near the bottom of the file;
 edit that and the cards follow.
 
-`CLAUDE.md` stays at the repo root, not in `docs/`: it is loaded automatically from
-there by agent tooling, and moving it would stop it being read.
-
 **Status vocabulary**, used identically in the dashboard and `progress.md`:
 
 | Status | Means |
@@ -96,22 +93,6 @@ value is that family members (and their AI agents) can drop new apps into it and
 scheduling, reminders, escalation, notifications, AI, charts, storage, and a place on
 the wall display for free.
 
-> ### Nora Home is not Nora
->
-> **Nora is the family's robot** — a separate machine with its own repository, its own
-> voice, and its own project. **Nora Home is the house system** it lives alongside.
->
-> Never use the bare name "Nora" for anything in this codebase. The package is
-> `nora_home`, settings are `NORA_HOME_*`, CSS classes are `nh-`, the JS global is
-> `NoraHome`, and the character on screen is *the home bot*. The AI system prompt
-> states the distinction explicitly, because that is the one place the confusion
-> would actually mislead a person.
->
-> The two systems meet at **exactly two touchpoints**, both in
-> [`docs/Main_App/architecture.md`](docs/Main_App/architecture.md) § Boundaries: the robot may
-> `POST /api/homebot/say/` to put a line on the house screens, and it may read the
-> MCP tools with a scoped device token. Nothing else is shared.
-
 Planned apps — none of them built yet, all of them the *point*:
 
 | Area | Examples |
@@ -129,10 +110,7 @@ and act as the second half of the Nora robot.
 
 ### Hardware
 - Raspberry Pi 5, 8GB. Everything runs here in Docker.
-- **HDMI-0 → 24" 1080p display**, always on, mounted on a wall. **Treated as an
-  ordinary monitor at desk distance** — this line used to say "read from ~3
-  metres", which nobody had asked for and which drove the whole five-surface
-  type-scale machinery. See §4, "The 24" is a monitor."
+- **HDMI-0 → 24" 1080p display**, always on, wall-mounted, desk viewing distance.
 - **HDMI-1 → 10.1" touchscreen**, kiosk mode. It is the *remote control* for the 24".
 - Phones, iPads, and laptops hit the same server over the LAN.
 
@@ -147,10 +125,6 @@ reference implementation.
 - Django project (`config/`) with dev / prod / pi settings layered on a shared base.
 - **App registry** (`nora/core/registry.py`) — `NoraAppConfig` gives an app its URL
   mount, nav entry, dashboard widgets, wall panels, and MCP presence.
-- ~~**Tracker + escalation** (`nora/tracker/`)~~ — **deleted 2026-08-06 (Story
-  40).** Todo absorbed it: scheduling and the escalation ladder carried over
-  rather than being rewritten, and `EscalationPolicy` is now a Todo model,
-  moved with its rows and primary keys intact. See §4's migration decision.
 - **House log** (`/home/log/`, `nora/core/houselog.py`) — audit events, health
   transitions, notifications, failed deliveries, integration failures and
   telemetry breaches on one filterable timeline. Built on one rule: **record
@@ -204,164 +178,36 @@ reference implementation.
   `todo/0007_escalationpolicy_from_tracker`, is worth knowing about before you
   touch Todo's history — see §4.
 
-### Verified working
-Run end to end on Windows against SQLite: `manage.py check` clean, migrations
-applied, `bootstrap_home --demo` seeds three members and three habits, the server
-boots under Daphne, login works, the home dashboard renders list/stat/chart widgets,
-the widget picker adds and removes tiles, and the app registry mounts
-`houseapps.example_habit` at `/habits/`.
+### Verified on the hardware
 
-### Verified on the Pi (2026-08-02)
-`docker compose up -d --build` runs on real hardware against MySQL, Mongo,
-RabbitMQ, and MinIO — `web` healthy, migrations and `bootstrap_home` running
-automatically on container start. The wall (24" monitor) and kiosk (10.1"
-touchscreen) both render correctly in Chromium kiosk mode on their own physical
-screens, authenticated through the passwordless switcher, showing real app
-content — not just code-reviewed, actually seen working. This needed one
-environment-level fix beyond the app itself: Raspberry Pi OS's default desktop
-session (`labwc`, Wayland) refuses to let anything reposition a fullscreen
-window once placed, so both kiosk instances always ended up on the same
-monitor regardless of any flag or tool. Switched the Pi to the X11 session
-(`sudo raspi-config nonint do_wayland W1`, then reboot) instead, which honors
-window placement the way `scripts/lib/provision-pi.sh` was written assuming, and the
-whole problem disappeared. `provision-pi.sh` now does this switch itself (§6 in
-the script), so a reinstalled or fresh Pi picks it up automatically — no need
-to rediscover it. One side effect worth knowing: Raspberry Pi Connect's
-screen-share (Remote Desktop) only works on Wayland (it's built on `wayvnc`),
-so it stops working once this switch happens — Pi Connect's Remote Shell and
-plain SSH are unaffected and are the way to manage the Pi from here on.
-Celery `worker`/`beat` came up but showed `unhealthy` in the one snapshot
-taken — not dug into further, worth checking next time someone's on the Pi.
+Everything below has been *seen working* on the Pi, not just reviewed. The
+narrative of how each was found lives in
+[`docs/Main_App/progress.md`](docs/Main_App/progress.md); only the standing
+facts are here.
 
-### Verified on the Pi (2026-08-02, continued) — kiosk-as-remote-control
-The 24" was repointed from the old passive ambient view to the real app, and the
-10.1" kiosk was rebuilt into a context-sensitive remote for it — tapping an app's
-tile switches what the wall shows *and* swaps the kiosk to that app's own control
-buttons, declared per app via `nora_kiosk_controls` (see `docs/Main_App/DEVELOPMENT.md`). A
-Settings tab was added, its first setting a schedule for powering both screens off
-overnight. Deployed and checked directly against the physical hardware, not just
-`manage.py check`: simulated touch (`xdotool`) confirmed tapping a kiosk tile
-navigates the wall's iframe and switches the kiosk's own screen, and that the
-kiosk's back button returns to its main menu without disturbing the wall. Three
-real, hardware-only bugs surfaced this way: DPMS (`xset dpms force`) blanks *both*
-screens together, not just the wall — confirmed with the user and accepted, since
-per-output control (`xrandr --off`) had already proven fragile earlier in this
-project; the Pi's `.env` still carried `.env.example`'s placeholder timezone
-(`America/Los_Angeles` instead of the real `America/New_York`), now fixed and
-auto-detected by `provision-pi.sh` via `timedatectl`; and a CSS specificity bug
-(`.kiosk-grid` vs. the browser's own `[hidden]` rule) let a tapped app's control
-screen render on top of the main menu instead of replacing it, fixed in
-`static/nora_home/css/displays.css`.
-
-Re-verified the same day on a second, freshly-imaged Pi (the first one's
-reliability had become suspect) — `provision-pi.sh` hit **zero bugs** end to
-end, confirming the fixes above actually held. One new thing found:
-auto-login's "Unlock Login Keyring" dialog can appear more than once — a
-second `gcr-prompter` instance blocked the kiosk's Chromium independently of
-the one blocking the wall's — and genuinely blocks unattended boot until
-dismissed by hand (`xdotool key Escape` after `windowactivate` worked;
-clicking the Cancel button did not, twice). Traced to Chromium itself: a
-fresh profile reaches for the OS keyring for its own credential storage,
-and since auto-login never unlocks that keyring, the reach always fails and
-prompts. Fixed with `--password-store=basic` on every launch script, which
-stops Chromium from touching the keyring at all — confirmed with a genuinely
-fresh throwaway profile producing no dialog and no `gcr-prompter` process,
-not just reasoned through.
-
-Two more one-click gaps closed the same day: `scripts/lib/pre-provision-pi.sh`
-(run once via `sudo`, grants a validated `NOPASSWD` sudoers entry so nothing
-in `provision-pi.sh` prompts for a password afterward — no new capability, the
-account already has full sudo, this just removes the prompt), and the
-Docker-install step no longer exits asking for a manual re-login — it
-re-execs itself under `sg docker -c` and continues in the same run instead
-(logic reviewed carefully, not yet re-tested against a genuinely fresh
-install since Docker was already present on the last Pi provisioned).
-
-The kiosk's touchscreen also needed two fixes, both now resolved: the panel's
-touch USB cable wasn't making a working connection to this Pi (swapping the
-cable fixed it — confirmed by `lsusb`/`/proc/bus/input/devices` showing
-nothing at all beforehand), and once detected, X11 needed an explicit
-`TransformationMatrix` to map its touch coordinates onto just the kiosk's own
-output — otherwise touch scales across the whole combined multi-monitor
-desktop, since (unlike Wayland) X11 has no automatic per-output touch
-mapping. Both are now permanent: `provision-pi.sh` §8 writes
-`/etc/X11/xorg.conf.d/40-touchscreen.conf` itself.
-
-### Verified on the Pi (2026-08-03) — HTTPS on :443, via nginx
-Asked directly ("why is it on :8000, what would it take to put it on 443")
-led to a real change, not just an explanation: an `nginx` service now
-terminates TLS and redirects plain HTTP; Daphne's `:8000` is no longer
-published to the host at all. Self-signed cert
-(`scripts/gen-self-signed-cert.sh` — no public domain exists for a house LAN
-to get a CA-issued one), chosen explicitly over `mkcert`/a private CA or a
-real domain with Let's Encrypt when asked directly. See §4's decision entry
-for the one real trap this surfaced: `SECURE_HSTS_SECONDS` had to be
-force-disabled in `config/settings/pi.py` regardless of `SECURE_SSL_REDIRECT`
-— HSTS plus a self-signed cert would have permanently locked every browser
-out the first time the cert ever changed.
-
-Verified first locally via Docker Compose against real `config.settings.pi`
-settings (HTTPS 200 with no HSTS header, HTTP→HTTPS redirect, `:8000`
-unreachable from the host, `manage.py check --deploy` showing only the two
-already-understood deliberate warnings, `/ws/` upgrades correctly relayed to
-Channels) — a local bug surfaced and fixed there
-(`gen-self-signed-cert.sh`'s `hostname -I` call aborting the script under
-`set -e` on platforms where that flag doesn't exist), before ever touching
-the Pi. Then deployed for real: cert generated on the Pi itself (its SAN
-picked up the Pi's actual LAN IP automatically), the same checks repeated
-directly on the Pi, and — the part that actually mattered — the wall and
-kiosk's Chromium launch scripts, generated by an *earlier* run of
-`provision-pi.sh` before this change, still pointed at the old
-`http://localhost:8000` and had to be regenerated (re-running just
-`provision-pi.sh`'s `launch_script()` function, not the whole script, to avoid
-sudo prompts over a non-interactive session for already-satisfied steps).
-Killed and relaunched both Chromium instances by exact PID, then
-screenshotted both physical screens: the wall shows the real authenticated
-`/home/` dashboard — House vitals widget included, confirming the whole
-stack survived the restart, not just nginx — and the kiosk shows its normal
-button grid, connected, with no certificate-warning interstitial on either
-screen (`--ignore-certificate-errors` did its job).
-
-### Verified on the Pi (2026-08-07) — the observe pass, and the house's voice
-
-**Story 41 was marked Complete before this was done, and that was wrong.** The
-87 browser tests were real and green, but §13.4 is explicit that the phase is
-not Complete until four things are *seen*, and none of them had been. The
-database said so plainly when finally asked: **0 live tasks, 0 sound deliveries
-ever.** The chime heard on 2026-08-06 was the host script invoked by hand, not
-an alarm that travelled the pipeline. Recording this because the failure was not
-the testing — it was calling something Complete on the strength of a green suite,
-which is the exact distinction CLAUDE.md's status vocabulary exists to prevent.
-
-All four are now observed, with three real tasks seeded on the family's board
-(bins, water filter, boiler service — kept, not test litter):
-
-| §13.4 | How it was seen |
-|---|---|
-| The board renders on the wall | Screenshotted: "Take the bins out" in red as overdue, all three cards, real due dates |
-| The wall shows the chosen widgets | Same screenshot — Due next, Open now ("3 open"), the year heatmap, House health |
-| A reminder arrives in Slack | `send_reminders()` run for real: `Delivery(channel="slack", status="sent")` |
-| An alarm plays through the 24"'s speakers | A **speech** alarm: Groq synthesised it, `SoundChannel` wrote `36.wav` to the bind mount, the host timer played it |
-
-**The house can speak** (`nora_home/notifications/speech.py`). Story 38 shipped
-the TTS seam and a stub that raised, deliberately leaving the vendor unchosen;
-Groq's Orpheus went in behind it on 2026-08-07 and **no call site changed** —
-which is what the seam was for. `speak("...")` is the published API, callable
-from any app; Todo's `alarm_kind="speech"` uses the same provider. Chosen because
-it needs no local model, GPU or audio toolchain on the Pi: HTTPS in, WAV out, and
-WAV specifically because the host's `aplay` plays it natively. With
-`NORA_HOME_TTS_PROVIDER=none` the house still boots and still reminds — only
-spoken alarms go quiet.
-
-**One real bug this surfaced, worth more than the feature.** `env()` reads the
-real environment and Compose passes every `.env` value into the container, so on
-the Pi `./nora test` inherited the live `NORA_HOME_TTS_PROVIDER=groq` and **made
-a billable API call inside a unit test.** It showed up only because two tests
-asserting the degraded path started failing with genuine WAV bytes; written any
-looser it would have been silent, and the suite would have been quietly spending
-money and requiring network on every run. `config/settings/test.py` now forces
-the TTS, Groq and Anthropic keys off rather than leaving them unset, and a test
-asserts it so the next credential added cannot reopen the hole.
+- **The stack runs on real hardware** against MySQL, Mongo, RabbitMQ and MinIO.
+  All nine services healthy; migrations and `bootstrap_home` run on container
+  start.
+- **Both screens render on their own physical monitors** in Chromium kiosk mode.
+  This needs the **X11 session, not Wayland** — `labwc` refuses to place a
+  fullscreen window on a chosen output, so both instances landed on the same
+  screen. `provision-pi.sh` §6 makes the switch itself. Side effect: Pi Connect's
+  screen-share only works on Wayland, so it stops working; SSH is unaffected.
+- **The kiosk drives the wall.** Tapping an app tile navigates the wall's iframe
+  and swaps the kiosk to that app's own controls; back returns without
+  disturbing the wall.
+- **Touch is mapped to the kiosk's own output** via an X11
+  `TransformationMatrix` (`provision-pi.sh` §8) — X11 has no automatic
+  per-output touch mapping, so without it touch scales across the whole desktop.
+- **HTTPS on :443 via nginx**, self-signed. Daphne's `:8000` is not published.
+- **Chromium launches with `--password-store=basic`** — a fresh profile
+  otherwise reaches for the OS keyring, which auto-login never unlocks, and the
+  prompt blocks unattended boot.
+- **The house speaks.** Groq synthesises, `SoundChannel` writes a WAV to the
+  bind mount, a host timer plays it. Reminders arrive in Slack as DMs with
+  working Done/Skip buttons.
+- **The design system is live on both screens** (2026-08-08), with 943 tests
+  green.
 
 ### Not done — pick up here
 0. **Phase 7 — Todo, complete (15 of 15).** What is left is not another Todo
@@ -403,9 +249,8 @@ asserts it so the next credential added cannot reopen the hole.
      now. What it should look like on Todo's model is a design question, so it
      belongs to Story 24's requirements gate rather than to a deletion story.
      Do not invent one without agreeing the shape first.
-1. **Design system: replaced 2026-08-08. "Almanac" is retired from the app
-   chrome.** The house now builds its stylesheet with **Tailwind v4**, compiled
-   in the Dockerfile's `css` stage (Node lives there only; the runtime image
+1. **Design system.** The house builds its stylesheet with **Tailwind v4**,
+   compiled in the Dockerfile's `css` stage (Node lives there only; the runtime image
    never sees npm). Source is `assets/css/nora.css` — **not** under `static/`,
    because `collectstatic` rewrites `@import` in anything it walks and takes
    the web container down on boot. Output is `static/nora_home/css/nh.css`,
@@ -422,9 +267,9 @@ asserts it so the next credential added cannot reopen the hole.
    the new one has not reached. **They are meant to be deleted**, and until they
    are, the component layer has to stay *unlayered* to beat them — see §4.
 
-   ~~The living background is wired into `base.html` and `kiosk.html`~~ — it is
-   now hidden in both. `nh-scene.css`, `nora_home/ui/scene.py` and the
-   Open-Meteo integration all remain, for the kiosk's idle screen. Verified locally (real fetch
+   The living background is hidden in the app chrome. `nh-scene.css`,
+   `nora_home/ui/scene.py` and the Open-Meteo integration remain, for the
+   kiosk's idle screen. Verified locally (real fetch
    against the live API, `manage.py check` clean, key pages rendering with
    correct `data-season`/`data-daypart`/`data-weather`) and then deployed and
    screenshotted on the physical wall and kiosk the same session — real
@@ -439,42 +284,7 @@ asserts it so the next credential added cannot reopen the hole.
    retrofit `.card`/`.sidebar`/`.kiosk-tile` to the glass material), and
    unverified: whether continuous
    animation plus backdrop blur holds up over hours rather than minutes.
-2. ~~**Celery worker/beat health unconfirmed.**~~ **Resolved 2026-08-04.** Celery
-   was never broken. `worker` and `beat` inherited the Dockerfile's HEALTHCHECK,
-   which curls `localhost:8000` — the *web* role's port — so the check could
-   never pass for a process that runs no HTTP server; it sat `unhealthy` with a
-   473-long failing streak while the worker pongs instantly and beat dispatches
-   on time. Both now have honest checks (`celery inspect ping`, and
-   `/proc/1/cmdline` for beat, since `pgrep` is not in the slim image). Confirmed
-   end to end: **279 health snapshots in the database, newest 5.5 minutes old**,
-   which is beat → worker → DB working. All nine services now report healthy.
-   The beat log did expose a real bug, though — see item 8.
-3. ~~**Slack: token verified live, delivery blocked in the workspace.**~~
-   **Resolved 2026-08-06, and Slack now works in both directions.** All scopes
-   were granted and verified against the live API rather than assumed
-   (`users:read` by resolving both members' Slack IDs back to their real
-   names); `nitin` and `priya` have `slack_user_id` set. Story 37 then added
-   the inbound half — Socket Mode, `/todo`, and buttons on the message. **Real
-   reminders arrive as DMs and Done/Skip were tapped for real**, moving the
-   instances in MySQL. See §12 of
-   [`docs/Main_App/subsystems/todo.md`](docs/Main_App/subsystems/todo.md).
-
-   Traps found along the way, all now guarded or documented: the bot token was
-   once **quoted** in `.env` and Compose passes `env_file` values literally, so
-   the app saw a leading `"`; a container had not been recreated after an edit,
-   so it saw nothing at all; and notification *rendering* happens in the
-   **worker**, so a `docker compose up -d web` alone ships a message with no
-   buttons and no error. Slack's own error strings are useless for diagnosis
-   (`channel_not_found` means both "no such channel" and "never invited"), so
-   `SlackChannel` maps the common codes to the actual fix.
-
-   The **app-level token** (`xapp-`, `connections:write`) is a third credential,
-   distinct from the bot token *and* from Slack's "App Configuration Tokens"
-   which expire every 12 hours and are for the manifest API — nothing here uses
-   those. Only the `slack` container reads it.
-
-   **AI and MCP remain untested against live services** — no keys supplied.
-4. **Tests: 906, one file per subsystem, green.** `./scripts/run-tests.sh` (or
+2. **Tests: 943, one file per subsystem, green.** `./scripts/run-tests.sh` (or
    `make test`; `make test-pi` runs it inside the container on the Pi). Runs in
    ~30s with no containers, no network, and no credentials — SQLite, in-memory
    channel layer, eager Celery — so it gives the same answer on a laptop and on
@@ -502,23 +312,8 @@ asserts it so the next credential added cannot reopen the hole.
    no Python or browser toolchain, so the suite runs on the Pi itself over SSH
    (`~/.nora-qa-venv`), not from a laptop — the one exception to "run from a
    laptop" that the hardware available actually allows.
-5. **PWA manifest and service worker** — decided (§5) but not written.
-6. **No favicon** — the logs show steady `/favicon.ico` 404s.
-7. ~~**Kiosk-drives-wall redesign and the Settings tab — built, unverified.**~~
-   **Resolved.** Both were verified on the physical screens — see §2's
-   "Verified on the Pi (2026-08-02, continued)" note, and again on 2026-08-04
-   when the kiosk was cleaned up. `xset dpms force off` does power the panel
-   down, and it *is* session-wide rather than per-output: it blanks the kiosk
-   too. That was confirmed with the user and accepted, since per-output
-   `xrandr --off` had already proven fragile earlier in this project.
-8. **The reference app taught the pattern the platform forbids** — `example_habit`
-   imported the old `nora_home.tracker.models` in five files. **Fixed 2026-08-04**
-   by adding the missing query helpers to that app's own API; both apps are gone
-   now (Story 28 deleted the reference app, Story 40 the tracker), but the rule
-   they proved is not, and `KNOWN_MODEL_IMPORT_DEBT` in `tests/test_house_apps.py`
-   is still empty. Verified by actually copying the reference app into a scratch house app
-   and running the contract tests against it: clean. If you are ever tempted to
-   add an entry to that debt list, add the API function instead.
+3. **PWA manifest and service worker** — not written.
+4. **No favicon** — the logs show steady `/favicon.ico` 404s.
 
 ---
 
@@ -544,15 +339,6 @@ Then http://localhost:8000/home/ — no password anywhere; tap `nitin`, `partner
 ./nora upgrade   # every update after that
 ./nora help      # everything else
 ```
-Everything operational goes through **`./nora`** — one command, one help text.
-It replaced `scripts/install-pi.sh` as the entry point; that provisioning still
-exists unchanged at `scripts/lib/provision-pi.sh` and `./nora install` runs it.
-`make` targets still work as thin aliases that delegate to it.
-
-**The one that catches people:** editing `.env` and running `restart` does
-nothing, because a container keeps the environment it started with. Use
-`./nora recreate`.
-
 `./nora up` also generates a self-signed TLS cert on first run (idempotent
 — see §4, "HTTPS via nginx"). The house serves on **https://<address>/home/**,
 port 443, not `:8000` — nginx is the only published entry point. Your browser
@@ -563,8 +349,7 @@ warns once per device on first visit; see `docs/User/deployment.html`.
 git clone <repo> && cd nora-home
 ./nora up
 ```
-`./nora up` creates `.env` from the example with a fresh secret key if it is missing.
-`.env` is gitignored — secrets never enter the repo.
+`./nora up` creates `.env` from the example with a fresh secret key if missing.
 
 ---
 
@@ -585,17 +370,6 @@ Settings → Screens existed because the layout could not respond on its own.
 that was in §1 as fact, and it is what justified a wall type scale, a fifth
 surface, and CSS `zoom` stored in `HouseSetting`. Removing the claim removes
 all of it.
-
-**Which raised a bigger question: which rules here did anyone actually agree
-to?** Audited, and across the whole document exactly three decisions record
-having been put to the user — HTTPS/self-signed/nginx-only, passwordless
-including `/admin/`, and DPMS blanking both screens. Everything else in §4 and
-§6 was asserted by an agent in a voice that reads as settled law: Mongo
-alongside MySQL, RabbitMQ alongside Redis, Levels, the three gates, "widgets
-return data not HTML", and the no-npm rule above. **They are not all wrong**
-— on review the user kept Mongo, RabbitMQ and Levels. The problem was that
-nothing distinguished a considered decision from an agent's preference. If you
-add a rule here, say who agreed to it.
 
 **RabbitMQ stays, and the real bug was the worker.** Proposed removing it;
 that was too quick. Five queues are genuinely in use — but one worker consumes
@@ -626,138 +400,60 @@ a `default_size` and nothing had ever reconciled the two. `manage.py
 tidy_dashboards` repacks onto the declared sizes and equalises each band. It is
 **not** automatic — `items` is a person's own arrangement.
 
-**The living background is retired from the app chrome.** It was the strongest
-"hobby project" signal, and content sitting on a moving gradient is what made
-every pane muddy and inconsistent. `nh-scene.css` and the weather endpoint stay:
-the idea's honest home is the kiosk's idle screen, which has nothing to read.
-
 **The wall is a screen someone stands at, not a poster (2026-08-07).** Two
-rules were written when the 24" was a passive ambient view, and both outlived
-that. Worth knowing as a pair, because the next thing dating from the same
-assumption will fail the same way.
+rules dated from when the 24" was a passive ambient view.
 
-**It hid the mouse pointer outright.** The wall is the real app now and gets
-driven from its own sidebar, so that means aiming blind. It also hid
-*inconsistently*: **`cursor` is inherited, and an inherited value loses to any
-directly-declared one — including the browser's own `a:link { cursor:
-pointer }`.** The pointer vanished over the body and reappeared over every
-link. It is now hidden only while the mouse is *still*, and the rule needs
-`body, body *` to beat those declarations rather than inherit past them.
+**The pointer was hidden outright**, so driving the wall from its own sidebar
+meant aiming blind — and it hid *inconsistently*, because `cursor` is inherited
+and an inherited value loses to any directly-declared one, including the
+browser's own `a:link { cursor: pointer }`. It vanished over the body and
+reappeared over every link. Now hidden only while the mouse is still, and the
+rule needs `body, body *` to beat those declarations rather than inherit past
+them.
 
 **And it only counted as "the wall" on the first hop.** The wall iframes the
-real app, so the app is fetched at its own ordinary URL and needs
-`Sec-Fetch-Dest: iframe` plus a referer to be recognised. That referer names
-the wall's shell exactly once — the moment the kiosk points it somewhere.
-**Click a link on the 24" itself and the referer is the previous app page**, so
-detection fell back to User-Agent and the wall rendered at laptop type scale
-with its zoom dropped. Silently. Any same-origin iframed document now counts.
+real app, so detection needs `Sec-Fetch-Dest: iframe` plus a referer naming the
+wall's shell — which is true exactly once, when the kiosk points it somewhere.
+Click a link on the 24" itself and the referer is the previous app page, so
+detection fell back to User-Agent, silently. Any same-origin iframed document
+now counts. Same-origin is the boundary and it is stateless on purpose: a cookie
+would risk a laptop that once visited the wall's URL getting stuck wall-sized.
+It assumes **nothing in this house iframes an app page except the wall** — check
+that before adding a second iframe.
 
-Same-origin is the boundary, and it is stateless on purpose: a cookie would
-risk a laptop that once visited the wall's URL getting stuck wall-sized. It
-assumes **nothing in this house iframes an app page except the wall** — true
-today, and the thing to check before adding a second iframe.
+**A house app leads its own navigation (2026-08-07).** The sidebar showed the
+house's pages wherever you were, so an app's sub-pages had no route to them at
+all — Todo's calendar, reporting and labels were reachable only by typing a URL,
+and it shipped that way. Apps declare `nora_sections` and the sidebar leads with
+them; the house nav stays *underneath* rather than being replaced, because
+navigation must never become a dead end.
 
-**The lesson is the detection, not the pointer.** A wall silently rendering at
-laptop scale announces itself in no other way — this is the second such bug
-after `--nav-width: 244px`, and both were invisible to the suite and obvious on
-the glass. The pointer is the one wall behaviour that is not a *size*, which is
-the only reason a human noticed this one at all.
+`data-app` on `<html>` (from `nora_home.ui.context_processors`) marks app pages.
+**Which pages count is the subtle part**, and `app_for_path()` carries it:
+*anything under `/home/` is the base platform*, including platform pages that
+are separate Django apps internally (notifications at `/home/alerts/`, telemetry
+at `/home/measurements/`) — nobody went "into" an app by opening Alerts. Level
+is deliberately not the test either: Todo is Level 2 and `is_platform`, but it
+is an app in every way a person cares about.
 
-**The base app shows the weather; a house app shows the work (2026-08-07).**
-Two surfaces, two jobs, and conflating them was making apps unreadable.
+**Screen scaling.** A per-screen scale
+was built (CSS `zoom` in `HouseSetting`, Settings → Screens) on the assumption
+the 24" was read from three metres. It is not, so fluid `clamp()` type covers
+phone through 4K and `nora_home/ui/zoom.py` now serves the 10.1" kiosk alone.
+Two measured facts survive the change:
 
-The living background — real season, time of day, weather — is the whole
-"charm outside, polish inside" idea, and it is *the point* on the base app's
-pages. **Inside a house app it is not.** Somebody who opened Todo came to read a
-board; at the house's 0.3 pane opacity the columns and cards washed out against
-a bright afternoon, and the priority columns had no pane at all — four headings
-floating on blue with nothing to say where one ended and the next began.
+- **`zoom` scales borders, shadows and radii; a root font-size multiplier does
+  not.** Growing every `rem` while hairlines stay 1 device pixel is what reads
+  as "zoomed in" even when the text size is right. Measured against
+  `--force-device-scale-factor` on the Pi's own Chromium: both give a 100px box
+  with 10px borders an identical 150px at 1.25.
+- **Media queries evaluate against the *unzoomed* viewport.** At 1024 physical
+  the kiosk can put its layout viewport under a 860px breakpoint while media
+  queries still report 1024 — which is why the kiosk's zoom ceiling is lower
+  than the wall's ever was.
 
-So `data-app` on `<html>` (set from the URL by `nora_home.ui.context_processors`)
-drives near-opaque panes for every app, and the scene stays visible but settles
-behind. **An app gets this without styling itself**, which matters more than the
-look: a family member's agent should not have to know about `--pane-rgb` to
-produce something readable.
-
-**Which pages count as "an app" is the subtle part**, and `app_for_path()`
-carries it: *anything under `/home/` is the base platform*, including the
-several platform pages that are separate Django apps internally (notifications
-at `/home/alerts/`, telemetry at `/home/measurements/`). Nobody went "into" an
-app by opening Alerts. **Level is deliberately not the test** either — Todo is
-Level 2 and `is_platform`, but it is an app in every way a person cares about.
-
-**The same request settled navigation.** The sidebar showed the house's pages no
-matter where you were, so an app's own sub-pages had no route to them at all —
-Todo's calendar, reporting and labels were reachable only by typing a URL, and
-it shipped that way. Apps now declare `nora_sections` and the sidebar leads with
-them. The house nav stays *underneath* rather than being replaced: navigation
-must never become a dead end, and "back to the house" should not be something
-each app has to remember to build.
-
-**SUPERSEDED 2026-08-08 — kept for the measurements, not the conclusion.** The
-whole entry below rests on the 24" being read from three metres, which was
-never asked for. Once it is an ordinary monitor, nothing needs a per-screen
-scale: fluid `clamp()` type covers phone through 4K, and `nora_home/ui/zoom.py`
-plus Settings → Screens exist only for the 10.1" kiosk now. **The two facts
-below are still true and still worth knowing** — CSS `zoom` really does scale
-borders and radii where a root font-size multiplier does not, and media queries
-really do evaluate against the *unzoomed* viewport.
-
-**Screen size is a setting, because only the person in front of the screen can
-judge it (2026-08-07).** Settled after three wrong answers, and the reasoning is
-worth not repeating.
-
-**What no browser can know is viewing distance.** A CSS pixel is already a
-*reference pixel* — the visual angle of one pixel on a 96dpi screen at arm's
-length — and `devicePixelRatio` normalises for physical size, which is why a
-460ppi phone reports ~390 CSS px. So a site gets physical-size normalisation
-free, for the one distance the web assumes. The 24" wall and a laptop both
-report 1920×1080; nothing in CSS distinguishes them. `data-surface="wall"`
-carries that missing fact.
-
-**Scaling the root font-size is the wrong mechanism** — tried at 160%, then
-135%, then a clamped `vw`, and reported as "zoomed in" every time. It grows every
-`rem` while borders, shadows and corner radii stay 1-device-pixel hairlines, so
-the proportions come apart even when the text size is right.
-
-**`--force-device-scale-factor` is the right mechanism and the wrong layer.**
-It is what TV and signage platforms use, and it works — but a launch flag can
-only be changed by regenerating `~/.nora/start-*.sh` and restarting Chromium,
-which means an SSH session. A number a family member is expected to tune has to
-live where they can reach it.
-
-**So: CSS `zoom`, stored in `HouseSetting`, edited in Settings → Screens**
-(`nora_home/ui/zoom.py`). It was measured against the flag on the Pi's own
-Chromium before being chosen, because "zoom scales everything" had to be a fact:
-
-    a 100px box with 10px borders   plain 120px  ->  zoom 1.25  150px
-    html { zoom: 1.25 } on 1920     documentElement.clientWidth   1536
-
-Both match `--force-device-scale-factor=1.25` exactly. Both screens now launch
-at scale 1 so the two cannot multiply. **Only the wall and the kiosk are
-offered** — a phone or laptop is held at arm's length, which is what every
-browser default already assumes, so `nh_zoom` is `None` there and no attribute
-is emitted at all.
-
-**One measured difference from the flag:** media queries still evaluate against
-the *unzoomed* viewport. Immaterial on the wall (breakpoints are 860px and
-620px), but at 1024 physical the kiosk could put its layout viewport under 860
-while media queries still said 1024 — which is why the kiosk's ceiling is lower
-than the wall's.
-
-**The scaling only works because everything else is `rem`.** That has broken
-twice, both times found by looking at the screen and never by a test: Gridstack's
-`cellHeight: 80`, then `--nav-width: 244px` clipping "Measurements" — the second
-*after* the first had been found and written up. Fixing the instance is not
-fixing the class. `tests/test_ui.py` guards the tokens and asserts the scale has
-not crept back into CSS.
-
-**Changing a launch flag needs `./nora screens relaunch`.** The scripts in
-`~/.nora/` are generated, so a deploy, a reload and even a reboot leave the old
-flags in place. That caught this project twice before the command existed.
-
-**Editing an applied migration, once, to delete an app (2026-08-06).****Editing an applied migration, once, to delete an app (2026-08-06).**
-CLAUDE.md §6 says never edit an applied migration. Story 40 had to, and the
+**Editing an applied migration, once, to delete an app (2026-08-06).**
+CLAUDE.md §5 says never edit an applied migration. Story 40 had to, and the
 reasoning is worth not re-deriving. `Task.escalation_policy` pointed at
 `tracker.EscalationPolicy`, and both of Todo's earlier migrations declared a
 dependency on `('tracker', '0001_initial')`. **A migration naming a node no
@@ -797,10 +493,7 @@ uninstalled at any moment, so nothing the base needs could ever safely live
 there. Levels give a third option: **1** is the base (`nora_home/*` apps that
 never depend on anything below), **2** is an app the base deliberately leans on
 and the house degrades without (Todo), **3** is a family app under `houseapps/`
-(the default — uninstall freely, nothing breaks). The one rule Levels actually
-enforce: nothing at Level 1 or 2 may import a Level 3 app —
-`tests/test_house_apps.py::test_level_1_or_2_never_imports_a_level_3_app` checks
-this over every registered app, not only house apps. `nora_level` lives on
+(the default — uninstall freely, nothing breaks). `nora_level` lives on
 `NoraAppConfig` (`nora_home/core/registry.py`), defaulting to 3. Full writeup:
 [`docs/Main_App/subsystems/todo.md`](docs/Main_App/subsystems/todo.md) §1.
 
@@ -839,10 +532,6 @@ docker inspect nora-home-worker-1 --format '{{range .Config.Env}}{{println .}}{{
 ./nora recreate
 ```
 
-**Django over FastAPI/Node.** The admin alone is worth it: a family member can edit
-an escalation policy or retime a job without a deploy. Batteries-included matters
-more than raw speed on a home LAN.
-
 **MySQL for relational, Mongo for documents, both.** Anything Todo joins
 across lives in MySQL. Journals, AI transcripts, and raw integration payloads go to
 Mongo where the shape can change without a migration. Mongo is *optional* — the house
@@ -862,35 +551,9 @@ March" answerable and gives escalation state somewhere to live.
 the ladder is editable in the admin. Three ship by default: House default, Gentle,
 Safety critical.
 
-**Secrets never go in the database.** `.env` only. Integration credentials are read
-via `Integration.secret()` from the environment, so a database dump shared for
-debugging carries no tokens.
-
 **Apps mount at the URL root** — `/workout`, `/family`, `/maintenance`. The platform
 lives under `/home`. `RESERVED_SLUGS` in `nora/core/registry.py` stops an app
 claiming a platform prefix.
-
-**Web app in kiosk mode, not a native app.** See §5.
-
-**Apache ECharts + Gridstack.js, vendored, no build step.** ECharts because it
-handles the whole range from sparkline to heatmap,
-themes cleanly, and renders acceptably on a Pi. Gridstack for the draggable home
-grid. Both are vendored into `static/nora_home/vendor/` rather than pulled from a CDN,
-because the house must work with the internet down. That part still holds.
-
-~~**There is deliberately no npm, no bundler, and no framework**~~ — **retired
-2026-08-08.** This was never the user's rule; it was asserted by an agent and
-then quoted back for weeks as if settled. Two of its premises were false: the
-Pi *already* built Docker images on every `./nora up` and `./nora upgrade`, and
-a house app is not hot-inserted into a running Django process anyway — Django
-cannot add to `INSTALLED_APPS` without a restart, which is why `install_app`
-shells out to fresh subprocesses. So "the Pi should never run a build" was
-describing something that had never been true. See §4, "Tailwind, and the rules
-nobody agreed to."
-
-**Widgets return data, not HTML.** `ChartWidget.option()` returns an ECharts option
-dict; the platform applies the house theme. This is what keeps every chart in the
-house looking like the same system, no matter who wrote the app.
 
 **Passwordless everywhere, including admin.** There is no password anywhere in this
 system, on any surface — phone, laptop, wall, kiosk. A topbar switcher
@@ -961,32 +624,7 @@ itself the same session — see §2's "Verified on the Pi (2026-08-03)" note.
 
 ---
 
-## 5. Web app vs native kiosk app — answered
-
-**Build it as a web app served locally, displayed full-screen by Chromium in kiosk
-mode, and installable as a PWA on phones.** That is what `scripts/lib/provision-pi.sh`
-configures.
-
-Reasoning:
-- One codebase covers the 24" wall, the 10.1" kiosk, phones, iPads, and laptops. A
-  native app means four builds and four release processes for a house of four people.
-- Chromium in `--kiosk` on the Pi *is* the full-screen app experience — no window
-  chrome, no address bar, starts on boot. There is nothing a native shell adds here.
-- Updates are `make deploy`. No app store, no sideloading, no version skew between
-  the wall display and someone's phone.
-- Adding a PWA manifest and a service worker gets home-screen install, an app icon,
-  full-screen on iOS/Android, and offline-tolerant reads. That covers ~everything
-  people actually want from "a real app".
-- The one genuine gap is **background push on iOS**. Slack already covers urgent
-  notification delivery, which is why the notification system was built
-  channel-agnostic from the start.
-
-Revisit only if the house needs Bluetooth, background location, or on-device ML from
-a phone. Nothing planned needs those.
-
----
-
-## 6. Conventions — follow these
+## 5. Conventions — follow these
 
 **Migrations.** None are committed yet. Generate them once, commit them, and from
 then on treat them as source: never delete or edit an applied migration; add a new
@@ -1008,15 +646,11 @@ the house.
 **Logging is structured.** `logging.getLogger(__name__)` and log normally; request
 id, member, and surface are attached for you. Extra context goes in `extra={...}`.
 
-**Failures degrade, never cascade.** A card that raises renders as "unavailable". A
-broken house app is skipped at mount with a logged error. A dead Mongo is "degraded",
-not "down". The wall display must survive anything.
-
 **Comments explain why, not what.** Match the density already in the file.
 
 ---
 
-## 7. Layout
+## 6. Layout
 
 ```
 config/            Django project: settings/, celery, urls, asgi, wsgi
@@ -1050,7 +684,7 @@ docs/
 
 ---
 
-## 8. Progress log
+## 7. Progress log
 
 Append here. Newest last. Keep entries short and factual.
 
@@ -1135,7 +769,7 @@ widgets and its own generated migration applied.
 
 ---
 
-## 9. Open questions for the user
+## 8. Open questions for the user
 
 Ask before assuming.
 

@@ -9,30 +9,22 @@ house *looks* on five different screens.
 
 ## Status
 
-**Rebuilt 2026-08-08 — read this before the rest of the file.**
+**Complete.** Deployed to the Pi and screenshotted, 943 tests green.
 
-The stylesheet is now **compiled, not hand-written**: `assets/css/nora.css` →
+The stylesheet is **compiled, not hand-written**: `assets/css/nora.css` →
 `static/nora_home/css/nh.css`, built by the Dockerfile's `css` stage with
 Tailwind v4. Node lives in that stage only. `nh.css` is gitignored and linked
 last in `base.html`, **after `{% block head %}`** — per-page sheets are injected
 into that block, so anything linked above it loads earlier and loses.
 
-Three things below are now stale, and the sections still describing them are
-kept only because the reasoning is worth reading:
+Type is six fluid `clamp()` roles covering phone through 4K. The 24" is an
+ordinary monitor and has no type scale of its own; `nora_home/ui/zoom.py` and
+Settings → Screens serve the 10.1" kiosk alone. Surface detection still exists
+and still drives the kiosk's touch sizing, but no longer selects a type scale.
 
-- **The 24" is an ordinary monitor at desk distance.** It has no type scale of
-  its own. `--step-*` is neutralised for `data-surface="wall"`, and
-  `nora_home/ui/zoom.py` plus Settings → Screens now exist for the 10.1" kiosk
-  alone. Type is six fluid `clamp()` roles covering phone through 4K.
-- **The living background is hidden in the app chrome.** `scene.py`,
-  `nh-scene.css` and the Open-Meteo integration all still work and are all still
-  wired — the target is the kiosk's idle screen. Nothing in an app should
-  reference them.
-- **"Five surfaces" is no longer how sizing works.** Surface detection still
-  exists and still drives the kiosk's touch sizing, but it no longer selects a
-  type scale, which is what it was mostly for.
-
-Everything above was deployed to the Pi and screenshotted, with 940 tests green.
+The living background is hidden in the app chrome. `scene.py`, `nh-scene.css`
+and the Open-Meteo integration all still work and are still wired — the target
+is the kiosk's idle screen. Nothing in an app should reference them.
 
 ## Surfaces
 
