@@ -21,7 +21,7 @@ from __future__ import annotations
 from django.core.management.base import BaseCommand
 
 from nora_home.dashboard.models import DashboardLayout
-from nora_home.dashboard.widgets import all_widgets
+from nora_home.core.registry import all_widgets
 
 GRID_COLUMNS = 12
 
