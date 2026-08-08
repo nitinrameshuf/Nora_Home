@@ -1,0 +1,428 @@
+/*
+ * The house stylesheet — source. Compiled to ../nora-home.css by the `css`
+ * stage in the Dockerfile; the runtime image never carries Node.
+ *
+ * Three layers, in order:
+ *
+ *   1. Runtime tokens   plain custom properties on :root, swapped by
+ *                       data-theme. These are what change between light and
+ *                       dark, at runtime, with no rebuild.
+ *   2. @theme inline    maps Tailwind's names onto those properties. `inline`
+ *                       matters: it keeps the var() reference instead of
+ *                       baking the value, so `bg-surface` follows the theme.
+ *   3. Components       the .nh-* vocabulary a house app is expected to use.
+ *
+ * A house app should reach for layer 3 and nothing else. Utilities are
+ * available, but an app that styles itself with raw utilities has to be
+ * re-scanned to get any CSS at all — and a house app added after the image was
+ * built has not been. Components are already compiled, so they always work.
+ * This is why todo.css was 685 lines: the vocabulary did not exist yet.
+ */
+
+@import "tailwindcss";
+
+/* Django templates live outside this file's tree, so Tailwind is told where to
+   look. houseapps/ is included so a family app present at build time gets its
+   utilities compiled like anything else. */
+@source "../../../../templates";
+@source "../../../../nora_home";
+@source "../../../../houseapps";
+
+/* ── 1. runtime tokens ──────────────────────────────────────────────────────
+   Dark is the default because the house is on all day and the 24" sits in a
+   living room, not an office. */
+:root {
+  --nh-ground:    #0A0E11;
+  --nh-surface:   #141A1F;
+  --nh-raised:    #1B232A;
+  --nh-line:      #252F37;
+  --nh-ink:       #E9EFF4;
+  --nh-dim:       #93A1AC;
+  --nh-faint:     #6B7883;
+
+  /* Accent means "you can act on this" and nothing else. Severity below is a
+     separate axis on purpose — when the two share a colour, every red becomes
+     ambiguous. */
+  --nh-accent:    #E8973A;
+  --nh-on-accent: #1A1206;
+
+  --nh-crit:      #E4614E;
+  --nh-warn:      #DFAE3F;
+  --nh-calm:      #5E9BD1;
+  --nh-ok:        #63BE96;
+
+  --nh-shadow:    0 1px 2px rgb(0 0 0 / 0.5);
+}
+
+:root[data-theme="light"] {
+  --nh-ground:    #F4F2EE;
+  --nh-surface:   #FFFFFF;
+  --nh-raised:    #FAF9F7;
+  --nh-line:      #E3E0D9;
+  --nh-ink:       #1B1E22;
+  --nh-dim:       #6D7379;
+  --nh-faint:     #9AA0A6;
+
+  --nh-accent:    #2C5C86;
+  --nh-on-accent: #FFFFFF;
+
+  --nh-crit:      #B04530;
+  --nh-warn:      #B07C1E;
+  --nh-calm:      #3D6E9E;
+  --nh-ok:        #2E7D5B;
+
+  --nh-shadow:    0 1px 2px rgb(20 24 30 / 0.09);
+}
+
+/* ── 2. Tailwind names → those tokens ───────────────────────────────────── */
+@theme inline {
+  --color-ground:    var(--nh-ground);
+  --color-surface:   var(--nh-surface);
+  --color-raised:    var(--nh-raised);
+  --color-line:      var(--nh-line);
+  --color-ink:       var(--nh-ink);
+  --color-dim:       var(--nh-dim);
+  --color-faint:     var(--nh-faint);
+  --color-accent:    var(--nh-accent);
+  --color-on-accent: var(--nh-on-accent);
+  --color-crit:      var(--nh-crit);
+  --color-warn:      var(--nh-warn);
+  --color-calm:      var(--nh-calm);
+  --color-ok:        var(--nh-ok);
+
+  /* Six roles for the whole house. An app needing a seventh is doing something
+     wrong — see docs/Main_App/DEVELOPMENT.md.
+
+     Every one is fluid between a 360px phone and a ~1500px monitor, so sizes
+     interpolate instead of jumping at a breakpoint. This replaces the three
+     hard-coded per-surface scales, which is why a 13" laptop and a 32" monitor
+     used to get byte-identical type. */
+  --text-label:   clamp(0.6875rem, 0.665rem + 0.10vw, 0.75rem);
+  --text-meta:    clamp(0.75rem,   0.727rem + 0.10vw, 0.8125rem);
+  --text-card:    clamp(0.8125rem, 0.790rem + 0.10vw, 0.875rem);
+  --text-body:    clamp(0.875rem,  0.852rem + 0.10vw, 0.9375rem);
+  --text-heading: clamp(1.0625rem, 0.994rem + 0.30vw, 1.25rem);
+  --text-display: clamp(1.375rem,  1.193rem + 0.81vw, 1.875rem);
+
+  --font-sans: ui-sans-serif, -apple-system, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+}
+
+/* ── 3. base ────────────────────────────────────────────────────────────── */
+@layer base {
+  html {
+    background: var(--nh-ground);
+    color: var(--nh-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* dvh, not vh. On iOS the URL bar is counted in 100vh, so a full-height
+     shell hides its own last row until the bar retracts. */
+  body { margin: 0; min-height: 100dvh; }
+
+  /* The pointer is hidden only while the mouse is still, and `body *` rather
+     than `body` because cursor is inherited — an inherited value loses to any
+     directly-declared one, including the browser's own a:link { cursor:
+     pointer }. Inheriting alone left the pointer visible over every link and
+     invisible everywhere else. */
+  :root[data-idle="true"] body,
+  :root[data-idle="true"] body * { cursor: none; }
+
+  :where(a) { color: inherit; }
+  :where(img, svg, video) { max-width: 100%; height: auto; }
+
+  /* Digits that sit in columns must not shuffle width as they change. */
+  :where(time, [data-num]) { font-variant-numeric: tabular-nums; }
+
+  :focus-visible {
+    outline: 2px solid var(--nh-accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* ── 4. components — the vocabulary house apps use ──────────────────────── */
+@layer components {
+
+  /* — shell — */
+  .nh-shell {
+    display: grid;
+    grid-template-columns: minmax(11rem, 15rem) minmax(0, 1fr);
+    min-height: 100dvh;
+  }
+  @media (max-width: 52rem) {
+    .nh-shell { grid-template-columns: minmax(0, 1fr); }
+    .nh-sidebar { display: none; }
+  }
+
+  .nh-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 6);
+    padding: calc(var(--spacing) * 6) calc(var(--spacing) * 4);
+    background: var(--nh-ground);
+    border-right: 1px solid var(--nh-line);
+  }
+
+  .nh-main { display: flex; flex-direction: column; min-width: 0; }
+
+  .nh-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(var(--spacing) * 4);
+    padding: calc(var(--spacing) * 6) calc(var(--spacing) * 8) calc(var(--spacing) * 4);
+    border-bottom: 1px solid var(--nh-line);
+  }
+  .nh-topbar h1 {
+    margin: 0;
+    font-size: var(--text-display);
+    font-weight: 620;
+    letter-spacing: -0.018em;
+    text-wrap: balance;
+  }
+
+  .nh-body {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 6);
+    padding: calc(var(--spacing) * 6) calc(var(--spacing) * 8) calc(var(--spacing) * 8);
+  }
+
+  /* — navigation — */
+  .nh-nav__group { display: flex; flex-direction: column; gap: 1px; }
+  .nh-nav__label {
+    padding: 0 calc(var(--spacing) * 2) calc(var(--spacing) * 2);
+    font-size: var(--text-label);
+    font-weight: 640;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--nh-dim);
+  }
+  .nh-nav__link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(var(--spacing) * 2);
+    padding: calc(var(--spacing) * 2);
+    border-radius: 5px;
+    font-size: var(--text-body);
+    font-weight: 500;
+    color: var(--nh-dim);
+    text-decoration: none;
+    min-height: 2.25rem;
+  }
+  .nh-nav__link:hover { background: var(--nh-raised); color: var(--nh-ink); }
+  .nh-nav__link[aria-current="page"] {
+    background: var(--nh-raised);
+    color: var(--nh-ink);
+    font-weight: 600;
+  }
+
+  /* — card: the unit every widget and panel is built from —
+     A container, so a card in a narrow column and the same card full-bleed can
+     differ without either one knowing what device it is on. */
+  .nh-card {
+    container-type: inline-size;
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 2);
+    min-width: 0;
+    padding: calc(var(--spacing) * 4);
+    background: var(--nh-surface);
+    border: 1px solid var(--nh-line);
+    border-radius: 8px;
+  }
+  .nh-card__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: calc(var(--spacing) * 3);
+  }
+  .nh-card__title {
+    margin: 0;
+    font-size: var(--text-card);
+    font-weight: 620;
+  }
+  .nh-card__eyebrow {
+    font-size: var(--text-label);
+    font-weight: 640;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--nh-faint);
+  }
+  .nh-card__sub {
+    margin-top: auto;
+    font-size: var(--text-meta);
+    color: var(--nh-dim);
+  }
+
+  .nh-num {
+    font-family: var(--font-mono);
+    font-size: 1.9rem;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: -0.035em;
+    font-variant-numeric: tabular-nums;
+  }
+  .nh-num small {
+    font-size: 0.45em;
+    font-weight: 500;
+    letter-spacing: 0;
+    color: var(--nh-dim);
+  }
+  @container (min-width: 20rem) { .nh-num { font-size: 2.4rem; } }
+  @container (max-width: 12rem) { .nh-num { font-size: 1.5rem; } }
+
+  /* — dashboard grid: a row unit, so heights stop being emergent —
+     A widget declares columns AND rows; that is the whole reason cards used to
+     be "oddly sized". */
+  .nh-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-auto-rows: 4.75rem;
+    gap: calc(var(--spacing) * 4);
+  }
+  @media (max-width: 52rem) {
+    .nh-grid > * { grid-column: span 12 !important; }
+  }
+
+  /* — list rows — */
+  .nh-list { display: flex; flex-direction: column; gap: calc(var(--spacing) * 2); }
+  .nh-row {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--spacing) * 2);
+    padding-bottom: calc(var(--spacing) * 2);
+    border-bottom: 1px solid var(--nh-line);
+    font-size: var(--text-body);
+  }
+  .nh-row:last-child { border-bottom: 0; padding-bottom: 0; }
+  .nh-row time { margin-left: auto; font-size: var(--text-meta); color: var(--nh-dim); }
+
+  /* — severity: a mark, never a heading colour — */
+  .nh-dot, .nh-sev { flex: none; display: block; background: var(--nh-dim); }
+  .nh-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .nh-sev { width: 3px; height: 0.75rem; border-radius: 2px; }
+  .nh-dot--crit, .nh-sev--crit { background: var(--nh-crit); }
+  .nh-dot--warn, .nh-sev--warn { background: var(--nh-warn); }
+  .nh-dot--calm, .nh-sev--calm { background: var(--nh-calm); }
+  .nh-dot--ok,   .nh-sev--ok   { background: var(--nh-ok); }
+
+  /* — controls —
+     2.75rem is the floor everywhere, not only on touch surfaces: it costs
+     nothing with a mouse and is the difference between usable and not on the
+     kiosk. */
+  .nh-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: calc(var(--spacing) * 2);
+    min-height: 2.75rem;
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 4);
+    border: 1px solid var(--nh-line);
+    border-radius: 6px;
+    background: var(--nh-surface);
+    color: var(--nh-ink);
+    font-size: var(--text-body);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .nh-btn:hover { background: var(--nh-raised); }
+  .nh-btn--primary {
+    background: var(--nh-accent);
+    border-color: var(--nh-accent);
+    color: var(--nh-on-accent);
+  }
+  .nh-btn--primary:hover { filter: brightness(1.06); }
+  .nh-btn--quiet { background: transparent; border-color: transparent; color: var(--nh-dim); }
+
+  .nh-seg { display: inline-flex; gap: 2px; padding: 2px; background: var(--nh-raised); border-radius: 6px; }
+  .nh-seg__item {
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+    border-radius: 4px;
+    font-size: var(--text-meta);
+    font-weight: 550;
+    color: var(--nh-dim);
+    text-decoration: none;
+  }
+  .nh-seg__item[aria-current], .nh-seg__item.is-on {
+    background: var(--nh-surface);
+    color: var(--nh-ink);
+    box-shadow: var(--nh-shadow);
+  }
+
+  .nh-input, .nh-select, .nh-textarea {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+    background: var(--nh-raised);
+    border: 1px solid var(--nh-line);
+    border-radius: 6px;
+    color: var(--nh-ink);
+    font: inherit;
+    font-size: var(--text-body);
+  }
+  .nh-label {
+    display: block;
+    margin-bottom: calc(var(--spacing) * 1);
+    font-size: var(--text-label);
+    font-weight: 640;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--nh-dim);
+  }
+
+  .nh-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(var(--spacing) * 2);
+    padding: 2px calc(var(--spacing) * 2);
+    border-radius: 999px;
+    font-size: var(--text-label);
+    font-weight: 600;
+    background: color-mix(in srgb, var(--nh-dim) 16%, transparent);
+    color: var(--nh-dim);
+  }
+  .nh-pill--ok   { background: color-mix(in srgb, var(--nh-ok) 16%, transparent);   color: var(--nh-ok); }
+  .nh-pill--crit { background: color-mix(in srgb, var(--nh-crit) 16%, transparent); color: var(--nh-crit); }
+  .nh-pill--warn { background: color-mix(in srgb, var(--nh-warn) 16%, transparent); color: var(--nh-warn); }
+
+  /* — table — */
+  .nh-tablewrap { overflow-x: auto; border: 1px solid var(--nh-line); border-radius: 8px; }
+  .nh-table { width: 100%; border-collapse: collapse; font-size: var(--text-body); }
+  .nh-table th, .nh-table td {
+    padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
+    text-align: left;
+    border-bottom: 1px solid var(--nh-line);
+  }
+  .nh-table th {
+    font-size: var(--text-label);
+    font-weight: 640;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--nh-dim);
+  }
+  .nh-table tr:last-child td { border-bottom: 0; }
+
+  /* — empty state: collapses, never reserves a card's worth of nothing — */
+  .nh-empty {
+    display: grid;
+    place-items: center;
+    padding: calc(var(--spacing) * 6);
+    font-size: var(--text-meta);
+    color: var(--nh-faint);
+    text-align: center;
+  }
+}

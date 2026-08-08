@@ -1,0 +1,13 @@
+{
+  "name": "nora-home-ui",
+  "private": true,
+  "description": "Builds the house stylesheet. Runs in Docker's css stage only - see Dockerfile. Nothing here ships to the runtime image.",
+  "scripts": {
+    "build": "tailwindcss -i static/nora_home/css/src/nora.css -o static/nora_home/css/nh.css --minify",
+    "watch": "tailwindcss -i static/nora_home/css/src/nora.css -o static/nora_home/css/nh.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.11",
+    "tailwindcss": "^4.1.11"
+  }
+}

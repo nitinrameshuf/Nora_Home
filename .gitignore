@@ -33,3 +33,7 @@ htmlcov/
 Thumbs.db
 .idea/
 .vscode/
+
+# Tailwind build (compiled in Docker, never committed)
+node_modules/
+static/nora_home/css/nh.css
