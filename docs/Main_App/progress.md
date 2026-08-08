@@ -401,18 +401,12 @@ now threads `next` through both forms as a hidden field. Verified live: after
 deploying the fix and re-authenticating the wall's Chromium profile, it
 correctly returned to `/home/displays/wall/` instead of `/home/`.
 
-**End of story state**: wall is running correctly on the 24" (`0,0`,
-`1920x1080`, confirmed via `xdotool` after the output-toggle recovery above),
-authenticated, showing real content. Kiosk is deliberately left **not
-running** — getting it onto the 10" reliably needs the same output-disable
-sequence that proved too flaky to trust unattended, and leaving it off is
-better than leaving it wrong. Story 27 (first real Pi run) converted five real
-infrastructure bugs into fixes tonight (DB password fallback, missing vendored
-sourcemap, wrong Chromium binary name, `ALLOWED_HOSTS` never matching a LAN IP
-on any Pi deployment ever, switcher losing its redirect target) — all
-verified working. The dual-monitor kiosk placement problem remains open;
-`cage` is the recommended next attempt, in a dedicated session with a fresh
-`sudo` budget rather than continued live experimentation.
+**End of story state**: wall running correctly on the 24" (`0,0`,
+`1920x1080`), authenticated, showing real content. Kiosk left off rather than
+placed wrong. Five real infrastructure bugs fixed and verified: DB password
+fallback, missing vendored sourcemap, wrong Chromium binary name,
+`ALLOWED_HOSTS` never matching a LAN IP on any Pi deployment ever, and the
+switcher losing its redirect target. Dual-monitor kiosk placement still open.
 
 **Update — solved, differently than planned.** Rather than `cage`, switched
 the Pi's whole desktop session from Wayland (`labwc`) to X11 (`openbox`) via
@@ -1068,33 +1062,19 @@ registered a `Display` row or handled a heartbeat, and `kiosk.js` never sent one
 
 ---
 
-## 2026-08-03 — Story 21 (Test Suite) scoped, deliberately not started yet
+## 2026-08-03 — Story 21 (Test Suite) scoped
 
-Asked directly: do we have tests that could have caught today's bugs (the
-Status-page 500, the kiosk's missing heartbeat) without manual
-screenshotting each time, and that a new house app would automatically get
-covered by too? No — confirmed by checking, not assumed: `pytest`/
-`pytest-django` are configured, zero test files exist anywhere in the repo.
+Zero test files existed at this point, though `pytest`/`pytest-django` were
+already configured. Two ideas from the scoping survived into the suite that
+was later built:
 
-Talked through scope rather than just writing code: route/widget smoke
-tests (walking `all_widgets()`/`navigation()` rather than one test per
-page) plus Channels `WebsocketCommunicator` tests for the heartbeat/relay
-logic would have caught both of today's bugs directly, cheaply, and — this
-was the useful distinction — test *shape*, not internals, so they survive
-a refactor instead of needing to be rewritten by one. Deep logic tests
-(the escalation ladder, the cadence scheduler — the two things that most
-need coverage, since they run unattended and fail silently) are the
-opposite: their internals are exactly what a cleanup pass might change.
-
-Asked whether to write tests before or after "cleaning up the base app."
-Landed on: smoke tests *first*, specifically as the safety net a cleanup
-pass wants, not something to do after it — deep logic tests wait until
-after cleanup so they aren't rewritten twice. Decided to defer the whole
-thing until that cleanup pass happens, rather than start now. Scoped in
-full on Story 21 (dashboard) rather than left as a one-line "no tests"
-note, including the explicit boundary: visual/contrast bugs and real
-hardware behavior are not pytest's job and still need what this session
-did by hand.
+- **Smoke tests should test *shape*, not internals** — walk `all_widgets()`
+  and `navigation()` rather than writing one test per page — so a refactor
+  does not rewrite them. Deep logic tests (escalation, scheduling) are the
+  opposite: their internals are exactly what a cleanup pass changes, so they
+  come after it, not before.
+- **Visual and hardware behaviour is not pytest's job.** Contrast and real
+  screens still need what this session did by hand.
 
 ---
 
@@ -1200,58 +1180,32 @@ family app and it was removed a session ago. Points at `DEVELOPMENT.md`'s
 now genuinely reads as "nothing installed yet," not a broken or incomplete
 table.
 
-## 2026-08-03 — the home bot: now a robot, grounded, and just says "Hi"
+## 2026-08-03 — the home bot: two rounds of look, and one real bug underneath
 
-Three requested changes to `nh-bot.js`/`nh-bot.css`, done together:
+The sprite went blob → robot head → Mars rover across two rounds; the look
+itself is not worth recording, but three things from it are.
 
-- **Look.** Rounded-square head instead of the organic blob shape, a small
-  antenna with a glowing tip, a dark visor panel housing two LED-style eyes,
-  and a flat mouth bar — reads as a robot rather than an orange smiley.
-  Existing mood animations (thinking/proud/concerned/sleepy/celebrate) still
-  target the same elements, unchanged.
-- **Movement.** `moveTo()` no longer takes a vertical position at all —
-  it's always computed internally as a fixed strip near the bottom of the
-  screen; only the horizontal position varies, whether from idle wandering
-  or sliding toward whatever was just clicked. This also retroactively
-  fixes the bot-overlapping-the-heading bug spotted a couple of sessions
-  back, since that could only happen when she was free to wander into the
-  upper portion of the screen.
-- **Click.** `onPoke()` now just says "Hi" — dropped the random greeting
-  pool, the server poke round-trip, and the celebrate spin. Deliberately
-  minimal; what she should actually do when poked is still open.
+**`moveTo()` no longer takes a vertical position.** It is computed internally
+as a fixed strip near the bottom, so only horizontal position varies. That
+retroactively fixed the bot-overlapping-the-heading bug from a couple of
+sessions earlier, which could only happen while it was free to wander upward.
 
-Verified on the live Pi: screenshotted the robot look and the "Hi" bubble,
-and drove `NoraHome.wander()` six times in a row through the browser
-console — x varied freely (466-1271px), y stayed at exactly 810px every
-time.
+**The slide-in-from-the-corner bug, and why it was every navigation.** Clicking
+any button made the sprite slide diagonally from top-left. This is a
+multi-page Django app, so a button that navigates reloads the page and
+`nh-bot.js`'s `mount()` runs fresh each time. `.nh-bot` sits at its CSS default
+(`left:0, top:0`) until the first `moveTo()` sets a transform — and because
+`.nh-bot` always carries `transition: transform`, *that first positioning
+animated too*. Fixed by disabling the transition for that one call and forcing
+a layout flush before re-enabling it.
 
-## 2026-08-03 — the bot, round two: a real bug, and a Mars rover
+**Two rendering bugs only a zoomed screenshot found.** The antenna rendered as
+a stray floating ball because it was positioned relative to the mast instead of
+the head it belonged to; and the eye glow was strong enough to blur two lenses
+into a single oval at the icon's real 62px size. Neither is visible in the code
+or at 1x.
 
-Reported immediately after the robot redesign shipped: clicking a button
-made it slide diagonally from top-left to bottom-right. Root-caused rather
-than patched blind: this is a traditional multi-page Django app, so a
-button that navigates reloads the whole page, and `nh-bot.js`'s `mount()`
-runs fresh on every one of those loads. `.nh-bot` sits at its CSS default
-(`left:0, top:0` — top-left) until the first `moveTo()` call sets a real
-transform, and since `.nh-bot` always carries `transition: transform`,
-*that first positioning animated too* — reading as a slide in from the
-corner on every single navigation, not just once on initial page load.
-Fixed by disabling the transition for that one call and forcing a layout
-flush before turning it back on, so only genuine subsequent moves animate.
-
-Separately, asked to make it look like a Mars rover instead of the robot
-head from last round. Rebuilt `.nh-bot__body`'s contents as stacked pieces
-— three wheels, a chassis, a thin mast, a camera head with two lensed
-"eyes," a short antenna off one corner — instead of the single face-on-a-
-blob shape. First pass had two real problems caught by zooming into an
-actual screenshot rather than trusting the code: the antenna (drawn as an
-angled dish off the mast) rendered as a stray floating ball, disconnected
-from anything, because it was positioned relative to the mast instead of
-the head it was meant to sit on; and the eye glow was strong enough to
-blur the two lenses into a single oval at the icon's real 62px size.
-Fixed by nesting the antenna inside `.nh-bot__head` (so it's unambiguously
-part of the head) and reducing the glow radius on both the eyes and the
-head panel. Re-screenshotted at 4x zoom to confirm before calling it done.
+---
 
 ## 2026-08-03 — Add a widget was broken by the bot's own script, silently
 
