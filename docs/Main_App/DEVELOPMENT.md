@@ -410,17 +410,39 @@ link that looks like navigation and dead-ends is worse than a missing one.
 
 ### Your app does not need to style itself to be readable
 
-The house paints a living background — the real season, time of day and weather
-— behind everything. **On the base app's pages that is the point** and it is
-meant to be clearly seen. **Inside a house app it is not**: somebody who opened
-your app came to use it, so the platform automatically makes your panes
-near-opaque and the background settles into the background.
+**Use the house's component classes and you are done.** `.card`, `.card-head`,
+`.card-title`, `.card-subtitle`, `.btn` (`.btn-primary`, `.btn-ghost`,
+`.btn-danger`), `.pill`, `.num`, `.field`, `.card-grid`, `.table-scroll`,
+`.empty`. They come from `assets/css/nora.css`, compiled to
+`static/nora_home/css/nh.css` in the Dockerfile's `css` stage, and they carry
+the house's type scale, spacing rhythm and surfaces already.
 
-You get this for free from `data-app` on `<html>`, set from the URL. Use `.card`
-and the house's own classes and it is already handled — do not add your own
-opacity, and in particular do not add `backdrop-filter` to something sitting on
-an already-opaque surface: it blurs an opaque parent for no visible result, and
-this house runs on a Pi driving two screens continuously.
+**Do not invent your own.** The reason is concrete: `todo.css` grew to 685
+lines — 26% of all the CSS in the house — because this vocabulary did not exist
+when it was written. Everything it needed is now a component.
+
+**Do not write raw pixel sizes, and do not add a breakpoint per device.** Type
+comes from six fluid roles (`--t-label` … `--t-display`) that interpolate from a
+phone to a 4K monitor. Spacing comes from one 4px scale. `.card` is a CSS
+container, so `@container` lets your widget respond to *its own box* rather than
+to the viewport — that is what makes the same card work in a narrow column and
+full-bleed on the 24".
+
+**Tailwind utilities are available but are not the contract.** Tailwind compiles
+only what it scanned at image build time, so an app installed afterwards
+produces **no CSS at all** for its utility classes — silently unstyled, not an
+error. The components are already compiled and always work. If you do want
+utilities, `./nora upgrade` rebuilds and picks them up.
+
+**Do not add `backdrop-filter`.** Surfaces are solid values now, so it blurs an
+opaque parent for no visible result, and this house runs on a Pi driving two
+screens continuously.
+
+> The living background (season, time of day, real weather) used to sit behind
+> every page. **It is retired from the app chrome as of 2026-08-08** — content on
+> a moving gradient is what made every pane muddy. `nh-scene.css` and the weather
+> integration remain for the kiosk's idle screen. Your app should not reference
+> them.
 
 ### How the two screens work together
 

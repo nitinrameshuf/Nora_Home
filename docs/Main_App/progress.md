@@ -3427,3 +3427,78 @@ that no `cursor: none` escapes the idle flag).
 3. **Story 41 — Todo: tests, docs, deploy.** Unblocked by Story 40. Browser
    tests through `./nora qa`, and the deployed-and-observed pass that moves the
    whole phase from built to Complete.
+
+### 2026-08-08 — the UI rebuilt on a real design system
+
+Asked why the UI looked "hackey and not professional". The useful part of the
+answer was measurable, not aesthetic. Across 2,615 lines of CSS: `clamp()` used
+**once**, `@container` **never**, `dvh` **never** (five uses of `100vh`, which
+hides a row under the iOS URL bar), 128 hard-coded pixel values, and the type
+scale hard-coded **three times**, selected server-side from a User-Agent regex —
+so a 13" laptop and a 32" monitor rendered byte-identical type. `todo.css` alone
+had reached 685 lines, 26% of all the CSS in the house, because no shared
+vocabulary existed for it to reuse.
+
+**Two constraints were removed by the user, not by argument.** The 24" is an
+ordinary monitor at desk distance — "read from ~3 metres" was in CLAUDE.md §1 as
+fact and nobody had asked for it. And npm was never forbidden by the user; that
+rule was asserted by an agent, and both of its premises were false (the Pi
+already builds images on every `./nora up`, and Django cannot hot-add an app to
+`INSTALLED_APPS` anyway, which is why `install_app` shells out).
+
+**Built:** Tailwind v4 compiled in a Dockerfile `css` stage, Node in that stage
+only. Source at `assets/css/nora.css`, output `static/nora_home/css/nh.css`.
+Runtime tokens on `:root`, `@theme inline` mapping Tailwind's names onto them so
+`bg-surface` follows `data-theme` without a rebuild, then components named for
+the classes the templates already use — so one sheet restyled 30 templates with
+no markup rewrite.
+
+**Five bugs, each found only by deploying, and each hiding the next:**
+
+1. The Tailwind source was under `static/`. `collectstatic` walks it and
+   `ManifestStaticFilesStorage` rewrote `@import "tailwindcss"` as a relative
+   path, raising `MissingFileError` in the entrypoint *before* Daphne starts —
+   web unhealthy, and `beat`, `worker` and `slack` all refused to start behind
+   it. A build input is not a static asset.
+2. Components sat in `@layer components` while every old sheet is unlayered.
+   **Unlayered beats layered whatever the specificity**, so the first deploy
+   changed almost nothing.
+3. `todo.css` and `dashboard.css` are injected into `{% block head %}`, which is
+   *after* the base `<link>`s — so the design system loaded earlier and lost on
+   source order. It now links after the block.
+4. `wall_live.html` and `kiosk.html` do not extend `base.html`, so the two
+   physical screens never got the sheet at all.
+5. `merge()` in `nh-charts.js` only themed axes, tooltip, legend and grid;
+   `calendar` passed through untouched, so ECharts kept its default white cell
+   and the year heatmap rendered as a white block on a dark wall.
+
+**The ragged dashboard was data, not CSS.** Stored layouts held tiles at
+`h=2,3,4,5` with gaps at `x=3,5,7,9`. Every widget class already declared a
+`default_size`; nothing had reconciled the two. New `manage.py tidy_dashboards`
+repacks onto the declared sizes and equalises each band so tops *and* bottoms
+line up. Deliberately not automatic — `items` is a person's own arrangement.
+
+**Also fixed:** three clock-dependent tests in `test_speech.py` that passed by
+day and failed by night (quiet hours 22:00–07:00 suppressed the notification
+they then asserted on). Proven by running across four timezones before and after
+— the same trap CLAUDE.md already records from the alarm tests. The two emoji in
+`_card.html` became inline SVG: the Pi has no emoji font, so they rendered as
+tofu boxes on every card.
+
+**Retired:** the living background, from the app chrome only. `nh-scene.css`,
+`ui/scene.py` and the Open-Meteo integration all stay — its honest home is the
+kiosk's idle screen, which has nothing to read.
+
+**An audit worth keeping.** Asked which other rules were invented, CLAUDE.md
+records exactly three decisions as having been put to the user: HTTPS/self-signed
+/nginx-only, passwordless including `/admin/`, and DPMS blanking both screens.
+Everything else in §4 and §6 was asserted by an agent in a voice that reads as
+settled law. On review the user kept Mongo, RabbitMQ and Levels — so they were
+not wrong, they were just never distinguishable from preference. If you add a
+rule, say who agreed to it.
+
+**Still open:** RabbitMQ's isolation does not exist — five queues, but one
+worker consuming all five on three slots, and `task_acks_late` never enabled.
+The fix is two workers, not a different broker. And the physical wall still
+renders the heatmap white while a fresh browser on the same URL renders it
+correctly; unexplained.

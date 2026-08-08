@@ -133,6 +133,25 @@ cheapest way to prove a failure is clock-shaped is to re-run with the timezone
 moved — `DJANGO_TIME_ZONE=Asia/Dhaka ./nora test <file>` — which is how these
 were diagnosed before anything was changed.
 
+**It happened again on 2026-08-08**, in `test_speech.py`, written *after* the
+above was already documented: three tests called `speak()` and then asserted on
+the Notification it creates, without pinning quiet hours — so they passed by day
+and failed at 00:05. The file already contained two tests that got it right,
+setting the window to `{"start": 0, "end": 24}` with a comment naming this exact
+trap; the three new ones simply did not copy it.
+
+So the rule needs to be structural, not remembered. **Prefer an autouse fixture
+that pins the clock-sensitive setting for the whole module**, and let the few
+tests that are genuinely *about* that setting override it — fixtures run first,
+so a test setting its own window still wins. `test_speech.py::never_quiet` is the
+pattern. Note the inverse of the window above: `start == end` evaluates as
+`start <= hour < start`, which is never true, so `{"start": 0, "end": 0}` reads
+as "never quiet" without being a magic pair of numbers.
+
+Verify across timezones, not just one — `America/New_York`, `Asia/Dhaka`, `UTC`
+and `Pacific/Auckland` between them cover a wide enough spread of local hours
+that a surviving dependency shows up.
+
 ### What is covered
 
 | File | Covers |

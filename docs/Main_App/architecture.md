@@ -118,6 +118,19 @@ graph LR
 
 ### Queue separation
 
+> **This does not currently hold, checked 2026-08-08.** The five queues are real
+> and every task is routed to one — but the entrypoint runs a *single* worker
+> across all of them (`--queues=platform,alerts,apps,ai,integrations
+> --concurrency=3`). Queues only isolate when separate workers consume them, so
+> a runaway house-app task occupies a slot an escalation then waits for, which
+> is the exact failure this design exists to prevent. `task_acks_late` and
+> `task_reject_on_worker_lost` are also unset, so a task in flight when a worker
+> dies is lost — the durability RabbitMQ was chosen over Redis *for* is not
+> switched on.
+>
+> The fix is worker topology, not a different broker: one worker on
+> `platform,alerts`, another on `apps,ai,integrations`. **Not done yet.**
+
 Five queues, so one app's slowness is never another's outage:
 
 | Queue | Carries | Who may use it |
@@ -349,7 +362,17 @@ Rules that keep the system able to lose a part without losing the whole.
 
 ## 9. Layout on disk
 
+> **The stylesheet is compiled.** `assets/css/nora.css` is the source; the
+> Dockerfile's `css` stage (Node 22, Tailwind v4) builds it to
+> `static/nora_home/css/nh.css`, which is gitignored and copied into the runtime
+> image. The runtime image carries no Node. The source deliberately sits outside
+> `static/` — `collectstatic` walks that tree and `ManifestStaticFilesStorage`
+> rewrites `@import` targets in every `.css` it finds, which turns
+> `@import "tailwindcss"` into a missing relative path and kills the web
+> container on boot.
+
 ```
+assets/css/             nora.css — Tailwind source, compiled into the image
 config/                 Django project — settings/, celery, urls, asgi, wsgi
 nora_home/              THE PLATFORM
   core/                 registry, base models, cards, health, audit, logging, API

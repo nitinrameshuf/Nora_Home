@@ -129,7 +129,10 @@ and act as the second half of the Nora robot.
 
 ### Hardware
 - Raspberry Pi 5, 8GB. Everything runs here in Docker.
-- **HDMI-0 → 24" 1080p display**, always on, mounted on a wall. Read from ~3 metres.
+- **HDMI-0 → 24" 1080p display**, always on, mounted on a wall. **Treated as an
+  ordinary monitor at desk distance** — this line used to say "read from ~3
+  metres", which nobody had asked for and which drove the whole five-surface
+  type-scale machinery. See §4, "The 24" is a monitor."
 - **HDMI-1 → 10.1" touchscreen**, kiosk mode. It is the *remote control* for the 24".
 - Phones, iPads, and laptops hit the same server over the LAN.
 
@@ -400,11 +403,28 @@ asserts it so the next credential added cannot reopen the hole.
      now. What it should look like on Todo's model is a design question, so it
      belongs to Story 24's requirements gate rather than to a deletion story.
      Do not invent one without agreeing the shape first.
-1. **Design system chosen: "Almanac" — engine shipped and seen live on the Pi.**
-   See §4's new decision entry and the design-options mockups (deleted 2026-08-03; see progress.md). The living
-   background (season/day-night/weather composited behind the real app, never
-   replacing it) is wired into `base.html` and `kiosk.html`, backed by a real
-   weather integration (Open-Meteo, no API key). Verified locally (real fetch
+1. **Design system: replaced 2026-08-08. "Almanac" is retired from the app
+   chrome.** The house now builds its stylesheet with **Tailwind v4**, compiled
+   in the Dockerfile's `css` stage (Node lives there only; the runtime image
+   never sees npm). Source is `assets/css/nora.css` — **not** under `static/`,
+   because `collectstatic` rewrites `@import` in anything it walks and takes
+   the web container down on boot. Output is `static/nora_home/css/nh.css`,
+   gitignored, linked last in `base.html` *after* `{% block head %}`.
+
+   Components are named for the classes the templates already use (`.card`,
+   `.btn`, `.nav-link`, `.todo-col`), so one sheet restyles 30 templates
+   without rewriting their markup. Six fluid `clamp()` type roles replace three
+   hard-coded per-surface scales; one 4px spacing rhythm replaces eleven ad-hoc
+   values; three solid surface levels replace translucent panes over a moving
+   gradient. **940 tests green, deployed and screenshotted on the Pi.**
+
+   The old hand-written sheets still load underneath and still style anything
+   the new one has not reached. **They are meant to be deleted**, and until they
+   are, the component layer has to stay *unlayered* to beat them — see §4.
+
+   ~~The living background is wired into `base.html` and `kiosk.html`~~ — it is
+   now hidden in both. `nh-scene.css`, `nora_home/ui/scene.py` and the
+   Open-Meteo integration all remain, for the kiosk's idle screen. Verified locally (real fetch
    against the live API, `manage.py check` clean, key pages rendering with
    correct `data-season`/`data-daypart`/`data-weather`) and then deployed and
    screenshotted on the physical wall and kiosk the same session — real
@@ -552,6 +572,65 @@ git clone <repo> && cd nora-home
 
 Read this section before changing architecture. Each of these was a real fork.
 
+**Tailwind, and the rules nobody agreed to (2026-08-08).** Asked why the UI
+looked unprofessional, the honest answer turned out to be measurable rather
+than aesthetic. Across 2,615 lines of CSS: `clamp()` appeared **once**,
+`@container` **never**, `dvh` **never** (five uses of `100vh`, which hides a
+row under the iOS URL bar), 128 hard-coded pixel values, and the type scale
+hard-coded **three times** and chosen server-side from a User-Agent regex. A
+13" laptop and a 32" monitor rendered byte-identical type. The zoom slider in
+Settings → Screens existed because the layout could not respond on its own.
+
+**The 24" is a monitor.** It was never asked to be read from three metres —
+that was in §1 as fact, and it is what justified a wall type scale, a fifth
+surface, and CSS `zoom` stored in `HouseSetting`. Removing the claim removes
+all of it.
+
+**Which raised a bigger question: which rules here did anyone actually agree
+to?** Audited, and across the whole document exactly three decisions record
+having been put to the user — HTTPS/self-signed/nginx-only, passwordless
+including `/admin/`, and DPMS blanking both screens. Everything else in §4 and
+§6 was asserted by an agent in a voice that reads as settled law: Mongo
+alongside MySQL, RabbitMQ alongside Redis, Levels, the three gates, "widgets
+return data not HTML", and the no-npm rule above. **They are not all wrong**
+— on review the user kept Mongo, RabbitMQ and Levels. The problem was that
+nothing distinguished a considered decision from an agent's preference. If you
+add a rule here, say who agreed to it.
+
+**RabbitMQ stays, and the real bug was the worker.** Proposed removing it;
+that was too quick. Five queues are genuinely in use — but one worker consumes
+all five on three slots, so a runaway app task *can* delay an escalation,
+which is the exact thing the broker was chosen to prevent. `task_acks_late` was
+never switched on either, so a task in flight when a worker dies is lost today.
+The fix is two workers (`platform,alerts` apart from `apps,ai,integrations`),
+not a different broker. **Not done yet.**
+
+**Three cascade traps, in order, each of which made a deploy look like a
+no-op.** Worth knowing as a set, because each one hid the next:
+
+1. **Unlayered beats layered, whatever the specificity.** The new components
+   sat in `@layer components`; every old sheet is unlayered. Layered
+   `.btn-primary` lost to unlayered `.btn-primary` — same selector — because
+   the cascade compares layers *before* it looks at specificity.
+2. **`{% block head %}` comes after the base `<link>`s.** `todo.css` and
+   `dashboard.css` are injected there, so a sheet linked above the block loads
+   *earlier* and loses. The design system now links after the block.
+3. **`wall_live.html` and `kiosk.html` do not extend `base.html`.** They needed
+   the stylesheet added by hand, which is why both physical screens sat
+   unchanged while every other page had moved on.
+
+**And the thing no stylesheet could have fixed: the ragged dashboard was
+data.** Stored layouts held tiles at `h=2,3,4,5` with gaps at `x=3,5,7,9`, so
+the cards genuinely were different heights. Every widget class already declared
+a `default_size` and nothing had ever reconciled the two. `manage.py
+tidy_dashboards` repacks onto the declared sizes and equalises each band. It is
+**not** automatic — `items` is a person's own arrangement.
+
+**The living background is retired from the app chrome.** It was the strongest
+"hobby project" signal, and content sitting on a moving gradient is what made
+every pane muddy and inconsistent. `nh-scene.css` and the weather endpoint stay:
+the idea's honest home is the kiosk's idle screen, which has nothing to read.
+
 **The wall is a screen someone stands at, not a poster (2026-08-07).** Two
 rules were written when the 24" was a passive ambient view, and both outlived
 that. Worth knowing as a pair, because the next thing dating from the same
@@ -614,6 +693,15 @@ it shipped that way. Apps now declare `nora_sections` and the sidebar leads with
 them. The house nav stays *underneath* rather than being replaced: navigation
 must never become a dead end, and "back to the house" should not be something
 each app has to remember to build.
+
+**SUPERSEDED 2026-08-08 — kept for the measurements, not the conclusion.** The
+whole entry below rests on the 24" being read from three metres, which was
+never asked for. Once it is an ordinary monitor, nothing needs a per-screen
+scale: fluid `clamp()` type covers phone through 4K, and `nora_home/ui/zoom.py`
+plus Settings → Screens exist only for the 10.1" kiosk now. **The two facts
+below are still true and still worth knowing** — CSS `zoom` really does scale
+borders and radii where a root font-size multiplier does not, and media queries
+really do evaluate against the *unzoomed* viewport.
 
 **Screen size is a setting, because only the person in front of the screen can
 judge it (2026-08-07).** Settled after three wrong answers, and the reasoning is
@@ -788,9 +876,17 @@ claiming a platform prefix.
 handles the whole range from sparkline to heatmap,
 themes cleanly, and renders acceptably on a Pi. Gridstack for the draggable home
 grid. Both are vendored into `static/nora_home/vendor/` rather than pulled from a CDN,
-because the house must work with the internet down. **There is deliberately no npm,
-no bundler, and no framework** — a family member's agent should be able to add a
-chart without a toolchain, and the Pi should never run a build.
+because the house must work with the internet down. That part still holds.
+
+~~**There is deliberately no npm, no bundler, and no framework**~~ — **retired
+2026-08-08.** This was never the user's rule; it was asserted by an agent and
+then quoted back for weeks as if settled. Two of its premises were false: the
+Pi *already* built Docker images on every `./nora up` and `./nora upgrade`, and
+a house app is not hot-inserted into a running Django process anyway — Django
+cannot add to `INSTALLED_APPS` without a restart, which is why `install_app`
+shells out to fresh subprocesses. So "the Pi should never run a build" was
+describing something that had never been true. See §4, "Tailwind, and the rules
+nobody agreed to."
 
 **Widgets return data, not HTML.** `ChartWidget.option()` returns an ECharts option
 dict; the platform applies the house theme. This is what keeps every chart in the
@@ -939,7 +1035,8 @@ nora/              the platform
   ui/              surface detection, Nora bot, theme
 houseapps/         family apps live here (empty until Story 24)
 templates/         platform templates
-static/nora_home/       css, js, vendor
+assets/css/        nora.css — the Tailwind source. NOT under static/: see §4
+static/nora_home/       css, js, vendor. nh.css here is generated, gitignored
 docker/            entrypoint
 nora               the runner — install, up, upgrade, backup, apps, screens
 scripts/           run-tests.sh, gen-self-signed-cert.sh, vendor.sh

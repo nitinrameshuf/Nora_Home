@@ -494,3 +494,74 @@ class TestScreenZoom:
         event = AuditEvent.objects.filter(action="zoom.changed").first()
         assert event is not None
         assert event.detail["wall_zoom"] == 1.3
+
+
+# ── the compiled stylesheet: guards for traps that took an outage to find ────
+#
+# Both of these were real, both took the house down or silently did nothing, and
+# neither is visible in a rendered page — so they are asserted here rather than
+# left to be rediscovered.
+
+def test_the_tailwind_source_is_not_under_static():
+    """collectstatic walks static/ and ManifestStaticFilesStorage rewrites
+    url()/@import targets in every .css it finds. It reads `@import
+    "tailwindcss"` as a relative path, cannot resolve it, and raises
+    MissingFileError — in the entrypoint, before Daphne starts, so `web` never
+    becomes healthy and beat/worker/slack all refuse to start behind it.
+
+    A build input is not a static asset.
+    """
+    from pathlib import Path
+
+    from django.conf import settings
+
+    root = Path(settings.BASE_DIR)
+    assert (root / "assets" / "css" / "nora.css").exists(), (
+        "the Tailwind source has moved; it belongs in assets/, not static/")
+
+    strays = list((root / "static").rglob("*.css"))
+    for stray in strays:
+        text = stray.read_text(encoding="utf-8", errors="ignore")
+        assert '@import "tailwindcss' not in text, (
+            f"{stray.relative_to(root)} imports tailwindcss from inside static/ — "
+            "collectstatic will fail on it and take the web container down")
+
+
+def test_the_design_system_loads_after_the_per_page_block():
+    """base.html links nh.css *after* `{% block head %}`.
+
+    todo.css and dashboard.css are injected into that block, so a sheet linked
+    above it loads earlier and loses on source order at equal specificity. That
+    is not theoretical: linked above the block, the design system restyled the
+    shell and changed nothing inside Todo — the priority colours and the ragged
+    column heights both survived, and it looked like the CSS was wrong.
+    """
+    from pathlib import Path
+
+    from django.conf import settings
+
+    html = (Path(settings.BASE_DIR) / "templates" / "base.html").read_text(encoding="utf-8")
+
+    block_at = html.find("{% block head %}")
+    sheet_at = html.find("nora_home/css/nh.css")
+
+    assert block_at != -1 and sheet_at != -1, "base.html no longer has both markers"
+    assert sheet_at > block_at, (
+        "nh.css must be linked after `{% block head %}` — per-page stylesheets go "
+        "in that block and would otherwise override the design system")
+
+
+def test_both_screen_templates_load_the_design_system():
+    """Neither wall_live.html nor kiosk.html extends base.html, so each needs the
+    stylesheet by hand. When they did not have it, both physical screens kept
+    rendering the old chrome — with the retired living background still behind
+    them — while every other page in the house had moved on.
+    """
+    from pathlib import Path
+
+    from django.conf import settings
+
+    for name in ("wall_live.html", "kiosk.html"):
+        path = Path(settings.BASE_DIR) / "templates" / "displays" / name
+        assert "nora_home/css/nh.css" in path.read_text(encoding="utf-8"), (
+            f"{name} does not extend base.html and so must link nh.css itself")
