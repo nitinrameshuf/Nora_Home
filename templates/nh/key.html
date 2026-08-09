@@ -1,0 +1,14 @@
+{% comment %}
+The kiosk's illuminated square key — mockup `.hkey`/`.led`/`.lg`/`.num`.
+`hue` sets `--key`, which both the LED dot and the hover glow read.
+{% endcomment %}
+{% if href %}
+<a class="hkey{% if wide %} wide{% endif %}" href="{{ href }}" style="--key:{{ hue }}">
+{% else %}
+<button type="button" class="hkey{% if wide %} wide{% endif %}" style="--key:{{ hue }}"
+        {% if action %}data-act="{{ action }}"{% endif %}{% if value %}data-v="{{ value }}"{% endif %}>
+{% endif %}
+  {% if number %}<span class="num">{{ number }}</span>{% endif %}
+  <span class="led"></span>
+  <span class="lg">{{ label }}</span>
+{% if href %}</a>{% else %}</button>{% endif %}

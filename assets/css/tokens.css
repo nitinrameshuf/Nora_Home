@@ -32,31 +32,14 @@
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/jetbrains-mono";
 
+/* Only the font family names go through Tailwind's @theme. Tailwind always
+   prefixes an @theme entry with its namespace when it emits the custom
+   property — --font-sans stays --font-sans (font is already the namespace,
+   so there is nothing to add), which is also the reserved name Tailwind's
+   own base layer uses internally, so these two survive its tree-shaking
+   (theme values a utility class never references normally get dropped from
+   the compiled output) regardless. */
 @theme {
-  /* The core: an emissive cyan, used sparingly and always as light. */
-  --color-arc-100: #e8fbff;
-  --color-arc-300: #a5eeff;
-  --color-arc-400: #7fe9ff;
-  --color-arc-500: #38d6ff;
-  --color-arc-600: #12a8d8;
-  --color-arc-700: #0b7a9e;
-
-  /* Semantic — separate from the core, never used as accent. */
-  --color-ok: #3ff0b0;
-  --color-warn: #ffb648;
-  --color-crit: #ff4d5e;
-  --color-info: #7aa2ff;
-
-  /* Ground. */
-  --color-void: #04070d;
-  --color-deep: #070d16;
-  --color-slab: #0b1520;
-
-  /* Ink. */
-  --color-txt: #e2f2fa;
-  --color-dim: #9dbccf;
-  --color-faint: #6a8ca2;
-
   --font-sans: "Inter Variable", ui-sans-serif, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", "Cascadia Mono",
@@ -64,7 +47,42 @@
 }
 
 @layer tokens {
+  /* Plain custom properties, not @theme — deliberately, and the opposite was
+     tried first. Tailwind's @theme would have namespaced every one of these
+     to --color-arc-500 etc (the "color" prefix is not optional; @theme
+     always adds it), which stops matching the moment anything — including
+     every rule in components.css and the mockup these are copied from —
+     reads plain var(--arc-500). Routing through @theme only pays for itself
+     when something actually wants Tailwind's own utility classes
+     (bg-arc-500, text-crit); nothing here does, so there is nothing to gain
+     by paying that naming cost. Found by looking at a screenshot: every
+     colour rendered as fully transparent, with only its --glow halo (which
+     never went through @theme) visible. */
   :root {
+    /* The core: an emissive cyan, used sparingly and always as light. */
+    --arc-100: #e8fbff;
+    --arc-300: #a5eeff;
+    --arc-400: #7fe9ff;
+    --arc-500: #38d6ff;
+    --arc-600: #12a8d8;
+    --arc-700: #0b7a9e;
+
+    /* Semantic — separate from the core, never used as accent. */
+    --ok: #3ff0b0;
+    --warn: #ffb648;
+    --crit: #ff4d5e;
+    --info: #7aa2ff;
+
+    /* Ground. */
+    --void: #04070d;
+    --deep: #070d16;
+    --slab: #0b1520;
+
+    /* Ink. */
+    --txt: #e2f2fa;
+    --dim: #9dbccf;
+    --faint: #6a8ca2;
+
     --glow: rgba(56, 214, 255, 0.45);
     --glow-soft: rgba(56, 214, 255, 0.16);
 

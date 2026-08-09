@@ -83,6 +83,51 @@ def system_status(request):
 
 
 @login_required
+def styleguide(request):
+    """Every component in `nora_home/ui/templatetags/nh.py`, in every state —
+    empty, loading, error, overflow (Story 45's own file list). Fixture data
+    here is grounded the same way DEVELOPMENT.md asks the mockup to be:
+    `registered_apps()` for the Picker demo (not an invented app list), and
+    the exact dict shapes `StatWidget.stat()` / `ListWidget.rows()` actually
+    return for Stat and List — so a caller can copy a card here and know it
+    will render for real.
+
+    Not linked from any nav yet; IA is Story 47's job. Reachable directly at
+    /home/styleguide/ by any signed-in member — same as every other page in
+    this house, nothing here is secret, it is just not wired in yet.
+    """
+    from nora_home.core.registry import registered_apps
+
+    apps = [a for a in registered_apps() if a.nav][:5]
+    picker_items = [{"slug": a.slug, "title": a.title} for a in apps]
+
+    # Demo rows only — shaped exactly like ListWidget.rows()/StatWidget.stat()
+    # so a card copied from here renders identically once fed real data.
+    due_rows = [
+        {"title": "Take the bins out", "meta": "2 days late", "status": "late", "url": "#"},
+        {"title": "Change the water filter", "meta": "Tomorrow", "status": "", "url": "#"},
+        {"title": "Book the boiler service", "meta": "Sat 16", "status": "", "url": "#"},
+    ]
+    overflow_rows = [
+        {"title": f"Task {n}", "meta": "Wed", "status": "", "url": "#"} for n in range(1, 11)
+    ]
+
+    return render(request, "core/styleguide.html", {
+        "picker_items": picker_items,
+        "due_rows": due_rows,
+        "empty_rows": [],
+        "overflow_rows": overflow_rows,
+        "temp_spark": [48, 50, 49, 51, 53, 52, 54, 52],
+        "chart_option": {
+            "xAxis": {"type": "category", "data": ["Mon", "Tue", "Wed", "Thu", "Fri"]},
+            "yAxis": {"type": "value"},
+            "series": [{"type": "bar", "data": [1, 3, 2, 4, 3]}],
+        },
+        "page_title": "Styleguide",
+    })
+
+
+@login_required
 def house_log(request):
     """The House log — every subsystem's record of itself, on one timeline.
 

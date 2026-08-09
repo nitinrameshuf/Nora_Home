@@ -3821,3 +3821,79 @@ the font yet, and the deliverable was that the layer compiles and ships without
 touching what a person sees. `./nora test` on the Pi: 972 passed, 23 skipped
 (the two git-dependent tests correctly skip inside the container, same as
 Story 43).
+
+## 2026-08-09 — Story 45, Phase A: the component library, additive and proven
+
+Eleven components — Card, Stat, List, Chart, Toolbar, EmptyState, Sheet, Tile,
+Ring, Key, Picker — as Django template tags (`nora_home/ui/templatetags/nh.py`)
+backed by `templates/nh/*.html`, styled by `assets/css/components.css`, all
+grounded token-for-token in `docs/Main_App/ui-overhaul-mockup.html`'s own
+`@layer comp`/`@layer work`/`@layer kiosk`/`@layer phone`. `/home/styleguide/`
+renders all eleven in every state — empty, loading (Chart's holder), error
+(status-tinted cards), overflow (a 10-row list in a 140px box) — using fixture
+data shaped exactly like `StatWidget.stat()`/`ListWidget.rows()`, plus a real
+Picker fed from `registered_apps()`, not invented.
+
+Two decisions the mockup didn't spell out on their own, written into
+`nh.py`'s own docstring rather than left implicit:
+
+- **Tile vs. Card.** The mockup's own markup collapses both into one element
+  (`.bento > .card { grid-column: span var(--c) }`). The OLD `dashboard.js`
+  already drew this exact seam under different names — `dash-tile-wrap` (grid
+  cell) vs. `dash-tile` (`__head`/`__title`/`__body` chrome) — so the library
+  keeps it: `{% nh_tile %}` places, `{% nh_card %}` decorates.
+- **Chart stays a thin holder.** `{% nh_chart %}` wraps a `[data-nh-chart]`
+  div and nothing more; `assets/js/nh-charts.js` still draws into it,
+  untouched. `ChartWidget.option()` returning a plain dict is the contract
+  Phase 8 was explicit about keeping.
+
+**Split the story in two, once the size of "then delete the old front end"
+became clear** — see CLAUDE.md §4 for the full reasoning. Phase A (this
+entry) is additive: nothing real loads any of this yet, so every existing
+page is provably unchanged. Phase B — rewiring every template, then deleting
+`nora-home.css`/`dashboard.css`/`todo.css`/etc — is its own pass.
+
+### Two real bugs, neither visible to the Python suite
+
+- **Tailwind v4's `@theme` silently namespaces everything it emits** —
+  `--arc-500` inside `@theme` compiles to `--color-arc-500`, and every hand-
+  written rule reading plain `var(--arc-500)` (matching the mockup, which
+  never used `@theme` for these) got nothing. Every swatch and status colour
+  rendered fully transparent; only glows survived, since those were always
+  plain custom properties. Moved colour/ink out of `@theme` into a plain
+  `@layer tokens` block — what the mockup already does.
+- **Alpine reserves a component method named `init`** and auto-invokes it
+  itself, with no arguments, colliding with the Picker's own explicit
+  `x-init="init($el)"` call. Renamed to `setup`.
+
+Both were found by opening `/home/styleguide/` in a real browser — `manage.py
+check` and 994 Python tests stayed green through both the entire time they
+were broken, which is the whole reason the browser-verification step in
+`docs/Main_App/testing.md` is not optional.
+
+### The collision audit needed to be narrower than "every class token"
+
+Read literally, the story's own instruction — match every token in a
+selector, the way the mockup's audit script was fixed to reach `.bar` in
+`.vit .bar` — flags this codebase's *ordinary* CSS as self-colliding: hover
+states, this codebase's own `[data-surface]`/`[data-app]` override
+convention, structural nesting like `.nh-tile > .card`. None of those are the
+mockup's actual bug (`.who`/`.cap`/`.bar`/`.body`, each a bare, fully unscoped
+selector reused by accident across unrelated `@layer` blocks). The audit
+compares only bare, ancestor-free compounds now — narrower than the literal
+instruction, and correct for it.
+
+### Verified
+
+994 tests green, including 22 new ones. Built and deployed to the Pi (same
+node-in-a-container round trip as Stories 43–44); the styleguide opened in a
+real browser, all eleven components screenshotted, the Picker's click-to-
+select and the `nh-pick` bubbling event both exercised for real. Every other
+real page in the house re-checked unchanged, since Phase A touches nothing
+they load.
+
+### Not done
+
+Phase B: every real template still renders through the old system. Story 45
+stays *built*, not *Complete*, until Phase B rewires them and the old files
+are gone.

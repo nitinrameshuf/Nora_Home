@@ -17,6 +17,7 @@ urlpatterns = [
     path("", dashboard_views.home, name="dashboard"),
     path("apps/", views.app_directory, name="app_directory"),
     path("system/", views.system_status, name="system_status"),
+    path("styleguide/", views.styleguide, name="styleguide"),
     path("log/", views.house_log, name="house_log"),
     path("settings/", views.settings_page, name="settings"),
     path("health/", views.health, name="health"),

@@ -1,0 +1,41 @@
+{% comment %}
+One component, two axes — see assets/js/nh-picker.js for the shared physics.
+`vertical` is the kiosk's app scroller (mockup `.vsel`/`.vsel-band`/`.vsel-list`
+/`.vsel-i`); `horizontal` is the phone's app rail (`.ph-rail`/`.ph-band`/
+`.ph-track`/`.ph-tab`). Same fixed centre band, same scroll-snap list, same
+corner brackets drawn on the band rather than the item so they stay put while
+the column/row scrolls under them.
+
+`item.icon`, if given, is trusted, pre-rendered SVG markup (the caller's
+responsibility, same as base.html's hand-written nav icons today — this
+component has no icon-name lookup of its own) and is rendered with |safe.
+Never pass anything derived from user input through it.
+{% endcomment %}
+{% if orientation == "horizontal" %}
+<div class="ph-rail" data-nh-picker data-orientation="horizontal" x-data="nhPicker()" x-init="setup($el)">
+  <div class="ph-band" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+  <div class="ph-track" @scroll.capture.debounce.200ms="onScroll" @click="onClick">
+    {% for item in items %}
+    <button type="button" class="ph-tab{% if item.slug == active %} on{% endif %}"
+            data-act="nh-pick" data-v="{{ item.slug }}"{% if item.slug == active %} aria-current="true"{% endif %}>
+      {% if item.icon %}{{ item.icon|safe }}{% endif %}
+      <span>{{ item.title }}</span>
+    </button>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+<div class="vsel" data-nh-picker data-orientation="vertical" x-data="nhPicker()" x-init="setup($el)">
+  <div class="vsel-scan" aria-hidden="true"></div>
+  <div class="vsel-band" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+  <div class="vsel-list" @scroll.capture.debounce.200ms="onScroll" @click="onClick">
+    {% for item in items %}
+    <button type="button" class="vsel-i{% if item.slug == active %} on{% endif %}"
+            data-act="nh-pick" data-v="{{ item.slug }}"{% if item.slug == active %} aria-current="true"{% endif %}>
+      <span class="vsel-ic">{% if item.slug == active %}<span class="reticle" aria-hidden="true"></span>{% endif %}{% if item.icon %}{{ item.icon|safe }}{% endif %}</span>
+      <span class="vsel-t">{{ item.title }}</span>
+    </button>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}

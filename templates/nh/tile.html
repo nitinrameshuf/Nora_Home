@@ -1,0 +1,7 @@
+{% comment %}
+The grid cell — `.bento > .card { grid-column:span var(--c,3); grid-row:span
+var(--r,1); }` in the mockup. `container-type:inline-size` lives here (not on
+Card) because a Card can also render outside any grid, where sizing to a
+container it does not control would be wrong.
+{% endcomment %}
+<div class="nh-tile" data-size="{{ size }}" style="--c:{{ cols }};--r:{{ rows }}">{{ body }}</div>

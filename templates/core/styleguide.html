@@ -1,0 +1,198 @@
+{% load django_vite nh %}<!doctype html>
+{% comment %}
+Every component in nora_home/ui/templatetags/nh.py, in every state — Story
+45's own file list. Deliberately its own shell, not an extension of
+base.html: base.html loads the OLD nora-home.css, whose `.card`/`.btn`/etc
+are unlayered and would silently beat every rule in components.css regardless
+of load order (an unlayered rule always wins over a layered one — that is
+the entire cascade mechanism `@layer` exists to opt into). Proving this
+system standalone, uncontaminated by the system it replaces, is the same
+"prove it before wiring anything to it" shape as Story 43's build pipeline
+and Story 44's token layer.
+{% endcomment %}
+<html lang="en" data-surface="{{ surface }}" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Styleguide · {{ house_name }}</title>
+  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/tokens.css' %}">
+  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/components.css' %}">
+  <style>
+    /* Page chrome only — nothing here is a component under test. */
+    body { background: var(--void); color: var(--txt); font-family: var(--font-sans); margin: 0; }
+    .sg-wrap { max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; }
+    .sg-h1 { font-family: var(--font-mono); font-size: var(--s3); letter-spacing: .1em; text-transform: uppercase; color: var(--arc-100); }
+    .sg-section { margin-top: 48px; }
+    .sg-section h2 { font-family: var(--font-mono); font-size: var(--s1); letter-spacing: .15em; text-transform: uppercase; color: var(--arc-300); border-bottom: 1px solid var(--edge); padding-bottom: 8px; }
+    .sg-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; margin-top: 16px; }
+    .sg-note { font-family: var(--font-mono); font-size: calc(var(--s0) * .74); color: var(--faint); margin: 4px 0 0; }
+    .sg-swatch { width: 180px; }
+    .sg-swatch-fill { height: 40px; border-radius: 8px; border: 1px solid var(--edge); }
+    .sg-picker-frame { height: 320px; width: 240px; border: 1px solid var(--edge); border-radius: var(--rad); overflow: hidden; display: flex; flex-direction: column; }
+    .sg-picker-frame.horizontal { width: 100%; height: 140px; }
+    /* Sheet is `position:fixed` for real use (a modal over the whole
+       screen, opened/closed by Alpine). This page shows it permanently, in
+       document flow, so a fixed overlay would blank out every section under
+       it — .sg-sheet-demo turns it into a normal in-flow box for display
+       purposes only; components.css is untouched. */
+    .sg-sheet-demo { position: relative; height: 220px; }
+    .sg-sheet-demo .scrim { position: absolute; }
+  </style>
+</head>
+<body>
+<div class="sg-wrap">
+  <h1 class="sg-h1">Nora Home — Styleguide</h1>
+  <p class="sg-note">nora_home/ui/templatetags/nh.py · every state · grounded against real data shapes, not invented ones</p>
+
+  <section class="sg-section">
+    <h2>Tokens — the arc-reactor palette</h2>
+    <div class="sg-row">
+      <div class="sg-swatch"><div class="sg-swatch-fill" style="background:var(--arc-500)"></div><p class="sg-note">--arc-500</p></div>
+      <div class="sg-swatch"><div class="sg-swatch-fill" style="background:var(--ok)"></div><p class="sg-note">--ok</p></div>
+      <div class="sg-swatch"><div class="sg-swatch-fill" style="background:var(--warn)"></div><p class="sg-note">--warn</p></div>
+      <div class="sg-swatch"><div class="sg-swatch-fill" style="background:var(--crit)"></div><p class="sg-note">--crit</p></div>
+      <div class="sg-swatch"><div class="sg-swatch-fill" style="background:var(--info)"></div><p class="sg-note">--info</p></div>
+    </div>
+  </section>
+
+  <section class="sg-section">
+    <h2>Card</h2>
+    <div class="sg-row">
+      <div style="width:260px">
+        {% nh_card title="Due next" subtitle="Todo" %}
+          {% nh_list rows=due_rows %}
+        {% endnh_card %}
+      </div>
+      <div style="width:260px">
+        {% nh_card title="House health" status="ok" %}
+          {% nh_stat value="OK" label="redis, mongo" %}
+        {% endnh_card %}
+      </div>
+      <div style="width:260px">
+        {% nh_card title="Pi temperature" status="warn" %}
+          {% nh_stat value=52 unit="C" label="Pi temperature" status="warn" spark=temp_spark %}
+        {% endnh_card %}
+      </div>
+      <div style="width:260px">
+        {% nh_card title="Open now" status="crit" %}
+          {% nh_stat value=4 unit="open" label="1 overdue" status="crit" %}
+        {% endnh_card %}
+      </div>
+    </div>
+  </section>
+
+  <section class="sg-section">
+    <h2>Tile — grid cell sizes (S / M / L / XL)</h2>
+    <div class="bento" style="grid-auto-rows:96px">
+      {% nh_tile size="S" %}{% nh_card title="S" %}{% nh_stat value="3" label="cols" %}{% endnh_card %}{% endnh_tile %}
+      {% nh_tile size="M" %}{% nh_card title="M" %}{% nh_stat value="6" label="cols" %}{% endnh_card %}{% endnh_tile %}
+      {% nh_tile size="L" %}{% nh_card title="L" %}{% nh_stat value="6x2" label="cols x rows" %}{% endnh_card %}{% endnh_tile %}
+      {% nh_tile size="XL" %}{% nh_card title="XL" %}{% nh_stat value="12" label="cols, full width" %}{% endnh_card %}{% endnh_tile %}
+    </div>
+  </section>
+
+  <section class="sg-section">
+    <h2>Stat — every state</h2>
+    <div class="sg-row">
+      <div style="width:220px">{% nh_card title="Plain" %}{% nh_stat value=18 unit="GB free" label="Disk" %}{% endnh_card %}</div>
+      <div style="width:220px">{% nh_card title="With a trend" %}{% nh_stat value=52 unit="C" label="Pi temperature" spark=temp_spark %}{% endnh_card %}</div>
+      <div style="width:220px">{% nh_card title="ok" %}{% nh_stat value="OK" label="all services up" status="ok" %}{% endnh_card %}</div>
+      <div style="width:220px">{% nh_card title="warn" %}{% nh_stat value=1 unit="of 30" label="days with something done" status="warn" %}{% endnh_card %}</div>
+      <div style="width:220px">{% nh_card title="crit" %}{% nh_stat value=2 unit="late" label="Take the bins out" status="crit" %}{% endnh_card %}</div>
+    </div>
+  </section>
+
+  <section class="sg-section">
+    <h2>List — every state</h2>
+    <div class="sg-row">
+      <div style="width:280px">{% nh_card title="Populated" %}{% nh_list rows=due_rows %}{% endnh_card %}</div>
+      <div style="width:280px">{% nh_card title="Empty" %}{% nh_list rows=empty_rows empty_message="Nothing due. Enjoy it." %}{% endnh_card %}</div>
+      <div style="width:280px">{% nh_card title="Overflow (10 rows in a short card)" %}<div style="max-height:140px;overflow:auto">{% nh_list rows=overflow_rows %}</div>{% endnh_card %}</div>
+    </div>
+  </section>
+
+  <section class="sg-section">
+    <h2>Chart — the holder (nh-charts.js draws into it; not loaded on this page)</h2>
+    <div class="sg-row">
+      <div style="width:320px">{% nh_card title="Keeping at it" subtitle="last 90 days" %}{% nh_chart option=chart_option key="sg-demo" %}{% endnh_card %}</div>
+    </div>
+    <p class="sg-note">A [data-nh-chart] div with its option JSON in a data attribute. See nora_home/ui/templatetags/nh.py's module docstring for why nothing here renders it.</p>
+  </section>
+
+  <section class="sg-section">
+    <h2>Toolbar</h2>
+    <div class="sg-row">
+      {% nh_card title="Reporting" %}
+        {% nh_toolbar %}
+          {% nh_chip label="All" pressed=True %}
+          {% nh_chip label="This week" %}
+          {% nh_chip label="This month" %}
+        {% endnh_toolbar %}
+      {% endnh_card %}
+    </div>
+  </section>
+
+  <section class="sg-section">
+    <h2>EmptyState</h2>
+    <div class="sg-row" style="width:300px">
+      {% nh_empty title="All placed" message="Every widget is already on the grid." %}
+    </div>
+  </section>
+
+  <section class="sg-section">
+    <h2>Badge / Chip / Button</h2>
+    <div class="sg-row">
+      {% nh_badge text="ok" status="ok" %}
+      {% nh_badge text="warn" status="warn" %}
+      {% nh_badge text="crit" status="crit" %}
+      {% nh_chip label="Priority 1" %}
+      {% nh_chip label="Priority 1 (on)" pressed=True %}
+      {% nh_button label="Cancel" %}
+      {% nh_button label="Add the task" variant="pri" %}
+      {% nh_button label="Skip" variant="ghost" %}
+      {% nh_button label="Search" variant="ghost" kbd="⌘K" %}
+    </div>
+  </section>
+
+  <section class="sg-section">
+    <h2>Ring</h2>
+    <div class="sg-row">
+      <div style="width:150px">{% nh_ring pct=18 big="18" small="of 30" %}</div>
+      <div style="width:150px">{% nh_ring pct=75 big="75" small="pct" color="var(--ok)" %}</div>
+      <div style="width:150px">{% nh_ring pct=100 big="100" small="pct" color="var(--crit)" %}</div>
+      <div style="width:150px">{% nh_ring pct=0 big="0" small="pct" %}</div>
+    </div>
+  </section>
+
+  <section class="sg-section">
+    <h2>Key</h2>
+    <div class="sg-row">
+      {% nh_key label="Board" hue="#38d6ff" %}
+      {% nh_key label="Calendar" hue="#3ff0b0" %}
+      {% nh_key label="Search" hue="#ffb648" %}
+      {% nh_key label="Wide key" hue="#a78bfa" wide=True %}
+    </div>
+  </section>
+
+  <section class="sg-section">
+    <h2>Sheet</h2>
+    <div class="sg-row sg-sheet-demo" style="width:100%">
+      {% nh_sheet title="Add a widget" %}
+        {% nh_empty title="All placed" message="Every widget is already on the grid." %}
+        <div class="sheet-foot">{% nh_button label="Done" %}</div>
+      {% endnh_sheet %}
+    </div>
+  </section>
+
+  <section class="sg-section">
+    <h2>Picker — vertical (kiosk) and horizontal (phone), same control rotated</h2>
+    <p class="sg-note">Items: registered_apps() with nav=True, not invented — see core/views.py's styleguide().</p>
+    <div class="sg-row">
+      <div class="sg-picker-frame">{% nh_picker items=picker_items active=picker_items.0.slug %}</div>
+      <div class="sg-picker-frame horizontal">{% nh_picker items=picker_items active=picker_items.0.slug orientation="horizontal" %}</div>
+    </div>
+  </section>
+</div>
+{% vite_asset 'assets/js/nh-picker.js' %}
+</body>
+</html>

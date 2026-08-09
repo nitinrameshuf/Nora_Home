@@ -1,0 +1,7 @@
+{% comment %} mockup `.btn`/`.btn.pri`/`.btn.ghost`. {% endcomment %}
+{% if href %}
+<a class="btn{% if variant %} {{ variant }}{% endif %}" href="{{ href }}">{{ label }}{% if kbd %}<kbd>{{ kbd }}</kbd>{% endif %}</a>
+{% else %}
+<button type="{{ button_type }}" class="btn{% if variant %} {{ variant }}{% endif %}"
+        {% if action %}data-act="{{ action }}"{% endif %}{% if value %}data-v="{{ value }}"{% endif %}>{{ label }}{% if kbd %}<kbd>{{ kbd }}</kbd>{% endif %}</button>
+{% endif %}

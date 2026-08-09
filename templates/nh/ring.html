@@ -1,0 +1,15 @@
+{% comment %}
+The concentric ring gauge — math ported verbatim from the mockup's `ring()`.
+viewBox and radius (110/55/55, R=42) match exactly so `.ring-c`'s absolute
+centring keeps working unchanged.
+{% endcomment %}
+<div class="ring">
+  <svg viewBox="0 0 110 110" aria-hidden="true">
+    <circle cx="55" cy="55" r="{{ radius }}" fill="none" stroke="rgba(120,200,235,.14)" stroke-width="7" />
+    <circle cx="55" cy="55" r="{{ radius }}" fill="none" stroke="{{ color }}" stroke-width="7"
+            stroke-linecap="round" stroke-dasharray="{{ circumference }}" stroke-dashoffset="{{ offset }}"
+            transform="rotate(-90 55 55)" style="filter:drop-shadow(0 0 6px {{ color }})" />
+    <circle cx="55" cy="55" r="30" fill="none" stroke="rgba(120,200,235,.2)" stroke-width="1" stroke-dasharray="3 4" />
+  </svg>
+  <div class="ring-c"><b>{{ big }}</b><span>{{ small }}</span></div>
+</div>

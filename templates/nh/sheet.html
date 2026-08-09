@@ -1,0 +1,11 @@
+{% comment %}
+The modal form surface. `.scrim`/`.sheet`/`.sheet.wide` from the mockup — the
+phone gets a bottom sheet instead of a centred one purely from CSS
+(`.ui[data-surface="phone"] .sheet`), no JS branch needed here.
+{% endcomment %}
+<div class="scrim" data-nh-sheet>
+  <div class="sheet panel{% if wide %} wide{% endif %}">
+    {% if title %}<h3>{{ title }}</h3>{% endif %}
+    {{ body }}
+  </div>
+</div>

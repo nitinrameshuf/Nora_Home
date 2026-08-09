@@ -631,6 +631,76 @@ fragile; the shared blanking was confirmed with the user and accepted at the
 time. `vcgencmd display_power 0 <display>` is the likely answer on a Pi 5, and
 **it must be proven on the hardware before that button ships.**
 
+**Story 45 split itself into two halves once the size of the second one became
+clear (2026-08-09).** The story's own text ("this is where the old front end
+is deleted") describes one continuous piece of work: build the eleven
+components, then rewire every real template onto them, then delete
+`nora-home.css`/`dashboard.css`/`todo.css`/etc. Doing all three in one sitting
+means the house is unverifiable — and possibly broken — for however long that
+takes, which is exactly the risk `docs/Main_App/testing.md`'s *built, unproven*
+distinction exists to name. So it split:
+
+- **Phase A (done): the component library itself, additive.** `nora_home/ui/
+  templatetags/nh.py`, `templates/nh/*.html`, `assets/css/{tokens,components}.css`,
+  `assets/js/nh-picker.js`, and `/home/styleguide/` rendering all eleven
+  components in every state. Nothing real loads any of it yet — every existing
+  page renders exactly as it did before this story, provably, because nothing
+  about them changed. Built, deployed to the Pi, and checked in a browser
+  there, same discipline as Stories 43 and 44.
+- **Phase B (not started): rewiring every real template, then deleting the
+  old files.** This is the part with the actual blast radius — every page in
+  the house, all at once, is what "this is where the old front end is
+  deleted" actually means. It gets its own pass, verified page by page rather
+  than merged with Phase A's already-large diff.
+
+**Two real bugs, both found only by opening the styleguide in a browser —
+neither would have been caught by the fact that `manage.py check` and the
+Python suite were green.**
+
+- **Tailwind v4's `@theme` always namespaces what it emits.** A colour
+  declared `--arc-500` inside `@theme` compiles to `--color-arc-500` — the
+  prefix is not optional — so every hand-written rule in `components.css`
+  reading plain `var(--arc-500)` (matching the mockup exactly, which never
+  used Tailwind's `@theme` for these) silently got nothing. Every swatch, every
+  status colour, every readout rendered fully transparent; only glows and
+  borders (plain custom properties, never routed through `@theme`) stayed
+  visible. Fixed by moving the colour and ink tokens out of `@theme` entirely,
+  into a plain `@layer tokens { :root { --arc-500: ...; } }` block — exactly
+  what the mockup already does, and correct anyway, since nothing here uses a
+  Tailwind utility class like `bg-arc-500`. `@theme` now holds only
+  `--font-sans`/`--font-mono`, which need no prefix (font is already their
+  namespace) and which Tailwind's own base layer forces into the output
+  regardless of whether anything else references them.
+- **Alpine reserves a component method literally named `init`.** It auto-
+  invokes one, with zero arguments, on top of whatever `x-init` on the element
+  also calls — naming the Picker's own setup method `init` collided with that
+  reserved hook, and the automatic zero-argument call is what threw `Cannot
+  read properties of undefined (reading 'dataset')`, on every page using the
+  Picker, the moment Alpine started. Renamed to `setup`, called explicitly via
+  `x-init="setup($el)"`.
+
+Both are now regression tests (`tests/test_ui.py::test_the_colour_tokens_are_not_routed_through_theme`,
+`tests/test_nh_components.py::test_picker_js_never_names_a_method_init`), and
+both are the same lesson twice: a green Python suite proves the *data* is
+right, never that the *browser* agrees — which is the entire reason
+`docs/Main_App/testing.md`'s browser-verification step exists as a separate,
+non-skippable pass.
+
+**The cross-layer collision audit the story asked for turned out to need a
+narrower rule than "every class token", not a broader one.** The literal
+instruction — match every token in a selector, not just the first, the way
+the mockup's own audit script was fixed to do — was tried first and flagged
+this codebase's *own ordinary CSS* as colliding with itself: `.btn` against
+`.btn:hover` (a state variant), `.card` against `html[data-app] .card` (this
+codebase's own extensively-documented `[data-surface]`/`[data-app]` override
+convention), `.card` against `.nh-tile > .card` (a structural refinement).
+None of those are the mockup's actual bug shape. `.who`/`.cap`/`.bar`/`.body`
+were each a *bare*, fully unscoped selector — no ancestor, no pseudo-class, no
+attribute condition — reused by accident across two unrelated `@layer` blocks.
+`tests/test_nh_components.py::_subject_compounds` compares only that: bare,
+ancestor-free, ".read.crit"-style compounds. Deliberate overrides don't have
+to out-shout genuine accidents for the test to see.
+
 **There is a second front end on a branch, and the Pi was running it
 (2026-08-09).** Found by deploying Story 43: `git pull` on the Pi updated a
 branch called **`ui-design-system`**, not `main`. It carries **17 commits** of an
@@ -1093,11 +1163,16 @@ nora/              the platform
   displays/        wall + kiosk models, bus, consumers
   telemetry/       series, readings, rollups, thresholds
   integrations/    integration framework, scheduling, failure handling
-  ui/              surface detection, Nora bot, theme
+  ui/              surface detection, Nora bot, theme, the nh_* component
+                   library (ui/templatetags/nh.py — Story 45)
 houseapps/         family apps live here (empty until Story 24)
 templates/         platform templates
-assets/            the front end's SOURCE — css/, js/. Vite's input; deleted
-                   and rebuilt from the mockup in Story 45
+  nh/              the component library's own partials (Story 45) —
+                   card.html, stat.html, list.html, picker.html, ...
+assets/            the front end's SOURCE — css/, js/. Vite's input; the old
+                   half (nora-home.css, dashboard.css, todo.css, ...) is
+                   deleted once every real template is rewired onto
+                   tokens.css/components.css — see CLAUDE.md §4, Story 45
 static/nora_home/       dist/ (Vite's committed output), vendor/, audio/
 package.json       front-end deps. node is build-time only, never on a host
 vite.config.js     one entry per file the templates load; output is committed

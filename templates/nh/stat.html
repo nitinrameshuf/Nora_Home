@@ -1,0 +1,14 @@
+{% comment %}
+The arc-reactor readout — mockup `.read`/`.read.ok`/`.read.crit`/`.cap`.
+`spark_points` is a bare SVG polyline, not an ECharts instance — see
+nora_home/ui/templatetags/nh.py's `_sparkline_points`.
+{% endcomment %}
+<div class="read{% if status %} {{ status }}{% endif %}">
+  <b>{{ value }}</b>{% if unit %}<span>{{ unit }}</span>{% endif %}
+</div>
+{% if label %}<span class="cap">{{ label }}{% if delta %} &middot; {{ delta }}{% endif %}</span>{% endif %}
+{% if spark_points %}
+<svg class="nh-spark" viewBox="0 0 64 20" preserveAspectRatio="none" aria-hidden="true">
+  <polyline points="{{ spark_points }}" fill="none" stroke="currentColor" stroke-width="1.6" />
+</svg>
+{% endif %}

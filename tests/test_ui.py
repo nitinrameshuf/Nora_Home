@@ -432,6 +432,33 @@ def test_the_font_is_self_hosted_not_a_cdn():
     assert "@fontsource-variable/jetbrains-mono" in tokens
 
 
+def test_the_colour_tokens_are_not_routed_through_theme():
+    """Tailwind v4's @theme always namespaces what it emits — a colour
+    declared as `--arc-500` inside @theme actually compiles to
+    `--color-arc-500`, and everything that consumes it (components.css, the
+    styleguide, the mockup these are copied from) reads plain var(--arc-500).
+    The mismatch does not error: the property is simply unset, so `color:
+    var(--arc-500)` silently paints nothing and every glow/border stayed
+    visible while the text and fills it was meant to colour did not — found
+    only by looking at a screenshot. @theme is for --font-sans/--font-mono
+    only, which need no prefix (font is already their namespace) and which
+    Tailwind's own base layer forces into the output regardless."""
+    import re
+
+    tokens = _tokens()
+    theme_block = re.search(r"@theme\s*\{([^}]*)\}", tokens, re.S)
+    assert theme_block, "no @theme block — did the font declarations move?"
+    theme_keys = re.findall(r"--([\w-]+):", theme_block.group(1))
+    assert set(theme_keys) == {"font-sans", "font-mono"}, (
+        f"@theme declares {theme_keys} — anything beyond the two font names "
+        "compiles to --color-<name> and stops matching var(--<name>) "
+        "everywhere else")
+
+    for name in ("arc-500", "ok", "warn", "crit", "txt", "dim", "faint"):
+        assert re.search(rf"[^-]--{name}:", tokens), (
+            f"--{name} is not a plain custom property in tokens.css")
+
+
 def test_the_arc_reactor_palette_is_dark_only():
     """Story 44's notes: the light theme is deleted rather than rebuilt. A
     `--color-arc-*` variable reappearing under a `[data-theme="light"]`

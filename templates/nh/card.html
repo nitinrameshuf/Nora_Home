@@ -1,0 +1,15 @@
+{% comment %}
+The panel: glass, an emissive hairline, corner brackets — mockup @layer comp
+`.panel`/`.card`/`.card-h`. `status` tints the card the way a StatWidget's
+`status` tints its readout (ok/warn/crit); most cards pass none at all.
+{% endcomment %}
+<div class="card panel{% if status %} card--{{ status }}{% endif %}"{% if body_class %} data-body-class="{{ body_class }}"{% endif %}>
+  {% if title %}
+  <div class="card-h">
+    <h4>{{ title }}</h4>
+    {% if subtitle %}<span class="sub">{{ subtitle }}</span>{% endif %}
+    {% if source %}<span class="src">{{ source }}</span>{% endif %}
+  </div>
+  {% endif %}
+  <div class="body{% if body_class %} {{ body_class }}{% endif %}">{{ body }}</div>
+</div>

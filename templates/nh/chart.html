@@ -1,0 +1,6 @@
+{% comment %}
+A thin holder — see nora_home/ui/templatetags/nh.py's module docstring.
+assets/js/nh-charts.js (unchanged by Story 45) reads the option straight off
+this data attribute, exactly as it does with the old markup today.
+{% endcomment %}
+<div class="nh-chart-holder" data-nh-chart data-key="{{ key }}" data-option="{{ option_json }}"></div>

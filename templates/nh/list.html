@@ -1,0 +1,20 @@
+{% load nh %}
+{% comment %}
+The row list — mockup `.row`/`.ck`/`.d.late`/`.row.done`. `status` on a row is
+"late" | "done" | "" straight from `ListWidget.rows()`.
+{% endcomment %}
+{% if rows %}
+<div class="nh-list">
+  {% for row in rows %}
+  <div class="row{% if row.status == 'done' %} done{% endif %}">
+    <span class="ck{% if row.status == 'late' %} late{% endif %}{% if row.status == 'done' %} on{% endif %}">
+      <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.5l2.6 2.6L10 3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+    </span>
+    {% if row.url %}<a class="t" href="{{ row.url }}">{{ row.title }}</a>{% else %}<span class="t">{{ row.title }}</span>{% endif %}
+    {% if row.meta %}<span class="d{% if row.status == 'late' %} late{% endif %}">{{ row.meta }}</span>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+  {% nh_empty title=empty_message %}
+{% endif %}

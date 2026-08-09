@@ -1,0 +1,3 @@
+{% comment %} mockup `.chip`/`.chip[aria-pressed="true"]`. {% endcomment %}
+<button type="button" class="chip" aria-pressed="{{ pressed|yesno:'true,false' }}"
+        {% if action %}data-act="{{ action }}"{% endif %}{% if value %}data-v="{{ value }}"{% endif %}>{{ label }}</button>
