@@ -1205,10 +1205,14 @@ const S = {
    read it, and creating one from either shows up in the other. */
 let LABELS = ['Kitchen','Outside','Weekly','Annual','Safety','Admin'];
 
+/* The real household, read off the Pi — not bootstrap_home --demo, whose
+   nitin/partner/kid are laptop seed data and do not exist in this house.
+   "everyone" is the combined view (accounts:switch_to_everyone), which the
+   platform models as DashboardLayout.Surface.SHARED. */
 const HOUSEHOLD = [
-  { id:'nitin', name:'nitin', initial:'N', role:'Admin' },
-  { id:'priya', name:'priya', initial:'P', role:'Adult' },
-  { id:'kid',   name:'kid',   initial:'K', role:'Member' },
+  { id:'nitin',    name:'nitin',    initial:'N', role:'Admin' },
+  { id:'priya',    name:'Priya',    initial:'P', role:'Admin' },
+  { id:'everyone', name:'Everyone', initial:'H', role:'The whole household' },
 ];
 const me = () => HOUSEHOLD.find(m => m.id === S.member) || HOUSEHOLD[0];
 /* Rendered identically on the desktop rail and in the phone drawer. Two copies
@@ -1222,7 +1226,7 @@ const memberChip = () => `
           <span class="caret">&#9652;</span>
         </button>
         ${S.memberMenu ? `<div class="memenu">
-          <div class="mehead">Signed in as ${esc(me().name)}</div>
+          <div class="mehead">Viewing as ${esc(me().name)}</div>
           ${HOUSEHOLD.filter(m => m.id !== S.member).map(m=>`
             <button class="meopt" data-act="beMember" data-v="${m.id}">
               <span class="av sm">${m.initial}</span>${esc(m.name)}</button>`).join('')}
@@ -1578,8 +1582,8 @@ function taskCard(t) {
 }
 
 function boardView() {
-  // "Mine" follows whoever is signed in.
-  const mineNow = t => t.who === me().initial;
+  // "Mine" follows whoever is signed in; as Everyone, the board is the house's.
+  const mineNow = t => S.member === 'everyone' || t.who === me().initial;
   const vis=t=>{ if(S.filter==='archived') return !!t.archived; if(t.archived) return false;
     if(S.filter==='mine') return mineNow(t); if(S.filter==='today') return t.late||t.due==='Tomorrow'; return true; };
   const sh=TASKS.filter(vis);
