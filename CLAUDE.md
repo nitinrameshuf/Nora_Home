@@ -631,6 +631,33 @@ fragile; the shared blanking was confirmed with the user and accepted at the
 time. `vcgencmd display_power 0 <display>` is the likely answer on a Pi 5, and
 **it must be proven on the hardware before that button ships.**
 
+**There is a second front end on a branch, and the Pi was running it
+(2026-08-09).** Found by deploying Story 43: `git pull` on the Pi updated a
+branch called **`ui-design-system`**, not `main`. It carries **17 commits** of an
+earlier, compiled Tailwind design system — flat dark theme, a real sidebar, a
+themed heatmap — and none of it is in `main`. Nothing in this file, the
+dashboard or `progress.md` mentioned it existed.
+
+**Phase 8 supersedes it**, and the Pi is on `main` now. But two things are worth
+keeping rather than losing with the branch:
+
+- **It reached the same conclusion Story 43 did, independently:** a build input
+  is not a static asset. `collectstatic` walks everything under `static/`, and
+  `ManifestStaticFilesStorage` rewrites `url()`/`@import` targets in every `.css`
+  it finds — it read `@import "tailwindcss"` as a relative path, raised
+  `MissingFileError` in the entrypoint *before Daphne starts*, and every service
+  depending on `web` refused to come up. Sources live in `assets/` for that
+  reason, in both attempts.
+- **Deploying `main` regressed the wall.** The year heatmap renders as a white
+  grid again — `14e7a6b` on that branch fixed it and `main` never had the fix.
+  Cosmetic, and Story 45 rewrites that widget anyway, but it is visible on the
+  24" until then. `git checkout ui-design-system && ./nora upgrade` puts the old
+  look back if anyone wants it before Phase 8 lands.
+
+**The lesson is not the branch, it is that nobody could have known.** Check what
+branch the Pi is actually on before deploying, and do not assume `git pull`
+there touches `main`.
+
 **The front end is built, and the numbers say it is fine on the Pi
 (2026-08-09).** Story 43 was written to prove the pipeline before anything is
 designed on top of it, so it ships the *existing* UI through Vite and changes

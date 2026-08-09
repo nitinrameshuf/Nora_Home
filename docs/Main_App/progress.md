@@ -3727,8 +3727,44 @@ nobody looks at.
   still there. Every file was already an IIFE talking through `window`, which is
   why the conversion cost nothing.
 
-### Not yet
+### Observed on the Pi — Story 43 is Complete
 
-The Pi has built the assets but has **not run this commit**. The Dockerfile's
-node stage, and both screens rendering through it on the real hardware, are
-unobserved. Story 43 stays *built, unproven* until they are.
+Deployed and seen, not reasoned about:
+
+- The Dockerfile's node stage ran on the Pi. The **runtime image has no node**
+  (`which node` finds nothing) and `static/nora_home/dist/` is in the container
+  with its manifest.
+- Assets serve over HTTPS under the **double-hashed** names
+  `CompressedManifestStaticFilesStorage` produces
+  (`nora-home.D2N0rAay.bb11d537b489.css`, 200) — django-vite resolving through
+  `staticfiles_storage.url()` exactly as it did locally.
+- **Both physical screens screenshotted** after `./nora screens reload`: the 24"
+  renders the real dashboard through the built assets, the kiosk its button grid.
+- All nine services healthy; `check --deploy` shows only the two long-understood
+  deliberate warnings.
+- `./nora test` on the Pi: 962 passed, and **two of my own new tests failed
+  there and nowhere else** — both shell out to `git`, which the slim image does
+  not have and `.dockerignore` excludes `.git/` anyway. They skip now. Worth
+  noting because it is the one class of bug the laptop suite structurally
+  cannot see, which is why `./nora test` exists as well.
+
+### What the deploy uncovered: a second front end, on a branch
+
+`git pull` on the Pi updated **`ui-design-system`**, not `main`. That branch
+carries **17 commits** of an earlier compiled Tailwind design system — flat dark
+theme, real sidebar, themed heatmap — and the Pi had been running it. Nothing in
+`CLAUDE.md`, the dashboard or this file said it existed.
+
+Phase 8 supersedes it and the Pi is on `main` now, but two things survive:
+
+- It independently reached Story 43's conclusion that **a build input is not a
+  static asset** — `@import "tailwindcss"` under `static/` made
+  `ManifestStaticFilesStorage` raise `MissingFileError` in the entrypoint before
+  Daphne started, taking the whole stack down. Both attempts put sources in
+  `assets/`.
+- **Deploying `main` regressed the wall**: the year heatmap is a white grid
+  again, because `14e7a6b` fixed it only on that branch. Cosmetic, Story 45
+  rewrites the widget, but it is visible on the 24" until then.
+
+The lesson is the branch check, not the branch: confirm what the Pi is on before
+deploying, and never assume `git pull` there touches `main`.

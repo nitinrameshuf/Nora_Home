@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -98,6 +99,17 @@ def test_stylesheets_are_never_emitted_as_scripts():
 
 # ── the house runs without node ──────────────────────────────────────────────
 
+# These two ask git what is committed, which only means anything in a working
+# tree. Inside the Pi's container there is neither — .dockerignore excludes
+# .git/ and the slim image has no git binary — and a test that cannot look
+# should say so rather than fail. Found by running the suite on the Pi, which is
+# the whole reason `./nora test` exists as well as the laptop one.
+needs_git = pytest.mark.skipif(
+    shutil.which("git") is None or not (Path(settings.BASE_DIR) / ".git").exists(),
+    reason="no git working tree here (the container has neither)",
+)
+
+@needs_git
 def test_the_build_output_is_committed():
     """The Pi never builds and the house must boot offline, so dist/ is source
     as far as git is concerned. Left ignored, a fresh clone serves no CSS."""
@@ -109,6 +121,7 @@ def test_the_build_output_is_committed():
     assert ignored.returncode != 0, "static/nora_home/dist is gitignored"
 
 
+@needs_git
 def test_node_modules_is_not_committed():
     """The other half of the same rule: the output ships, the toolchain does not."""
     tracked = subprocess.run(
