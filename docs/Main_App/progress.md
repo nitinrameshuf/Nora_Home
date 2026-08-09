@@ -3768,3 +3768,44 @@ Phase 8 supersedes it and the Pi is on `main` now, but two things survive:
 
 The lesson is the branch check, not the branch: confirm what the Pi is on before
 deploying, and never assume `git pull` there touches `main`.
+
+## 2026-08-09 — Story 44: tokens, the ramp, and a self-hosted typeface
+
+`assets/css/tokens.css` — the arc-reactor palette, ink and the surface-indexed
+type ramp (`--s0`..`--s4`, `--lab`, `--gap`, `--pad`, `--rad`, `--tap`, `--row`)
+copied token-for-token from `docs/Main_App/ui-overhaul-mockup.html`'s own
+`@layer tokens`, plus Inter Variable and JetBrains Mono Variable, self-hosted
+via `@fontsource-variable/*` so the build fingerprints and ships the actual
+`.woff2` files rather than reaching a CDN. Loaded first, on all four page
+shells (`base.html`, `kiosk.html`, `wall_live.html`, `switch.html` — the kiosk
+and wall deliberately don't extend `base.html`, so each needed its own line).
+
+**Nothing renders through it yet, on purpose.** Same shape as Story 43's
+`nh-next.css` seed, which this file replaces: rewiring markup to consume these
+tokens is Story 45's job, and doing that twice — once by hand now, once through
+the component library later — would cost more than it saves. What this proves
+is narrower: the palette, the ramp, and the font all compile and ship.
+
+**One real trap found and documented, not fixed:** `--gap` and `--tap` are also
+defined in the old `nora-home.css`, at different values (rem there, px here),
+and it loads *after* tokens.css — so today, `var(--tap)` resolves to the old
+system's number everywhere. Harmless while nothing new reads it; it stops being
+harmless if Story 45 ships a component against the new ramp before the old
+stylesheet is deleted. Left as a comment in tokens.css rather than renamed,
+because renaming would silently diverge from the mockup the tests now check
+token-for-token.
+
+New tests treat the mockup as a machine-checkable source of truth: the ramp is
+compared token-for-token and in order (a dict comparison would only catch the
+last-defined value per name, since every surface redefines some of the same
+names); every surface override is asserted present; the font imports are
+asserted self-hosted, not a Google Fonts `@import`; the arc palette is asserted
+absent from any `[data-theme="light"]` block; and all four page shells are
+asserted to load tokens.css first. 974 passed.
+
+Built and verified on the Pi (arm64, node in a container) the same way as
+Story 43: `npm install` picked up the two font packages, `vite build` split
+each into per-script `.woff2` files (fontsource's normal behaviour — still all
+self-hosted, still no network call), output pulled back and deployed. `--s0`
+and the per-surface overrides read correctly from `getComputedStyle` in a
+browser; both fonts register via `document.fonts` with no console errors.

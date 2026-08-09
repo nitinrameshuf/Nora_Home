@@ -29,6 +29,13 @@ shadows and corner radii scale with the text instead of staying
 what reads as "zoomed in", and it is why the font-size approach was rejected
 twice before this.
 
+**This is a distance dial, not a type scale.** Since Story 44, `assets/css/tokens.css`
+gives each surface its own `--s0`..`--s4` ramp — the wall's base size is already
+larger than the kiosk's, because it is read from three metres rather than arm's
+length. `zoom` sits on top of that ramp for whatever the ramp does not get
+exactly right in one house, the same way a person might still nudge browser zoom
+on a laptop. It no longer does the whole job by itself.
+
 **The one measured difference: media queries still evaluate against the
 unzoomed viewport.** With `html { zoom: 1.25 }` on a 1920 screen, layout happens
 in 1536 but `(min-width: 1900px)` still matches. The house's breakpoints are at

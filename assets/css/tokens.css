@@ -1,0 +1,107 @@
+/* The house's token layer — colour, ink, and a surface-indexed type ramp.
+ *
+ * Values are copied from docs/Main_App/ui-overhaul-mockup.html's @layer tokens,
+ * not reasoned about independently — that file is the approved reference (see
+ * CLAUDE.md §4, "The mockup is the UI reference"), and a value that drifted
+ * from it would be a UI decision nobody actually saw.
+ *
+ * Nothing in the house renders through this yet. It sits alongside the old
+ * nora-home.css unused, same as Story 43's seed did, because rewiring markup is
+ * Story 45's job (the component library) and doing it twice — once by hand now,
+ * once through components later — is exactly the kind of half-finished work
+ * that costs more than it saves. What Story 44 proves is narrower: the palette,
+ * the ramp, and the self-hosted font all compile and ship.
+ *
+ * A trap for whoever starts Story 45: --gap and --tap are also defined in
+ * nora-home.css, at different values (rem there, px here), and it loads AFTER
+ * this file — so today, on any surface, var(--tap) resolves to the OLD
+ * system's number, not this ramp's. Harmless right now because nothing new
+ * reads either variable yet. It stops being harmless the moment a component
+ * built against this ramp ships before nora-home.css is deleted.
+ */
+
+@import "tailwindcss";
+
+@source "../../templates/**/*.html";
+@source "../../nora_home/**/*.py";
+
+/* Self-hosted, variable, bundled offline — the Pi has to work with the
+   internet down, same reason ECharts and Gridstack are vendored rather than
+   pulled from a CDN. Both are npm packages so Vite fingerprints and copies the
+   actual .woff2 files into dist/; nothing here reaches the network at runtime. */
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/jetbrains-mono";
+
+@theme {
+  /* The core: an emissive cyan, used sparingly and always as light. */
+  --color-arc-100: #e8fbff;
+  --color-arc-300: #a5eeff;
+  --color-arc-400: #7fe9ff;
+  --color-arc-500: #38d6ff;
+  --color-arc-600: #12a8d8;
+  --color-arc-700: #0b7a9e;
+
+  /* Semantic — separate from the core, never used as accent. */
+  --color-ok: #3ff0b0;
+  --color-warn: #ffb648;
+  --color-crit: #ff4d5e;
+  --color-info: #7aa2ff;
+
+  /* Ground. */
+  --color-void: #04070d;
+  --color-deep: #070d16;
+  --color-slab: #0b1520;
+
+  /* Ink. */
+  --color-txt: #e2f2fa;
+  --color-dim: #9dbccf;
+  --color-faint: #6a8ca2;
+
+  --font-sans: "Inter Variable", ui-sans-serif, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", "Cascadia Mono",
+    Menlo, Consolas, monospace;
+}
+
+@layer tokens {
+  :root {
+    --glow: rgba(56, 214, 255, 0.45);
+    --glow-soft: rgba(56, 214, 255, 0.16);
+
+    --veil: rgba(4, 8, 14, 0.55);
+    --panel: rgba(9, 18, 28, 0.62);
+    --panel-solid: rgba(7, 14, 22, 0.93);
+    --edge: rgba(120, 200, 235, 0.16);
+    --edge-hot: rgba(56, 214, 255, 0.42);
+    --hover: rgba(56, 214, 255, 0.09);
+
+    /* The ramp — one knob, five screens (tablet takes these unmodified; the
+       mockup never gave it its own numbers, and nothing observed since
+       suggested it needed them). Step, not px-for-px, because "text is
+       unreadable" was the specific complaint this story exists to fix:
+       secondary text (--dim, --faint) reads at var(--s0) or above everywhere,
+       never smaller, which the old --step-3/--step-4 scale did not guarantee. */
+    --s0: 13.5px; --s1: 15px; --s2: 20px; --s3: 27px; --s4: 40px;
+    --lab: 9.5px; --gap: 14px; --pad: 16px; --rad: 12px; --tap: 36px; --row: 128px;
+  }
+
+  html[data-surface="phone"] {
+    --s0: 14px; --s1: 16px; --s2: 21px; --s3: 27px; --s4: 36px;
+    --gap: 12px; --pad: 15px; --tap: 44px;
+  }
+
+  /* The kiosk is an instrument you operate, not a surface you look at — see
+     nora_home/ui/zoom.py for the other half of that distinction (viewing
+     distance vs. type size; this ramp is the second, zoom is the first, and
+     they compose rather than compete). */
+  html[data-surface="kiosk"] {
+    --s0: 14px; --s1: 17px; --s2: 22px; --s3: 28px; --s4: 38px; --lab: 11px;
+    --gap: 12px; --pad: 16px; --rad: 14px; --tap: 60px;
+  }
+
+  /* The wall renders the desktop layout, one ramp up — no separate design. */
+  html[data-surface="wall"] {
+    --s0: 18px; --s1: 21px; --s2: 28px; --s3: 38px; --s4: 60px; --lab: 13px;
+    --gap: 20px; --pad: 22px; --rad: 16px; --tap: 0px; --row: 186px;
+  }
+}

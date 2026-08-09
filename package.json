@@ -13,6 +13,8 @@
     "vite": "^7.0.0"
   },
   "dependencies": {
-    "alpinejs": "^3.14.0"
+    "alpinejs": "^3.14.0",
+    "@fontsource-variable/inter": "^5.1.0",
+    "@fontsource-variable/jetbrains-mono": "^5.1.0"
   }
 }

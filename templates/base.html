@@ -26,6 +26,14 @@ nora_home/ui/zoom.py for the measurements behind the choice.
   <meta name="color-scheme" content="dark light">
   <meta name="theme-color" content="#0c1015">
   <title>{% block title %}{% if page_title %}{{ page_title }} · {% endif %}{{ house_name }}{% endblock %}</title>
+  {% comment %}
+  tokens.css first: colour, ink and the surface-indexed type ramp. Nothing in
+  nora-home.css reads it yet — that wiring is Story 45's job (the component
+  library) — but it has to be loaded before anything that might, and it costs
+  nothing to load early since it defines custom properties, not rules that
+  paint anything on its own. See CLAUDE.md §4, Story 44.
+  {% endcomment %}
+  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/tokens.css' %}">
   <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nora-home.css' %}">
   <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nh-scene.css' %}">
   {% if nh_bot_enabled %}<link rel="stylesheet" href="{% vite_asset_url 'assets/css/nh-bot.css' %}">{% endif %}

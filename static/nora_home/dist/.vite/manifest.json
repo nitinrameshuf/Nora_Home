@@ -26,15 +26,6 @@
       "css/nh-bot.css"
     ]
   },
-  "assets/css/nh-next.css": {
-    "file": "css/nh-next.CLAtNLi9.css",
-    "src": "assets/css/nh-next.css",
-    "isEntry": true,
-    "name": "css/nh-next",
-    "names": [
-      "css/nh-next.css"
-    ]
-  },
   "assets/css/nh-scene.css": {
     "file": "css/nh-scene.CevnoIXI.css",
     "src": "assets/css/nh-scene.css",
@@ -60,6 +51,15 @@
     "name": "css/todo",
     "names": [
       "css/todo.css"
+    ]
+  },
+  "assets/css/tokens.css": {
+    "file": "css/tokens.BcnIy2Ex.css",
+    "src": "assets/css/tokens.css",
+    "isEntry": true,
+    "name": "css/tokens",
+    "names": [
+      "css/tokens.css"
     ]
   },
   "assets/js/dashboard.js": {
@@ -127,5 +127,53 @@
     "name": "js/wall-live",
     "src": "assets/js/wall-live.js",
     "isEntry": true
+  },
+  "node_modules/@fontsource-variable/inter/files/inter-cyrillic-ext-wght-normal.woff2": {
+    "file": "inter-cyrillic-ext-wght-normal.BOeWTOD4.woff2",
+    "src": "node_modules/@fontsource-variable/inter/files/inter-cyrillic-ext-wght-normal.woff2"
+  },
+  "node_modules/@fontsource-variable/inter/files/inter-cyrillic-wght-normal.woff2": {
+    "file": "inter-cyrillic-wght-normal.DqGufNeO.woff2",
+    "src": "node_modules/@fontsource-variable/inter/files/inter-cyrillic-wght-normal.woff2"
+  },
+  "node_modules/@fontsource-variable/inter/files/inter-greek-ext-wght-normal.woff2": {
+    "file": "inter-greek-ext-wght-normal.DlzME5K_.woff2",
+    "src": "node_modules/@fontsource-variable/inter/files/inter-greek-ext-wght-normal.woff2"
+  },
+  "node_modules/@fontsource-variable/inter/files/inter-greek-wght-normal.woff2": {
+    "file": "inter-greek-wght-normal.CkhJZR-_.woff2",
+    "src": "node_modules/@fontsource-variable/inter/files/inter-greek-wght-normal.woff2"
+  },
+  "node_modules/@fontsource-variable/inter/files/inter-latin-ext-wght-normal.woff2": {
+    "file": "inter-latin-ext-wght-normal.DO1Apj_S.woff2",
+    "src": "node_modules/@fontsource-variable/inter/files/inter-latin-ext-wght-normal.woff2"
+  },
+  "node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2": {
+    "file": "inter-latin-wght-normal.Dx4kXJAl.woff2",
+    "src": "node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2"
+  },
+  "node_modules/@fontsource-variable/inter/files/inter-vietnamese-wght-normal.woff2": {
+    "file": "inter-vietnamese-wght-normal.CBcvBZtf.woff2",
+    "src": "node_modules/@fontsource-variable/inter/files/inter-vietnamese-wght-normal.woff2"
+  },
+  "node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-cyrillic-wght-normal.woff2": {
+    "file": "jetbrains-mono-cyrillic-wght-normal.D73BlboJ.woff2",
+    "src": "node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-cyrillic-wght-normal.woff2"
+  },
+  "node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-greek-wght-normal.woff2": {
+    "file": "jetbrains-mono-greek-wght-normal.Bw9x6K1M.woff2",
+    "src": "node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-greek-wght-normal.woff2"
+  },
+  "node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-ext-wght-normal.woff2": {
+    "file": "jetbrains-mono-latin-ext-wght-normal.DBQx-q_a.woff2",
+    "src": "node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-ext-wght-normal.woff2"
+  },
+  "node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2": {
+    "file": "jetbrains-mono-latin-wght-normal.B9CIFXIH.woff2",
+    "src": "node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2"
+  },
+  "node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-vietnamese-wght-normal.woff2": {
+    "file": "jetbrains-mono-vietnamese-wght-normal.Bt-aOZkq.woff2",
+    "src": "node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-vietnamese-wght-normal.woff2"
   }
 }

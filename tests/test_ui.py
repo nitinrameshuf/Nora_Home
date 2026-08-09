@@ -369,6 +369,101 @@ def test_the_card_grid_minimum_is_rem_not_px():
         "the card grid's minimum column width must be rem — see --nav-width")
 
 
+# ── the Story 44 token layer ───────────────────────────────────────────────
+#
+# tokens.css is grounded in docs/Main_App/ui-overhaul-mockup.html's own token
+# layer — these tests check the two have not drifted apart, not that the
+# numbers are individually "right". If the mockup changes, this file and these
+# tests both do, in the same commit.
+
+def _tokens() -> str:
+    from pathlib import Path
+
+    from django.conf import settings
+
+    return (Path(settings.BASE_DIR) / "assets" / "css" / "tokens.css").read_text(
+        encoding="utf-8")
+
+
+def _mockup() -> str:
+    from pathlib import Path
+
+    from django.conf import settings
+
+    return (Path(settings.BASE_DIR) / "docs" / "Main_App" / "ui-overhaul-mockup.html"
+            ).read_text(encoding="utf-8")
+
+
+def _ramp_values(css: str) -> list[tuple[str, str]]:
+    """--token: value pairs for the ramp tokens, in file order and whitespace-
+    insensitive. The base block and each surface override all redefine some of
+    these names, so order (not a dict, which would keep only the last
+    definition of each) is what makes this catch a value copied into the wrong
+    surface's block."""
+    import re
+
+    return re.findall(
+        r"(--s[0-4]|--lab|--gap|--pad|--rad|--tap|--row):\s*([\w.]+px)", css)
+
+
+def test_the_ramp_matches_the_approved_mockup():
+    """The mockup is the reference (CLAUDE.md §4): a ramp value copied wrong
+    here is a UI decision nobody actually saw and approved."""
+    mockup_values = _ramp_values(_mockup())
+    assert mockup_values, "no ramp tokens found in the mockup — did it move?"
+    assert _ramp_values(_tokens()) == mockup_values, (
+        "tokens.css's ramp does not match the mockup's, token-for-token in order")
+
+
+@pytest.mark.parametrize("surface", ["phone", "kiosk", "wall"])
+def test_every_non_base_surface_has_its_own_ramp(surface):
+    assert f'html[data-surface="{surface}"]' in _tokens()
+
+
+def test_the_font_is_self_hosted_not_a_cdn():
+    """The Pi has to render with the internet down — same reason ECharts and
+    Gridstack are vendored rather than pulled live. A Google Fonts @import
+    would work in every browser tab used to build this and fail silently the
+    first time the house's internet drops."""
+    tokens = _tokens()
+    assert "@import url(https://fonts" not in tokens
+    assert "fonts.googleapis.com" not in tokens
+    assert "@fontsource-variable/inter" in tokens
+    assert "@fontsource-variable/jetbrains-mono" in tokens
+
+
+def test_the_arc_reactor_palette_is_dark_only():
+    """Story 44's notes: the light theme is deleted rather than rebuilt. A
+    `--color-arc-*` variable reappearing under a `[data-theme="light"]`
+    selector would mean it crept back in for this layer specifically."""
+    assert '[data-theme="light"]' not in _tokens()
+
+
+@pytest.mark.parametrize("template", [
+    "templates/base.html",
+    "templates/displays/kiosk.html",
+    "templates/displays/wall_live.html",
+    "templates/accounts/switch.html",
+])
+def test_every_page_shell_loads_tokens_before_the_rest(template):
+    """Four separate page shells exist (base, kiosk, wall, the switcher) because
+    the kiosk and wall deliberately do not extend base.html. Missing one of them
+    here is exactly the kind of thing that reaches three surfaces and not the
+    fourth without anyone noticing — CLAUDE.md §4 on the sidebar/nav bug."""
+    import re
+    from pathlib import Path
+
+    from django.conf import settings
+
+    text = (Path(settings.BASE_DIR) / template).read_text(encoding="utf-8")
+    links = re.findall(r"vite_asset_url '(assets/css/[\w-]+\.css)'", text)
+
+    assert links, f"{template} loads no stylesheets at all"
+    assert links[0] == "assets/css/tokens.css", (
+        f"{template} loads {links[0]!r} first — tokens.css must come first so "
+        "its custom properties exist before anything might read them")
+
+
 # ── screen zoom, set from Settings ───────────────────────────────────────────
 
 @pytest.mark.django_db
