@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load django_vite %}
 {% load static %}
 
 {% comment %}
@@ -13,7 +13,7 @@ to understand six settings to pick a tone.
 {% endcomment %}
 
 {% block head %}
-  <link rel="stylesheet" href="{% static 'nora_home/css/todo.css' %}">
+  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/todo.css' %}">
 {% endblock %}
 
 {% block heading %}Todo settings{% endblock %}

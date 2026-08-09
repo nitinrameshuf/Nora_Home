@@ -98,6 +98,7 @@ THIRD_PARTY_APPS = [
     "channels",
     "django_celery_beat",
     "django_celery_results",
+    "django_vite",
 ]
 
 # Platform apps. These are the skeleton — house apps build on top of them.
@@ -372,6 +373,26 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# ── the front-end build ───────────────────────────────────────────────────────
+# Sources live in assets/; Vite emits hashed files into static/nora_home/dist/
+# and that output is committed. The house must boot with no network and no node,
+# and the Pi never builds — see CLAUDE.md §4 and `./nora assets`.
+#
+# dev_mode is off by default even under DEBUG, because the common case on a
+# laptop is `runserver` with no Vite process running, and django-vite in dev
+# mode emits script tags pointing at a dev server that is not there. Turn it on
+# deliberately: NORA_HOME_VITE_DEV=1 alongside `npm run dev`.
+DJANGO_VITE = {
+    "default": {
+        "dev_mode": env_bool("NORA_HOME_VITE_DEV", False),
+        "dev_server_port": env_int("NORA_HOME_VITE_PORT", 5173),
+        "static_url_prefix": "nora_home/dist",
+        # Read from the source tree, not STATIC_ROOT: tests and `runserver` both
+        # work without anyone having run collectstatic first.
+        "manifest_path": BASE_DIR / "static" / "nora_home" / "dist" / ".vite" / "manifest.json",
+    }
+}
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 

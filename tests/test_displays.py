@@ -25,8 +25,10 @@ from nora_home.displays.models import HEARTBEAT_GRACE_SECONDS, Display
 
 pytestmark = pytest.mark.django_db
 
-WALL_LIVE_JS = Path(settings.BASE_DIR) / "static" / "nora_home" / "js" / "wall-live.js"
-KIOSK_JS = Path(settings.BASE_DIR) / "static" / "nora_home" / "js" / "kiosk.js"
+# assets/, not static/: since Story 43 these are Vite's input. Its output is
+# hashed and minified, which is no use to a test that reads the source.
+WALL_LIVE_JS = Path(settings.BASE_DIR) / "assets" / "js" / "wall-live.js"
+KIOSK_JS = Path(settings.BASE_DIR) / "assets" / "js" / "kiosk.js"
 
 
 # ── every command the kiosk may send must be implemented ─────────────────────
@@ -261,14 +263,14 @@ def test_the_ambient_wall_files_are_removed():
     base = Path(settings.BASE_DIR)
 
     assert not (base / "templates" / "displays" / "wall.html").exists()
-    assert not (base / "static" / "nora_home" / "js" / "wall.js").exists()
+    assert not (base / "assets" / "js" / "wall.js").exists()
 
 
 def test_no_template_or_script_still_references_the_ambient_wall():
     base = Path(settings.BASE_DIR)
     offenders = []
 
-    for folder in ["templates", "static/nora_home/js", "nora_home"]:
+    for folder in ["templates", "assets/js", "nora_home"]:
         for path in (base / folder).rglob("*"):
             if path.suffix not in {".html", ".js", ".py"} or "vendor" in path.parts:
                 continue

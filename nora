@@ -251,6 +251,28 @@ cmd_test() {
     fi
 }
 
+cmd_assets() {
+    # The front end is built by node, and node is not installed on the Pi or on
+    # any laptop here. It runs in a container instead, which is the same node
+    # the Dockerfile's build stage uses — so what you get locally is what the
+    # image gets. Output lands in static/nora_home/dist and is committed.
+    need_docker
+    step "Building the front end (node runs in a container; nothing is installed here)"
+
+    local started ended
+    started=$(date +%s)
+    docker run --rm \
+        -v "$ROOT:/build" -w /build \
+        -u "$(id -u):$(id -g)" \
+        -e npm_config_cache=/tmp/.npm \
+        node:22-bookworm-slim \
+        sh -c 'npm ci --no-audit --no-fund && npm run build' || die "the build failed"
+    ended=$(date +%s)
+
+    ok "built in $((ended - started))s -> static/nora_home/dist"
+    hint "Commit the output. The house must boot with no network and no node."
+}
+
 cmd_qa() {
     # QA runs a real browser, so it runs from wherever you are — a laptop with
     # Playwright installed — and points at a running house over the network.
@@ -480,6 +502,8 @@ People and devices
   token "<device>"     Issue a device token for the robot, a phone shortcut, …
 
 Development
+  assets               Rebuild the front end (Vite). node runs in a container;
+                       nothing is installed here. Commit the output afterwards
   test [args]          Run the fast suite (Python only) and print the report
   qa [url]             Drive a real browser against a running house: every page
                        rendered, the JavaScript, both screens together, and
@@ -533,6 +557,7 @@ case "$COMMAND" in
     restore)            cmd_restore "$@" ;;
     status|ps)          cmd_status "$@" ;;
     logs)               cmd_logs "$@" ;;
+    assets)             cmd_assets "$@" ;;
     test)               cmd_test "$@" ;;
     qa)                 cmd_qa "$@" ;;
     manage)             cmd_manage "$@" ;;

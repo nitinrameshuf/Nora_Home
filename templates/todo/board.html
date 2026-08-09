@@ -1,8 +1,8 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load django_vite %}
 {% load static %}
 
 {% block head %}
-  <link rel="stylesheet" href="{% static 'nora_home/css/todo.css' %}">
+  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/todo.css' %}">
 {% endblock %}
 
 {% block heading %}{% if is_system %}System{% else %}Tasks{% endif %}{% endblock %}
@@ -80,5 +80,5 @@
 {% endblock %}
 
 {% block scripts %}
-  <script src="{% static 'nora_home/js/todo.js' %}" defer></script>
+  {% vite_asset 'assets/js/todo.js' %}
 {% endblock %}

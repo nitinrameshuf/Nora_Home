@@ -1,0 +1,2 @@
+(function(r,n){if(!n.querySelector(".nh-scene"))return;var t=n.documentElement,i=300*1e3;function o(e){e&&(e.season&&t.setAttribute("data-season",e.season),e.daypart&&t.setAttribute("data-daypart",e.daypart),e.weather&&t.setAttribute("data-weather",e.weather),t.dispatchEvent(new CustomEvent("nh-scene:update",{detail:e})))}function a(){fetch("/home/api/weather/",{credentials:"same-origin"}).then(function(e){return e.ok?e.json():null}).then(o).catch(function(){})}r.setInterval(a,i)})(window,document);
+//# sourceMappingURL=nh-scene.C3vyNpmI.js.map

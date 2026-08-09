@@ -1,4 +1,4 @@
-{% load static %}<!doctype html>
+{% load static django_vite %}<!doctype html>
 {% comment %}
 The 10.1" touchscreen on the Pi's second HDMI output. It never shows the app
 itself — it is a set of button screens that tell the 24" wall which page to
@@ -20,9 +20,9 @@ viewport under the 860px breakpoint while media queries still report 1024.
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>{{ house_name }} — kiosk</title>
-  <link rel="stylesheet" href="{% static 'nora_home/css/nora-home.css' %}">
-  <link rel="stylesheet" href="{% static 'nora_home/css/displays.css' %}">
-  <link rel="stylesheet" href="{% static 'nora_home/css/nh-scene.css' %}">
+  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nora-home.css' %}">
+  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/displays.css' %}">
+  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nh-scene.css' %}">
 </head>
 <body class="kiosk" data-target-display="{{ target }}">
   {% include "partials/scene.html" %}
@@ -95,8 +95,8 @@ viewport under the 860px breakpoint while media queries still report 1024.
 
   <div class="kiosk-toast" data-kiosk-toast role="status"></div>
 
-  <script src="{% static 'nora_home/js/nh-app.js' %}" defer></script>
-  <script src="{% static 'nora_home/js/nh-scene.js' %}" defer></script>
-  <script src="{% static 'nora_home/js/kiosk.js' %}" defer></script>
+  {% vite_asset 'assets/js/nh-app.js' %}
+  {% vite_asset 'assets/js/nh-scene.js' %}
+  {% vite_asset 'assets/js/kiosk.js' %}
 </body>
 </html>

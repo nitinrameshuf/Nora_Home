@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load django_vite %}
 {% load static %}
 
 {% comment %}
@@ -14,7 +14,7 @@ Reporting (§10). Every card follows the Visual discipline table:
 {% endcomment %}
 
 {% block head %}
-  <link rel="stylesheet" href="{% static 'nora_home/css/todo.css' %}">
+  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/todo.css' %}">
 {% endblock %}
 
 {% block heading %}Reporting{% endblock %}
@@ -192,7 +192,7 @@ Reporting (§10). Every card follows the Visual discipline table:
 
 {% block scripts %}
   <script src="{% static 'nora_home/vendor/echarts.min.js' %}"></script>
-  <script src="{% static 'nora_home/js/nh-charts.js' %}"></script>
-  <script src="{% static 'nora_home/js/todo.js' %}" defer></script>
-  <script src="{% static 'nora_home/js/todo-reporting.js' %}" defer></script>
+  {% vite_asset 'assets/js/nh-charts.js' %}
+  {% vite_asset 'assets/js/todo.js' %}
+  {% vite_asset 'assets/js/todo-reporting.js' %}
 {% endblock %}

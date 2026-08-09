@@ -3663,3 +3663,72 @@ Story 52 covers it.
 Story 43 is marked **next**. It ships zero visual change on purpose: it isolates
 pipeline risk from design risk and returns a measured build time before nine
 other stories depend on it.
+
+## 2026-08-09 — Story 43: the build pipeline, and the numbers it was meant to produce
+
+Vite 7 + Tailwind v4 + Alpine 3 behind `django-vite`, shipping the **existing**
+UI unchanged. Zero visual change was the deliverable, and it holds: the Todo
+board, the home dashboard and the kiosk all render exactly as before, through
+hashed files, with an empty console.
+
+**Measured on the Pi, arm64, node in a container** — the number nine other
+stories were waiting on:
+
+| | |
+|---|---|
+| `npm ci` | **15s** (34 packages) |
+| `vite build` | **1.75s** (19 modules → 18 entries, 476 KB) |
+| Tailwind v4 on arm64 | resolved; `nh-next.css` built at 7.15 kB |
+
+The fallback (build on a laptop, commit `dist/`) was never needed. The output is
+committed regardless, so a fresh clone with no network still boots and the Pi's
+runtime image stays node-free.
+
+**Sources moved to `assets/`.** `static/` now holds only generated or vendored
+files. Story 45's deletion of the old front end is a single directory.
+
+**One entry per file the templates already load**, not a bundle. The kiosk does
+not load `todo.css`; merging entries would have changed the cascade on surfaces
+nobody looks at.
+
+### Three bugs, all of which rendered wrong rather than raising
+
+- **CSS entries went out as `<script type="module">`.** `{% vite_asset %}` emits
+  a script tag for *every* entry, and Vite treats a `.css` entry as an entry.
+  Chrome refused all six on MIME type and the house rendered as unstyled black
+  text on black. Found by looking at the screen; the suite was green at the
+  time, because every page still returned 200 with a resolved URL on it. CSS now
+  goes through `{% vite_asset_url %}` inside a real `<link>`, and
+  `test_stylesheets_are_never_emitted_as_scripts` fails on the other form.
+- **`django-vite` ships a top-level `tests` package into site-packages.** A
+  regular package beats a namespace package regardless of `sys.path` order, so
+  it shadowed this repo's `tests/` and all ten app-contract tests died with
+  `ModuleNotFoundError` — the day after they were written to catch exactly this
+  kind of silent breakage. `tests/__init__.py` closes the class, not the case.
+- **I wrote `/home/screens/kiosk/` and `/home/screens/wall/` from memory** into
+  a new test. Both are wrong (`/home/displays/…`). A test that 404s proves
+  nothing and looks like it proves something. It uses `reverse()` now. Same
+  failure as the mockup's five invented lists; the fix is the same — resolve it,
+  never recall it.
+
+### Verified
+
+- 963 tests green, including 12 new ones treating the manifest as the contract:
+  every entry a template asks for is built, every built file exists, every
+  source file is an entry, `dist/` is committed, `node_modules` is not.
+- Every page fetched and every asset it references served: 19 files, all 200,
+  across home, all six Todo pages, the house log, the kiosk, the wall and the
+  switcher.
+- `collectstatic` under the **prod** storage backend
+  (`CompressedManifestStaticFilesStorage`) — 562 files post-processed, source
+  maps resolved, django-vite's URLs going through `staticfiles_storage.url()`
+  and picking up the double-hashed names.
+- Globals survive the move to ES modules: `NoraHome.post` and `NoraHome.say` are
+  still there. Every file was already an IIFE talking through `window`, which is
+  why the conversion cost nothing.
+
+### Not yet
+
+The Pi has built the assets but has **not run this commit**. The Dockerfile's
+node stage, and both screens rendering through it on the real hardware, are
+unobserved. Story 43 stays *built, unproven* until they are.

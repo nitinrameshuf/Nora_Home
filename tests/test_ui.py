@@ -294,7 +294,10 @@ def _stylesheet() -> str:
 
     from django.conf import settings
 
-    css = Path(settings.BASE_DIR) / "static" / "nora_home" / "css" / "nora-home.css"
+    # assets/, not static/: the stylesheets are Vite's *input* since Story 43.
+    # static/nora_home/dist holds its hashed, minified output, which is not
+    # something these tests can usefully read.
+    css = Path(settings.BASE_DIR) / "assets" / "css" / "nora-home.css"
     return css.read_text(encoding="utf-8")
 
 

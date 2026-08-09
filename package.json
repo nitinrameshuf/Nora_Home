@@ -1,0 +1,18 @@
+{
+  "name": "nora-home",
+  "private": true,
+  "type": "module",
+  "description": "Front-end build for Nora Home. node is a build-time dependency only: it runs in a Docker build stage and in `./nora assets`, never in the runtime image and never on the Pi's host.",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.0",
+    "tailwindcss": "^4.1.0",
+    "vite": "^7.0.0"
+  },
+  "dependencies": {
+    "alpinejs": "^3.14.0"
+  }
+}

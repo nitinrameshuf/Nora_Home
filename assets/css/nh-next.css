@@ -1,0 +1,23 @@
+/* The new front end's seed. No template loads this yet, and that is deliberate.
+ *
+ * Story 43 proves the pipeline without moving a pixel, but "the pipeline works"
+ * has to include the two parts most likely to fail on a Pi: Tailwind v4 compiles
+ * through a native binary (oxide), and it has to exist for linux/arm64. A build
+ * that never imports Tailwind would not have proven that, and Story 44 would
+ * have discovered it instead.
+ *
+ * Story 44 replaces this file with the real token layer and starts loading it. */
+
+@import "tailwindcss";
+
+@source "../../templates/**/*.html";
+@source "../../nora_home/**/*.py";
+
+@theme {
+  /* Arc reactor, dark only — CLAUDE.md §4, Phase 8. Named here so the build
+     resolves them; nothing consumes them until Story 44. */
+  --color-arc-500: #38d6ff;
+  --color-ok: #3ff0b0;
+  --color-warn: #ffb648;
+  --color-crit: #ff4d5e;
+}

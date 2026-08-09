@@ -1,0 +1,2 @@
+(function(r,t){function e(){if(!(!r.NoraHomeCharts||!r.echarts)){var c=t.querySelectorAll("[data-todo-chart]");Array.prototype.forEach.call(c,function(a){var o=t.getElementById(a.getAttribute("data-todo-chart"));if(o){var n;try{n=JSON.parse(o.textContent)}catch{return}r.NoraHomeCharts.render(a,n)}})}}t.readyState==="loading"?t.addEventListener("DOMContentLoaded",e):e()})(window,document);
+//# sourceMappingURL=todo-reporting.Dozej5qv.js.map

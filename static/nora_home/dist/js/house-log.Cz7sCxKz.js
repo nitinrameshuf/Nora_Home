@@ -1,0 +1,2 @@
+(function(t,r){function e(){if(!(!t.NoraHomeCharts||!t.echarts)){var c=r.querySelectorAll("[data-log-chart]");Array.prototype.forEach.call(c,function(a){var n=r.getElementById(a.getAttribute("data-log-chart"));if(n){var o;try{o=JSON.parse(n.textContent)}catch{return}t.NoraHomeCharts.render(a,o)}})}}r.readyState==="loading"?r.addEventListener("DOMContentLoaded",e):e()})(window,document);
+//# sourceMappingURL=house-log.Cz7sCxKz.js.map

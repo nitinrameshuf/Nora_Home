@@ -33,3 +33,7 @@ htmlcov/
 Thumbs.db
 .idea/
 .vscode/
+
+# The front-end build. node_modules is never committed; static/nora_home/dist IS
+# — the house has to boot with no network and no node, and the Pi never builds.
+node_modules/

@@ -535,6 +535,10 @@ exists unchanged at `scripts/lib/provision-pi.sh` and `./nora install` runs it.
 nothing, because a container keeps the environment it started with. Use
 `./nora recreate`.
 
+**Changing anything in `assets/` needs `./nora assets`, and the output gets
+committed.** node runs in a throwaway container, so nothing is installed on the
+machine you run it from; the Pi never builds and a fresh clone needs no network.
+
 `./nora up` also generates a self-signed TLS cert on first run (idempotent
 — see §4, "HTTPS via nginx"). The house serves on **https://<address>/home/**,
 port 443, not `:8000` — nginx is the only published entry point. Your browser
@@ -600,7 +604,8 @@ approved reference is smaller than a migration.
 Thirteen stories, 43–55, designed against that mockup and approved at gate 1.
 Four written decisions are reversed, deliberately:
 
-- **§4's "no npm, no bundler, no framework" is withdrawn.** Vite + Tailwind v4
+- **§4's "no npm, no bundler, no framework" is withdrawn — and built (2026-08-09,
+  Story 43).** Vite + Tailwind v4
   + Alpine, with node confined to a Docker build stage so the runtime image
   stays node-free. Offline survives (output is committed) and the Pi still does
   not build — but **an app author now needs node to change a style**, which was
@@ -625,6 +630,44 @@ force off` blanks both screens and that per-output `xrandr --off` proved
 fragile; the shared blanking was confirmed with the user and accepted at the
 time. `vcgencmd display_power 0 <display>` is the likely answer on a Pi 5, and
 **it must be proven on the hardware before that button ships.**
+
+**The front end is built, and the numbers say it is fine on the Pi
+(2026-08-09).** Story 43 was written to prove the pipeline before anything is
+designed on top of it, so it ships the *existing* UI through Vite and changes
+not one pixel. Measured on the Pi itself, arm64, node in a container:
+
+    npm ci        15s   (34 packages)
+    vite build    1.75s (19 modules, 18 entries)
+
+The fallback — building on a laptop and committing `dist/` — was never needed,
+though that is what happens anyway: **the output is committed, and the Pi's
+runtime image has no node in it.** node exists in one Docker build stage and in
+`./nora assets`, which runs `node:22-slim` as a throwaway container so nothing
+is ever installed on a host. A fresh clone with no network still boots.
+
+**One entry per file the templates already load**, rather than a bundle. The
+kiosk does not load `todo.css` today, and merging entries would have changed the
+cascade on surfaces nobody is looking at — precisely the silent breakage this
+story exists to rule out.
+
+**Two traps, both of which rendered the house wrong rather than raising:**
+
+- **`{% vite_asset %}` emits a `<script type="module">` for every entry,
+  including CSS ones.** Vite treats a `.css` entry as an entry like any other,
+  so all six stylesheets went out as module scripts, Chrome refused them on MIME
+  type, and the house rendered as unstyled black text. A CSS entry goes through
+  `{% vite_asset_url %}` inside a real `<link>`; a test now fails on the other
+  form.
+- **`django-vite` installs its own top-level `tests` package into
+  site-packages** (their packaging bug). A *regular* package beats a *namespace*
+  package regardless of `sys.path` order, so it shadowed this repo's `tests/`
+  and every app-contract test died with `ModuleNotFoundError`. Fixed by giving
+  `tests/` an `__init__.py`, which makes the whole class impossible rather than
+  this one instance.
+
+**Sources moved to `assets/`; `static/` now holds only what is generated or
+vendored.** That is what makes Story 45's deletion of the old front end a single
+directory rather than a hunt through a folder that also contains ECharts.
 
 **The wall is a screen someone stands at, not a poster (2026-08-07).** Two
 rules were written when the 24" was a passive ambient view, and both outlived
@@ -1026,7 +1069,11 @@ nora/              the platform
   ui/              surface detection, Nora bot, theme
 houseapps/         family apps live here (empty until Story 24)
 templates/         platform templates
-static/nora_home/       css, js, vendor
+assets/            the front end's SOURCE — css/, js/. Vite's input; deleted
+                   and rebuilt from the mockup in Story 45
+static/nora_home/       dist/ (Vite's committed output), vendor/, audio/
+package.json       front-end deps. node is build-time only, never on a host
+vite.config.js     one entry per file the templates load; output is committed
 docker/            entrypoint
 nora               the runner — install, up, upgrade, backup, apps, screens
 scripts/           run-tests.sh, gen-self-signed-cert.sh, vendor.sh

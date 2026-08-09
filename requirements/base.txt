@@ -6,6 +6,7 @@ Django>=5.2,<6.0                # LTS, supported until April 2028
 djangorestframework>=3.15
 django-filter>=24.3
 whitenoise>=6.7                 # static files without nginx in front of gunicorn
+django-vite>=3.0                # resolves hashed asset names out of Vite's manifest
 
 # --- Realtime (display bus / kiosk control / Nora bot pushes) ---
 channels>=4.1

@@ -1,4 +1,4 @@
-{% load static %}<!doctype html>
+{% load static django_vite %}<!doctype html>
 {% comment %}
 The 24" wall — a thin shell around an iframe of the real app. Deliberately
 does NOT extend base.html: no nav, no bot, no chrome of its own, since the
@@ -11,8 +11,8 @@ the old ambient wall used — see wall-live.js.
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ house_name }} — wall</title>
-  <link rel="stylesheet" href="{% static 'nora_home/css/nora-home.css' %}">
-  <link rel="stylesheet" href="{% static 'nora_home/css/displays.css' %}">
+  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nora-home.css' %}">
+  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/displays.css' %}">
 </head>
 <body class="wall-live" data-display-slug="{{ display.slug }}">
   <iframe data-wall-frame src="{{ default_path }}" title="{{ house_name }}"></iframe>
@@ -25,6 +25,6 @@ the old ambient wall used — see wall-live.js.
   {% endcomment %}
   <div class="wall-banner" data-wall-banner role="status" aria-live="polite"></div>
 
-  <script src="{% static 'nora_home/js/wall-live.js' %}" defer></script>
+  {% vite_asset 'assets/js/wall-live.js' %}
 </body>
 </html>

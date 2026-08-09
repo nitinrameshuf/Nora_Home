@@ -500,9 +500,22 @@ location, on-device ML) without raising it first.
 ### Everything must survive a dead network
 
 The Pi has to work with the internet down. ECharts and Gridstack are **vendored**
-into `static/nora_home/vendor/` for exactly this reason. **No npm, no bundler, no
-framework, no CDN.** A family member's agent should be able to add a chart without
-a toolchain, and the Pi should never run a build step.
+into `static/nora_home/vendor/` for exactly this reason. **No CDN**, and **the Pi
+never runs a build.**
+
+**"No npm, no bundler" was withdrawn in Story 43** (2026-08-09) and this is the
+part that affects you: there *is* a build now — Vite, with Tailwind and Alpine.
+Its **output is committed**, so a fresh clone with no network still boots and
+nothing you deploy needs node at runtime. But **changing a style now means
+running the build**:
+
+```bash
+./nora assets    # node runs in a throwaway container; nothing is installed here
+```
+
+Sources live in `assets/`; `static/nora_home/dist/` is generated — never edit it,
+and always commit it after a build. Adding a **chart** still needs no toolchain
+at all: you return an ECharts option dict and the platform does the rest.
 
 ---
 

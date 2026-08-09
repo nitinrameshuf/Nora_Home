@@ -1,4 +1,4 @@
-{% load static %}<!doctype html>
+{% load static django_vite %}<!doctype html>
 {% comment %}
 The shell every page in the house sits inside. Surfaces (wall, kiosk, phone,
 tablet, desktop) are set server-side on <html> so CSS can respond without any
@@ -26,9 +26,9 @@ nora_home/ui/zoom.py for the measurements behind the choice.
   <meta name="color-scheme" content="dark light">
   <meta name="theme-color" content="#0c1015">
   <title>{% block title %}{% if page_title %}{{ page_title }} · {% endif %}{{ house_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{% static 'nora_home/css/nora-home.css' %}">
-  <link rel="stylesheet" href="{% static 'nora_home/css/nh-scene.css' %}">
-  {% if nh_bot_enabled %}<link rel="stylesheet" href="{% static 'nora_home/css/nh-bot.css' %}">{% endif %}
+  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nora-home.css' %}">
+  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nh-scene.css' %}">
+  {% if nh_bot_enabled %}<link rel="stylesheet" href="{% vite_asset_url 'assets/css/nh-bot.css' %}">{% endif %}
   {% block head %}{% endblock %}
 </head>
 <body>
@@ -191,9 +191,9 @@ nora_home/ui/zoom.py for the measurements behind the choice.
 </div>
 {% endblock %}
 
-<script src="{% static 'nora_home/js/nh-app.js' %}" defer></script>
-<script src="{% static 'nora_home/js/nh-scene.js' %}" defer></script>
-{% if nh_bot_enabled %}<script src="{% static 'nora_home/js/nh-bot.js' %}" defer></script>{% endif %}
+{% vite_asset 'assets/js/nh-app.js' %}
+{% vite_asset 'assets/js/nh-scene.js' %}
+{% if nh_bot_enabled %}{% vite_asset 'assets/js/nh-bot.js' %}{% endif %}
 {% block scripts %}{% endblock %}
 </body>
 </html>

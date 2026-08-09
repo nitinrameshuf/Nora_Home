@@ -34,6 +34,27 @@ WORKDIR /wheels
 COPY requirements/ requirements/
 RUN pip wheel --wheel-dir=/wheels -r requirements/prod.txt -r requirements/test.txt
 
+# ── build the front end ───────────────────────────────────────────────────────
+# node exists here and nowhere else. The final image has no node, no npm and no
+# node_modules, and the Pi's host has never had any of them installed. Vite's
+# output is also committed to the repo, so this stage is a rebuild of something
+# that already works rather than the only way to get a working house.
+FROM node:22-bookworm-slim AS assets
+
+WORKDIR /build
+COPY package.json package-lock.json ./
+# npm ci needs the lockfile to agree with package.json, which is what makes this
+# reproducible; `npm install` here would silently drift between architectures.
+RUN npm ci --no-audit --no-fund
+
+COPY vite.config.js ./
+COPY assets/ assets/
+# Tailwind scans these for class names. Copied after node_modules so editing a
+# template does not re-run the install layer.
+COPY templates/ templates/
+COPY nora_home/ nora_home/
+RUN npm run build
+
 # ── final ─────────────────────────────────────────────────────────────────────
 FROM base
 
@@ -47,6 +68,10 @@ RUN pip install --no-index --find-links=/wheels -r requirements/prod.txt \
     && rm -rf /wheels
 
 COPY --chown=nora:nora . .
+
+# Overwrite the committed dist/ with this build's own. They should be identical;
+# when they are not, the image is right and the commit is stale.
+COPY --from=assets --chown=nora:nora /build/static/nora_home/dist static/nora_home/dist
 
 RUN mkdir -p /srv/nora/staticfiles /srv/nora/media /srv/nora/logs /var/backups/nora \
     && chown -R nora:nora /srv/nora /var/backups/nora \
