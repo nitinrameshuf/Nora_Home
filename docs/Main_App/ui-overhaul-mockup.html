@@ -484,22 +484,17 @@
     background:var(--panel-solid); border:1px solid var(--edge-hot); border-radius:11px;
     padding:6px; box-shadow:0 16px 40px rgba(0,0,0,.65); max-height:340px; overflow-y:auto;
   }
-  .mehead, .melabel {
+  .mehead {
     font-family:var(--mono); font-size:var(--lab); letter-spacing:.14em;
     text-transform:uppercase; color:var(--faint); padding:8px 9px 5px;
   }
-  .melabel { border-top:1px solid var(--edge); margin-top:4px; }
   .meopt {
     width:100%; display:flex; align-items:center; gap:9px; text-align:left;
     background:transparent; border:0; border-radius:8px; padding:8px 9px;
     color:var(--dim); font:inherit; font-size:calc(var(--s0)*.9);
-    min-height:var(--tap); flex-wrap:wrap;
+    min-height:var(--tap);
   }
   .meopt:hover { background:var(--hover); color:var(--txt); }
-  .meopt em {
-    flex-basis:100%; font-style:normal; font-size:calc(var(--s0)*.76);
-    color:var(--faint); line-height:1.4;
-  }
   .av.sm { width:22px; height:22px; font-size:10px; }
   .vitals { padding:9px 11px; margin-bottom:9px; display:flex; flex-direction:column; gap:5px; }
   .vit { display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:calc(var(--s0)*.72); letter-spacing:.09em; }
@@ -1200,11 +1195,9 @@ const S = {
   repeatChoice:'Does not repeat', customEvery:2, customUnit:'weeks', filter:'all', query:'', saved:'', palette:false, editing:false, sheet:null, drawer:false,
   wallPage:'home',     // what the kiosk has pointed the 24" at
   dial:{ zoom:1.25, volume:40 }, wallScroll:0,
-  /* Who you are, and whose screen you are looking at — two different things.
-     Matches nora_home/accounts/views.py: switch_to, switch_to_everyone,
-     switch_to_wall. No password anywhere; tapping a name is the whole
-     authentication story in this house. */
-  member:'nitin', scope:'self', memberMenu:false,  wallOn:true, linked:true,   // zoom default from ui/zoom.py
+  /* Matches nora_home/accounts/views.py: switch_to. No password anywhere;
+     tapping a name is the whole authentication story in this house. */
+  member:'nitin', memberMenu:false,  wallOn:true, linked:true,   // zoom default from ui/zoom.py
   toast:null,
 };
 
@@ -1224,27 +1217,18 @@ const memberChip = () => `
       <div class="mewrap">
         <button class="me" data-act="memberMenu">
           <span class="av">${me().initial}</span>
-          <span><span class="who">${esc(scopeLabel())}</span>
-          <span class="role">${S.scope==='self' ? esc(me().role) : 'viewing'}</span></span>
+          <span><span class="who">${esc(me().name)}</span>
+          <span class="role">${esc(me().role)}</span></span>
           <span class="caret">&#9652;</span>
         </button>
         ${S.memberMenu ? `<div class="memenu">
-          <div class="mehead">Signed in as ${esc(scopeLabel())}</div>
-          ${HOUSEHOLD.filter(m => m.id!==S.member || S.scope!=='self').map(m=>`
+          <div class="mehead">Signed in as ${esc(me().name)}</div>
+          ${HOUSEHOLD.filter(m => m.id !== S.member).map(m=>`
             <button class="meopt" data-act="beMember" data-v="${m.id}">
               <span class="av sm">${m.initial}</span>${esc(m.name)}</button>`).join('')}
-          <div class="melabel">Show me</div>
-          ${S.scope!=='all' ? `<button class="meopt" data-act="scope" data-v="all">Everyone
-            <em>The whole household's tasks and numbers, combined</em></button>` : ''}
-          ${S.scope!=='wall' ? `<button class="meopt" data-act="scope" data-v="wall">The 24&quot; wall
-            <em>What the big screen shows — rearrange its tiles from here</em></button>` : ''}
-          <div class="melabel">This house</div>
-          <button class="meopt" data-act="page" data-v="settings">Settings</button>
         </div>` : ''}
       </div>
 `;
-const scopeLabel = () =>
-  S.scope === 'all' ? 'Everyone' : S.scope === 'wall' ? 'the Wall' : me().name;
 
 let TASKS = [
   { id:1, title:'Take the bins out',       pri:1, due:'2 days late', late:true,  who:'N', done:false, mine:true,
@@ -1594,9 +1578,8 @@ function taskCard(t) {
 }
 
 function boardView() {
-  /* "Mine" follows whoever is signed in; in Everyone or Wall scope the board
-     is the whole household's, which is what those scopes mean. */
-  const mineNow = t => S.scope !== 'self' ? true : t.who === me().initial;
+  // "Mine" follows whoever is signed in.
+  const mineNow = t => t.who === me().initial;
   const vis=t=>{ if(S.filter==='archived') return !!t.archived; if(t.archived) return false;
     if(S.filter==='mine') return mineNow(t); if(S.filter==='today') return t.late||t.due==='Tomorrow'; return true; };
   const sh=TASKS.filter(vis);
@@ -2683,14 +2666,8 @@ document.addEventListener('click', e => {
     case 'memberMenu': S.memberMenu = !S.memberMenu; break;
 
     case 'beMember':
-      S.member = v; S.scope = 'self'; S.memberMenu = false;
+      S.member = v; S.memberMenu = false;
       toast(`You are ${me().name}`);
-      break;
-
-    case 'scope':
-      S.scope = v; S.memberMenu = false;
-      toast(v === 'all' ? 'Showing everyone'
-                        : 'Showing what the 24-inch is displaying');
       break;
 
     case 'labelMenu': {
