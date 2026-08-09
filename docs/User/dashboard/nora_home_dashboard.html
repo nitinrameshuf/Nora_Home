@@ -172,11 +172,11 @@
     <h1>Nora <span>Home</span></h1>
     <div class="header-meta">
       Raspberry Pi 5 (8GB) · Django 5.2 · Celery + RabbitMQ · MySQL + MongoDB · ECharts<br/>
-      Last updated: 2026-08-03 &nbsp;·&nbsp; Click any card for full details &nbsp;·&nbsp;
+      Last updated: 2026-08-09 &nbsp;·&nbsp; Click any card for full details &nbsp;·&nbsp;
       <em>Nora Home is the house system. Nora is the robot — a separate project.</em>
     </div>
   </div>
-  <div class="status-pill">◐ Design system decided &amp; engine shipped — full restyle still ahead</div>
+  <div class="status-pill">◐ Phase 8 design approved — arc-reactor identity, two layouts, hardware controller. Nothing built yet</div>
 </div>
 
 <div class="tab-nav">
@@ -191,8 +191,8 @@
     <div class="summary-card"><div class="num num-complete">25</div><div class="label">Complete</div></div>
     <div class="summary-card"><div class="num num-partial">6</div><div class="label">Built, Unproven</div></div>
     <div class="summary-card"><div class="num num-next">1</div><div class="label">Next Up</div></div>
-    <div class="summary-card"><div class="num num-planned">10</div><div class="label">Planned</div></div>
-    <div class="summary-card"><div class="num num-total">42</div><div class="label">Total Stories</div></div>
+    <div class="summary-card"><div class="num num-planned">26</div><div class="label">Planned</div></div>
+    <div class="summary-card"><div class="num num-total">58</div><div class="label">Total Stories</div></div>
   </div>
 
   <div class="progress-section">
@@ -204,11 +204,13 @@
     <div class="phase-progress"><div class="pname">Phase 5 — Operations</div><div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div><div class="pct">100%</div></div>
     <div class="phase-progress"><div class="pname">Phase 6 — Hardening &amp; Real Apps</div><div class="bar-bg"><div class="bar-fill partial" style="width:29%"></div></div><div class="pct">29%</div></div>
     <div class="phase-progress"><div class="pname">Phase 7 — Todo</div><div class="bar-bg"><div class="bar-fill" style="width:100%"></div></div><div class="pct">100%</div></div>
+    <div class="phase-progress"><div class="pname">Phase 8 — UI/UX Overhaul</div><div class="bar-bg"><div class="bar-fill partial" style="width:0%"></div></div><div class="pct">0%</div></div>
   </div>
 
   <div class="next-box">
-    <h3>🎯 Phase 7 is complete — 15 of 15, 906 unit tests and 226 QA checks green. The next story is the one that matters most outside this phase</h3>
-    <div class="next-step"><div class="step-num">1</div><div class="step-text"><strong>Story 24 — house maintenance</strong>, the first real family app, unblocked since Story 27. What actually proves the platform was worth building, as against another platform story. <strong>Its requirements.md needs the user's approval before any code</strong> — the first of DEVELOPMENT.md's three gates. It also has to settle something Story 40 exposed: the tracker published <code>register_trackable()</code> for house apps and Todo has no equivalent, so there is currently no documented way for an app to hand the house a recurring job</div></div>
+    <h3>🎯 Phase 8 is ready to start. Its design is approved, its mockup is the reference, and every surface in it has a story</h3>
+    <div class="next-step"><div class="step-num">2</div><div class="step-text"><strong>Story 24 — house maintenance</strong>, the first real family app, unblocked since Story 27. What actually proves the platform was worth building, as against another platform story. <strong>Its requirements.md needs the user's approval before any code</strong> — the first of DEVELOPMENT.md's three gates. It also has to settle something Story 40 exposed: the tracker published <code>register_trackable()</code> for house apps and Todo has no equivalent, so there is currently no documented way for an app to hand the house a recurring job</div></div>
+    <div class="next-step"><div class="step-num">1</div><div class="step-text"><strong>Story 43 — the build pipeline.</strong> Gate 1 for the whole phase was approved on 2026-08-09 against an interactive mockup (<code>docs/Main_App/ui-overhaul-mockup.html</code>). Start with 43 specifically because it ships <em>zero visual change</em> — it isolates pipeline risk from design risk, and reports a measured arm64 build time from the Pi before nine other stories depend on it</div></div>
   </div>
 
   <div class="blocked-box">
@@ -297,6 +299,27 @@
     <div class="story-card complete" onclick="openModal('39')"><div class="story-header"><div class="story-num">Story 39</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">Wall Type Scale</div><div class="story-desc">The 24" renders the real app at three-metre type. One variable, not a second layout.</div><div class="story-tags"><span class="tag">one CSS rule</span><span class="tag">Surface.WALL adopted</span></div><div class="click-hint">click for details</div></div>
     <div class="story-card complete" onclick="openModal('40')"><div class="story-header"><div class="story-num">Story 40</div><span class="badge badge-complete">✓ Complete</span></div><div class="story-title">Tracker Removal &amp; House Log</div><div class="story-desc">Deletes the tracker, and builds the one timeline that shows what actually happened in the house.</div><div class="story-tags"><span class="tag">houselog.py</span><span class="tag">migration rehearsed</span></div><div class="click-hint">click for details</div></div>
     <div class="story-card planned" onclick="openModal('41')"><div class="story-header"><div class="story-num">Story 41</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Todo — Tests, Docs &amp; Deploy</div><div class="story-desc">Both test layers, every document updated, then seen working on the physical hardware.</div><div class="story-tags"><span class="tag tag-ready">🟢 Sonnet · high</span><span class="tag">gate 3</span></div><div class="click-hint">click for details</div></div>
+  </div>
+
+  <div class="phase-label">Phase 8 — UI/UX Overhaul</div>
+  <p style="color:var(--muted);font-size:12px;margin-bottom:16px;">Gate 1 approved 2026-08-09 against an interactive mockup, <code>docs/Main_App/ui-overhaul-mockup.html</code> &mdash; open it and drive it. Dark only, arc-reactor identity, two layouts (Work and Control), widget size variants. Build in order; 43 first because it ships no visual change at all.</p>
+  <div class="story-grid">
+    <div class="story-card planned" onclick="openModal('43')"><div class="story-header"><div class="story-num">Story 43</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Build Pipeline &amp; the §4 Amendment</div><div class="story-desc">Vite + Tailwind + Alpine, node confined to a Docker stage. Ships the existing UI unchanged &mdash; and reports a measured arm64 build time.</div><div class="story-tags"><span class="tag tag-warn">🔴 OPUS · high</span><span class="tag tag-warn">start here · overturns §4</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('44')"><div class="story-header"><div class="story-num">Story 44</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Tokens, Type Scale &amp; the House Typeface</div><div class="story-desc">A surface-indexed ramp resolved from data-surface, and a self-hosted variable font. The light theme is deleted.</div><div class="story-tags"><span class="tag tag-ready">🟢 Sonnet · medium</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('45')"><div class="story-header"><div class="story-num">Story 45</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Component Library &amp; Styleguide</div><div class="story-desc">The old CSS and JS are deleted here. Card, Stat, List, Chart, Toolbar, Sheet, Tile, Ring rebuilt from the mockup, plus the class-collision test.</div><div class="story-tags"><span class="tag tag-ready">🟢 Sonnet · high</span><span class="tag">/home/styleguide/</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('46')"><div class="story-header"><div class="story-num">Story 46</div><span class="badge badge-planned">Planned</span></div><div class="story-title">The Scene — Time and Weather Only</div><div class="story-desc">Season and the landscape removed. A veil and vignette carry legibility so panes need not go opaque.</div><div class="story-tags"><span class="tag tag-ready">🟢 Sonnet · medium</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('47')"><div class="story-header"><div class="story-num">Story 47</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Information Architecture</div><div class="story-desc">Home is the base app; only nav=True apps are apps. Status + Log merge into System. The Apps directory goes; ⌘K replaces it.</div><div class="story-tags"><span class="tag tag-ready">🟢 Sonnet · high</span><span class="tag tag-warn">needs URL redirects</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('48')"><div class="story-header"><div class="story-num">Story 48</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Work Layout — Desktop &amp; Wall</div><div class="story-desc">Console rail, app bar, 12-column dense grid. Widgets gain S/M/L/XL &mdash; and must render at every declared size <em>and</em> on the phone, enforced by a test.</div><div class="story-tags"><span class="tag tag-warn">🔴 OPUS · high</span><span class="tag tag-warn">layout schema migration</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('49')"><div class="story-header"><div class="story-num">Story 49</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Work Layout — Phone</div><div class="story-desc">Bottom tabs and a drawer. The rail stops rendering inline between content blocks.</div><div class="story-tags"><span class="tag tag-ready">🟢 Sonnet · medium</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('50')"><div class="story-header"><div class="story-num">Story 50</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Kiosk — The Control Desk</div><div class="story-desc">The 10.1" as hardware: rotary encoder, numbered key bank, faders, dot-matrix readout. Every key is a path.</div><div class="story-tags"><span class="tag tag-warn">🔴 OPUS · high</span><span class="tag">Teenage Engineering</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('51')"><div class="story-header"><div class="story-num">Story 51</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Kiosk Control Channel</div><div class="story-desc">Zoom the wall from the panel, volume, and powering the 24" down without taking the kiosk with it.</div><div class="story-tags"><span class="tag tag-warn">🔴 OPUS · high</span><span class="tag tag-warn">⚠ wall-only power unsolved</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('52')"><div class="story-header"><div class="story-num">Story 52</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Pi Vitals — Telemetry Probes</div><div class="story-desc">CPU, memory, fan, load, uptime as telemetry series. Gives Measurements real content before Story 24.</div><div class="story-tags"><span class="tag tag-ready">🟢 Sonnet · medium</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('53')"><div class="story-header"><div class="story-num">Story 53</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Todo Through the System</div><div class="story-desc">Board, calendar, search, labels, reporting rebuilt on the components. Archived becomes a filter, not a column.</div><div class="story-tags"><span class="tag tag-ready">🟢 Sonnet · high</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('54')"><div class="story-header"><div class="story-num">Story 54</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Home&apos;s Own Pages Through the System</div><div class="story-desc">Dashboard, System, Settings, Alerts, Measurements, Integrations. Ends the half-width-content problem.</div><div class="story-tags"><span class="tag tag-ready">🟢 Sonnet · medium</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('55')"><div class="story-header"><div class="story-num">Story 55</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Accessibility, QA &amp; the Observe Pass</div><div class="story-desc">axe, contrast from pixels, the QA suite rewritten against new markup, deployed &mdash; and actually seen on the physical wall and kiosk.</div><div class="story-tags"><span class="tag tag-ready">🟢 Sonnet · high</span><span class="tag tag-warn">gate 3 · must be observed</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('56')"><div class="story-header"><div class="story-num">Story 56</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Live Invalidation</div><div class="story-desc">displays subscribes to the signals Todo already fires and pushes a refresh. A phone tap finally updates the 24&quot;.</div><div class="story-tags"><span class="tag tag-ready">🟢 Sonnet · medium</span><span class="tag">zero receivers today</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('57')"><div class="story-header"><div class="story-num">Story 57</div><span class="badge badge-planned">Planned</span></div><div class="story-title">nora_actions</div><div class="story-desc">A verb declared once on the app config, rendered as buttons, keys, or not at all &mdash; per surface.</div><div class="story-tags"><span class="tag tag-ready">🟢 Sonnet · medium</span><span class="tag">extends the contract</span></div><div class="click-hint">click for details</div></div>
+    <div class="story-card planned" onclick="openModal('58')"><div class="story-header"><div class="story-num">Story 58</div><span class="badge badge-planned">Planned</span></div><div class="story-title">Documentation De-duplication</div><div class="story-desc">One home per fact. Delete every restatement; keep every post-mortem.</div><div class="story-tags"><span class="tag tag-ready">🟢 Sonnet · medium</span><span class="tag tag-warn">must be last</span></div><div class="click-hint">click for details</div></div>
   </div>
 
   <div class="phase-label">Retired Ideas</div>
@@ -659,6 +682,113 @@ const STORIES = {
     files:["nora_home/todo/models.py","nora_home/todo/api.py","nora_home/todo/migrations/0003_instance_approved_at_...","nora_home/todo/admin.py","tests/test_todo.py"],
     notes:"Built 2026-08-05 on Opus, high effort. 42 new tests, 656 green. Effort splits across assignees rather than multiplying: a 60-minute task shared by three contributes 20 minutes to each load calculation, because counting it in full three times would tell three people they have a full day of work when the house has one hour of it. tasks_for() carries a mandatory .distinct() — without it the M2M join renders one card per assignee, a bug that looks like a rendering fault and gets debugged in the template. Two things found by tracing rather than by a failing test: an occasion waiting on its approver has no PENDING row, so the nightly job had to be checked for whether it would read that as 'never had one' and create a second card (it does not); and amending an already-done occasion was treated as a fresh completion, restamping completed_at/completed_by to now and whoever was editing, as well as re-firing item_completed. The restamp is the worse half — the history every chart is drawn from would drift further from the truth with each edit, silently.",
     warn:"Requested 2026-08-05, after Stories 29 and 30 had already shipped — so this is a follow-up migration rather than a change to the original model. That is why it is numbered 42 but built between 30 and 31; renumbering the rest would have broken every reference in progress.md. NOT YET RUN ON THE PI — the migration alters an indexed column and adds a CHECK constraint, both of which behave differently on MySQL than on the SQLite the suite uses." },
+  // ── Phase 8 — UI/UX Overhaul ──────────────────────────────────────
+  // Gate 1 (the design) was approved 2026-08-09 against an interactive mockup,
+  // docs/Main_App/ui-overhaul-mockup.html. Every list in that mockup was
+  // checked against the running registry rather than invented — four rounds of
+  // corrections were needed to get there, which is itself the argument for
+  // grounding these stories in code and not in plausibility.
+
+  "43": { num:"Story 43", title:"Build Pipeline & the §4 Amendment", status:"next", phase:8, time:"~4 hours", readiness:"planned", deps:[],
+    what:"Vite 7 + Tailwind v4 + Alpine 3 via django-vite, with node confined to a Docker build stage so the runtime image stays node-free. Ships the <em>existing</em> UI unchanged through the new pipeline — zero visual change is the point. It is the last story in which the old front end still exists.",
+    how:"Isolates pipeline risk from design risk. Measures the arm64 build time on the Pi and reports a number rather than assuming it is fine; if it is bad, the fallback is committing dist/ from a dev machine, which keeps every other benefit. Amends CLAUDE.md §4 in writing.",
+    files:["package.json","vite.config.js","Dockerfile (build stage)","config/settings/base.py","CLAUDE.md §4"],
+    notes:"Reverses three written commitments in §4: <em>no npm, no bundler, no framework</em>. Offline survives (output is committed), the Pi's runtime stays node-free, but an app author now needs node to change a style. That cost was stated and accepted when the foundation was chosen.",
+    warn:"Do not start any other Phase 8 story until this one has a measured build time from the Pi. Everything downstream assumes the pipeline exists." },
+
+  "44": { num:"Story 44", title:"Tokens, Type Scale & the House Typeface", status:"planned", phase:8, time:"~4 hours", readiness:"planned", deps:["Story 43"],
+    what:"A token layer in @layer tokens, plus a surface-indexed ramp — type step, spacing, radius and minimum target all resolved from data-surface. A self-hosted variable font, bundled offline.",
+    how:"Identity moves from Almanac's warm apricot to an arc-reactor cyan: --arc-500 #38d6ff as the core, amber and coral as semantics, monospace for every label and readout. Dark only. zoom stays as the family's distance dial in Settings → Screens but stops being the only scaling mechanism.",
+    files:["static/nora_home/css/tokens.css","nora_home/ui/zoom.py","templates/base.html"],
+    notes:"Directly targets \"text is unreadable\": secondary text moves up a step, and the wall gets its own ramp rather than being a zoomed laptop. The light theme is deleted rather than rebuilt, which halves the contrast matrix to daypart × weather." },
+
+  "45": { num:"Story 45", title:"Component Library & Styleguide", status:"planned", phase:8, time:"~8 hours", readiness:"planned", deps:["Story 44"],
+    what:"Card, Stat, List, Chart, Toolbar, EmptyState, Sheet, Tile, Ring, Key and <strong>Picker</strong> as Django template tags with Alpine behaviours, plus /home/styleguide/ rendering every component in every state — empty, loading, error, overflow.",
+    how:"Every widget in the house renders through these, which is what makes the fix structural rather than a pass of hand-tuning. Container-queried, so a component reflows at any grid span. <strong>Picker is one component on two axes</strong> — the kiosk's vertical app scroller and the phone's horizontal rail are the same control rotated: a fixed centre band, scroll-snap, and whatever settles in the band becomes live, debounced so flicking past three does not select each in turn. Two traps it has to carry: `scroll` does not bubble, so the listener must be in the capture phase, and the programmatic centring must be flagged or it reads back as the user choosing something and fights itself.",
+    files:["nora_home/ui/templatetags/nh.py","templates/nh/*.html","templates/core/styleguide.html","tests/test_ui.py"],
+    notes:"<strong>This is where the old front end is deleted.</strong> static/nora_home/css/* and js/* go; templates keep their Django logic and lose their markup. Nothing is kept for compatibility — see CLAUDE.md §4. <strong>Ship the cross-layer class-collision test with this story.</strong> Building the mockup produced four real collisions — .who (member name vs task assignee), .cap (caption vs fader knob), .bar (prototype chrome vs vitals track), and a near-miss on .body. None raised a console error; every one was found only by looking at a screenshot. A component library is supposed to make that class of bug impossible, and the mockup proved it is not automatic.",
+    warn:"The audit must match every class token in a selector, not just the first — the initial version missed .bar entirely because it only looked at .vit in \".vit .bar\". Second rule the mockup earned: <strong>one function owns a control's entire redraw.</strong> The label picker updated its trigger in one place and its rows in another, so removing a chip never restored the option and it could never be re-added — no error, just a control that quietly lost state." },
+
+  "46": { num:"Story 46", title:"The Scene — Time and Weather Only", status:"planned", phase:8, time:"~3 hours", readiness:"planned", deps:["Story 44"],
+    what:"Real daypart gradients, celestial body, star field and visible weather. Season and the landscape are removed entirely.",
+    how:"A veil plus a bottom vignette sits over the scene and under all content, so a pane never has to carry legibility on its own — that is what forced panes opaque enough to erase the scene the last two times this was attempted. The kiosk gets a much heavier veil: it is an instrument, and a bright sun disc landing on a power key is a control nobody can read.",
+    files:["nora_home/ui/scene.py","static/nora_home/css/nh-scene.css"],
+    notes:"Two bugs found in the mockup that will recur here if not carried over. First, a colour cannot be a layer in a comma-separated background list — <code>background: var(--veil), linear-gradient(…)</code> is invalid and the browser drops the whole declaration, silently removing the veil on every surface. Second, vw/vh in a transform-scaled container resolve against the viewport, not the container." },
+
+  "47": { num:"Story 47", title:"Information Architecture", status:"planned", phase:8, time:"~5 hours", readiness:"planned", deps:["Story 45"],
+    what:"Home is the base app; the only things called apps are the four registered apps with nav=True — Todo, Alerts, Measurements, Integrations. Home's own pages (Dashboard, System, Settings) group under it. Status and the House log merge into one System page. The Apps directory is deleted and replaced by a ⌘K palette. <strong>The member chip is the household switcher</strong>, not a link to Settings: it lists the other members (accounts:switch_to), then a "Show me" group with Everyone and the 24-inch wall, matching templates/base.html exactly. It renders from one function on both the desktop rail and the phone drawer.",
+    how:"Nav drops from nine destinations to seven, in two labelled groups. The platform/house distinction stays real in code (house_apps(), Levels) and stops being visible — which is what CLAUDE.md §4 already says of Todo: \"Level is deliberately not the test.\"",
+    files:["templates/base.html","nora_home/displays/views.py (house_links)","config/urls.py","nora_home/core/views.py (delete app_directory)","templates/core/app_directory.html (delete)"],
+    notes:"Keep /home/log/ and /home/status/ as redirects to /home/system/. The kiosk's Chromium launch scripts in ~/.nora/ are generated and hold absolute URLs, so a route that simply disappears breaks the wall until someone re-runs provision-pi.sh.",
+    warn:"An earlier draft filed System under APPS and folded Integrations into it. System is not a registered Django app — it is two core views — and Integrations is a real app with nav=True. Do not repeat that." },
+
+  "48": { num:"Story 48", title:"Work Layout — Desktop & Wall", status:"planned", phase:8, time:"~7 hours", readiness:"planned", deps:["Story 45","Story 47"],
+    what:"App bar, console rail with live Pi vitals, and a 12-column grid with fixed row height. The 24\" wall renders this same layout one ramp up — there is no separate wall design.",
+    how:"Widgets declare size variants S/M/L/XL, each a designed state rather than the same content stretched. grid-auto-flow:dense backfills holes; grid-auto-rows:minmax(--row,1fr) makes rows share leftover height so the bottom of the screen is never empty.",
+    files:["templates/base.html","static/nora_home/css/work.css","nora_home/dashboard/widgets.py","nora_home/dashboard/models.py"],
+    notes:"<strong>A widget must render at every size it declares, and on the phone.</strong> That is the contract, enforced by a test that renders each widget at each declared size on every surface and fails on overflow — not left to whoever writes it. Building the mockup showed why: the phone stacks cards in a flex column, which shrinks its items, so a chart or a ring was squeezed into a fixed height and .body&apos;s justify-content:center then centred the overflow, making content appear on top of its own title. Nothing errored; it just looked broken. Components sized by their container on desktop (charts, rings, heatmaps) need a floor on phone, and a month grid needs a different presentation entirely — 48px of width per day cannot hold a task title, so the phone shows priority dots plus a list. Deletes Story 50 from the original plan — the wall stops being its own design. <strong>dense is load-bearing, not a flourish</strong>: widget sizes rarely sum to a multiple of 12, so without it a wide widget that cannot fit the remaining columns drops a row and leaves an interior hole. It is not absolute — a trailing gap can still appear when the only widget left is wider than the space remaining.",
+    warn:"Widget size variants change the DashboardLayout schema. Existing saved layouts need a migration with a default size per widget." },
+
+  "49": { num:"Story 49", title:"Work Layout — Phone", status:"planned", phase:8, time:"~4 hours", readiness:"planned", deps:["Story 48"],
+    what:"Bottom tab bar, nav drawer, 44px targets. The rail never renders inline.",
+    how:"Today the desktop rail is injected as a full-width centred text stack between content blocks, and card titles clip to four stacked words in a 60px column. One column, full bleed, fixes both.",
+    files:["templates/base.html","static/nora_home/css/phone.css"] },
+
+  "50": { num:"Story 50", title:"Kiosk — The Control Desk", status:"planned", phase:8, time:"~7 hours", readiness:"planned", deps:["Story 45","Story 47"],
+    what:"The 10.1\" rebuilt as a piece of hardware rather than a web page: a rotary encoder selecting which app the wall shows, a bank of numbered illuminated keys for that app's controls, two faders (zoom, volume), a power key that toggles, and a dot-matrix readout.",
+    how:"Design language taken from Teenage Engineering — monospace-only type, a tight palette, few well-placed keys and an encoder, limitation as the aesthetic. Scales the way hardware does: the encoder steps through any number of apps and the key bank pages.",
+    files:["templates/displays/kiosk.html","static/nora_home/css/kiosk.css","static/nora_home/js/kiosk.js"],
+    notes:"Every key is a path the wall navigates to, because that is the entire vocabulary wall-live.js implements — navigate, refresh, banner. An app declares nora_kiosk_controls and its keys appear with no platform change. Only Todo declares any today, which is why every other app's bank holds one key. The link lamp is real: kiosk.js already tracks the websocket, and if it drops every key on the panel is dead." },
+
+  "51": { num:"Story 51", title:"Kiosk Control Channel", status:"planned", phase:8, time:"~6 hours", readiness:"planned", deps:["Story 50"],
+    what:"Four capabilities the kiosk's design assumes and the platform does not have: zoom the 24\" from the panel, <strong>scroll what the 24\" is showing</strong>, power the 24\" down <em>without</em> taking the kiosk with it, and set alarm volume.",
+    how:"Zoom writes displays.zoom (HouseSetting, clamped 0.8–2.0 for the wall) and refreshes. Scroll is a new bus message — wall-live.js implements navigate, refresh and banner only, so there is nothing today that moves the wall's content; the mockup drives it with a spring-centred bend wheel, which is a <em>rate</em> not a position, so the message carries a velocity and the wall integrates it. Volume is a host mixer call, reached the same way audio already is — the container writes, the host acts. Wall-only power is the hard one.",
+    files:["nora_home/ui/zoom.py","nora_home/displays/views.py","nora_home/displays/bus.py","scripts/lib/provision-pi.sh"],
+    warn:"<strong>Wall-only power is unsolved and previously failed.</strong> CLAUDE.md records that <code>xset dpms force off</code> blanks both screens together and that per-output <code>xrandr --off</code> proved fragile earlier in this project; the shared blanking was confirmed with the user and accepted at the time. The likely answer on a Pi 5 is <code>vcgencmd display_power 0 &lt;display&gt;</code>, which is per-display — but it must be proven on the hardware before the button ships. This story cannot be marked Complete on a green suite." },
+
+  "52": { num:"Story 52", title:"Pi Vitals — Telemetry Probes", status:"planned", phase:8, time:"~4 hours", readiness:"planned", deps:["Story 43"],
+    what:"CPU utilisation, memory, fan speed, load average and uptime, recorded as telemetry series. Temperature and disk already exist.",
+    how:"All cheap file reads — /proc/stat, /proc/meminfo, /proc/loadavg, /proc/uptime, and /sys/class/hwmon for the Pi 5 active cooler's tacho. Recorded through nora_home.telemetry.api rather than added to health.py.",
+    files:["nora_home/telemetry/probes.py","nora_home/telemetry/tasks.py","config/settings/base.py (beat schedule)"],
+    notes:"Telemetry, not health, and the distinction matters: health answers \"is it up right now\" and retains nothing, while telemetry gives history, rollups and thresholds that already raise system tasks in Todo. It also gives Measurements real content long before Story 24. <strong>Throttling and undervoltage (<code>vcgencmd get_throttled</code>) is the most valuable Pi metric and is not in this list yet</strong> — undervoltage is the most common cause of unexplained Pi flakiness and it degrades everything silently before it fails. Worth adding here." },
+
+  "53": { num:"Story 53", title:"Todo Through the System", status:"planned", phase:8, time:"~6 hours", readiness:"planned", deps:["Story 48"],
+    what:"Board, calendar, search, labels, reporting, system tasks and settings rebuilt on the component set. Columns flow to their content; Archived becomes a filter chip rather than a fourth priority column; new task opens in a Sheet.",
+    how:"Cards carry what the model actually holds — priority stripe, due chip, recurrence, escalation level, approver, labels, assignee — instead of a title and a date. <strong>The create form is a re-layout, not new capability</strong>: TaskForm already has sixteen fields (title, description, priority, owner, labels, assignees, approver, due_on, due_time, deadline_firm, planned_minutes, recurrence_type, escalation_enabled, escalation_policy, alarm_kind, alarm_ref) and they have to fit a Sheet on a 390px screen without becoming a wall of inputs — grouped, with the rare ones collapsed.",
+    files:["templates/todo/*.html","static/nora_home/css/todo.css","nora_home/todo/views.py"],
+    notes:"<strong>Two genuinely new behaviours, small but worth naming.</strong> Quick-date chips (Today / Tomorrow / This weekend / Next week / No date) that fill the real date field rather than replacing it — a date picker alone is too slow for the common case, and three fixed options is too blunt for the rest. And an <em>Add task</em> at the foot of each priority column that inherits that column's priority, which is why the board no longer needs a New button in its toolbar. Archived sitting in a row of P1/P2/P3 made a state look like a level of urgency. Story 41 already found .todo-card had no glass pane at all; this story removes the hand-styling that caused it." },
+
+  "54": { num:"Story 54", title:"Home's Own Pages Through the System", status:"planned", phase:8, time:"~5 hours", readiness:"planned", deps:["Story 48","Story 47"],
+    what:"Dashboard, System (health + log), Settings, Alerts, Measurements and Integrations rebuilt on the component set.",
+    how:"Ends the half-width-content problem — Settings currently uses the left half of a 1440px screen and leaves the right half void.",
+    files:["templates/core/*.html","templates/notifications/inbox.html","templates/telemetry/*.html","templates/integrations/*.html"],
+    notes:"collect_health() probes five services and returns three states — ok, down and skipped, with reasons like \"broker is redis\" and \"local filesystem storage\". The current UI shows neither the count nor the third state honestly." },
+
+  "55": { num:"Story 55", title:"Accessibility, QA & the Observe Pass", status:"planned", phase:8, time:"~6 hours", readiness:"planned", deps:["Story 48","Story 49","Story 50","Story 53","Story 54"],
+    what:"Extend tests/test_app_contract.py to the rebuilt surfaces, so 'reaches every surface' means rendered, not merely present in the data they read. Then axe on every page; contrast measured from pixels across daypart × weather × surface; the QA suite <em>rewritten</em> — its 226 checks select by class names that no longer exist — then deployed, and actually seen on the physical wall and kiosk.",
+    how:"Gate 3. The QA suite already measures contrast from rendered pixels rather than trusting axe's colour-contrast rule, which is unusable against backdrop-filter over a living gradient.",
+    files:["tests/qa/*.py","docs/Main_App/testing.md","docs/Main_App/progress.md"],
+    warn:"Story 41 was marked Complete on a green suite and had to be retracted — 0 live tasks, 0 sound deliveries, nothing ever observed. This story is not Complete until the wall and the kiosk have been screenshotted showing the new UI on the real hardware." },
+
+  "56": { num:"Story 56", title:"Live Invalidation — a write on one surface reaches the rest", status:"planned", phase:8, time:"~3 hours", readiness:"planned", deps:["Story 47"],
+    what:"nora_home.displays subscribes to the signals Todo already fires — item_completed, item_missed, escalation_raised — and to telemetry's threshold_crossed, and pushes a refresh to the wall and kiosk.",
+    how:"One receiver module. The signals exist and are fired today; nora_home/displays/ contains <strong>zero receivers</strong>, which is the whole gap. Debounced, so completing five things does not send five refreshes, and scoped so a display only reloads when what it is showing actually changed.",
+    files:["nora_home/displays/receivers.py","nora_home/displays/apps.py","nora_home/displays/bus.py","tests/test_displays.py"],
+    notes:"The cheapest of the remaining connective work and the most visible: today a task completed on a phone leaves the 24\" showing stale data until somebody reloads it. It covers Slack for free, because Slack's Done button already calls the same todo.api.complete(). <strong>Behaviour was never the disconnected layer</strong> — every surface already goes through the app's api module, and §6 plus a test enforce that. What was missing was anything telling the other screens that something happened." },
+
+  "57": { num:"Story 57", title:"nora_actions — a verb declared once, rendered per surface", status:"planned", phase:8, time:"~4 hours", readiness:"planned", deps:["Story 45","Story 50"],
+    what:"A new field on NoraAppConfig alongside nora_sections: the verbs an app offers. Each surface renders the ones it can support — buttons on desktop and phone, keys on the kiosk, none on the wall because it is read-only.",
+    how:"Same shape as nora_sections, plus a flag marking whether a verb fits a key: anything needing typing or a choice cannot. Prototyped in the mockup and verified there — the same declaration produced identical verbs on the kiosk and the desktop toolbar, zero on the wall, and a kiosk:false verb correctly stayed off the keys.",
+    files:["nora_home/core/registry.py","templates/base.html","templates/displays/kiosk.html","tests/test_app_contract.py"],
+    notes:"Today each surface decides for itself what it can do, which is how they drift. This is the same fix as nora_sections one level up: declare once, derive everywhere. The contract test gains an assertion that every declared action has a handler — a verb pointing at nothing is a dead button with no error anywhere." },
+
+  "58": { num:"Story 58", title:"Documentation De-duplication", status:"planned", phase:8, time:"~4 hours", readiness:"planned", deps:["Story 55"],
+    what:"One home per fact. Generated tables stay generated; decisions live only in CLAUDE.md §4; history lives only in progress.md; narrative lives only in the subsystem docs. Delete every restatement.",
+    how:"Length is not what makes the docs cumbersome — duplication is. The .env-tracked-in-git incident appears in CLAUDE.md §2, §4, progress.md, testing.md and this dashboard; Story 40's migration appears in four places. When one copy is updated the others quietly become wrong, which is how §4's \"no build step\" rule stayed authoritative for hours after it had been overturned.",
+    files:["CLAUDE.md","docs/Main_App/progress.md","docs/Main_App/testing.md","docs/Main_App/subsystems/*.md"],
+    notes:"Keep every bug post-mortem — they are the highest-value and cheapest-to-keep thing in the docs, and this session alone re-hit two documented traps. What goes is restatement, not detail.",
+    warn:"<strong>Must be last.</strong> Phase 8 invalidates a large slice of §4 on its own — the no-npm rule, Almanac's palette, the seasonal scene, the wall as its own design — so doing this earlier means editing text that is about to be deleted anyway. Sequenced deliberately, not forgotten." },
+
   "r1": { num:"Superseded", title:"Cards on the Home Screen", status:"retired", phase:3, time:"—", readiness:"complete", deps:[],
     what:"The home screen was originally a grid of server-rendered HTML cards, each app contributing templates rendered on the request.",
     how:"Replaced by widgets, which return data rather than markup. That single change is what lets the platform theme every chart consistently and lets each person rearrange their own screen.",
@@ -711,6 +841,53 @@ function readinessFor(r) {
   return `<span class="readiness-pill ${cls}">${label}</span>`;
 }
 
+
+/* ── Status has one home ──────────────────────────────────────────────
+   A story's status lives in STORIES and nowhere else. The cards keep their
+   hand-written descriptions and tags — those are presentation — but their
+   badge and colour are stamped from the data on load, and the summary counts
+   are counted rather than typed.
+
+   This existed as duplication and had already drifted: ten cards disagreed
+   with the object they point at (28-33 and 42 showed "Planned" while the data
+   said complete), and the summary claimed 25 complete against an actual 32.
+   Nobody mistyped anything — the second copy simply stopped being updated,
+   which is what second copies do. */
+(function syncStatusFromData() {
+  const LABEL = {
+    complete: "✓ Complete",
+    partial:  "◐ Built, unproven",
+    next:     "→ Next",
+    planned:  "Planned",
+    retired:  "Retired",
+  };
+
+  document.querySelectorAll(".story-card").forEach(card => {
+    const m = (card.getAttribute("onclick") || "").match(/openModal\('([^']+)'\)/);
+    const story = m && STORIES[m[1]];
+    if (!story) return;
+
+    const status = story.status;
+    card.className = "story-card " + status;
+    const badge = card.querySelector(".badge");
+    if (badge) {
+      badge.className = "badge badge-" + status;
+      badge.textContent = LABEL[status] || status;
+    }
+  });
+
+  const all = Object.values(STORIES);
+  const count = st => all.filter(x => x.status === st).length;
+  const set = (sel, n) => { const el = document.querySelector(sel); if (el) el.textContent = n; };
+
+  set(".num-complete", count("complete"));
+  set(".num-partial",  count("partial"));
+  set(".num-next",     count("next"));
+  set(".num-planned",  count("planned"));
+  // Retired ideas are not stories anyone has to build, so they are not in the total.
+  set(".num-total",    all.filter(x => x.status !== "retired").length);
+})();
+
 function openModal(id) {
   const s = STORIES[id];
   if (!s) return;
@@ -753,3 +930,5 @@ function switchTab(name) {
 </script>
 </body>
 </html>
+
+

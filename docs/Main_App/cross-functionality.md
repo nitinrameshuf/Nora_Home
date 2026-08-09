@@ -10,8 +10,79 @@ This is the index of everything one app may call from another. If you want a
 capability and it is listed here, call it. If it is not listed here, it is not a
 public surface — see [§ The rule](#the-rule) at the bottom.
 
-Signatures below are copied from the code, not from memory. When you change a
-published function, change its row here in the same commit.
+**The tables below are generated.** `manage.py sync_docs` rewrites everything
+between the `sync_docs` markers straight from the code, and
+`tests/test_docs_in_sync.py` fails the suite when a committed block no longer
+matches. Do not hand-edit inside the markers — the prose around them is yours.
+
+<!-- sync_docs:begin installed-apps -->
+
+| App | Level | URL | Nav | Sections | Widgets | Kiosk keys | MCP |
+|---|---|---|---|---|---|---|---|
+| **Displays** <br><code>nora_home.displays</code> | 1 | `/home/displays/` | — | — | — | — | — |
+| **Alerts** <br><code>nora_home.notifications</code> | 1 | `/home/alerts/` | yes | — | — | — | — |
+| **Assistant** <br><code>nora_home.ai</code> | 1 | `/home/ai/` | — | — | — | — | — |
+| **Measurements** <br><code>nora_home.telemetry</code> | 1 | `/home/measurements/` | yes | — | 1 | — | yes |
+| **Integrations** <br><code>nora_home.integrations</code> | 1 | `/home/integrations/` | yes | — | — | — | — |
+| **Home** <br><code>nora_home.core</code> | 1 | `/home/` | — | — | 3 | — | — |
+| **Interface** <br><code>nora_home.ui</code> | 1 | `/ui/` | — | — | — | — | — |
+| **Dashboard** <br><code>nora_home.dashboard</code> | 1 | `/dashboard/` | — | — | — | — | — |
+| **Todo** <br><code>nora_home.todo</code> | 2 | `/todo/` | yes | 7 | 6 | 5 | yes |
+| **Household** <br><code>nora_home.accounts</code> | 1 | `/accounts/household/` | — | — | — | — | — |
+| **MCP** <br><code>nora_home.mcpserver</code> | 1 | `/mcp/` | — | — | — | — | — |
+| **Data** <br><code>nora_home.datastores</code> | 1 | `/data/` | — | — | — | — | — |
+
+<!-- sync_docs:end installed-apps -->
+
+### Everything one app may call from another
+
+<!-- sync_docs:begin published-api -->
+
+### `nora_home.todo.api`
+
+
+| Call | What it does |
+|---|---|
+| `acknowledge(instance, *, member) -> 'Instance'` | Stop the escalation ladder without claiming the work is done — "seen it, will get to it" (§9, ported from the tracker's own `Occurrence. acknowledge()`). Anyone the escalation reached can silence it: the owner, or anyone on their escalation chain who just got pulled in by a widening rung, not only the person who happened to be first notified |
+| `approval_history(instance)` | Every submit/approve/reject on this occasion, newest first — which is what makes a rejection's reason retrievable at the point it matters |
+| `approve(instance, *, member, at=None) -> 'Instance'` | The approver says yes. Only then is it done |
+| `can_complete(task, member) -> 'bool'` | Any assignee closes it — the first person to finish it finishes it. The owner can always close their own task, whoever else it is shared with |
+| `complete(instance, *, member, actual_minutes=None, note=None, at=None) -> 'Instance'` | Finish one occasion |
+| `doers(task) -> 'list'` | The people who actually do this task |
+| `effort_share_minutes(instance, member=None) -> 'float | None'` | How many minutes this occasion adds to **one person's** load |
+| `record_changes(task, before: 'dict', *, actor=None) -> 'int'` | Write one dated `ChangeEvent` per field that actually moved. Returns how many were written; zero when someone opened the edit form and saved it unchanged, which should leave no trace at all |
+| `reject(instance, *, member, reason: 'str') -> 'Instance'` | The approver says no, and says why |
+| `skip(instance, *, member, reason: 'str' = '', at=None) -> 'Instance'` | Mark an occasion skipped — deliberately not done, before its moment passed. Once `due_at` has gone, the occasion is a miss instead (§5); the board and `close_passed_instances` are what turn a lapsed pending instance into `missed`, not this function |
+| `snapshot(task) -> 'dict'` | What `record_changes()` compares against. Take one *before* saving an edit, pass it back afterwards |
+| `tasks_for(members, *, queryset=None)` | Tasks belonging to these people: `owner in members OR assignees intersects members` |
+| `uncomplete(instance, *, member) -> 'Instance'` | Undo a tick. Back to `pending`, whether it was `done` or still `awaiting_approval` — the person who finished it (or the approver who signed off) is allowed to say "actually, not yet" |
+
+
+### `nora_home.notifications.api`
+
+
+| Call | What it does |
+|---|---|
+| `notify(recipient, *, title: 'str', body: 'str' = '', app_slug: 'str' = '', severity: 'str' = Severity.INFO, url: 'str' = '', icon: 'str' = '', channels: 'list[str] | None' = None, dedupe_key: 'str' = '', dedupe_minutes: 'int' = 60, sync: 'bool' = False, **context) -> 'Notification | None'` | Tell one person something. Returns None if deduplicated away |
+| `notify_house(*, title: 'str', body: 'str' = '', app_slug: 'str' = '', severity: 'str' = Severity.INFO, url: 'str' = '', icon: 'str' = '', channels: 'list[str] | None' = None, dedupe_key: 'str' = '', dedupe_minutes: 'int' = 60, sync: 'bool' = False, **context) -> 'Notification | None'` | Tell everyone. Goes to the house Slack channel and the wall display |
+
+
+### `nora_home.telemetry.api`
+
+
+| Call | What it does |
+|---|---|
+| `define_series(key: 'str', label: 'str', *, unit: 'str' = '', app_slug: 'str' = 'telemetry', category: 'str' = '', member=None, direction: 'str' = 'neutral', description: 'str' = '', warn_below=None, warn_above=None, alert_below=None, alert_above=None, show_on_wall: 'bool' = False, precision: 'int' = 2, retention_days: 'int' = 730) -> 'Series'` | — |
+| `record_reading(key: 'str', value: 'float', *, member=None, source: 'str' = 'manual', recorded_at=None, app_slug: 'str' = 'telemetry', **tags) -> 'Reading'` | Store one measurement and fire a threshold signal if it crosses a bound |
+| `series_history(key: 'str', *, hours: 'int' = 24, limit: 'int' = 500)` | — |
+
+
+### `nora_home.core.api`
+
+
+_Publishes nothing._
+
+<!-- sync_docs:end published-api -->
 
 ---
 

@@ -112,6 +112,15 @@ show up on the wall display and in the family's Slack without extra work.
 
 ## Ten-minute start
 
+> **There is a working minimum of everything below at `tests/contract_app/`.**
+> It is a real house app — declaration, urls, views, one widget — installed and
+> exercised by `tests/test_app_contract.py`, which asserts it reaches the
+> sidebar, the phone, the kiosk, the widget picker and its own URLs. If this
+> recipe ever stops working, that suite goes red rather than the instructions
+> quietly becoming wrong. Copy it, or read it as the shortest possible answer
+> to "what do I actually have to write".
+
+
 > **This starts at gate 2.** Gate 1 — `requirements.md`, approved by the user —
 > comes before any of it. See [The workflow](#the-workflow--three-gates-in-order).
 
@@ -210,6 +219,36 @@ a different install and want the data to survive until it's re-registered there.
 ---
 
 ## The contract: `apps.py`
+
+**Every field you may declare, generated from `NoraAppConfig` itself** — so a
+capability added to the platform appears here without anyone remembering to
+write it down. Run `manage.py sync_docs` after changing the class.
+
+<!-- sync_docs:begin app-contract -->
+
+| Declare | Default | Effect |
+|---|---|---|
+| `nora_category` · _str_ | `'house'` | |
+| `nora_color` · _str_ | — | |
+| `nora_dashboard_cards` · _list[str]_ | — | |
+| `nora_description` · _str_ | — | |
+| `nora_enabled` · _bool_ | `True` | |
+| `nora_has_page` · _bool_ | `True` | |
+| `nora_icon` · _str_ | `'sparkle'` | |
+| `nora_kiosk_controls` · _list[dict]_ | — | |
+| `nora_level` · _int_ | `3` | |
+| `nora_minimum_role` · _str_ | `'member'` | |
+| `nora_nav` · _bool_ | `True` | |
+| `nora_order` · _int_ | `100` | |
+| `nora_owns_telemetry_series` · _list[str]_ | — | |
+| `nora_provides_mcp_tools` · _bool_ | `False` | |
+| `nora_sections` · _list[dict]_ | — | |
+| `nora_slug` · _str_ | — | |
+| `nora_title` · _str_ | — | |
+| `nora_url_prefix` · _str_ | — | |
+| `nora_widgets` · _list[str]_ | — | |
+
+<!-- sync_docs:end app-contract -->
 
 This is the whole interface between your app and the platform.
 

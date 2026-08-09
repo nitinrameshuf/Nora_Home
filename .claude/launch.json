@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "nora-dev",
-      "runtimeExecutable": ".venv\\Scripts\\python.exe",
+      "runtimeExecutable": ".venv/bin/python",
       "runtimeArgs": ["manage.py", "runserver", "8000"],
       "port": 8000
     }

@@ -3427,3 +3427,239 @@ that no `cursor: none` escapes the idle flag).
 3. **Story 41 — Todo: tests, docs, deploy.** Unblocked by Story 40. Browser
    tests through `./nora qa`, and the deployed-and-observed pass that moves the
    whole phase from built to Complete.
+
+---
+
+## 2026-08-09 — Phase 8 designed: a UI/UX overhaul, and an interactive mockup
+
+Asked for a ground-up UI/UX redesign — explicitly not a CSS pass. Analysis was
+done against the **running house**, not the code: every page captured from the
+Pi at desktop, phone, kiosk and wall sizes, plus a screenshot of the physical
+screens. That is what produced the findings, and several of them were invisible
+in code review.
+
+**What the live capture showed.** The 24" wall was ~65% empty. Todo's board held
+two cards in four fixed-height columns. Settings used the left half of a 1440px
+screen. The kiosk filled its top 45% and carried registry categories — "House",
+"This house", "System" — as tile subtitles. Every primary action (Add a widget,
+Rearrange, Switch profile, Theme) was hidden inside the avatar dropdown. On a
+phone the desktop rail rendered as a full-width centred text stack *between*
+content blocks, and "Change the water filter" clipped to four stacked words in a
+60px column. Todo — the Level 2 app the platform leans on — sat under **SYSTEM**,
+below Integrations, with "Settings" appearing twice in the same sidebar. And the
+Almanac scene, the house's entire visual identity, rendered as flat near-black.
+
+**The diagnosis was one thing, not a list**: a single layout — sidebar plus card
+grid — stretched across five surfaces by a zoom multiplier. Notably that is the
+exact template §4 already rejected once in mockups, and then got built anyway.
+
+### The mockup, and why it is now the reference
+
+`docs/Main_App/ui-overhaul-mockup.html` — standalone, interactive, no server and
+no build. It is now the **UI/UX reference**: future changes go into it first, are
+shown, and are approved before any production code. Recorded in §0's update table
+and §4.
+
+A picture could not have settled the questions that actually arose. Whether a
+rearranged dashboard still tiles cleanly, whether the kiosk survives twelve apps,
+whether text holds up at noon in the rain — all behavioural, all answered in a
+browser in seconds.
+
+**Making it trustworthy cost four rounds of correction, and that is the lesson.**
+Four separate lists in it turned out to be invented rather than read:
+
+| Invented | Reality, once queried |
+|---|---|
+| Kiosk controls ("Mark first done", "Mute an hour") | `wall-live.js` implements exactly three actions — `navigate`, `refresh`, `banner`. **Every control is a path.** Todo's five are verbatim from its `apps.py`; no other app declares any |
+| Widgets "Outside" and "Alerts" | Not widgets. Weather is an integration feeding the scene; alerts are a page. The real catalogue is ten, across three apps |
+| An Apps directory listing Todo, Alerts, Measurements… | `app_directory` lists **house apps only** and filters to `nora_has_page`. Todo is excluded by design. It is legitimately empty until Story 24 |
+| Nav items Maintenance, Numbers, "All apps" | Maintenance does not exist; the real title is **Measurements**; **Integrations** is a registered app I had omitted entirely |
+
+Each was fixed by querying the running app or reading `settings.py`, never by
+reasoning about it. **A mockup showing plausible content is worse than none** — it
+gets approved, then built.
+
+### Four class collisions, none of which raised an error
+
+Building it surfaced a bug class worth carrying into Story 45 as a test:
+`.who` (member name vs task assignee), `.cap` (caption vs fader knob), `.bar`
+(the prototype's own control bar vs the vitals track), plus a near-miss on
+`.body`. In every case a later `@layer` silently won and the component rendered
+as something else — a name became a 20px orange circle; every caption in the app
+became an absolutely-positioned knob. **No console error in any of them**; all
+four were found by looking at a screenshot.
+
+The first audit script missed `.bar` because it only captured the *first* class
+in a selector, so `.vit .bar` never registered as a use of `.bar`. Fixed matcher
+now reports nine cross-layer names, all verified as legitimate parent-scoping
+(`.card-h .sub` vs `.hkey .sub`) or modifiers (`.task.done`).
+
+Two other bugs worth remembering because they will recur in production CSS: a
+**colour cannot be a layer in a comma-separated `background` list**, so
+`background: var(--veil), linear-gradient(…)` is invalid and the browser drops
+the whole declaration — the veil vanished on every surface at once; and **`vw`/`vh`
+inside a transform-scaled container resolve against the viewport**, not the
+container, so a sun's halo rendered ~160px wide inside a 1440px frame.
+
+### What was decided
+
+Dark only, arc-reactor identity. **Two layouts, not three** — Work (phone →
+desktop → wall) and Control (kiosk); the wall is the desktop one ramp up. Widget
+**size variants S/M/L/XL** on a 12-column grid with `dense` and
+`minmax(--row, 1fr)`, which is what removes both the ragged holes and the empty
+lower half. Scene reduced to time and weather. The kiosk rebuilt as a **hardware
+control desk** — rotary encoder, numbered key bank, faders, dot-matrix readout —
+after the first two attempts were rejected as unscalable and then as ugly.
+
+IA follows one rule, *Home is the base app and everything else is an app*: Status
++ Log merge into **System** (a page of Home, not an app), the Apps directory is
+deleted in favour of a ⌘K palette, and only the four `nav=True` apps are called
+apps.
+
+### Recorded
+
+Dashboard: **Phase 8, Stories 43–55**, phase bar, and counts (42 → 55 total,
+planned 10 → 23). Cards are hand-authored per phase — the `STORIES` object only
+feeds the modal — so adding a story means editing both, which cost a wrong-place
+insertion before it was caught. CLAUDE.md §4 carries the four reversals, and §0
+now lists the mockup as a required update.
+
+**Nothing is built.** Story 43 is the entry point precisely because it ships zero
+visual change: it isolates pipeline risk from design risk and reports a measured
+arm64 build time before nine other stories depend on it.
+
+Also fixed in passing: `.claude/launch.json` pointed at `.venv\Scripts\python.exe`
+— a Windows path, on a Mac — so the dev server had never been startable on this
+machine.
+
+**Decided the same day: the front end is a rewrite, not a migration.** The
+mockup is the reference and production is rebuilt from it — `static/nora_home/css/*`
+and `js/*` deleted, templates keeping their Django logic and losing their markup.
+The deletion happens at Story 45, so Story 43 is the last point at which the old
+front end still exists. Story 55 rewrites the QA suite rather than adapting it:
+its 226 checks select by class names that will not survive. Two things are kept
+because they are not styling — `zoom.py` writing `style="zoom:"` onto `<html>`,
+and the `data-surface` / `data-daypart` / `data-weather` attributes.
+
+---
+
+## 2026-08-09 — the documentation stops being a copy
+
+Asked how a change propagates so the docs and the code cannot drift. The answer
+was not a rewrite: **length is not what makes them cumbersome, duplication is.**
+Two proofs were already in the repo.
+
+`register_trackable()` — the call `DEVELOPMENT.md` tells a house-app author to
+make — appeared in **five documents and zero lines of Python**. Story 40 deleted
+the app that published it; the documentation went on promising it because
+nothing ever executed the promise. And `cross-functionality.md` says of itself
+that signatures are *"copied from the code, not from memory"*, which is a
+hand-maintained mirror and therefore a rot vector by design.
+
+Three things built, cheapest and highest-value first.
+
+### 1. The contract is executable
+
+`tests/contract_app/` is a real house app — declaration, `urls.py`, views, one
+widget — declared exactly as `DEVELOPMENT.md` describes.
+`tests/test_app_contract.py` installs it via `override_settings` and asserts it
+reaches **every** surface: `navigation()`, its own URL, every declared section
+(200, not merely resolvable), every kiosk control, and the widget picker. One
+test asserts the strongest form of the claim — that nothing in `nora_home/`,
+`config/` or `templates/` names the app at all.
+
+Installed by override rather than added to `config/settings/test.py` on purpose:
+it is a fixture, not a shipped reference app, and the old reference app was
+removed deliberately. It has no models, because Django will not migrate an app
+added after the test database is built and nothing in the contract needs tables.
+
+**Verified by breaking it, not by watching it pass.** A section pointed at a
+missing path failed both the section and kiosk assertions; `nora_nav = False`
+failed the navigation assertion; a mistyped widget path failed the widget
+assertion. Restored, green. A test written and never seen to fail proves nothing.
+
+### 2. The recipe points at the executable version of itself
+
+`DEVELOPMENT.md`'s "Ten-minute start" now opens by pointing at `tests/contract_app/`
+as the working minimum. The instructions and the fixture are the same thing, so
+the recipe going stale is a red suite.
+
+### 3. Derived tables are generated
+
+`manage.py sync_docs` rewrites the blocks between `<!-- sync_docs:begin ... -->`
+markers from the registry and the published `api` modules — the installed-apps
+table, every public API signature with its real arguments, and the full
+`NoraAppConfig` declaration table. `--check` writes nothing and exits non-zero
+on drift; `tests/test_docs_in_sync.py` runs it.
+
+**One bug found immediately, and it is the reason the determinism test exists.**
+The app-contract table was stale the instant after writing it: `repr()` of a
+`property` object embeds its memory address, so `nora_home_metadata` produced a
+different row every run and `--check` would have been permanently red. Data
+fields only now, and a second test asserts every generator returns the same
+bytes twice.
+
+Suite: **952 passing**, 21 skipped, ~5s.
+
+### What was deliberately not done
+
+No doc rewrite for brevity, and no visual-regression baselines. The rewrite
+should follow the tooling — it is only now clear which text is derivable — and
+Phase 8 invalidates a large slice of §4 on its own. Baselines against a design
+still changing daily would be noise.
+
+---
+
+## 2026-08-09 — Phase 8 made startable, and the dashboard stops contradicting itself
+
+### The dashboard was duplicating the thing it exists to track
+
+Ten story cards disagreed with the `STORIES` object they point at — 28–33 and
+42 showed **Planned** while the data said `complete` — and the summary claimed
+25 complete against an actual 32. Nobody mistyped anything; the second copy
+simply stopped being updated, which is what second copies do. In the document
+whose whole job is tracking work.
+
+Status now has one home. The cards keep their hand-written descriptions and
+tags, because those are presentation, but their badge and colour are stamped
+from `STORIES` on load and the summary counts are counted rather than typed.
+Verified: **0 cards disagreeing**, counts 32 / 6 / 0 / 20, total 58.
+
+Also fixed a stray `</div>` sitting *after* `</html>`, left by the earlier
+Phase 8 insertion. It rendered fine, which is exactly why it survived.
+
+### Auditing the mockup against the stories
+
+Every distinct thing in `ui-overhaul-mockup.html` was checked against Phase 8's
+sixteen stories. Two genuine gaps, both now closed:
+
+- **Scrolling the wall.** Story 51 promised three new capabilities — zoom,
+  wall-only power, volume. The mockup's bend wheel is a fourth, and there is no
+  scroll message in the bus at all: `wall-live.js` implements `navigate`,
+  `refresh` and `banner`. Added, with the detail that matters — the wheel is
+  spring-centred, so it sends a **rate**, not a position, and the wall
+  integrates it.
+- **The Picker.** The kiosk's vertical app scroller and the phone's horizontal
+  rail are the same control rotated, and nothing named it as one component.
+  Now part of Story 45, carrying the two traps it must survive: `scroll` does
+  not bubble, so the listener has to be in the capture phase; and the
+  programmatic centring must be flagged or it reads back as the user choosing
+  something and fights itself.
+
+A third flag — Pi vitals — was a false positive from a too-literal pattern.
+Story 52 covers it.
+
+### Ready to start
+
+- **No node on this Mac.** That settles Story 43's shape rather than leaving it
+  a preference: the build has to run in a Docker stage.
+- The Dockerfile is already multi-stage (`base` → `builder` → final), so a node
+  stage fits the existing structure.
+- **4,213 lines** of CSS and JS under `static/nora_home/` are what Story 45
+  deletes.
+- The Pi answers, reports `aarch64`, and all services are healthy — so Story
+  43's arm64 build-time measurement can actually be taken rather than guessed.
+
+Story 43 is marked **next**. It ships zero visual change on purpose: it isolates
+pipeline risk from design risk and returns a measured build time before nine
+other stories depend on it.

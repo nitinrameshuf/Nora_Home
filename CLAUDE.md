@@ -54,13 +54,15 @@ than merely stated.
 
 | You changed… | Update, in the same commit |
 |---|---|
-| A story's status, or added one | [`docs/User/dashboard/nora_home_dashboard.html`](docs/User/dashboard/nora_home_dashboard.html) — the `STORIES` object, the summary counts, and the phase bars |
+| A story's status, or added one | [`docs/User/dashboard/nora_home_dashboard.html`](docs/User/dashboard/nora_home_dashboard.html) — the `STORIES` object, the summary counts, and the phase bars. **Cards are hand-authored HTML per phase; the `STORIES` object only feeds the modal.** Adding a story means both. |
+| **Anything a person sees** | [`docs/Main_App/ui-overhaul-mockup.html`](docs/Main_App/ui-overhaul-mockup.html) — **the UI/UX reference. Change it first, show it, get approval, then write code.** See §4 |
 | Anything at all, in a working session | [`docs/Main_App/progress.md`](docs/Main_App/progress.md) — a dated entry, newest at the bottom |
 | A component, boundary, or data flow | [`docs/Main_App/architecture.md`](docs/Main_App/architecture.md) — including the Mermaid diagrams |
 | One subsystem's models, API, tasks, or gaps | The matching file in [`docs/Main_App/subsystems/`](docs/Main_App/subsystems/) |
-| A published cross-app function | [`docs/Main_App/cross-functionality.md`](docs/Main_App/cross-functionality.md) — signatures are copied from the code, so keep them true |
+| A published cross-app function | **Nothing by hand.** Run `manage.py sync_docs` — the tables in [`cross-functionality.md`](docs/Main_App/cross-functionality.md) and `DEVELOPMENT.md` are generated between `sync_docs` markers, and `tests/test_docs_in_sync.py` fails when they drift |
 | The app contract, or anything about the five surfaces | [`docs/Main_App/DEVELOPMENT.md`](docs/Main_App/DEVELOPMENT.md) |
 | Anything at all — add or update a test | `tests/test_<subsystem>.py`, and a house app's own `tests/test_<app>.py` |
+| The app contract — a new declaration or surface | `tests/contract_app/` and `tests/test_app_contract.py`, so the promise stays executable |
 | How you verify work on the Pi, or what the suite covers | [`docs/Main_App/testing.md`](docs/Main_App/testing.md) |
 | A house app | That app's folder in [`docs/House_Apps/`](docs/House_Apps/) |
 | A deployment, install, or uninstall step | [`docs/User/deployment.html`](docs/User/deployment.html) — for people, not agents; keep it in sync with `./nora`, `scripts/lib/provision-pi.sh`, `install_app`, and `uninstall_app` |
@@ -552,6 +554,78 @@ git clone <repo> && cd nora-home
 
 Read this section before changing architecture. Each of these was a real fork.
 
+**The mockup is the UI reference, and it comes before the code (2026-08-09).**
+`docs/Main_App/ui-overhaul-mockup.html` is a standalone, interactive prototype
+of every surface — open it with a double click, no server, no build. **Any
+future change to what a person sees goes into the mockup first, is shown, and
+is approved before a line of production code is written.** That is now the
+workflow, not a one-off for Phase 8.
+
+It exists because a static picture could not settle the questions that actually
+came up: whether a rearranged dashboard still tiles cleanly, whether the kiosk
+scales past a handful of apps, whether text survives noon with rain. Those are
+behavioural, and the prototype answers them in a browser in seconds.
+
+**The harder lesson is what it took to make it trustworthy.** Four separate
+times a list in it turned out to be invented rather than read — kiosk controls,
+the widget catalogue, the Apps directory, and the nav groups. Each was fixed by
+querying the running app (`manage.py shell` over the registry) or reading
+`settings.py`, never by reasoning. **A mockup that shows plausible content is
+worse than no mockup**, because it gets approved and then built. If you add a
+screen to it, ground every list the same way and say in a comment where the
+data came from.
+
+**The front end is rewritten from the mockup, not migrated (2026-08-09).**
+Phase 8 is greenfield. `static/nora_home/css/*` and `static/nora_home/js/*` are
+deleted and rebuilt from `ui-overhaul-mockup.html`; templates keep their Django
+logic and lose their markup. Nothing is preserved for compatibility.
+
+Decided because the alternative is worse: retrofitting five surfaces' worth of
+CSS onto a new token layer means carrying both systems at once, and the existing
+sheets already contain rules whose reason nobody remembers. A rewrite from an
+approved reference is smaller than a migration.
+
+**What this knowingly breaks**, and where it is owned:
+
+- **`tests/qa/*` selects by class** — `.todo-card`, `.kiosk-tile`, `.card` and
+  friends all disappear. Those 226 checks are rewritten, not adapted (Story 55).
+- **`nh-charts.js`'s house theme goes with it.** Widgets still return ECharts
+  option dicts — that contract holds — but the theme applied to them is new.
+- **Keep two things that are not styling**: `nora_home/ui/zoom.py` writing
+  `style="zoom:"` onto `<html>`, and the `data-surface` / `data-daypart` /
+  `data-weather` attributes the scene and ramp both read. Everything else in the
+  static tree is disposable.
+
+**Phase 8 — the UI overhaul, and what it overturns (2026-08-09).**
+Thirteen stories, 43–55, designed against that mockup and approved at gate 1.
+Four written decisions are reversed, deliberately:
+
+- **§4's "no npm, no bundler, no framework" is withdrawn.** Vite + Tailwind v4
+  + Alpine, with node confined to a Docker build stage so the runtime image
+  stays node-free. Offline survives (output is committed) and the Pi still does
+  not build — but **an app author now needs node to change a style**, which was
+  the load-bearing half of the original rule. Accepted knowingly.
+- **Almanac's warm apricot becomes an arc-reactor cyan**, dark only. The light
+  theme is deleted rather than rebuilt, which halves the contrast matrix.
+- **Season and the landscape leave the scene.** Time of day and real weather
+  only.
+- **The wall stops being its own design.** It renders the desktop layout one
+  ramp up, which deletes a whole story from the original plan.
+
+Two IA decisions follow from one rule — *Home is the base app; everything else
+is an app*: Status and the House log merge into a **System** page belonging to
+Home, and the Apps directory is deleted in favour of a ⌘K palette. Only the
+four registered apps with `nav=True` are called apps. **The platform/house
+distinction stays real in code and stops being visible**, which is what this
+file already says of Todo: *Level is deliberately not the test.*
+
+**One thing in Phase 8 is not merely unbuilt but unsolved.** Story 51 wants the
+24" powered down without taking the kiosk with it. §2 records that `xset dpms
+force off` blanks both screens and that per-output `xrandr --off` proved
+fragile; the shared blanking was confirmed with the user and accepted at the
+time. `vcgencmd display_power 0 <display>` is the likely answer on a Pi 5, and
+**it must be proven on the hardware before that button ships.**
+
 **The wall is a screen someone stands at, not a poster (2026-08-07).** Two
 rules were written when the 24" was a passive ambient view, and both outlived
 that. Worth knowing as a pair, because the next thing dating from the same
@@ -791,6 +865,19 @@ grid. Both are vendored into `static/nora_home/vendor/` rather than pulled from 
 because the house must work with the internet down. **There is deliberately no npm,
 no bundler, and no framework** — a family member's agent should be able to add a
 chart without a toolchain, and the Pi should never run a build.
+
+**A widget ships at every size it declares, including the phone.** Size
+variants (S/M/L/XL) are part of the widget contract from Phase 8, and each is a
+*designed* state rather than the same content stretched. A test renders every
+widget at every size it declares, on every surface, and fails on overflow —
+because this failure is silent. The mockup showed the shape of it: a phone
+stacks cards in a flex column, flex items shrink by default, and a card pinned
+to a fixed height centres its overflow, so a chart appeared to sit on top of its
+own title with nothing logged. Anything sized by its container on desktop —
+charts, rings, heatmaps — needs a floor on the phone, and some widgets need a
+different presentation there rather than a smaller one: a month grid gives each
+day ~48px on a 390px screen, which cannot hold a task title, so the phone shows
+priority dots plus a list.
 
 **Widgets return data, not HTML.** `ChartWidget.option()` returns an ECharts option
 dict; the platform applies the house theme. This is what keeps every chart in the

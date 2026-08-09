@@ -1,0 +1,2787 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nora Home — UI overhaul, interactive mockup</title>
+
+<!--
+  Nora Home — THE UI/UX REFERENCE.
+
+  This file is canonical for what a person sees. Any change to the interface is
+  made HERE FIRST, shown, and approved before a line of production code is
+  written. See CLAUDE.md §0's update table and §4. Phase 8 (Stories 43–55 on the
+  dashboard) is the build that follows from it.
+
+  Ground every list you add against the running app — `manage.py shell` over the
+  registry, or settings.py — and say in a comment where the data came from. Four
+  lists in this file were invented before being corrected that way, and a mockup
+  showing plausible content is worse than none: it gets approved, then built.
+
+  Standalone on purpose: open it with a double click. No server, no build, no
+  network. Nothing talks to Django; every number is fixture data. The JS exists
+  only to make the UX legible.
+
+  WHAT CHANGED IN REVISION 2, and why
+    * Dark only. The light theme is gone rather than rebuilt.
+    * New identity: an arc-reactor HUD, for a robotics lab. Cyan core, emissive
+      hairlines, corner brackets, monospace readouts. The ambient scene is now
+      TIME OF DAY AND WEATHER ONLY -- season and the landscape are gone.
+    * TWO layouts, not three. The 24" wall renders the *desktop* layout at the
+      wall's own type ramp -- there is no separate "glance" design any more.
+    * Widgets have real SIZE VARIANTS (S / M / L / XL). Each size is a designed
+      state, not a stretched one, and the grid snaps to whole cells, so any
+      rearrangement still tiles cleanly. Hit "Rearrange", then "Shuffle", to
+      prove it.
+    * The kiosk is a control surface for the 24" and nothing else: an action
+      pad, three dials, a power row, and an app switcher. It deliberately shows
+      no preview of the wall -- a miniature would be a second screen to read,
+      and this panel is worked by hand while you look up at the wall itself.
+-->
+
+<style>
+@layer proto, tokens, base, comp, work, kiosk, phone;
+
+/* ═══════════════════════════════════════════════════════════
+   PROTOTYPE CHROME — deliberately plain, so it never reads as
+   part of the product.
+   ═══════════════════════════════════════════════════════════ */
+@layer proto {
+  :root {
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --p-bg:#080b11; --p-raised:#111823; --p-line:#22303f;
+    --p-text:#dceaf4; --p-dim:#7f9bb0; --p-arc:#38d6ff;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--p-bg); color:var(--p-text); font-family:var(--sans); -webkit-font-smoothing:antialiased; }
+
+  .bar {
+    position:sticky; top:0; z-index:100; background:rgba(8,11,17,.95);
+    backdrop-filter:blur(12px); border-bottom:1px solid var(--p-line);
+    padding:10px 18px; display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px;
+  }
+  .bar-brand { font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--p-arc); font-weight:700; }
+  .bar-brand small { display:block; color:var(--p-dim); font-weight:400; letter-spacing:.06em; text-transform:none; font-size:10px; margin-top:2px; }
+
+  .grp { display:flex; align-items:center; gap:7px; }
+  .grp > label { font-family:var(--mono); font-size:9.5px; letter-spacing:.13em; text-transform:uppercase; color:var(--p-dim); }
+
+  .seg { display:flex; background:var(--p-raised); border:1px solid var(--p-line); border-radius:8px; overflow:hidden; }
+  .seg button {
+    appearance:none; border:0; background:transparent; cursor:pointer; color:var(--p-dim);
+    font-family:var(--sans); font-size:12px; font-weight:600; padding:6px 11px;
+    border-right:1px solid var(--p-line); white-space:nowrap;
+  }
+  .seg button:last-child { border-right:0; }
+  .seg button[aria-pressed="true"] { background:var(--p-arc); color:#032430; }
+  .seg button:hover:not([aria-pressed="true"]) { color:var(--p-text); background:#1a2431; }
+  .seg button:focus-visible { outline:2px solid var(--p-arc); outline-offset:-2px; }
+
+  .hint { margin-left:auto; font-family:var(--mono); font-size:10.5px; color:var(--p-dim); letter-spacing:.04em; }
+
+  .stage { padding:26px 18px 70px; display:flex; flex-direction:column; align-items:center; gap:26px; }
+  .frame { width:100%; max-width:1500px; }
+  .frame-cap {
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-family:var(--mono);
+    font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--p-dim); margin-bottom:8px;
+  }
+  .frame-cap b { color:var(--p-text); letter-spacing:.09em; }
+  .frame-cap em { font-style:normal; border:1px solid var(--p-line); border-radius:999px; padding:2px 9px; letter-spacing:.07em; }
+
+  .screen {
+    position:relative; overflow:hidden; border-radius:14px; border:1px solid var(--p-line);
+    box-shadow:0 20px 50px rgba(0,0,0,.5); margin:0 auto;
+  }
+  .screen > .render { transform-origin:top left; }
+
+  .pair { display:flex; gap:20px; align-items:flex-start; justify-content:center; flex-wrap:wrap; width:100%; max-width:1500px; }
+  .pair .frame { flex:1 1 340px; min-width:0; max-width:none; }
+
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TOKENS — the arc-reactor system. Dark only, by decision.
+   ═══════════════════════════════════════════════════════════ */
+@layer tokens {
+  .ui {
+    /* ground */
+    --void:#04070d; --deep:#070d16; --slab:#0b1520;
+
+    /* the core: an emissive cyan, used sparingly and always as light */
+    --arc-100:#e8fbff; --arc-300:#a5eeff; --arc-400:#7fe9ff;
+    --arc-500:#38d6ff; --arc-600:#12a8d8; --arc-700:#0b7a9e;
+    --glow:rgba(56,214,255,.45);
+    --glow-soft:rgba(56,214,255,.16);
+
+    /* semantic — separate from the core, never used as accent */
+    --ok:#3ff0b0; --warn:#ffb648; --crit:#ff4d5e; --info:#7aa2ff;
+
+    /* surfaces */
+    --veil:rgba(4,8,14,.55);
+    --panel:rgba(9,18,28,.62);
+    --panel-solid:rgba(7,14,22,.93);
+    --edge:rgba(120,200,235,.16);
+    --edge-hot:rgba(56,214,255,.42);
+    --hover:rgba(56,214,255,.09);
+
+    /* ink */
+    --txt:#e2f2fa; --dim:#9dbccf; --faint:#6a8ca2;
+
+    /* ramp — one knob, three screens */
+    --s0:13.5px; --s1:15px; --s2:20px; --s3:27px; --s4:40px;
+    --lab:9.5px; --gap:14px; --pad:16px; --rad:12px; --tap:36px; --row:128px;
+  }
+  .ui[data-surface="phone"] { --s0:14px; --s1:16px; --s2:21px; --s3:27px; --s4:36px; --gap:12px; --pad:15px; --tap:44px; }
+  /* The kiosk is an instrument you operate, not a surface you look at, so the
+     scene recedes much further here than anywhere else — a bright sun disc
+     landing on the power key is a control you cannot read. */
+  .ui[data-surface="kiosk"] {
+    --s0:14px; --s1:17px; --s2:22px; --s3:28px; --s4:38px; --lab:11px;
+    --gap:12px; --pad:16px; --rad:14px; --tap:60px;
+    --veil:rgba(3,6,11,.88);
+  }
+  .ui[data-surface="kiosk"] .orb { opacity:.28; }
+  .ui[data-surface="kiosk"] .orb::after { opacity:.4; }
+  /* The wall is the desktop layout, one ramp up. No separate design. */
+  .ui[data-surface="wall"]  { --s0:18px; --s1:21px; --s2:28px; --s3:38px; --s4:60px; --lab:13px; --gap:20px; --pad:22px; --rad:16px; --tap:0px; --row:186px; }
+}
+
+@layer base {
+  .ui {
+    position:relative; overflow:hidden; height:100%;
+    font-family:var(--sans); font-size:var(--s0); color:var(--txt); background:var(--void);
+  }
+  .ui * { box-sizing:border-box; }
+  .ui button { font:inherit; color:inherit; cursor:pointer; }
+  .ui :focus-visible { outline:2px solid var(--arc-500); outline-offset:2px; }
+
+  /* ── the scene: time of day + weather only. No season, no landscape. ── */
+  .scene { position:absolute; inset:0; z-index:0; overflow:hidden; }
+  .sky { position:absolute; inset:0; transition:background .7s ease; }
+  .ui[data-daypart="dawn"]  .sky { background:linear-gradient(180deg,#0a1a33,#2f5f86 34%,#c4763f 72%,#ffc478); }
+  .ui[data-daypart="noon"]  .sky { background:linear-gradient(180deg,#0d3f74,#2f86c4 46%,#8fd0ee); }
+  .ui[data-daypart="dusk"]  .sky { background:linear-gradient(180deg,#0a0e26,#3d2358 40%,#a1425c 70%,#e0763f); }
+  .ui[data-daypart="night"] .sky { background:linear-gradient(180deg,#01030a,#050d1c 44%,#0c1c33); }
+
+  /* veil sits over the scene and under all content, so a panel never has to
+     carry legibility alone -- that is what forced panels opaque enough to
+     erase the scene the last two times this was attempted. */
+  /* Veil plus a bottom vignette. Removing the landscape exposed the sky's
+     brightest band along the lower edge, which is exactly where content runs
+     out — so a bare sun disc sat in the empty space under a short board. */
+  .scene::after {
+    content:""; position:absolute; inset:0;
+    background-image: linear-gradient(var(--veil), var(--veil)),
+                      linear-gradient(180deg, transparent 30%, rgba(2,5,10,.78) 100%);
+  }
+
+  .orb { position:absolute; border-radius:50%; transition:all .7s ease; }
+  /* Halo is a %-sized ::after, never a vw box-shadow: each frame is a
+     transform-scaled div, and vw resolves against the browser viewport. */
+  .orb::after {
+    content:""; position:absolute; left:50%; top:50%; translate:-50% -50%;
+    width:460%; height:460%; border-radius:50%; z-index:-1;
+    background:radial-gradient(circle, var(--halo,transparent) 0%, transparent 66%);
+  }
+  .ui[data-daypart="dawn"]  .orb { aspect-ratio:1; width:4.6%; left:16%; top:64%; --halo:rgba(255,190,120,.5);
+    background:radial-gradient(circle,#fff6de,#ffc978 60%,#f09a4a); }
+  .ui[data-daypart="noon"]  .orb { aspect-ratio:1; width:4.2%; left:52%; top:10%; --halo:rgba(255,240,190,.55);
+    background:radial-gradient(circle,#ffffff,#fff0bc 58%,#ffd873); }
+  .ui[data-daypart="dusk"]  .orb { aspect-ratio:1; width:5%; right:19%; left:auto; top:60%; --halo:rgba(255,140,80,.46);
+    background:radial-gradient(circle,#ffe0b0,#ff9250 58%,#e05a2e); }
+  .ui[data-daypart="night"] .orb { aspect-ratio:1; width:3.2%; right:15%; left:auto; top:11%; --halo:rgba(170,210,255,.34);
+    background:radial-gradient(circle at 36% 34%,#f4f9ff,#c8d6ea 60%,#93a4bd); }
+
+  .stars { position:absolute; inset:0; opacity:0; transition:opacity .7s ease; }
+  .ui[data-daypart="night"] .stars { opacity:1; }
+  .ui[data-daypart="dusk"]  .stars { opacity:.5; }
+  .stars i { position:absolute; width:2px; height:2px; border-radius:50%; background:#eaf4ff; }
+
+
+  /* weather — turned well up from revision 1, which read as no weather at all */
+  .wx { position:absolute; inset:0; pointer-events:none; }
+  .cloud { position:absolute; border-radius:999px; background:rgba(226,240,250,.5); filter:blur(18px); animation:drift 58s linear infinite; }
+  .ui[data-daypart="night"] .cloud { background:rgba(150,180,215,.3); }
+  @keyframes drift { from{transform:translateX(-24%)} to{transform:translateX(124%)} }
+
+  .drop { position:absolute; width:1.6px; height:22px; background:linear-gradient(rgba(190,225,255,0),rgba(200,232,255,.85)); animation:fall 1s linear infinite; }
+  @keyframes fall { from{top:-6%} to{top:106%} }
+  .flake { position:absolute; width:5px; height:5px; border-radius:50%; background:rgba(255,255,255,.92); animation:fall 7s linear infinite; }
+
+  /* faint instrument grid + scanline — the lab, not the living room */
+  .grid-o {
+    position:absolute; inset:0; pointer-events:none; opacity:.5;
+    background:
+      repeating-linear-gradient(0deg, rgba(120,200,235,.05) 0 1px, transparent 1px 46px),
+      repeating-linear-gradient(90deg, rgba(120,200,235,.05) 0 1px, transparent 1px 46px);
+  }
+  .scan { position:absolute; inset:0; pointer-events:none; opacity:.35;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px); }
+
+  .layer { position:relative; z-index:1; height:100%; display:flex; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   COMPONENTS
+   ═══════════════════════════════════════════════════════════ */
+@layer comp {
+  /* The panel: glass with an emissive hairline and corner brackets. */
+  .panel {
+    position:relative; background:var(--panel); backdrop-filter:blur(16px) saturate(1.25);
+    border:1px solid var(--edge); border-radius:var(--rad);
+  }
+  .panel::before, .panel::after {
+    content:""; position:absolute; width:11px; height:11px; pointer-events:none;
+    border-color:var(--arc-500); opacity:.75;
+  }
+  .panel::before { top:-1px; left:-1px; border-top:1px solid; border-left:1px solid; border-top-left-radius:var(--rad); }
+  .panel::after { bottom:-1px; right:-1px; border-bottom:1px solid; border-right:1px solid; border-bottom-right-radius:var(--rad); }
+
+  .card {
+    padding:var(--pad); display:flex; flex-direction:column; gap:9px;
+    min-width:0; overflow:hidden; container-type:inline-size;
+  }
+  .ui[data-app] .card { background:var(--panel-solid); }
+
+  .card-h { display:flex; align-items:center; gap:9px; flex:none; }
+  .card-h h4 {
+    margin:0; font-family:var(--mono); font-size:var(--lab); font-weight:700;
+    letter-spacing:.15em; text-transform:uppercase; color:var(--arc-300);
+  }
+  .card-h .sub { font-size:calc(var(--s0)*.84); color:var(--faint); }
+  .card-h .tools { margin-left:auto; display:flex; align-items:center; gap:4px; }
+  .card-h .src { margin-left:auto; font-family:var(--mono); font-size:var(--lab); letter-spacing:.13em; text-transform:uppercase; color:var(--faint); }
+
+  /* the size cycler, only in Rearrange mode */
+  .szbtn {
+    font-family:var(--mono); font-size:9.5px; font-weight:700; letter-spacing:.06em;
+    border:1px solid var(--edge); background:transparent; color:var(--faint);
+    border-radius:5px; padding:2px 6px; line-height:1.5;
+  }
+  .szbtn:hover { color:var(--arc-300); border-color:var(--edge-hot); }
+  .szbtn[aria-pressed="true"] { background:var(--arc-500); border-color:var(--arc-500); color:#032430; }
+
+  .body { flex:1; min-height:0; display:flex; flex-direction:column; gap:9px; justify-content:center; }
+  .body.top { justify-content:flex-start; }
+
+  /* readout — the arc-reactor number */
+  .read { display:flex; align-items:baseline; gap:8px; }
+  .read b {
+    font-size:var(--s4); font-weight:600; letter-spacing:-.03em; line-height:1;
+    font-variant-numeric:tabular-nums; color:var(--arc-100);
+    text-shadow:0 0 18px var(--glow), 0 0 40px var(--glow-soft);
+  }
+  .read span { font-family:var(--mono); font-size:var(--s0); color:var(--dim); }
+  .read.ok b { color:#c6fff0; text-shadow:0 0 18px rgba(63,240,176,.5); }
+  .read.crit b { color:#ffd2d6; text-shadow:0 0 18px rgba(255,77,94,.5); }
+  .cap { font-family:var(--mono); font-size:calc(var(--s0)*.84); color:var(--dim); letter-spacing:.03em; }
+
+  /* emissive divider */
+  .rule { height:1px; background:linear-gradient(90deg, transparent, var(--edge-hot), transparent); flex:none; }
+
+  /* list */
+  .row { display:flex; align-items:center; gap:10px; padding:7px 0; border-top:1px solid rgba(120,200,235,.1); min-height:var(--tap); }
+  .row:first-child { border-top:0; }
+  .row .t { font-size:var(--s0); font-weight:500; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .row .d { margin-left:auto; font-family:var(--mono); font-size:calc(var(--s0)*.8); color:var(--faint); flex:none; }
+  .row .d.late { color:var(--crit); font-weight:700; }
+  .row.done .t { text-decoration:line-through; color:var(--faint); }
+
+  .ck {
+    width:18px; height:18px; border-radius:50%; flex:none; padding:0;
+    border:1.6px solid var(--arc-700); background:transparent; display:grid; place-items:center;
+  }
+  .ck:hover { border-color:var(--arc-400); box-shadow:0 0 10px var(--glow-soft); }
+  .ck.late { border-color:var(--crit); }
+  .ck.on { background:var(--ok); border-color:var(--ok); box-shadow:0 0 12px rgba(63,240,176,.45); }
+  .ck svg { width:10px; height:10px; opacity:0; color:#03291d; }
+  .ck.on svg { opacity:1; }
+
+  /* buttons */
+  .btn {
+    display:inline-flex; align-items:center; justify-content:center; gap:7px; border-radius:8px;
+    padding:7px 13px; font-size:calc(var(--s0)*.92); font-weight:600; white-space:nowrap;
+    border:1px solid var(--edge); background:rgba(56,214,255,.06); color:var(--txt); min-height:var(--tap);
+  }
+  .btn:hover { border-color:var(--edge-hot); background:var(--hover); box-shadow:0 0 14px var(--glow-soft) inset; }
+  .btn.pri {
+    background:linear-gradient(180deg, var(--arc-400), var(--arc-600));
+    border-color:var(--arc-400); color:#022430; font-weight:700;
+    box-shadow:0 0 18px var(--glow);
+  }
+  .btn.ghost { border-color:transparent; background:transparent; color:var(--dim); }
+  .btn.ghost:hover { color:var(--txt); }
+  kbd {
+    font-family:var(--mono); font-size:calc(var(--s0)*.72); margin-left:6px;
+    border:1px solid var(--edge); border-radius:4px; padding:1px 5px; color:var(--faint);
+  }
+
+  .chip {
+    font-family:var(--mono); font-size:calc(var(--s0)*.8); padding:5px 12px; border-radius:999px;
+    font-weight:600; letter-spacing:.07em; text-transform:uppercase;
+    border:1px solid var(--edge); background:transparent; color:var(--dim);
+  }
+  .chip:hover { color:var(--arc-300); border-color:var(--edge-hot); }
+  .chip[aria-pressed="true"] { background:var(--arc-500); border-color:var(--arc-500); color:#032430; }
+
+  .empty {
+    border:1px dashed var(--edge); border-radius:var(--rad); padding:16px; text-align:center;
+    color:var(--faint); font-size:calc(var(--s0)*.88); display:flex; flex-direction:column; gap:6px; align-items:center;
+  }
+  .empty b { color:var(--dim); font-family:var(--mono); font-size:var(--lab); letter-spacing:.13em; text-transform:uppercase; }
+
+  .badge {
+    font-family:var(--mono); font-size:calc(var(--s0)*.74); padding:3px 8px; border-radius:4px;
+    font-weight:700; letter-spacing:.09em; text-transform:uppercase;
+  }
+  .badge.ok { background:rgba(63,240,176,.16); color:var(--ok); }
+  .badge.warn { background:rgba(255,182,72,.16); color:var(--warn); }
+  .badge.crit { background:rgba(255,77,94,.18); color:var(--crit); }
+
+  /* sheet */
+  .scrim { position:absolute; inset:0; z-index:40; background:rgba(2,5,10,.72); backdrop-filter:blur(4px); display:grid; place-items:center; padding:4%; }
+  .sheet { width:min(460px,100%); background:var(--panel-solid); padding:22px; display:flex; flex-direction:column; gap:14px; box-shadow:0 0 60px rgba(0,0,0,.6), 0 0 40px var(--glow-soft); }
+  .ui[data-surface="phone"] .scrim { align-items:flex-end; padding:0; }
+  .ui[data-surface="phone"] .sheet { width:100%; border-radius:16px 16px 0 0; }
+  .sheet h3 { margin:0; font-family:var(--mono); font-size:var(--s1); font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--arc-300); }
+  .field { display:flex; flex-direction:column; gap:6px; }
+  .field label { font-family:var(--mono); font-size:var(--lab); letter-spacing:.13em; text-transform:uppercase; color:var(--faint); }
+  .field input, .field select {
+    font:inherit; font-size:var(--s0); color:var(--txt); background:rgba(56,214,255,.06);
+    border:1px solid var(--edge); border-radius:7px; padding:9px 11px; min-height:var(--tap);
+  }
+  /* A multi-select that reads as a dropdown but stays open while you tick.
+     A native <select> means reopening it once per label, and on a touchscreen
+     that is a modal wheel every time. */
+  .lblwrap { position:relative; }
+  .lbltrigger {
+    width:100%; display:flex; align-items:center; gap:8px; text-align:left;
+    font:inherit; font-size:var(--s0); color:var(--txt);
+    background:rgba(56,214,255,.06); border:1px solid var(--edge-strong,var(--edge));
+    border-radius:9px; padding:9px 11px; min-height:var(--tap);
+  }
+  .lbltrigger .caret { margin-left:auto; color:var(--faint); }
+  .lbltrigger:hover { border-color:var(--edge-hot); }
+  .lblmenu {
+    position:absolute; left:0; right:0; top:calc(100% + 5px); z-index:5;
+    background:var(--panel-solid); border:1px solid var(--edge-hot);
+    border-radius:10px; padding:6px; max-height:210px; overflow-y:auto;
+    box-shadow:0 14px 34px rgba(0,0,0,.6);
+  }
+  .lblmenu[hidden] { display:none; }
+  .lblrow {
+    width:100%; display:flex; align-items:center; gap:10px; text-align:left;
+    background:transparent; border:0; border-radius:7px; padding:8px 9px;
+    color:var(--dim); font:inherit; font-size:calc(var(--s0)*.92); min-height:38px;
+  }
+  .lblrow:hover { background:var(--hover); color:var(--txt); }
+  .lblrow .box {
+    width:16px; height:16px; flex:none; border-radius:4px;
+    border:1.5px solid var(--edge-hot); display:grid; place-items:center;
+    font-size:11px; color:#032430;
+  }
+  .lblrow[aria-pressed="true"] { color:var(--arc-100); }
+  .lblrow[aria-pressed="true"] .box { background:var(--arc-400); border-color:var(--arc-400); }
+  .lblrow.new { color:var(--arc-300); border-top:1px solid var(--edge); margin-top:4px; }
+
+  .sheet-foot { display:flex; gap:9px; justify-content:flex-end; margin-top:4px; }
+  .sheet.wide { width:min(560px,100%); max-height:86%; overflow-y:auto; }
+  .frow { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; }
+  .switch { display:flex; align-items:flex-start; gap:10px; cursor:pointer;
+            font-size:calc(var(--s0)*.88); color:var(--dim); line-height:1.45; }
+  .switch input { width:18px; height:18px; flex:none; margin-top:1px; accent-color:var(--arc-500); }
+  .ui[data-surface="phone"] .sheet.wide { max-height:82%; }
+
+  .toast {
+    position:absolute; left:50%; bottom:22px; translate:-50% 0; z-index:60;
+    background:var(--panel-solid); border:1px solid var(--edge-hot); border-radius:999px;
+    padding:9px 18px; font-family:var(--mono); font-size:calc(var(--s0)*.86); letter-spacing:.05em;
+    box-shadow:0 0 24px var(--glow-soft);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   WORK layout — phone, desktop, and the wall (same layout).
+   ═══════════════════════════════════════════════════════════ */
+@layer work {
+  /* ── the console rail ──────────────────────────────────────
+     Rebuilt: the first version was a flat grey text list, which
+     belonged to a different design system than everything around
+     it. This one is an instrument column — bracketed groups,
+     each destination in its own framed cell, a live vitals block
+     at the foot, and one clearly energised active state.        */
+  .rail {
+    width:228px; flex:none; padding:14px 12px 12px; display:flex; flex-direction:column;
+    border-right:1px solid var(--edge-hot);
+    background:linear-gradient(180deg, rgba(8,17,27,.86), rgba(5,11,19,.92));
+    backdrop-filter:blur(20px) saturate(1.2);
+    box-shadow:1px 0 0 rgba(56,214,255,.1), 14px 0 40px rgba(0,0,0,.45);
+  }
+  .ui[data-surface="wall"] .rail { width:296px; }
+
+  .brand { display:flex; align-items:center; gap:11px; padding:2px 4px 16px; }
+  .brand b {
+    font-family:var(--mono); font-size:calc(var(--s0)*.9); font-weight:700;
+    letter-spacing:.2em; text-transform:uppercase; color:var(--arc-100);
+    text-shadow:0 0 16px var(--glow-soft);
+  }
+
+  /* group header: a label with a hairline that runs to the edge */
+  .grp-lab {
+    display:flex; align-items:center; gap:9px; padding:15px 4px 7px;
+    font-family:var(--mono); font-size:var(--lab); letter-spacing:.2em;
+    text-transform:uppercase; color:var(--arc-600); white-space:nowrap;
+  }
+  .grp-lab::after { content:""; flex:1; height:1px; background:linear-gradient(90deg, var(--edge-hot), transparent); }
+
+  .nav {
+    display:flex; align-items:center; gap:10px; padding:7px 9px 7px 10px; margin-bottom:3px;
+    border-radius:8px; border:1px solid transparent; background:transparent; width:100%;
+    text-align:left; min-height:var(--tap); position:relative; color:var(--dim);
+    font-family:var(--mono); font-size:calc(var(--s0)*.82); font-weight:600;
+    letter-spacing:.12em; text-transform:uppercase;
+  }
+  /* the icon sits in its own bracketed cell — the repeated module of the rail */
+  .nav .ib {
+    width:26px; height:26px; flex:none; display:grid; place-items:center; border-radius:6px;
+    border:1px solid var(--edge); background:rgba(56,214,255,.05); color:var(--arc-300);
+  }
+  .nav svg { width:15px; height:15px; }
+  .nav:hover { color:var(--txt); border-color:var(--edge); background:rgba(56,214,255,.05); }
+  .nav:hover .ib { border-color:var(--edge-hot); }
+
+  .nav[aria-current="page"] {
+    color:var(--arc-100);
+    background:linear-gradient(90deg, rgba(56,214,255,.22), rgba(56,214,255,.02));
+    border-color:var(--edge-hot);
+    box-shadow:0 0 22px var(--glow-soft);
+  }
+  /* the energised spine */
+  .nav[aria-current="page"]::before {
+    content:""; position:absolute; left:-1px; top:6px; bottom:6px; width:3px; border-radius:2px;
+    background:var(--arc-400); box-shadow:0 0 12px var(--arc-500), 0 0 22px var(--glow);
+  }
+  .nav[aria-current="page"] .ib {
+    background:linear-gradient(160deg, var(--arc-400), var(--arc-600));
+    border-color:var(--arc-400); color:#032430; box-shadow:0 0 16px var(--glow);
+  }
+
+  .nav .n {
+    margin-left:auto; font-family:var(--mono); font-size:calc(var(--s0)*.72);
+    font-variant-numeric:tabular-nums; border-radius:4px; padding:2px 6px; font-weight:700;
+    background:rgba(255,77,94,.18); color:var(--crit); border:1px solid rgba(255,77,94,.35);
+  }
+  .nav .n.calm { background:rgba(56,214,255,.12); color:var(--arc-300); border-color:var(--edge-hot); }
+
+  /* ── vitals: the rail carries live state, not just links ── */
+  .rail-foot { margin-top:auto; padding-top:12px; }
+  .mewrap { position:relative; }
+  .me .caret { margin-left:auto; color:var(--faint); font-size:10px; }
+  .memenu {
+    position:absolute; left:0; right:0; bottom:calc(100% + 6px); z-index:20;
+    background:var(--panel-solid); border:1px solid var(--edge-hot); border-radius:11px;
+    padding:6px; box-shadow:0 16px 40px rgba(0,0,0,.65); max-height:340px; overflow-y:auto;
+  }
+  .mehead, .melabel {
+    font-family:var(--mono); font-size:var(--lab); letter-spacing:.14em;
+    text-transform:uppercase; color:var(--faint); padding:8px 9px 5px;
+  }
+  .melabel { border-top:1px solid var(--edge); margin-top:4px; }
+  .meopt {
+    width:100%; display:flex; align-items:center; gap:9px; text-align:left;
+    background:transparent; border:0; border-radius:8px; padding:8px 9px;
+    color:var(--dim); font:inherit; font-size:calc(var(--s0)*.9);
+    min-height:var(--tap); flex-wrap:wrap;
+  }
+  .meopt:hover { background:var(--hover); color:var(--txt); }
+  .meopt em {
+    flex-basis:100%; font-style:normal; font-size:calc(var(--s0)*.76);
+    color:var(--faint); line-height:1.4;
+  }
+  .av.sm { width:22px; height:22px; font-size:10px; }
+  .vitals { padding:9px 11px; margin-bottom:9px; display:flex; flex-direction:column; gap:5px; }
+  .vit { display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:calc(var(--s0)*.72); letter-spacing:.09em; }
+  .vit .vk { color:var(--faint); text-transform:uppercase; width:32px; flex:none; }
+  .vit .vv { color:#a5eeff; font-variant-numeric:tabular-nums; margin-left:auto;
+             min-width:46px; text-align:right; }
+  .vit .vbar { flex:1; height:3px; border-radius:2px; background:rgba(120,200,235,.14); overflow:hidden; }
+  .vit .vbar i { display:block; height:100%; background:linear-gradient(90deg, var(--arc-600), var(--arc-400)); box-shadow:0 0 8px var(--glow); }
+  .vit .vbar.warm i { background:linear-gradient(90deg, #b87a1e, var(--warn)); box-shadow:0 0 8px rgba(255,182,72,.5); }
+
+  .me {
+    display:flex; align-items:center; gap:10px; padding:8px 9px; border-radius:8px;
+    border:1px solid var(--edge); background:rgba(56,214,255,.04); width:100%;
+    text-align:left; min-height:var(--tap);
+  }
+  .me:hover { border-color:var(--edge-hot); background:var(--hover); }
+  .me > span:not(.av) { flex:1; min-width:0; display:flex; flex-direction:column; align-items:flex-start; }
+  .av {
+    width:28px; height:28px; border-radius:50%; flex:none; display:grid; place-items:center;
+    font-family:var(--mono); font-size:11px; font-weight:700; color:#032430;
+    background:linear-gradient(150deg, var(--arc-300), var(--arc-600)); box-shadow:0 0 14px var(--glow);
+  }
+  .me .who { font-family:var(--mono); font-size:calc(var(--s0)*.82); font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+  .me .role { font-family:var(--mono); font-size:calc(var(--s0)*.7); color:var(--faint); letter-spacing:.08em; }
+
+  .work { flex:1; min-width:0; display:flex; flex-direction:column; }
+
+  .appbar {
+    display:flex; align-items:center; gap:11px; padding:11px 20px; flex:none;
+    border-bottom:1px solid var(--edge); background:var(--panel); backdrop-filter:blur(18px);
+  }
+  .ui[data-app] .appbar { background:var(--panel-solid); }
+  .appbar h1 { margin:0; font-family:var(--mono); font-size:var(--s2); font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--arc-100); text-shadow:0 0 22px var(--glow-soft); }
+  .appbar .sp { flex:1; }
+
+  .canvas { flex:1; padding:16px 20px; overflow:auto; min-height:0; }
+  /* Inside an app the scene settles further back still: someone opened Todo to
+     read a board, not to watch the sky. */
+  .ui[data-app] .canvas { background:rgba(5,10,17,.72); }
+  .ui[data-app] .orb { opacity:.45; }
+
+  /* ── the grid. 12 columns, FIXED row height, so widgets snap to whole
+     cells and any arrangement tiles without ragged gaps. ── */
+  /* `dense` is load-bearing, not a flourish. Widget sizes rarely sum to a whole
+     multiple of 12, so without it a wide widget that cannot fit the columns left
+     in the current row drops to the next one and leaves an interior hole — the
+     exact ragged grid this system exists to remove. Dense backfills those holes
+     with later, smaller widgets. */
+  .bento {
+    display:grid; grid-template-columns:repeat(12,1fr);
+    /* minmax(row, 1fr) rather than a fixed row height: with only a handful of
+       widgets the rows share the leftover height instead of leaving the bottom
+       40% of the screen empty — which was the original complaint reappearing
+       in a new form. Below the minimum it scrolls as normal. */
+    grid-auto-rows:minmax(var(--row), 1fr);
+    grid-auto-flow:row dense; gap:var(--gap);
+    min-height:100%; align-content:stretch;
+  }
+  .bento > .card { grid-column:span var(--c,3); grid-row:span var(--r,1); }
+
+  .editing .card { outline:1px dashed var(--edge-hot); outline-offset:2px; }
+  .editing .card:hover { outline-style:solid; box-shadow:0 0 26px var(--glow-soft); }
+
+  /* board */
+  .board { display:grid; grid-template-columns:repeat(3,1fr); gap:var(--gap); align-items:start; }
+  .col { display:flex; flex-direction:column; gap:9px; }
+  .col-h { display:flex; align-items:center; gap:8px; padding:0 3px 4px; }
+  .col-h i { width:6px; height:6px; border-radius:50%; flex:none; }
+  .col-h b { font-family:var(--mono); font-size:var(--lab); font-weight:700; letter-spacing:.15em; text-transform:uppercase; color:var(--dim); }
+  .col-h .n { margin-left:auto; font-family:var(--mono); font-size:calc(var(--s0)*.8); color:var(--faint); font-variant-numeric:tabular-nums; }
+
+  .task {
+    background:var(--panel-solid); border:1px solid var(--edge); border-radius:10px;
+    padding:11px 12px 11px 15px; display:flex; flex-direction:column; gap:9px;
+    position:relative; overflow:hidden; text-align:left; width:100%;
+  }
+  .task::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; }
+  .task[data-pri="1"]::before { background:var(--crit); box-shadow:0 0 12px var(--crit); }
+  .task[data-pri="2"]::before { background:var(--warn); box-shadow:0 0 12px var(--warn); }
+  .task[data-pri="3"]::before { background:var(--arc-500); box-shadow:0 0 12px var(--arc-500); }
+  .task .tt { font-size:var(--s0); font-weight:600; line-height:1.34; }
+  .task.done .tt { text-decoration:line-through; color:var(--faint); }
+  .task .tm { display:flex; align-items:center; gap:8px; }
+  .due { font-family:var(--mono); font-size:calc(var(--s0)*.76); padding:2px 7px; border-radius:4px; background:rgba(56,214,255,.09); color:var(--dim); font-variant-numeric:tabular-nums; }
+  .due.late { background:rgba(255,77,94,.18); color:var(--crit); font-weight:700; }
+  .assignee {
+    margin-left:auto; width:21px; height:21px; border-radius:50%; display:grid; place-items:center;
+    font-family:var(--mono); font-size:10px; font-weight:700; color:#032430; flex:none;
+    background:linear-gradient(150deg, var(--arc-300), var(--arc-600));
+  }
+
+  /* ── ring gauge ── */
+  .ring { position:relative; display:grid; place-items:center; width:100%; max-width:132px; margin:0 auto; }
+  .ring svg { width:100%; height:auto; display:block; }
+  .ring-c { position:absolute; inset:0; display:grid; place-content:center; text-align:center; gap:2px; }
+  .ring-c b {
+    font-size:var(--s2); font-weight:600; letter-spacing:-.02em; color:var(--arc-100);
+    font-variant-numeric:tabular-nums; text-shadow:0 0 16px var(--glow-soft);
+  }
+  .ring-c span { font-family:var(--mono); font-size:calc(var(--s0)*.68); letter-spacing:.1em; color:var(--faint); }
+  .body.row-split { flex-direction:row; align-items:center; gap:16px; }
+  .body.row-split .ring { flex:none; width:96px; }
+
+  /* ── board summary strip ── */
+  .bstats { display:flex; gap:10px; margin-bottom:var(--gap); flex-wrap:wrap; }
+  .bstat {
+    flex:1; min-width:96px; padding:10px 13px; border-radius:10px;
+    border:1px solid var(--edge); background:var(--panel-solid);
+    display:flex; flex-direction:column; gap:2px;
+  }
+  .bstat b { font-size:var(--s2); font-weight:620; letter-spacing:-.02em; font-variant-numeric:tabular-nums; color:var(--arc-100); }
+  .bstat span { font-family:var(--mono); font-size:calc(var(--s0)*.7); letter-spacing:.13em; text-transform:uppercase; color:var(--faint); }
+  .bstat.crit b { color:var(--crit); } .bstat.warn b { color:var(--warn); } .bstat.ok b { color:var(--ok); }
+
+  /* ── finished task card ── */
+  .task .t-meta { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+  .t-rep, .t-esc, .t-appr {
+    display:inline-flex; align-items:center; gap:4px; font-family:var(--mono);
+    font-size:calc(var(--s0)*.7); letter-spacing:.06em; padding:2px 6px; border-radius:4px;
+  }
+  .t-rep { color:var(--faint); background:rgba(120,200,235,.07); }
+  .t-rep svg, .t-esc svg { width:11px; height:11px; }
+  .t-esc { color:var(--warn); background:rgba(255,182,72,.14); font-weight:700; }
+  .t-appr { color:var(--info); background:rgba(122,162,255,.14); }
+  .task .t-foot { display:flex; align-items:center; gap:8px; padding-top:8px; border-top:1px solid rgba(120,200,235,.09); }
+  .t-labels { display:flex; gap:5px; flex-wrap:wrap; flex:1; min-width:0; }
+  .lab {
+    font-family:var(--mono); font-size:calc(var(--s0)*.66); letter-spacing:.09em; text-transform:uppercase;
+    padding:2px 7px; border-radius:999px; border:1px solid var(--edge); color:var(--dim);
+  }
+
+  /* ── search / labels / calendar ── */
+  .srch {
+    font:inherit; font-size:var(--s0); color:var(--txt); width:100%;
+    background:rgba(56,214,255,.06); border:1px solid var(--edge);
+    border-radius:8px; padding:10px 12px; min-height:var(--tap);
+  }
+  .srch:focus { border-color:var(--edge-hot); outline:none; box-shadow:0 0 18px var(--glow-soft); }
+  .chips-row { display:flex; gap:7px; flex-wrap:wrap; }
+  .lab-dot { width:9px; height:9px; border-radius:2px; flex:none; box-shadow:0 0 8px currentColor; }
+
+  .cal { padding:var(--pad); display:flex; flex-direction:column; gap:8px; height:100%; }
+  .cal-h { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+  .cal-h span { font-family:var(--mono); font-size:var(--lab); letter-spacing:.15em;
+                text-transform:uppercase; color:var(--faint); text-align:center; }
+  .cal-g { flex:1; display:grid; grid-template-columns:repeat(7,1fr); grid-auto-rows:1fr; gap:6px; min-height:0; }
+  .cal-d {
+    border:1px solid rgba(120,200,235,.1); border-radius:8px; padding:6px;
+    display:flex; flex-direction:column; gap:4px; min-height:0; overflow:hidden;
+    background:rgba(56,214,255,.03);
+  }
+  .cal-d.out { opacity:.25; }
+  .cal-d.now { border-color:var(--arc-400); box-shadow:inset 0 0 20px var(--glow-soft); }
+  .cal-n { font-family:var(--mono); font-size:calc(var(--s0)*.74); color:var(--faint); }
+  .cal-d.now .cal-n { color:var(--arc-100); font-weight:700; }
+  .cal-t {
+    font-size:calc(var(--s0)*.72); border-radius:4px; padding:2px 5px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    background:rgba(56,214,255,.16); border-left:2px solid var(--arc-500);
+  }
+  .cal-t[data-pri="1"] { background:rgba(255,77,94,.18); border-left-color:var(--crit); }
+  .cal-t[data-pri="2"] { background:rgba(255,182,72,.16); border-left-color:var(--warn); }
+
+  /* ── reporting: cumulative-flow bars ── */
+  .cf { flex:1; display:flex; align-items:flex-end; gap:9px; padding-top:6px; min-height:0; }
+  .cf-col { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:2px; position:relative; }
+  .cf-col i { width:100%; border-radius:2px 2px 0 0; background:var(--arc-500); opacity:.85; }
+  .cf-col i.b { position:absolute; bottom:16px; background:var(--ok); opacity:.9; width:52%; border-radius:2px 2px 0 0; }
+  .cf-col span { font-family:var(--mono); font-size:calc(var(--s0)*.66); color:var(--faint); }
+  .cf-key { display:flex; gap:16px; font-family:var(--mono); font-size:calc(var(--s0)*.7); color:var(--faint); letter-spacing:.09em; }
+  .cf-key i { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:6px; }
+
+  .set-row { display:flex; align-items:center; gap:14px; padding:12px 0; border-top:1px solid rgba(120,200,235,.1); min-height:var(--tap); }
+  .set-row:first-child { border-top:0; }
+  .set-row .k { font-size:var(--s0); font-weight:600; }
+  .set-row .h { font-family:var(--mono); font-size:calc(var(--s0)*.78); color:var(--faint); }
+  .set-row .v { margin-left:auto; font-family:var(--mono); font-size:calc(var(--s0)*.88); color:var(--dim); text-align:right; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   KIOSK — a controller for the 24". Shows what the wall is
+   displaying, controls it, and switches apps.
+   ═══════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════
+   THE DESK — the 10.1" as a piece of hardware, not a web page.
+
+   Direction taken from Teenage Engineering's design language:
+   monospace-only type, a tight palette, few well-placed keys and
+   a rotary encoder, limitation treated as the aesthetic rather
+   than apologised for. So: an encoder selects what the 24" shows,
+   a bank of numbered illuminated keys fires that app's controls,
+   and two faders handle zoom and alarm volume. Legends are
+   screen-printed; nothing scrolls; everything is a thumb target.
+
+   It scales the way hardware does — the encoder steps through any
+   number of apps, and the key bank pages.
+   ═══════════════════════════════════════════════════════════ */
+@layer kiosk {
+  .desk {
+    flex-direction:column; width:100%; position:relative;
+    background:
+      linear-gradient(163deg, #16212c 0%, #0d151e 42%, #070d14 100%);
+  }
+  /* brushed-metal tooth, very low contrast */
+  .desk::before {
+    content:""; position:absolute; inset:0; pointer-events:none; opacity:.5;
+    background:repeating-linear-gradient(97deg, rgba(255,255,255,.014) 0 1px, transparent 1px 3px);
+  }
+  .screw {
+    position:absolute; width:11px; height:11px; border-radius:50%; z-index:4;
+    background:radial-gradient(circle at 34% 30%, #33414f, #131c25 70%, #0a1119);
+    box-shadow:inset 0 1px 1px rgba(190,220,240,.22), 0 1px 2px rgba(0,0,0,.7);
+  }
+  .screw::after {
+    content:""; position:absolute; inset:0; margin:auto; width:7px; height:1.5px;
+    background:#0a1119; border-radius:1px; transform:rotate(34deg);
+  }
+  .screw.tl{top:9px;left:9px} .screw.tr{top:9px;right:9px}
+  .screw.bl{bottom:9px;left:9px} .screw.br{bottom:9px;right:9px}
+
+  /* ── header: brand, dot-matrix readout, lamp ── */
+  .d-head {
+    display:flex; align-items:center; gap:14px; padding:11px 26px; flex:none;
+    border-bottom:1px solid #06232e; position:relative; z-index:2;
+    box-shadow:0 1px 0 rgba(150,210,240,.06);
+  }
+  .d-brand { display:flex; align-items:center; gap:9px; }
+  .d-brand b {
+    font-family:var(--mono); font-size:calc(var(--s0)*.86); font-weight:700;
+    letter-spacing:.34em; text-transform:uppercase; color:#93b4c6;
+  }
+  .d-readout {
+    margin-left:auto; display:flex; align-items:center; gap:11px;
+    padding:6px 16px; border-radius:5px; background:#04090e;
+    border:1px solid #0a1a23;
+    box-shadow:inset 0 2px 6px rgba(0,0,0,.85);
+    position:relative; overflow:hidden;
+  }
+  /* the dot grid a real LED matrix would have */
+  .d-readout::after {
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(circle, rgba(0,0,0,.5) 32%, transparent 33%);
+    background-size:3px 3px;
+  }
+  .d-readout span {
+    font-family:var(--mono); font-size:calc(var(--s0)*.66); letter-spacing:.2em;
+    color:#2c5c6d; text-transform:uppercase;
+  }
+  .d-readout b {
+    font-family:var(--mono); font-size:var(--s1); letter-spacing:.24em;
+    text-transform:uppercase; color:#7ff0ff; text-shadow:0 0 12px rgba(56,214,255,.9);
+  }
+  .d-lamp { display:flex; align-items:center; gap:7px; font-family:var(--mono);
+            font-size:calc(var(--s0)*.68); letter-spacing:.18em; color:#3fd9a0; text-transform:uppercase; }
+  .d-lamp i { width:9px; height:9px; border-radius:50%; background:#3ff0b0;
+              box-shadow:0 0 10px #3ff0b0, inset 0 -1px 2px rgba(0,0,0,.4); }
+  .d-lamp.lost { color:#ff6b78; }
+  .d-lamp.lost i { background:#ff4d5e; box-shadow:0 0 10px #ff4d5e; }
+
+  /* a powered-down wall: the readout goes dark and the keys have nothing to
+     drive, so they read as unlit rather than pretending to work */
+  .d-readout.off b { color:#2c5c6d; text-shadow:none; }
+  /* One constant key size. auto-fill with a FIXED track, not 1fr — a bank of
+     two keys should look like two keys, not two very wide keys. */
+  /* ── panel layout (restored: a wide range-delete took these out) ── */
+  .d-main { flex:1; display:grid; grid-template-columns:236px 1fr 84px; min-height:0; position:relative; z-index:2; }
+  .d-col { display:flex; flex-direction:column; gap:10px; min-height:0; }
+  .d-enc {
+    border-right:1px solid #06232e; box-shadow:1px 0 0 rgba(150,210,240,.05);
+    padding:14px 0 16px; display:flex; flex-direction:column; align-items:stretch;
+    gap:10px; min-height:0;
+  }
+  .d-lab {
+    font-family:var(--mono); font-size:calc(var(--s0)*.64); letter-spacing:.28em;
+    text-transform:uppercase; color:#4e7284; flex:none; padding:0 14px;
+  }
+  .d-keys { padding:14px 16px 16px; display:flex; flex-direction:column; gap:10px; min-height:0; }
+  .d-keys-h { display:flex; align-items:center; gap:10px; flex:none; }
+  .d-keys-h .d-lab { padding:0; }
+  .d-keys-h .bank {
+    margin-left:auto; font-family:var(--mono); font-size:calc(var(--s0)*.62);
+    letter-spacing:.16em; color:#4e7284; border:1px solid #17303c;
+    border-radius:4px; padding:2px 8px;
+  }
+  .k-new {
+    font-size:calc(var(--s0)*.6); letter-spacing:.13em; text-transform:uppercase;
+    color:var(--warn); border:1px solid rgba(255,182,72,.45); border-radius:3px;
+    padding:0 4px; margin-left:5px; font-weight:700;
+  }
+
+  /* the shared key body */
+  .hkey {
+    --key:#38d6ff;
+    position:relative; border:1px solid rgba(120,200,235,.16); color:#dcecf5;
+    background:linear-gradient(180deg, #101a24 0%, #0b131b 55%, #070d14 100%);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    font-family:var(--mono); text-transform:uppercase; border-radius:9px;
+    min-height:44px; padding:9px 8px;
+    box-shadow:inset 0 1px 0 rgba(180,225,245,.09), 0 2px 0 #050b11, 0 5px 10px rgba(0,0,0,.5);
+  }
+  .hkey:hover { border-color:color-mix(in srgb, var(--key) 55%, transparent); }
+  .hkey .num { position:absolute; top:6px; left:10px; font-size:calc(var(--s0)*.58); letter-spacing:.1em; }
+  .hkey .led { position:absolute; top:8px; right:10px; width:7px; height:7px; border-radius:50%; background:var(--key); }
+  .hkey .lg { font-size:calc(var(--s0)*.84); font-weight:700; letter-spacing:.1em; line-height:1.25; }
+
+  .d-bank {
+    flex:1; min-height:0; overflow-y:auto; display:grid; gap:11px;
+    grid-template-columns:repeat(auto-fill, 148px);
+    grid-auto-rows:92px; align-content:start; justify-content:start;
+  }
+  .d-bank .hkey { width:148px; height:92px; min-height:0; }
+  /* the footer keys: same key, laid out along its width */
+  .hkey.wide {
+    flex-direction:row; gap:9px; height:56px; min-height:56px; padding:0 14px;
+  }
+  .hkey.wide svg { width:17px; height:17px; opacity:.9; }
+  .hkey.wide .lg { font-size:calc(var(--s0)*.84); }
+  /* the verb bank: same key, laid out in one row under the destinations */
+  .d-acts { flex:none; display:flex; gap:11px; flex-wrap:wrap; }
+  .d-acts .hkey { width:148px; height:56px; min-height:0; }
+  .d-bank.dark { opacity:.42; }
+
+  /* ── the wall's scroll control ──────────────────────────────────────
+     The 24" has no input of its own, so moving its content up and down has
+     to happen from here. Not in wall-live.js's vocabulary today — it
+     implements navigate, refresh and banner only — so this is new platform
+     work, marked accordingly and owned by Story 51. */
+  .d-scroll {
+    border-left:1px solid #06232e; box-shadow:-1px 0 0 rgba(150,210,240,.05);
+    padding:14px 10px 16px; display:flex; flex-direction:column; align-items:center;
+    gap:9px; min-height:0;
+  }
+  /* A pitch-bend wheel. Spring-centred: push it up or down to scroll the 24",
+     let go and it returns. A rate control, not a position one — which is the
+     right shape for driving a screen you are not touching. */
+  .pbend {
+    position:relative; flex:1; min-height:0; width:46px; border-radius:10px;
+    border:1px solid #060d14; overflow:hidden; cursor:ns-resize;
+    background:linear-gradient(180deg, #050b11, #0a121a 50%, #050b11);
+    box-shadow:inset 0 4px 10px rgba(0,0,0,.9), inset 0 -4px 10px rgba(0,0,0,.9);
+  }
+  /* the centre detent it always comes back to */
+  .pbend-detent {
+    position:absolute; left:6px; right:6px; top:50%; height:1px; translate:0 -50%;
+    background:var(--arc-500); opacity:.5; box-shadow:0 0 8px var(--arc-500); z-index:2;
+  }
+  .pwheel {
+    position:absolute; left:4px; right:4px; height:78px; top:50%; margin-top:-39px;
+    border-radius:7px; z-index:1;
+    background:linear-gradient(180deg,
+      #0d151d 0%, #26333f 14%, #33434f 50%, #26333f 86%, #0d151d 100%);
+    border:1px solid #05090e;
+    box-shadow:0 2px 8px rgba(0,0,0,.7), 0 0 16px rgba(56,214,255,.1);
+    transition:transform .38s cubic-bezier(.22,1.4,.42,1);
+    will-change:transform;
+  }
+  /* the ridges that make a mod wheel a mod wheel */
+  .pwheel::after {
+    content:""; position:absolute; inset:5px 7px; border-radius:3px;
+    background:repeating-linear-gradient(180deg,
+      rgba(190,225,245,.20) 0 1px, transparent 1px 5px);
+  }
+  .pbend.held .pwheel { transition:none; box-shadow:0 2px 8px rgba(0,0,0,.7), 0 0 26px var(--glow); }
+
+
+  /* ── vertical app scroller ── */
+  .vsel {
+    position:relative; flex:1; width:100%; min-height:0; overflow:hidden;
+    -webkit-mask-image:linear-gradient(180deg, transparent, #000 16%, #000 84%, transparent);
+            mask-image:linear-gradient(180deg, transparent, #000 16%, #000 84%, transparent);
+  }
+  /* the fixed selection band the column scrolls under */
+  /* a slow sweep down the column */
+  .vsel-scan {
+    position:absolute; left:0; right:0; height:64px; z-index:0; pointer-events:none;
+    background:linear-gradient(180deg, transparent, rgba(56,214,255,.09), transparent);
+    animation:vscan 6s cubic-bezier(.5,0,.5,1) infinite;
+  }
+  @keyframes vscan { 0% { top:-64px; } 100% { top:100%; } }
+
+  .vsel-band {
+    position:absolute; left:0; right:0; top:50%; height:56px; translate:0 -50%;
+    border-top:1px solid rgba(120,200,235,.22); border-bottom:1px solid rgba(120,200,235,.22);
+    background:linear-gradient(90deg, rgba(56,214,255,.12), rgba(56,214,255,.02));
+    pointer-events:none; z-index:0;
+    animation:vband 3.4s ease-in-out infinite;
+  }
+  @keyframes vband {
+    0%,100% { box-shadow:0 0 0 rgba(56,214,255,0), inset 0 0 18px rgba(56,214,255,.05); }
+    50%     { box-shadow:0 0 22px rgba(56,214,255,.16), inset 0 0 26px rgba(56,214,255,.10); }
+  }
+  /* corner brackets, drawn on the band rather than the item so they stay put
+     while the column scrolls under them */
+  .vsel-band i {
+    position:absolute; width:9px; height:9px; border:1.5px solid var(--arc-400);
+    opacity:.85; filter:drop-shadow(0 0 4px var(--glow));
+  }
+  .vsel-band i:nth-child(1) { top:-1px; left:-1px; border-right:0; border-bottom:0; }
+  .vsel-band i:nth-child(2) { top:-1px; right:-1px; border-left:0; border-bottom:0; }
+  .vsel-band i:nth-child(3) { bottom:-1px; left:-1px; border-right:0; border-top:0; }
+  .vsel-band i:nth-child(4) { bottom:-1px; right:-1px; border-left:0; border-top:0; }
+  .vsel-list {
+    position:relative; z-index:1; height:100%; overflow-y:auto; scroll-snap-type:y mandatory;
+    display:flex; flex-direction:column; scroll-behavior:smooth;
+  }
+  .vsel-list::-webkit-scrollbar { width:0; }
+  .vsel-i {
+    flex:none; height:56px; scroll-snap-align:center; border:0; background:transparent;
+    display:flex; align-items:center; gap:12px; padding:0 14px; width:100%; text-align:left;
+    color:#5f7f92; font-family:var(--mono); font-size:calc(var(--s0)*.86);
+    letter-spacing:.14em; text-transform:uppercase; opacity:.5;
+  }
+  .vsel-i .vsel-ic { position:relative; width:20px; height:20px; flex:none; display:grid; place-items:center; }
+  /* a targeting ring that keeps turning on whichever app is live */
+  .reticle {
+    position:absolute; inset:-9px; border-radius:50%;
+    border:1px dashed color-mix(in srgb, var(--arc-400) 70%, transparent);
+    animation:spin 7s linear infinite;
+  }
+  .reticle::after {
+    content:""; position:absolute; inset:3px; border-radius:50%;
+    border:1px solid transparent; border-top-color:var(--arc-400);
+    animation:spin 2.6s linear infinite reverse;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .vsel-i .vsel-ic svg { width:18px; height:18px; }
+  .vsel-i .vsel-t { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .vsel-i:hover { opacity:.8; color:#a8c6d6; }
+  .vsel-i { transition:opacity .25s ease, color .25s ease; }
+  .vsel-i.on {
+    opacity:1; color:#eaf7fd; font-weight:700;
+    text-shadow:0 0 16px rgba(56,214,255,.5);
+  }
+  .vsel-i.on .vsel-ic { color:var(--arc-400); filter:drop-shadow(0 0 8px var(--glow)); }
+
+
+  /* ── square keys ── */
+  .d-bank {
+    grid-template-columns:repeat(auto-fill, 128px); grid-auto-rows:128px; gap:12px;
+  }
+  .d-bank .hkey {
+    width:128px; height:128px; border-radius:14px; border-width:1px;
+    border-color:rgba(120,200,235,.16);
+    background:linear-gradient(180deg,
+      color-mix(in srgb, var(--key) 9%, #121c25) 0%,
+      color-mix(in srgb, var(--key) 5%, #0b131b) 100%);
+    box-shadow:inset 0 1px 0 rgba(180,225,245,.09), 0 2px 0 #050b11, 0 6px 14px rgba(0,0,0,.5);
+    justify-content:center; align-items:center; padding:16px;
+  }
+  .d-bank .hkey .lg {
+    text-align:center; color:#e2f1f8; font-size:calc(var(--s0)*.88); letter-spacing:.08em;
+  }
+  .d-bank .hkey .led {
+    top:14px; right:14px; left:auto; width:10px; height:10px;
+    box-shadow:0 0 10px var(--key);
+  }
+  .d-bank .hkey:hover {
+    border-color:color-mix(in srgb, var(--key) 55%, transparent);
+    box-shadow:inset 0 1px 0 rgba(180,225,245,.14), 0 2px 0 #050b11,
+               0 0 20px color-mix(in srgb, var(--key) 25%, transparent);
+  }
+  .d-bank .hkey:active { transform:translateY(2px); }
+
+  /* ── faders ── */
+  .d-foot {
+    flex:none; display:grid; grid-template-columns:1fr 1fr 132px 132px; gap:14px;
+    padding:12px 22px 16px; border-top:1px solid #06232e;
+    box-shadow:inset 0 1px 0 rgba(150,210,240,.06); position:relative; z-index:2; align-items:end;
+  }
+  .fader { display:flex; flex-direction:column; gap:5px; }
+  .fader-hint {
+    font-family:var(--mono); font-size:calc(var(--s0)*.58); letter-spacing:.06em;
+    color:#3d5a6b; margin-top:-2px;
+  }
+  .fader-h { display:flex; align-items:baseline; gap:8px; }
+  .fader-h span { font-family:var(--mono); font-size:calc(var(--s0)*.64); letter-spacing:.22em;
+                  text-transform:uppercase; color:#4e7284; }
+  .fader-h b { margin-left:auto; font-family:var(--mono); font-size:calc(var(--s0)*.86);
+               color:#7ff0ff; font-variant-numeric:tabular-nums; text-shadow:0 0 10px rgba(56,214,255,.6); }
+  .slot {
+    position:relative; height:34px; border-radius:5px; padding:0; border:1px solid #060d14;
+    background:linear-gradient(180deg, #060c12, #0b141c);
+    box-shadow:inset 0 3px 6px rgba(0,0,0,.85);
+  }
+  /* the travel groove */
+  .slot::before {
+    content:""; position:absolute; left:12px; right:12px; top:50%; height:3px; translate:0 -50%;
+    border-radius:2px; background:#04080d; box-shadow:inset 0 1px 2px rgba(0,0,0,.9);
+  }
+  .slot-fill {
+    position:absolute; left:12px; top:50%; height:3px; translate:0 -50%; border-radius:2px;
+    background:linear-gradient(90deg, #0b7a9e, #7fe9ff); box-shadow:0 0 10px var(--glow);
+  }
+  .fcap {
+    position:absolute; top:3px; bottom:3px; width:26px; translate:-50% 0; border-radius:4px;
+    background:linear-gradient(180deg, #2b3947 0%, #1a2531 50%, #101923 100%);
+    border:1px solid #05090e;
+    box-shadow:inset 0 1px 0 rgba(175,220,245,.3), 0 2px 5px rgba(0,0,0,.7);
+  }
+  /* grip lines on the fader knob */
+  .fcap::after {
+    content:""; position:absolute; inset:5px 7px; border-radius:1px;
+    background:repeating-linear-gradient(180deg, rgba(150,200,225,.22) 0 1px, transparent 1px 4px);
+  }
+
+  /* the all-apps overlay, reached by pressing the encoder */
+  .d-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:11px; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PHONE — kept from revision 1 (it worked), restyled.
+   ═══════════════════════════════════════════════════════════ */
+@layer phone {
+  .ph { flex-direction:column; width:100%; }
+  .ph-top { display:flex; align-items:center; gap:11px; padding:14px 16px 10px; flex:none; }
+  .ph-top h1 { margin:0; font-family:var(--mono); font-size:var(--s2); font-weight:700; letter-spacing:.15em; text-transform:uppercase; color:var(--arc-100); }
+  .ph-top .av { margin-left:auto; width:34px; height:34px; font-size:13px; border:0; }
+  .ph-body { flex:1; padding:4px 16px 12px; display:flex; flex-direction:column; gap:12px; overflow:auto; min-height:0; }
+  .ph-body > .card { min-height:110px; }
+  .ph-chips { display:flex; gap:7px; overflow-x:auto; padding-bottom:2px; flex:none; }
+  .ph-chips .chip { flex:none; }
+  /* The section rail sits directly on top of the app rail: which app, and
+     which part of it, both within thumb reach at the bottom of the screen. */
+  .ph-sub {
+    flex:none; display:flex; gap:7px; overflow-x:auto; padding:9px 14px;
+    border-top:1px solid var(--edge); background:rgba(5,10,17,.55);
+    -webkit-mask-image:linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+            mask-image:linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  }
+  .ph-sub::-webkit-scrollbar { height:0; }
+
+  /* ── the board as swipeable priority columns ── */
+  /* One column fills the screen; swipe left or right for the next. No peeking
+     neighbour — the dots in the header say how many there are instead. */
+  .ph-board {
+    display:flex; gap:0; overflow-x:auto; scroll-snap-type:x mandatory;
+    scroll-behavior:smooth; margin:0 -16px;
+  }
+  .ph-board::-webkit-scrollbar { height:0; }
+  .ph-col {
+    flex:none; width:100%; scroll-snap-align:start; padding:0 16px;
+    display:flex; flex-direction:column; gap:10px; min-width:0;
+  }
+  .ph-dots { margin-left:auto; display:flex; gap:5px; align-items:center; }
+  .ph-dots i {
+    width:5px; height:5px; border-radius:50%; background:rgba(120,200,235,.28);
+  }
+  .ph-dots i.on { background:var(--arc-400); box-shadow:0 0 7px var(--arc-500); }
+  .ph-col-h { display:flex; align-items:center; gap:9px; padding:0 2px; }
+  .ph-col-h i { width:7px; height:7px; border-radius:50%; flex:none; }
+  .ph-col-h b {
+    font-family:var(--mono); font-size:calc(var(--s0)*.86); font-weight:700;
+    letter-spacing:.13em; text-transform:uppercase; color:var(--txt);
+  }
+  .ph-col-h span {
+    font-family:var(--mono); font-size:calc(var(--s0)*.8); color:var(--faint);
+    font-variant-numeric:tabular-nums;
+  }
+  .ph-col-b { display:flex; flex-direction:column; gap:10px; }
+  .ph-add {
+    display:flex; align-items:center; gap:9px; min-height:var(--tap);
+    border:1px dashed var(--edge); border-radius:11px; background:transparent;
+    color:var(--faint); padding:0 14px; font-size:calc(var(--s0)*.9);
+  }
+  .ph-add svg { width:15px; height:15px; }
+  .ph-add:hover { border-color:var(--edge-hot); color:var(--arc-300); }
+  .ph-sub .chip { flex:none; font-size:calc(var(--s0)*.76); }
+  /* ── phone: cards size to their content ────────────────────────────
+     A 12-column grid is a desktop idea, so the phone stacks. But a flex
+     column shrinks its items by default, and a blanket min-height pinned
+     every card to 120px — so a chart or a ring was compressed, and
+     .body's justify-content:center then centred the overflow, which read
+     as the content sitting on top of its own title. flex:none, and let
+     each card be as tall as it needs. */
+  .ui[data-surface="phone"] .bento { display:flex; flex-direction:column; gap:12px; min-height:0; }
+  /* every card on the phone, not only those inside a .bento — the System
+     sections return cards directly, and a rule scoped to .bento missed them
+     entirely, which is how the same overflow came back a second time */
+  .ui[data-surface="phone"] .ph-body .card { flex:none; min-height:0; }
+  .ui[data-surface="phone"] .card .body { min-height:0; }
+  /* components that are sized by their container on desktop need a floor here */
+  .ui[data-surface="phone"] .cf { min-height:118px; }
+  .ui[data-surface="phone"] .ring { max-width:116px; }
+  .ui[data-surface="phone"] .body.row-split { flex-direction:column; align-items:flex-start; gap:10px; }
+  .ui[data-surface="phone"] .heat i { height:20px; }
+
+  /* ── phone calendar: dots, not chips ───────────────────────────────
+     A month grid on a 390px screen gives each day ~48px of width. A task
+     title truncated to "T…" tells nobody anything, so the phone shows a
+     priority dot per task and lists the month's items underneath. */
+  .ui[data-surface="phone"] .cal { padding:12px 10px; }
+  .ui[data-surface="phone"] .cal-g { grid-auto-rows:minmax(46px, auto); gap:4px; }
+  .ui[data-surface="phone"] .cal-d {
+    flex-direction:row; flex-wrap:wrap; align-content:flex-start; gap:3px; padding:4px;
+  }
+  .ui[data-surface="phone"] .cal-n { flex-basis:100%; }
+  .ui[data-surface="phone"] .cal-t {
+    font-size:0; width:7px; height:7px; border-radius:50%; padding:0;
+    border-left:0; background:var(--arc-500);
+  }
+  .ui[data-surface="phone"] .cal-t[data-pri="1"] { background:var(--crit); }
+  .ui[data-surface="phone"] .cal-t[data-pri="2"] { background:var(--warn); }
+  .ui[data-surface="phone"] .cal-h span { font-size:calc(var(--s0)*.66); }
+
+  .ph-rail {
+    position:relative; flex:none; border-top:1px solid var(--edge);
+    background:var(--panel); backdrop-filter:blur(18px); padding:8px 0 20px;
+    -webkit-mask-image:linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+            mask-image:linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  }
+  /* the band the centred destination sits in */
+  .ph-band {
+    position:absolute; left:50%; top:6px; bottom:16px; width:88px; translate:-50% 0;
+    border-left:1px solid rgba(120,200,235,.2); border-right:1px solid rgba(120,200,235,.2);
+    background:linear-gradient(180deg, rgba(56,214,255,.12), rgba(56,214,255,.02));
+    pointer-events:none; z-index:0; border-radius:10px;
+  }
+  .ph-band i {
+    position:absolute; width:8px; height:8px; border:1.5px solid var(--arc-400);
+    opacity:.85; filter:drop-shadow(0 0 4px var(--glow));
+  }
+  .ph-band i:nth-child(1){top:-1px;left:-1px;border-right:0;border-bottom:0}
+  .ph-band i:nth-child(2){top:-1px;right:-1px;border-left:0;border-bottom:0}
+  .ph-band i:nth-child(3){bottom:-1px;left:-1px;border-right:0;border-top:0}
+  .ph-band i:nth-child(4){bottom:-1px;right:-1px;border-left:0;border-top:0}
+
+  .ph-track {
+    position:relative; z-index:1; display:flex; overflow-x:auto;
+    scroll-snap-type:x mandatory; scroll-behavior:smooth;
+  }
+  .ph-track::-webkit-scrollbar { height:0; }
+  .ph-tab {
+    flex:none; width:88px; scroll-snap-align:center;
+    display:flex; flex-direction:column; align-items:center; gap:5px;
+    border:0; background:transparent; padding:6px 0; min-height:var(--tap);
+    opacity:.45; transition:opacity .25s ease;
+  }
+  .ph-tab svg { width:22px; height:22px; }
+  .ph-tab span {
+    font-family:var(--mono); font-size:10px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--faint);
+  }
+  .ph-tab.on { opacity:1; }
+  .ph-tab.on svg { color:var(--arc-400); filter:drop-shadow(0 0 8px var(--glow)); }
+  .ph-tab.on span { color:var(--arc-300); font-weight:700; }
+
+  .drawer { position:absolute; inset:0; z-index:50; display:flex; }
+  .drawer .pn { width:76%; overflow:visible; background:var(--panel-solid); backdrop-filter:blur(22px); border-right:1px solid var(--edge-hot); padding:16px 12px; display:flex; flex-direction:column; gap:2px; }
+  .drawer .rest { flex:1; background:rgba(2,5,10,.6); border:0; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="bar">
+  <div class="bar-brand">Nora Home · Phase 8<small>Interactive mockup — rev 2 — fixture data, no backend</small></div>
+
+  <div class="grp">
+    <label>Surface</label>
+    <div class="seg" id="segSurface">
+      <button data-v="desktop">Desktop</button>
+      <button data-v="wall">Wall 24&quot;</button>
+      <button data-v="phone">Phone</button>
+      <button data-v="kiosk">Kiosk 10&quot;</button>
+      <button data-v="remote">Kiosk &rarr; Wall</button>
+    </div>
+  </div>
+
+  <div class="grp">
+    <label>Time</label>
+    <div class="seg" id="segDaypart">
+      <button data-v="dawn">Dawn</button><button data-v="noon">Noon</button>
+      <button data-v="dusk">Dusk</button><button data-v="night">Night</button>
+    </div>
+  </div>
+
+  <div class="grp">
+    <label>Weather</label>
+    <div class="seg" id="segWeather">
+      <button data-v="clear">Clear</button><button data-v="cloud">Cloud</button>
+      <button data-v="rain">Rain</button><button data-v="snow">Snow</button>
+    </div>
+  </div>
+
+  <div class="hint" id="hint">Rearrange &rarr; Shuffle proves the grid stays clean</div>
+</div>
+
+<div class="stage" id="stage"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   Fixture state. Nothing here is real; no backend is involved.
+   ══════════════════════════════════════════════════════════════ */
+const S = {
+  surface:'desktop', daypart:'dusk', weather:'clear',
+  page:'home', todoPage:'board', sysPage:'health', newLabels:[],
+  repeatChoice:'Does not repeat', customEvery:2, customUnit:'weeks', filter:'all', query:'', saved:'', palette:false, editing:false, sheet:null, drawer:false,
+  wallPage:'home',     // what the kiosk has pointed the 24" at
+  dial:{ zoom:1.25, volume:40 }, wallScroll:0,
+  /* Who you are, and whose screen you are looking at — two different things.
+     Matches nora_home/accounts/views.py: switch_to, switch_to_everyone,
+     switch_to_wall. No password anywhere; tapping a name is the whole
+     authentication story in this house. */
+  member:'nitin', scope:'self', memberMenu:false,  wallOn:true, linked:true,   // zoom default from ui/zoom.py
+  toast:null,
+};
+
+/* The house's labels. One list: the New-task picker and the Labels page both
+   read it, and creating one from either shows up in the other. */
+let LABELS = ['Kitchen','Outside','Weekly','Annual','Safety','Admin'];
+
+const HOUSEHOLD = [
+  { id:'nitin', name:'nitin', initial:'N', role:'Admin' },
+  { id:'priya', name:'priya', initial:'P', role:'Adult' },
+  { id:'kid',   name:'kid',   initial:'K', role:'Member' },
+];
+const me = () => HOUSEHOLD.find(m => m.id === S.member) || HOUSEHOLD[0];
+/* Rendered identically on the desktop rail and in the phone drawer. Two copies
+   of this drifted apart four times already in this mockup; one function now. */
+const memberChip = () => `
+      <div class="mewrap">
+        <button class="me" data-act="memberMenu">
+          <span class="av">${me().initial}</span>
+          <span><span class="who">${esc(scopeLabel())}</span>
+          <span class="role">${S.scope==='self' ? esc(me().role) : 'viewing'}</span></span>
+          <span class="caret">&#9652;</span>
+        </button>
+        ${S.memberMenu ? `<div class="memenu">
+          <div class="mehead">Signed in as ${esc(scopeLabel())}</div>
+          ${HOUSEHOLD.filter(m => m.id!==S.member || S.scope!=='self').map(m=>`
+            <button class="meopt" data-act="beMember" data-v="${m.id}">
+              <span class="av sm">${m.initial}</span>${esc(m.name)}</button>`).join('')}
+          <div class="melabel">Show me</div>
+          ${S.scope!=='all' ? `<button class="meopt" data-act="scope" data-v="all">Everyone
+            <em>The whole household's tasks and numbers, combined</em></button>` : ''}
+          ${S.scope!=='wall' ? `<button class="meopt" data-act="scope" data-v="wall">The 24&quot; wall
+            <em>What the big screen shows — rearrange its tiles from here</em></button>` : ''}
+          <div class="melabel">This house</div>
+          <button class="meopt" data-act="page" data-v="settings">Settings</button>
+        </div>` : ''}
+      </div>
+`;
+const scopeLabel = () =>
+  S.scope === 'all' ? 'Everyone' : S.scope === 'wall' ? 'the Wall' : me().name;
+
+let TASKS = [
+  { id:1, title:'Take the bins out',       pri:1, due:'2 days late', late:true,  who:'N', done:false, mine:true,
+    labels:['Weekly','Outside'], repeat:'Every Mon', esc:2 },
+  { id:2, title:'Change the water filter', pri:2, due:'Tomorrow',    late:false, who:'P', done:false, mine:false,
+    labels:['Kitchen'], repeat:'Every 6 months', esc:0 },
+  { id:3, title:'Descale the kettle',      pri:2, due:'Wed',         late:false, who:'N', done:false, mine:true,
+    labels:['Kitchen'], repeat:'Every 8 weeks', esc:0 },
+  { id:4, title:'Book the boiler service', pri:3, due:'Sat 16',      late:false, who:'P', done:false, mine:false,
+    labels:['Annual','Safety'], repeat:'Every year', esc:0, approver:'N' },
+  { id:5, title:'Clean the gutters',       pri:3, due:'Sep 2',       late:false, who:'N', done:false, mine:true,
+    labels:['Outside'], repeat:'Every autumn', esc:0, archived:true },
+];
+
+const ALERTS = [
+  { t:'Pi temperature above 70°C',      s:'warn', at:'14:10' },
+  { t:'Take the bins out is overdue',   s:'crit', at:'09:00' },
+  { t:'Weather integration recovered',  s:'ok',   at:'07:42' },
+];
+
+/* ── SIZE SYSTEM ──────────────────────────────────────────────
+   Every widget declares which sizes it supports, and each size is
+   a DESIGNED state rather than the same content stretched. Sizes
+   are whole cells on a 12-col grid with a fixed row height, so any
+   arrangement tiles without ragged gaps.                        */
+const SIZES = { S:{c:3,r:1}, M:{c:6,r:1}, L:{c:6,r:2}, XL:{c:12,r:1} };
+
+/* The real widget catalogue, read out of the running app:
+
+     .venv/bin/python manage.py shell -c "from nora_home.core.registry import
+       registered_apps; ..."
+
+   Ten widgets across three apps. Two that earlier revisions showed — Outside
+   and Alerts — are not widgets at all: weather is an integration feeding the
+   scene, and alerts are a page. They have been removed rather than left in
+   looking real. Sizes are this redesign's proposal; the widgets are not. */
+const LIB = {
+  due_next:   { name:'Due next',            src:'Todo',         sizes:['M','L','XL'] },
+  open_now:   { name:'Open now',            src:'Todo',         sizes:['S','M','L']  },
+  streak:     { name:'Keeping at it',       src:'Todo',         sizes:['S','M']      },
+  throughput: { name:'You typically finish',src:'Todo',         sizes:['S','M']      },
+  year:       { name:'The year so far',     src:'Todo',         sizes:['XL','L']     },
+  flow:       { name:'Arriving vs finishing',src:'Todo',        sizes:['L','XL']     },
+  health:     { name:'House health',        src:'Home',         sizes:['S','M']      },
+  pitemp:     { name:'Pi temperature',      src:'Home',         sizes:['S','M','L','XL'] },
+  disk:       { name:'Disk',                src:'Home',         sizes:['S','M']      },
+  vitals:     { name:'House vitals',        src:'Measurements', sizes:['M','L']      },
+};
+
+/* Packs to whole rows: 6+3+3 | 6(cont)+6 | 3+3+6 | 12 */
+let BOARD = [
+  { k:'due_next', size:'L' }, { k:'open_now', size:'S' }, { k:'health', size:'S' },
+  { k:'pitemp', size:'M' },
+  { k:'disk', size:'S' }, { k:'streak', size:'S' }, { k:'vitals', size:'M' },
+  { k:'year', size:'XL' },
+];
+
+const SURF = {
+  desktop:{ w:1440, h:900,  label:'Desktop',      tags:['Work layout'] },
+  wall:   { w:1920, h:1080, label:'Wall · 24&quot;', tags:['Work layout, one ramp up'] },
+  phone:  { w:390,  h:844,  label:'Phone',        tags:['Work layout','bottom tabs'] },
+  kiosk:  { w:1024, h:600,  label:'Kiosk · 10.1&quot;', tags:['Controller','60px targets'] },
+};
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const live = () => TASKS.filter(t => !t.archived);
+const openN = () => live().filter(t => !t.done).length;
+const lateN = () => live().filter(t => !t.done && t.late).length;
+
+function toast(m){ S.toast=m; render(); clearTimeout(toast._t); toast._t=setTimeout(()=>{S.toast=null;render();},1900); }
+
+const I = {
+  home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
+  task:'<path d="M9 11l2 2 4-4"/><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4"/>',
+  bell:'<path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/>',
+  chart:'<path d="M3 17l5-6 4 4 5-8 4 5"/>',
+  grid:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  log:'<path d="M4 5h16M4 12h16M4 19h10"/>',
+  gear:'<circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9L7 7M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/>',
+  wrench:'<path d="M14 7l3 3M3 21l3-1 11-11-2-2L4 18z"/>',
+  menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
+  screen:'<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
+};
+const svg=(d,c='')=>`<svg class="${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+
+/* the arc-reactor mark — concentric rings, the one ornament in the system */
+const MARK = `<svg width="22" height="22" viewBox="0 0 40 40" aria-hidden="true">
+  <circle cx="20" cy="20" r="18" fill="none" stroke="#38d6ff" stroke-width="1.4" opacity=".45"/>
+  <circle cx="20" cy="20" r="12.5" fill="none" stroke="#7fe9ff" stroke-width="1.2" opacity=".7"
+          stroke-dasharray="4 3"/>
+  <circle cx="20" cy="20" r="7" fill="none" stroke="#a5eeff" stroke-width="1.6"/>
+  <circle cx="20" cy="20" r="3.4" fill="#e8fbff"/>
+</svg>`;
+
+/* ── scene ──────────────────────────────────────────────────── */
+function scene() {
+  const stars = Array.from({length:22},()=>`<i style="left:${(Math.random()*96+2).toFixed(1)}%;
+    top:${(Math.random()*48+2).toFixed(1)}%;opacity:${(Math.random()*.5+.45).toFixed(2)}"></i>`).join('');
+
+  let wx='';
+  if (['cloud','rain','snow'].includes(S.weather))
+    wx += Array.from({length:5},(_,i)=>`<span class="cloud" style="left:${i*22-12}%;top:${5+i*8}%;
+      width:${26+i*6}%;height:${6+i*1.4}%;animation-delay:-${i*13}s"></span>`).join('');
+  if (S.weather==='rain')
+    wx += Array.from({length:60},()=>`<span class="drop" style="left:${(Math.random()*100).toFixed(1)}%;
+      animation-delay:-${(Math.random()).toFixed(2)}s;animation-duration:${(.55+Math.random()*.35).toFixed(2)}s"></span>`).join('');
+  if (S.weather==='snow')
+    wx += Array.from({length:44},()=>`<span class="flake" style="left:${(Math.random()*100).toFixed(1)}%;
+      animation-delay:-${(Math.random()*7).toFixed(2)}s;animation-duration:${(5+Math.random()*4).toFixed(2)}s"></span>`).join('');
+
+  return `<div class="scene" aria-hidden="true">
+    <div class="sky"></div><div class="stars">${stars}</div><div class="orb"></div>
+    <div class="wx">${wx}</div><div class="grid-o"></div><div class="scan"></div>
+  </div>`;
+}
+
+/* ── component helpers ──────────────────────────────────────── */
+const readout=(v,u,cap,mod='')=>`<div class="read ${mod}"><b>${esc(v)}</b>${u?`<span>${esc(u)}</span>`:''}</div>
+  ${cap?`<div class="cap">${esc(cap)}</div>`:''}`;
+
+const ck=t=>`<button class="ck ${t.done?'on':''} ${t.late&&!t.done?'late':''}" data-act="toggle" data-id="${t.id}"
+  aria-pressed="${t.done}" aria-label="${t.done?'Mark not done':'Mark done'}: ${esc(t.title)}">
+  ${svg('<path d="M4 12l5 5L20 6"/>')}</button>`;
+
+const trow=t=>`<div class="row ${t.done?'done':''}">${ck(t)}<span class="t">${esc(t.title)}</span>
+  <span class="d ${t.late&&!t.done?'late':''}">${esc(t.done?'done':t.due)}</span></div>`;
+
+const spark=(h=54)=>`<svg viewBox="0 0 400 ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px;display:block" aria-hidden="true">
+  <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#38d6ff" stop-opacity=".42"/><stop offset="1" stop-color="#38d6ff" stop-opacity="0"/>
+  </linearGradient></defs>
+  <path d="M0 ${h*.72} L36 ${h*.6} L72 ${h*.68} L108 ${h*.45} L144 ${h*.53} L180 ${h*.3} L216 ${h*.42}
+           L252 ${h*.22} L288 ${h*.38} L324 ${h*.26} L360 ${h*.44} L400 ${h*.34} L400 ${h} L0 ${h}Z" fill="url(#sg)"/>
+  <path d="M0 ${h*.72} L36 ${h*.6} L72 ${h*.68} L108 ${h*.45} L144 ${h*.53} L180 ${h*.3} L216 ${h*.42}
+           L252 ${h*.22} L288 ${h*.38} L324 ${h*.26} L360 ${h*.44} L400 ${h*.34}"
+        fill="none" stroke="#7fe9ff" stroke-width="1.8"/>
+  <circle cx="400" cy="${h*.34}" r="3.4" fill="#e8fbff"/></svg>`;
+
+/* A concentric ring gauge. The house mark is a ring; this is the same idea
+   carrying a number, which is what keeps the identity from being decoration. */
+const ring = (pct, big, small, colour='var(--arc-400)') => {
+  const R=42, C=2*Math.PI*R;
+  return `<div class="ring"><svg viewBox="0 0 110 110" aria-hidden="true">
+    <circle cx="55" cy="55" r="${R}" fill="none" stroke="rgba(120,200,235,.14)" stroke-width="7"/>
+    <circle cx="55" cy="55" r="${R}" fill="none" stroke="${colour}" stroke-width="7"
+      stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pct/100)}"
+      transform="rotate(-90 55 55)" style="filter:drop-shadow(0 0 6px ${colour})"/>
+    <circle cx="55" cy="55" r="30" fill="none" stroke="rgba(120,200,235,.2)"
+      stroke-width="1" stroke-dasharray="3 4"/>
+  </svg><div class="ring-c"><b>${esc(big)}</b><span>${esc(small)}</span></div></div>`;
+};
+
+const heat=(n=96)=>`<div style="display:flex;gap:2px;align-items:flex-end">`+
+  Array.from({length:n},()=>{const v=Math.random();
+    return `<i style="flex:1;height:${(10+v*22).toFixed(0)}px;border-radius:1px;
+      background:${v<.28?'rgba(120,200,235,.12)':`rgba(56,214,255,${(.2+v*.7).toFixed(2)})`}"></i>`;}).join('')+`</div>`;
+
+/* ── widgets: one function, four designed sizes ─────────────── */
+function widget(item, i) {
+  const { k, size } = item, meta = LIB[k], sz = SIZES[size];
+
+  const tools = S.editing
+    ? `<span class="tools">${meta.sizes.map(s=>`<button class="szbtn" data-act="size" data-i="${i}" data-v="${s}"
+         aria-pressed="${s===size}">${s}</button>`).join('')}</span>`
+    : `<span class="src">${size}</span>`;
+
+  let body = '';
+  switch (k) {
+    case 'due_next': {
+      const l = live().filter(t=>!t.done);
+      if (size==='M') body = readout(l.length,'due', l[0]?`next: ${l[0].title}`:'nothing due');
+      else body = `<div class="body top">${l.length?l.slice(0,size==='XL'?6:4).map(trow).join('')
+        :'<div class="empty"><b>All clear</b><span>Nothing is due.</span></div>'}</div>`;
+      break;
+    }
+    case 'open_now':
+      if (size==='S') body = readout(openN(),'open', lateN()?`${lateN()} overdue`:'none late', lateN()?'crit':'');
+      else if (size==='M') body = readout(openN(),'open',`${lateN()} overdue · 2 this week`)+spark(34);
+      else body = readout(openN(),'open',`${lateN()} overdue`)+`<div class="rule"></div>`+
+        `<div class="body top">${live().filter(t=>!t.done).slice(0,3).map(trow).join('')}</div>`;
+      break;
+    case 'streak':
+      body = size==='S' ? readout('1','of 30','days with something done')
+        : `<div class="body row-split">${ring(3,'1','of 30')}
+             <div><div class="cap">Days with something finished.</div>
+             <div class="cap">Best run this year: 9.</div></div></div>`;
+      break;
+    case 'throughput':
+      body = size==='S' ? readout('0.0','a day','median')
+        : readout('0.0','a day','median over the last 30 days')+spark(34);
+      break;
+    case 'year':
+      body = `<div class="body">${heat(size==='XL'?110:56)}</div>
+              <div class="cap">148 days with something finished</div>`;
+      break;
+    case 'flow': {
+      const bars=[4,7,3,9,6,11,5,8,12,6,9,4].map((v,i)=>
+        `<div class="cf-col"><i style="height:${v*(size==='XL'?5:7)}px"></i>
+         <i class="b" style="height:${v*0.7*(size==='XL'?5:7)}px"></i>
+         <span>${['A','S','O','N','D','J','F','M','A','M','J','J'][i]}</span></div>`).join('');
+      body = `<div class="body"><div class="cf">${bars}</div>
+        <div class="cf-key"><span><i style="background:var(--arc-400)"></i>arrived</span>
+        <span><i style="background:var(--ok)"></i>finished</span></div></div>`;
+      break;
+    }
+    case 'health':
+      body = size==='S'
+        ? `<div class="body">${ring(100,'OK','10/10','var(--ok)')}</div>`
+        : `<div class="body row-split">${ring(100,'OK','10/10','var(--ok)')}
+             <div><div class="cap">All ten services up.</div>
+             <div class="cap">Checked 4 minutes ago.</div></div></div>`;
+      break;
+    case 'pitemp':
+      if (size==='S') body = readout('52','°C','peak 61°');
+      else if (size==='M') body = readout('52','°C','')+spark(38);
+      else body = readout('52','°C','24 hours · peak 61° at 14:10')+spark(size==='XL'?54:78);
+      break;
+    case 'disk':
+      body = size==='S' ? readout('18','%','90.7 GB free')
+        : readout('18','%','90.7 GB of 110 GB free')+spark(30);
+      break;
+    case 'vitals': {
+      const rows=[['Outside temperature','24.8 °C','house'],
+                  ['CPU temperature','52 °C','pi'],
+                  ['Disk used','18 %','pi'],
+                  ['Humidity','61 %','house']];
+      body = `<div class="body top">${rows.slice(0,size==='L'?4:2).map(([n,v,src])=>
+        `<div class="row"><span class="t">${n}</span>
+         <span class="d" style="margin-left:auto">${v}</span>
+         <span class="d">${src}</span></div>`).join('')}</div>`;
+      break;
+    }
+  }
+
+  return `<div class="card panel" style="--c:${sz.c};--r:${sz.r}">
+    <div class="card-h"><h4>${esc(meta.name)}</h4>${tools}</div>${body}</div>`;
+}
+
+/* ── work layout ────────────────────────────────────────────── */
+const IN_APP = () => S.page === 'tasks';
+
+/* The Pi's vitals, in the rail. Lives beside its only consumer: it has twice
+   been deleted by an unrelated range edit while sitting among the kiosk data.
+   Only temperature and disk are collected today — see Story 52. */
+const VITALS = [
+  { k:'CPU',  v:'34%',      bar:34 },
+  { k:'MEM',  v:'62%',      bar:62 },
+  { k:'TEMP', v:'52°',      bar:61, warm:true },
+  { k:'FAN',  v:'2.4k',     bar:30 },
+  { k:'LOAD', v:'0.42' },
+  { k:'UP',   v:'4d 06:12' },
+];
+
+function rail() {
+  // Every destination is the same module: bracketed icon cell, mono label,
+  // optional live count. Nothing in the rail is bare text.
+  const item = (p, ic, l, n, calm) => `<button class="nav" ${p?`data-act="page" data-v="${p}"`:''}
+    ${S.page===p?'aria-current="page"':''}>
+    <span class="ib">${svg(ic)}</span>${esc(l)}
+    ${n?`<span class="n ${calm?'calm':''}">${n}</span>`:''}</button>`;
+
+  const tp = (v, ic, l) => `<button class="nav" data-act="todopage" data-v="${v}"
+    ${S.todoPage===v?'aria-current="page"':''}><span class="ib">${svg(ic)}</span>${l}</button>`;
+
+  /* Both branches are read off REGISTRY. Nothing here names an app. */
+  const app = currentApp();
+  const inner = !app.base ? `
+    <div class="grp-lab">${esc(app.title)}</div>
+    ${app.sections.map(sec=>`<button class="nav" data-act="todopage" data-v="${sec.v}"
+      ${S.todoPage===sec.v?'aria-current="page"':''}>
+      <span class="ib">${svg(sec.icon)}</span>${esc(sec.title)}</button>`).join('')}
+    <div class="grp-lab">Home</div>
+    ${item('home',I.home,'Back to house')}` : `
+    <div class="grp-lab">${esc(BASE_APP.title)}</div>
+    ${BASE_APP.sections.map(sec=>item(sec.v, sec.icon, sec.title, sec.badge)).join('')}
+    <div class="grp-lab">Apps</div>
+    ${HOUSE_APPS.map(a2=>item(a2.page, a2.icon, a2.title, badgeOf(a2), true)).join('')}`;
+
+  return `<nav class="rail" aria-label="Navigation">
+    <div class="brand">${MARK}<b>Nora Home</b></div>${inner}
+    <div class="rail-foot">
+      <div class="vitals panel">
+        ${VITALS.map(v => v.bar === undefined
+          ? `<div class="vit"><span class="vk">${v.k}</span><span class="vv">${v.v}</span></div>`
+          : `<div class="vit"><span class="vk">${v.k}</span>
+               <span class="vbar ${v.warm?'warm':''}"><i style="width:${v.bar}%"></i></span>
+               <span class="vv">${v.v}</span></div>`).join('')}
+      </div>
+      ${memberChip()}
+    </div></nav>`;
+}
+
+function appbar() {
+  const T={home:'Home',tasks:'Todo',alerts:'Alerts',numbers:'Measurements',
+    settings:'Settings',system:'System'};
+  let a='';
+  if (S.page==='home') {
+    a = S.editing
+      ? `<button class="btn" data-act="shuffle">Shuffle</button>
+         <button class="btn pri" data-act="edit">Done</button>`
+      : `<button class="btn ghost" data-act="palette">Search <kbd>&#8984;K</kbd></button>
+         <button class="btn" data-act="edit">Rearrange</button>
+         <button class="btn pri" data-act="sheet" data-v="widget">Add a widget</button>`;
+  } else if (S.page==='tasks') {
+    if (S.todoPage==='reporting') { a=`<button class="btn ghost" data-act="toast" data-v="Range: last 12 months">Last 12 months</button>
+      <button class="btn" data-act="toast" data-v="Exported reporting.csv">Export</button>`; }
+    else {
+      const c=(v,l)=>`<button class="chip" data-act="filter" data-v="${v}" aria-pressed="${S.filter===v}">${l}</button>`;
+      const verbs=(REGISTRY.find(r=>r.slug==='todo').actions||[])
+        .filter(x=>x.v!=='new-task')
+        .map(x=>`<button class="btn" data-act="appaction" data-v="${x.v}">${esc(x.title)}</button>`).join('');
+      a=`<div style="display:flex;gap:7px;flex-wrap:wrap">${c('all','All')}${c('mine','Mine')}${c('today','Due today')}${c('archived','Archived')}</div>
+         ${verbs}
+         <button class="btn pri" data-act="sheet" data-v="task">New task</button>`;
+    }
+  } else if (S.page==='system') {
+    a=`<div style="display:flex;gap:7px;flex-wrap:wrap">${SYS_SECTIONS.map(([v,l])=>
+        `<button class="chip" data-act="syspage" data-v="${v}" aria-pressed="${S.sysPage===v}">${l}</button>`).join('')}</div>`;
+  } else a=`<button class="btn ghost" data-act="palette">Search <kbd>&#8984;K</kbd></button>`;
+
+  if (S.page==='system') return `<div class="appbar"><h1>System &middot; ${SYS_SECTIONS.find(x=>x[0]===S.sysPage)[1]}</h1><span class="sp"></span>${a}</div>`;
+  const title = S.page==='tasks'
+    ? 'Todo · ' + S.todoPage.charAt(0).toUpperCase() + S.todoPage.slice(1)
+    : (T[S.page] || S.page);
+  return `<div class="appbar"><h1>${title}</h1><span class="sp"></span>${a}</div>`;
+}
+
+const pageHome = () => `<div class="bento ${S.editing?'editing':''}">${BOARD.map(widget).join('')}</div>`;
+
+function taskCard(t) {
+  const esc_ = t.esc ? `<span class="t-esc" title="Escalated to level ${t.esc}">
+      ${svg('<path d="M12 3l8 14H4z"/><path d="M12 9v4"/>')}L${t.esc}</span>` : '';
+  const rep = t.repeat ? `<span class="t-rep">
+      ${svg('<path d="M21 12a9 9 0 11-3-6.7"/><path d="M21 3v6h-6"/>')}${esc(t.repeat)}</span>` : '';
+  const appr = t.approver ? `<span class="t-appr">needs sign-off</span>` : '';
+  return `<div class="task ${t.done?'done':''}" data-pri="${t.pri}">
+    <div class="tt">${esc(t.title)}</div>
+    <div class="t-meta">
+      <span class="due ${t.late&&!t.done?'late':''}">${esc(t.done?'done':t.due)}</span>
+      ${rep}${esc_}${appr}
+    </div>
+    <div class="t-foot">
+      <span class="t-labels">${(t.labels||[]).map(l=>`<span class="lab">${esc(l)}</span>`).join('')}</span>
+      ${ck(t)}<span class="assignee">${t.who}</span>
+    </div></div>`;
+}
+
+function boardView() {
+  /* "Mine" follows whoever is signed in; in Everyone or Wall scope the board
+     is the whole household's, which is what those scopes mean. */
+  const mineNow = t => S.scope !== 'self' ? true : t.who === me().initial;
+  const vis=t=>{ if(S.filter==='archived') return !!t.archived; if(t.archived) return false;
+    if(S.filter==='mine') return mineNow(t); if(S.filter==='today') return t.late||t.due==='Tomorrow'; return true; };
+  const sh=TASKS.filter(vis);
+  const col=(p,l,c)=>{const it=sh.filter(t=>t.pri===p);
+    return `<div class="col"><div class="col-h"><i style="background:${c};box-shadow:0 0 10px ${c}"></i>
+      <b>${l}</b><span class="n">${it.length}</span></div>
+      ${it.map(taskCard).join('')||`<div class="empty"><b>Clear</b><span>Nothing at this priority.</span></div>`}
+    </div>`;};
+
+  const stat=(v,l,mod='')=>`<div class="bstat ${mod}"><b>${v}</b><span>${l}</span></div>`;
+  return `<div class="bstats">
+      ${stat(openN(),'open')}${stat(lateN(),'overdue', lateN()?'crit':'')}
+      ${stat(live().filter(t=>t.esc).length,'escalating', live().filter(t=>t.esc).length?'warn':'')}
+      ${stat(live().filter(t=>t.done).length,'done today','ok')}
+      ${stat(TASKS.filter(t=>t.archived).length,'archived')}
+    </div>
+    <div class="board">${col(1,'Priority 1','#ff4d5e')}${col(2,'Priority 2','#ffb648')}${col(3,'Priority 3','#38d6ff')}</div>`;
+}
+
+function reportingView() {
+  const bars = [4,7,3,9,6,11,5,8,12,6,9,4].map((v,i)=>
+    `<div class="cf-col"><i style="height:${v*7}px"></i><i class="b" style="height:${(v*0.7)*7}px"></i>
+     <span>${['A','S','O','N','D','J','F','M','A','M','J','J'][i]}</span></div>`).join('');
+  return `<div class="bento">
+    <div class="card panel" style="--c:3;--r:1"><div class="card-h"><h4>Open</h4></div>${readout(openN(),'now','')}</div>
+    <div class="card panel" style="--c:3;--r:1"><div class="card-h"><h4>Overdue</h4></div>${readout(lateN(),'late','',lateN()?'crit':'')}</div>
+    <div class="card panel" style="--c:3;--r:1"><div class="card-h"><h4>On time</h4></div>${readout('86','%','last 30 days','ok')}</div>
+    <div class="card panel" style="--c:3;--r:1"><div class="card-h"><h4>To first touch</h4></div>${readout('0.2','days','median')}</div>
+
+    <div class="card panel" style="--c:7;--r:2"><div class="card-h"><h4>Arriving vs finishing</h4>
+      <span class="sub">last 12 months</span></div>
+      <div class="body"><div class="cf">${bars}</div>
+      <div class="cf-key"><span><i style="background:var(--arc-400)"></i>arrived</span>
+        <span><i style="background:var(--ok)"></i>finished</span></div></div></div>
+
+    <div class="card panel" style="--c:5;--r:2"><div class="card-h"><h4>Reliability</h4></div>
+      <div class="body">${ring(86,'86%','on time')}</div></div>
+
+    <div class="card panel" style="--c:12;--r:1"><div class="card-h"><h4>The year</h4>
+      <span class="sub">148 days with something finished</span></div>
+      <div class="body">${heat(110)}</div></div>
+  </div>`;
+}
+
+const TODO_VIEWS = { board:boardView, reporting:reportingView, calendar:todoCalendar,
+  search:todoSearch, labels:todoLabels, system:todoSystem, settings:todoSettings };
+function pageTasks() { return (TODO_VIEWS[S.todoPage] || boardView)(); }
+
+const pageAlerts = () => `<div class="bento"><div class="card panel" style="--c:12;--r:2">
+  <div class="card-h"><h4>Today</h4></div><div class="body top">
+  ${ALERTS.map(a=>`<div class="row"><span class="badge ${a.s}">${a.s}</span>
+    <span class="t">${esc(a.t)}</span><span class="d">${a.at}</span></div>`).join('')}</div></div></div>`;
+
+/* System = health + integrations + log on one page.
+
+   All three answer "how is the house doing", on three timescales: now,
+   upstream, and history. Status was collect_health() plus recent audit;
+   Integrations was one provider and its schedule; Log was the same events
+   over time. Three thin pages, one question. House nav goes from four
+   entries to two.
+
+   Measurements deliberately stays separate: that is data the family reads,
+   not machinery. Filing "your weight this month" under plumbing would be
+   the same category error this merge is fixing. */
+/* System is a page of Home, not an app — it is where the house's own machinery
+   lives. Four sections: health, the numbers, the integrations feeding them, and
+   the log of what changed. Measurements and Integrations are still their own
+   registered Django apps (nav=True, /home/measurements/, /home/integrations/);
+   this is a navigation decision, not a code one. APPS is reserved for what the
+   family actually opens — Todo, Alerts, and whatever they add. */
+const SYS_SECTIONS = [
+  ['health','Health'], ['measurements','Measurements'],
+  ['integrations','Integrations'], ['log','Log'],
+];
+
+const sysHealth = () => `
+  <div class="card panel" style="--c:5;--r:2">
+    <div class="card-h"><h4>Health</h4><span class="src">5 probes</span></div>
+    <div class="body top">
+      ${[['database','ok','4.6 ms'],['redis','ok',''],['rabbitmq','skipped','broker is redis'],
+         ['mongo','ok',''],['object storage','skipped','local filesystem']].map(([n,st,note])=>
+        `<div class="row"><span class="t">${n}</span>
+         ${note?`<span class="d" style="margin-left:auto">${note}</span>`:''}
+         <span class="badge ${st==='ok'?'ok':'warn'}" ${note?'':'style="margin-left:auto"'}>${st}</span></div>`).join('')}
+    </div>
+    <div class="cap">collect_health() probes five services. Disk and CPU
+      temperature are resource checks, not services.</div></div>
+  <div class="card panel" style="--c:7;--r:2">
+    <div class="card-h"><h4>The Pi</h4><span class="src">right now</span></div>
+    <div class="body top">
+      ${VITALS.map(v=>`<div class="row"><span class="t">${v.k}</span>
+        <span class="d" style="margin-left:auto">${v.v}</span></div>`).join('')}
+    </div>
+    <div class="cap">Only temperature and disk are collected today — the rest
+      arrive with Story 52, as telemetry rather than health checks.</div></div>`;
+
+const sysMeasurements = () => `
+  ${widget({k:'pitemp',size:'L'},960)}${widget({k:'vitals',size:'M'},961)}
+  ${widget({k:'disk',size:'S'},962)}${widget({k:'health',size:'S'},963)}
+  ${widget({k:'year',size:'XL'},964)}`;
+
+const sysIntegrations = () => `
+  <div class="card panel" style="--c:12;--r:2">
+    <div class="card-h"><h4>Integrations</h4><span class="src">1 configured</span></div>
+    <div class="body top">
+      <div class="row"><span class="t">Weather</span>
+        <span class="d" style="margin-left:auto">Open-Meteo · no API key</span>
+        <span class="d">every 15 min</span><span class="badge ok">ok</span>
+        <span class="d">7m ago</span></div>
+    </div>
+    <div class="cap">The only integration written so far. Failures back off and
+      raise a system task rather than retrying forever.</div></div>`;
+
+const sysLog = () => `
+  <div class="card panel" style="--c:12;--r:3">
+    <div class="card-h"><h4>House log</h4><span class="src">what changed, not what ran</span></div>
+    <div class="body top">
+      ${[['09:04','Take the bins out escalated to level 2','todo','warn'],
+         ['08:12','priya completed Empty the dishwasher','todo','ok'],
+         ['07:42','Weather integration recovered','integrations','ok'],
+         ['02:15','Wall and kiosk powered down on schedule','displays',''],
+         ['22:30','Nightly backup finished — 412 MB','datastores','ok']].map(([t,txt,src,sev])=>
+        `<div class="row"><span class="d" style="margin-left:0;min-width:52px">${t}</span>
+         <span class="t">${esc(txt)}</span>
+         ${sev?`<span class="badge ${sev}">${sev}</span>`:''}
+         <span class="d">${src}</span></div>`).join('')}
+    </div></div>`;
+
+const SYS_VIEWS = { health:sysHealth, measurements:sysMeasurements,
+                    integrations:sysIntegrations, log:sysLog };
+const pageSystem = () => `<div class="bento">${(SYS_VIEWS[S.sysPage]||sysHealth)()}</div>`;
+
+const pageSettings = () => {
+  const r=(k,h,v)=>`<div class="set-row"><div><div class="k">${k}</div>${h?`<div class="h">${h}</div>`:''}</div><div class="v">${v}</div></div>`;
+  return `<div class="bento">
+    <div class="card panel" style="--c:6;--r:2"><div class="card-h"><h4>You</h4></div><div class="body top">
+      ${r('Signed in as','','nitin')}${r('Quiet hours','Alerts still get through','22:00 – 07:00')}
+      ${r('Notifications','','On')}${r('Show me on the wall','','Yes')}</div></div>
+    <div class="card panel" style="--c:6;--r:2"><div class="card-h"><h4>Screens</h4></div><div class="body top">
+      ${r('Wall display','24 inch, always on','Online')}${r('Kiosk','10.1 inch touch','Online')}
+      ${r('Screen size','How large everything renders','Wall 125% · Kiosk 110%')}
+      ${r('Overnight','Both screens power down','23:30 – 06:30')}</div></div></div>`;
+};
+
+
+/* ══════════════════════════════════════════════════════════════
+   Every remaining destination, so no control in this prototype is
+   inert. Fixture data throughout; none of it reaches a backend.
+   ══════════════════════════════════════════════════════════════ */
+
+function todoCalendar() {
+  const due = { 9:[1], 10:[2], 13:[3], 16:[4], 24:[5] };
+  const cells = Array.from({length:35},(_,i)=>{
+    const d=i-4; const inMonth=d>=1&&d<=31; const today=d===8;
+    const marks=(due[d]||[]).map(id=>{const t=TASKS.find(x=>x.id===id);
+      return `<span class="cal-t" data-pri="${t.pri}">${esc(t.title)}</span>`;}).join('');
+    return `<div class="cal-d ${inMonth?'':'out'} ${today?'now':''}">
+      <span class="cal-n">${inMonth?d:''}</span>${marks}</div>`;}).join('');
+  return `<div class="cal panel">
+    <div class="cal-h">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<span>${d}</span>`).join('')}</div>
+    <div class="cal-g">${cells}</div></div>
+  ${S.surface==='phone' ? `<div class="card panel" style="margin-top:12px">
+      <div class="card-h"><h4>This month</h4><span class="src">${live().length} dated</span></div>
+      <div class="body top">${live().map(trow).join('')}</div></div>` : ''}`;
+}
+
+function todoSearch() {
+  const q=S.query.trim().toLowerCase();
+  const hits=TASKS.filter(t=>!q||t.title.toLowerCase().includes(q)
+    ||(t.labels||[]).some(l=>l.toLowerCase().includes(q)));
+  return `<div class="bento"><div class="card panel" style="--c:12;--r:1">
+      <div class="card-h"><h4>Search everything</h4></div>
+      <input class="srch" data-act="query" value="${esc(S.query)}"
+             placeholder="Title, label, person…" autocomplete="off">
+      <div class="chips-row">${['Overdue','Mine','Recurring','Needs sign-off'].map(f=>
+        `<button class="chip" data-act="saved" data-v="${f}"
+          aria-pressed="${S.saved===f}">${f}</button>`).join('')}</div>
+    </div>
+    <div class="card panel" style="--c:12;--r:2">
+      <div class="card-h"><h4>${hits.length} result${hits.length===1?'':'s'}</h4></div>
+      <div class="body top">${hits.map(trow).join('')
+        ||`<div class="empty"><b>Nothing found</b><span>Try a label, or clear the box.</span></div>`}</div>
+    </div></div>`;
+}
+
+function todoLabels() {
+  const counts = {};
+  LABELS.forEach(l => { counts[l] = 0; });
+  TASKS.forEach(t => (t.labels || []).forEach(l => { counts[l] = (counts[l] || 0) + 1; }));
+  const hues = { Kitchen:'var(--warn)', Outside:'var(--ok)', Weekly:'var(--arc-400)',
+                 Annual:'var(--info)', Safety:'var(--crit)', Admin:'var(--arc-600)' };
+
+  return `<div class="bento"><div class="card panel" style="--c:12;--r:2">
+    <div class="card-h"><h4>Labels</h4>
+      <span class="tools"><button class="btn pri" data-act="newLabel">New label</button></span></div>
+    <div class="body top">${Object.entries(counts).map(([l, n]) => `
+      <div class="row">
+        <span class="lab-dot" style="background:${hues[l] || 'var(--arc-500)'}"></span>
+        <span class="t">${esc(l)}</span>
+        <span class="d">${n} task${n === 1 ? '' : 's'}</span>
+      </div>`).join('')}</div>
+    <div class="cap">A label made here is immediately offered on the New-task
+      form, and one made there appears here — it is the same list.</div>
+  </div></div>`;
+}
+
+function todoSystem() {
+  const rows=[
+    ['Pi temperature over 70°C for 10 minutes','telemetry','warn'],
+    ['Weather integration failed 3 times','integration','crit'],
+    ['Disk above 80%','telemetry','ok'],
+  ];
+  return `<div class="bento"><div class="card panel" style="--c:12;--r:2">
+    <div class="card-h"><h4>System tasks</h4>
+      <span class="src">raised automatically</span></div>
+    <div class="body top">${rows.map(([t,src,sev])=>
+      `<div class="row"><span class="badge ${sev}">${sev==='ok'?'clear':sev}</span>
+       <span class="t">${esc(t)}</span><span class="d">${src}</span></div>`).join('')}</div>
+    <div class="cap">Raised by thresholds and failing integrations, not by a person.
+      They close themselves when the condition clears.</div></div></div>`;
+}
+
+function todoSettings() {
+  const row=(k,h,v)=>`<div class="set-row"><div><div class="k">${k}</div>
+    ${h?`<div class="h">${h}</div>`:''}</div><div class="v">${v}</div></div>`;
+  return `<div class="bento">
+    <div class="card panel" style="--c:6;--r:2"><div class="card-h"><h4>Reminders</h4></div>
+      <div class="body top">${row('Default due time','When a task has a date but no time','09:00')}
+      ${row('Reminder channel','','Slack, then in-app')}
+      ${row('Quiet hours','Alerts and above still get through','22:00 – 07:00')}
+      ${row('Tone','How reminders are worded','Warm')}</div></div>
+    <div class="card panel" style="--c:6;--r:2"><div class="card-h"><h4>Escalation</h4></div>
+      <div class="body top">${row('Policy','','House default')}
+      ${row('First nudge','After the due time','+2 hours')}
+      ${row('Then','','Owner’s chain, one rung at a time')}
+      ${row('Finally','','Everyone, on Slack and the wall')}</div></div></div>`;
+}
+
+
+function palette() {
+  if (!S.palette) return '';
+  const dests=[
+    ['Home','page','home'],['Todo board','tasks','board'],['Todo calendar','tasks','calendar'],
+    ['Todo reporting','tasks','reporting'],['Alerts','page','alerts'],['Measurements','page','numbers'],
+    ['System','page','system'],['Integrations','page','integrations'],
+    ['Settings','page','settings'],
+  ];
+  const q=S.query.trim().toLowerCase();
+  const hits=dests.filter(d=>!q||d[0].toLowerCase().includes(q));
+  return `<div class="scrim" data-act="close"><div class="sheet panel" data-stop>
+    <h3>Go to</h3>
+    <input class="srch" data-act="query" value="${esc(S.query)}" placeholder="Type a page…" autofocus>
+    <div class="body top" style="max-height:230px;overflow:auto">
+      ${hits.map(([l,a,v])=>`<button class="btn" style="justify-content:flex-start;width:100%"
+        data-act="goto" data-a="${a}" data-v="${v}">${esc(l)}</button>`).join('')
+        ||`<div class="empty"><b>No match</b><span>Nothing by that name.</span></div>`}
+    </div></div></div>`;
+}
+
+const PAGES={home:pageHome,tasks:pageTasks,alerts:pageAlerts,
+  system:pageSystem,settings:pageSettings};
+
+/* Desktop AND wall use this. The wall is the same layout, one ramp up. */
+const renderWork = () => `<div class="layer">${rail()}
+  <div class="work">${appbar()}<div class="canvas">${PAGES[S.page]()}</div></div></div>`;
+
+/* ── phone ──────────────────────────────────────────────────── */
+function renderPhone() {
+  const T={home:'Home',tasks:'Todo',alerts:'Alerts',system:'System',settings:'Settings'};
+
+  let body;
+  /* The section rail is the current app's own sections — read from REGISTRY,
+     so an app that declares sections gets this on the phone automatically. */
+  const app = currentApp();
+  const cur = app.base ? S.page : S.todoPage;
+  const subRail = app.sections.length > 1
+    ? `<div class="ph-sub">${app.sections.map(sec=>
+        `<button class="chip" data-act="${app.base?'page':'todopage'}" data-v="${sec.v}"
+          aria-pressed="${cur===sec.v}">${esc(sec.title)}</button>`).join('')}</div>`
+    : '';
+  if (S.page==='home') {
+    body = widget({k:'due_next',size:'L'},800)
+      + `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+         ${widget({k:'open_now',size:'S'},801)}${widget({k:'health',size:'S'},802)}</div>`
+      + widget({k:'vitals',size:'M'},803);
+
+  } else if (S.page==='tasks') {
+    /* Second level. Without this the phone could reach Todo and then nothing
+       inside it — all seven sections were unreachable, which is the dead end
+       CLAUDE.md forbids. The bottom rail chooses the app; this chooses the
+       section, exactly as the desktop rail does. */
+
+    let inner;
+    if (S.todoPage==='board') {
+      /* The board keeps its priority columns on the phone — one per screen,
+         flicked between, with the neighbours peeking at the edges so it is
+         obvious there is more. Same snap mechanic as the app rail; a phone
+         cannot show three columns side by side but it can show them in turn. */
+      const vis=t=>S.filter==='mine'?t.mine:S.filter==='today'?(t.late||t.due==='Tomorrow'):true;
+      const col=(pri,label,colour)=>{
+        const items=live().filter(t=>t.pri===pri&&vis(t));
+        const dots=[1,2,3].map(n=>`<i class="${n===pri?'on':''}"></i>`).join('');
+        return `<section class="ph-col">
+          <div class="ph-col-h"><i style="background:${colour};box-shadow:0 0 10px ${colour}"></i>
+            <b>${label}</b><span>${items.length}</span>
+            <span class="ph-dots" aria-hidden="true">${dots}</span></div>
+          <div class="ph-col-b">
+            ${items.map(taskCard).join('')||`<div class="empty"><b>Clear</b><span>Nothing at this priority.</span></div>`}
+            <button class="ph-add" data-act="sheet" data-v="task">
+              ${svg('<path d="M12 5v14M5 12h14"/>')}Add task</button>
+          </div></section>`;
+      };
+      inner = `<div class="ph-chips">
+        ${['all','mine','today'].map(v=>`<button class="chip" data-act="filter" data-v="${v}"
+          aria-pressed="${S.filter===v}">${v==='all'?'All':v==='mine'?'Mine':'Today'}</button>`).join('')}</div>
+        <div class="ph-board">${col(1,'Priority 1','#ff4d5e')}${col(2,'Priority 2','#ffb648')}${col(3,'Priority 3','#38d6ff')}</div>`;
+    } else {
+      inner = (TODO_VIEWS[S.todoPage] || boardView)();
+    }
+    body = inner;
+
+  } else if (S.page==='alerts') {
+    body = `<div class="card panel"><div class="card-h"><h4>Today</h4></div><div class="body top">
+      ${ALERTS.map(a=>`<div class="row"><span class="badge ${a.s}">${a.s}</span>
+        <span class="t">${esc(a.t)}</span><span class="d">${a.at}</span></div>`).join('')}</div></div>`;
+
+  } else if (S.page==='system') {
+    // the same four sections the desktop has, switched by chips rather than a rail
+    subRail = `<div class="ph-sub">${SYS_SECTIONS.map(([v,l])=>
+      `<button class="chip" data-act="syspage" data-v="${v}" aria-pressed="${S.sysPage===v}">${l}</button>`).join('')}</div>`;
+    body = (SYS_VIEWS[S.sysPage]||sysHealth)();
+
+  } else body = PAGES[S.page]();
+
+  /* Every destination lives on one horizontally scrolling rail with a fixed
+     centre band — the same picker as the kiosk, turned on its side. Whatever
+     settles in the band opens. A fixed row of tabs tops out around five; this
+     takes as many apps as the house grows. */
+  /* One entry per registry app — the same list the sidebar and kiosk use. */
+  const here = currentApp();
+  const tab=a2=>{ const v = a2.base ? 'home' : a2.page; const on = a2.slug===here.slug;
+    return `<button class="ph-tab ${on?'on':''}" data-act="page" data-v="${v}"
+      ${on?'aria-current="page"':''}>${svg(a2.icon)}<span>${esc(a2.title)}</span></button>`; };
+
+  /* The drawer mirrors the desktop rail: Home's own pages, then the apps. Tabs
+     already reach Home, Todo and Alerts, so the drawer does not repeat them
+     for navigation's sake — it is the same list, one level up. */
+  const dr = S.drawer ? `<div class="drawer"><div class="pn">
+    <div class="brand">${MARK}<b>Nora Home</b></div>
+    <div class="grp-lab">Home</div>
+    <button class="nav" data-act="page" data-v="home">
+      <span class="ib">${svg(I.home)}</span>Dashboard</button>
+    <button class="nav" data-act="page" data-v="system">
+      <span class="ib">${svg(I.gear)}</span>System</button>
+    <button class="nav" data-act="page" data-v="settings">
+      <span class="ib">${svg(I.screen)}</span>Settings</button>
+    <div class="grp-lab">Apps</div>
+    <button class="nav" data-act="page" data-v="tasks">
+      <span class="ib">${svg(I.task)}</span>Todo<span class="n calm">${openN()}</span></button>
+    <button class="nav" data-act="page" data-v="alerts">
+      <span class="ib">${svg(I.bell)}</span>Alerts<span class="n">2</span></button>
+    <div class="rail-foot">${memberChip()}</div></div>
+    <button class="rest" data-act="drawer" data-v="0" aria-label="Close menu"></button></div>` : '';
+
+  return `<div class="layer ph">
+    <div class="ph-top"><h1>${S.page==='tasks'
+        ? 'Todo · ' + S.todoPage.charAt(0).toUpperCase() + S.todoPage.slice(1)
+        : (T[S.page]||S.page)}</h1>
+      ${/* The board has an "Add task" at the foot of every column, and that one
+            is better — it carries the column's priority. Kept only on the
+            sections that have no other way in. */
+        (S.page==='tasks' && S.todoPage!=='board')
+          ? `<button class="btn pri" data-act="sheet" data-v="task">New</button>` : ''}
+      <button class="av" data-act="drawer" data-v="1" aria-label="Menu">${me().initial}</button></div>
+    <div class="ph-body">${body}</div>
+    ${subRail}
+    <div class="ph-rail">
+      <div class="ph-band" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div class="ph-track">${REGISTRY.map(tab).join('')}</div>
+    </div>
+    ${dr}</div>`;
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   KIOSK — a control surface for the 24". Buttons and dials only.
+
+   GROUNDED IN THE REAL CONTRACT, not invented. The wall protocol
+   (static/nora_home/js/wall-live.js) implements exactly three
+   actions: `navigate`, `refresh`, `banner`. The kiosk adds
+   `show-menu` and `switch-app`. So every control below is a PATH
+   THE WALL NAVIGATES TO — that is the whole vocabulary today.
+
+   Extensibility is free and is the point: an app declares
+   `nora_kiosk_controls = [{"title": ..., "path": ...}]` on its
+   NoraAppConfig and its tile plus its own control screen appear
+   with no change to the platform. Todo's five below are copied
+   verbatim from nora_home/todo/apps.py.
+
+   Anything marked NEW does not exist yet and is new platform work.
+   ══════════════════════════════════════════════════════════════ */
+/* Exactly what the kiosk reaches today — read out of the running app, not
+   invented. nora_home/displays/views.py builds this from navigation(role)
+   plus three house_links, with a Home tile in front:
+
+     .venv/bin/python manage.py shell -c "from nora_home.core.registry
+       import navigation; ..."   ->  Alerts, Measurements, Integrations, Todo
+
+   Only Todo declares nora_kiosk_controls (5 of them, copied verbatim from
+   nora_home/todo/apps.py). Everything else is a plain navigate, which is why
+   those banks hold a single key. Nothing here is a placeholder or an example;
+   when a family app is installed it appears by declaring itself, and the
+   encoder simply gains a tick. */
+/* The kiosk mirrors the sidebar exactly: the left scroller is Home plus
+   whatever sits under Apps, and the key bank is the selected app's own
+   sections — the same list the desktop rail shows once you are inside it.
+
+   NOTE FOR THE BUILD: today the platform declares these twice —
+   `nora_sections` for the sidebar and `nora_kiosk_controls` for the kiosk,
+   deliberately fewer ("five big touch targets"). Mirroring them means an app
+   declares its sections ONCE and both surfaces follow. That is a real
+   simplification to the app contract, and it is a decision, not an oversight:
+   see the Phase 8 stories. */
+/* ══════════════════════════════════════════════════════════════
+   THE REGISTRY — one declaration, every surface.
+
+   This is the mockup's stand-in for nora_home.core.registry. Installing an
+   app means adding ONE entry here; it then appears, with no further edits, in:
+
+     · the desktop sidebar, under Apps
+     · the phone's bottom rail
+     · the phone's section rail, once you are inside it
+     · the kiosk's left scroller
+     · the kiosk's key bank, as that app's sections
+
+   The real platform already works this way — navigation(role) walks
+   registered_apps(), and both templates/base.html and displays/views.py
+   consume it. Earlier revisions of this file kept three separate hardcoded
+   lists, which is exactly the drift this structure exists to prevent.
+
+   `base: true` marks the one app that is the house itself. Everything else is
+   an app built on top; nothing in the UI distinguishes them beyond that.
+   ══════════════════════════════════════════════════════════════ */
+const REGISTRY = [
+  { slug:'home', title:'Home', icon:I.home, base:true, path:'/home/',
+    actions:[
+      { v:'rearrange',  title:'Rearrange',   kiosk:true },
+      { v:'add-widget', title:'Add a widget', kiosk:false },
+    ],
+    sections:[
+      { v:'home',     title:'Dashboard', path:'/home/',          icon:I.home },
+      { v:'alerts',   title:'Alerts',    path:'/home/alerts/',   icon:I.bell, badge:2 },
+      { v:'system',   title:'System',    path:'/home/system/',   icon:I.gear },
+      { v:'settings', title:'Settings',  path:'/home/settings/', icon:I.screen },
+    ] },
+
+  { slug:'todo', title:'Todo', icon:I.task, page:'tasks', path:'/todo/',
+    badge:()=>openN(),
+    /* Declared once. Each surface renders the ones it can support: desktop and
+       phone get buttons, the kiosk gets keys, the wall gets none because it is
+       read-only. `kiosk:false` marks a verb that needs typing or a choice and
+       therefore cannot live on a key. */
+    actions:[
+      { v:'complete-next', title:'Done: next due', kiosk:true },
+      { v:'snooze-next',   title:'Snooze 1 hour',  kiosk:true },
+      { v:'new-task',      title:'New task',       kiosk:false },
+    ],
+    sections:[
+      { v:'board',     title:'Board',     path:'/todo/',            icon:I.task },
+      { v:'calendar',  title:'Calendar',  path:'/todo/calendar/',   icon:I.log },
+      { v:'search',    title:'Search',    path:'/todo/search/',     icon:I.grid },
+      { v:'labels',    title:'Labels',    path:'/todo/labels/',     icon:I.grid },
+      { v:'reporting', title:'Reporting', path:'/todo/reporting/',  icon:I.chart },
+      { v:'system',    title:'System',    path:'/todo/system/',     icon:I.bell },
+      { v:'settings',  title:'Settings',  path:'/todo/settings/',   icon:I.gear },
+    ] },
+];
+
+/* Derived live, never snapshotted. As plain consts these were evaluated once
+   at load, so installing an app updated only the surface that happened to read
+   REGISTRY directly — the other two kept serving a stale copy. That is the
+   exact drift this registry exists to prevent, so the derivations are getters. */
+Object.defineProperties(window, {
+  BASE_APP:   { get: () => REGISTRY.find(a => a.base) },
+  HOUSE_APPS: { get: () => REGISTRY.filter(a => !a.base) },
+  WALL_APPS:  { get: () => REGISTRY.map(a => ({
+                  slug:a.slug, title:a.title, icon:a.icon, path:a.path,
+                  controls:a.sections.map(x => ({ title:x.title, path:x.path })) })) },
+});
+const badgeOf = a => typeof a.badge === 'function' ? a.badge() : a.badge;
+
+/* Which app are we in, and which of its sections? */
+function currentApp() {
+  return REGISTRY.find(a => a.page ? S.page === a.page
+                                   : a.sections.some(x => x.v === S.page)) || BASE_APP;
+}
+function currentSection() {
+  const app = currentApp();
+  return app.base ? S.page : (app.slug === 'todo' ? S.todoPage : app.sections[0].v);
+}
+
+const APP = slug => WALL_APPS.find(a => a.slug === slug) || WALL_APPS[0];
+
+/* Dials. Zoom's bounds are the real ones from nora_home/ui/zoom.py:
+   MIN_ZOOM 0.8, MAX_ZOOM.wall 2.0, DEFAULTS.wall 1.25. */
+const ZOOM = { min:0.8, max:2.0, step:0.05 };
+
+/* One hue per key position. Screen-printed panels colour-code their keys so a
+   hand learns the layout without reading it — same reason here. */
+const KEY_HUES = ['#38d6ff','#3ff0b0','#ffb648','#ff6b78','#a78bfa','#7aa2ff','#a3e635','#f472b6'];
+
+function renderKiosk() {
+  const idx = Math.max(0, WALL_APPS.findIndex(a => a.slug === S.wallPage));
+  const app = WALL_APPS[idx];
+  const n   = WALL_APPS.length;
+  const step = 360 / n;
+  const pt = (r, deg) => {
+    const a = (deg - 90) * Math.PI / 180;
+    return [(100 + r * Math.cos(a)).toFixed(2), (100 + r * Math.sin(a)).toFixed(2)];
+  };
+
+  /* A vertical scroller, not a dial. The selected app sits in a fixed band
+     across the middle; the column scrolls under it. Every app is visible and
+     labelled, which a knob never managed, and it takes any number of them. */
+  const picker = `<div class="vsel">
+      <div class="vsel-scan" aria-hidden="true"></div>
+      <div class="vsel-band" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div class="vsel-list">
+        ${WALL_APPS.map((a,i)=>`
+          <button class="vsel-i ${i===idx?'on':''}" data-act="wall" data-v="${a.slug}"
+                  ${i===idx?'aria-current="true"':''}>
+            <span class="vsel-ic">${i===idx?'<span class="reticle" aria-hidden="true"></span>':''}${svg(a.icon)}</span>
+            <span class="vsel-t">${esc(a.title)}</span>
+          </button>`).join('')}
+      </div>
+    </div>`;
+
+  /* Name only. The path was reference material for me, not for a thumb. */
+  const controls = app.controls.length ? app.controls : [{ title:'Open', path:app.path }];
+  const slots = controls.map((c, i) => `
+    <button class="hkey" data-act="nav" data-v="${esc(c.path)}"
+            style="--key:${KEY_HUES[i % KEY_HUES.length]}">
+      <span class="led"></span><span class="lg">${esc(c.title)}</span></button>`).join('');
+
+  const zp = ((S.dial.zoom - ZOOM.min) / (ZOOM.max - ZOOM.min)) * 100;
+
+  const fader = (lab, val, pct, dec, inc, seek, hint) => `<div class="fader">
+      <div class="fader-h"><span>${lab}</span><b>${val}</b></div>
+      ${hint?`<div class="fader-hint">${hint}</div>`:''}
+      <div style="display:flex;gap:9px;align-items:center">
+        <button class="hkey" style="min-height:34px;width:38px;flex:none"
+                data-act="${dec}" data-d="-1" aria-label="Down"><span class="lg">&minus;</span></button>
+        <button class="slot" style="flex:1" data-act="${seek}" aria-label="${lab}">
+          <span class="slot-fill" style="width:calc((100% - 24px) * ${(pct/100).toFixed(4)})"></span>
+          <span class="fcap" style="left:calc(12px + (100% - 24px) * ${(pct/100).toFixed(4)})"></span>
+        </button>
+        <button class="hkey" style="min-height:34px;width:38px;flex:none"
+                data-act="${inc}" data-d="1" aria-label="Up"><span class="lg">+</span></button>
+      </div></div>`;
+
+  return `<div class="layer desk">
+    <span class="screw tl"></span><span class="screw tr"></span>
+    <span class="screw bl"></span><span class="screw br"></span>
+
+    <div class="d-head">
+      <div class="d-brand">${MARK}<b>Nora Home</b></div>
+      <div class="d-readout ${S.wallOn?'':'off'}"><span>Wall</span>
+        <b>${S.wallOn?esc(app.title):'— off —'}</b></div>
+      <div class="d-lamp ${S.linked?'':'lost'}"><i></i>${S.linked?'Linked to wall':'Wall unreachable'}</div>
+    </div>
+
+    <div class="d-main">
+      <div class="d-enc">
+        <div class="d-lab">App</div>
+        ${picker}
+      </div>
+
+      <div class="d-keys">
+        <div class="d-keys-h"><span class="d-lab">${esc(app.title)} &mdash; send the wall to</span>
+          <span class="bank">Bank 1 / 1</span></div>
+        <div class="d-bank ${S.wallOn?'':'dark'}">${slots}</div>
+        ${(() => {
+          const reg = REGISTRY.find(r => r.slug === app.slug);
+          const acts = (reg && reg.actions || []).filter(a => a.kiosk);
+          if (!acts.length) return '';
+          return `<div class="d-keys-h" style="margin-top:2px">
+              <span class="d-lab">Do</span></div>
+            <div class="d-acts">${acts.map((a,i)=>`
+              <button class="hkey act" style="--key:${KEY_HUES[(i+5)%KEY_HUES.length]}"
+                      data-act="appaction" data-v="${a.v}">
+                <span class="led"></span><span class="lg">${esc(a.title)}</span></button>`).join('')}</div>`;
+        })()}
+      </div>
+      <div class="d-scroll">
+        <div class="pbend" data-bend aria-label="Scroll the wall">
+          <span class="pbend-detent" aria-hidden="true"></span>
+          <span class="pwheel" data-wheel aria-hidden="true"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-foot">
+      ${fader('Zoom', S.dial.zoom.toFixed(2)+'&times;', zp, 'zoom', 'zoom', 'zoomseek',
+              '24&quot; text + layout &middot; 0.80–2.00')}
+      ${fader('Volume', S.dial.volume+'%', S.dial.volume, 'vol', 'vol', 'volseek',
+              'spoken alarms and chimes')}
+      <button class="hkey wide" style="--key:#7aa2ff" data-act="kctl" data-v="Wall reloaded">
+        <span class="led"></span>
+        ${svg('<path d="M21 12a9 9 0 11-3-6.7"/><path d="M21 3v6h-6"/>')}
+        <span class="lg">Reload</span></button>
+      <button class="hkey wide" style="--key:${S.wallOn?'#ff6b78':'#3ff0b0'}" data-act="wallpower">
+        <span class="led"></span>
+        ${svg('<path d="M12 3v9"/><path d="M6.3 6.3a8 8 0 1011.4 0"/>')}
+        <span class="lg">24&quot; ${S.wallOn?'off':'on'}</span></button>
+    </div>
+  </div>`;
+}
+
+
+/* ── sheets ─────────────────────────────────────────────────── */
+function sheet() {
+  if (!S.sheet) return '';
+  if (S.sheet==='task') return `<div class="scrim" data-act="close"><div class="sheet panel wide" data-stop>
+    <h3>New task</h3>
+    <div class="cap">Every field here exists on the real TaskForm. Owner and
+      assignees are separate on purpose: one person is accountable, any assignee
+      can close it.</div>
+
+    <div class="field"><label>What needs doing</label>
+      <input id="ntT" placeholder="e.g. Replace the smoke alarm battery"></div>
+
+    <div class="frow">
+      <div class="field"><label>Priority</label><select id="ntP">
+        <option value="1">1 — now</option><option value="2" selected>2 — soon</option>
+        <option value="3">3 — whenever</option></select></div>
+      <div class="field"><label>Due date</label>
+        <input id="ntD" type="date" value="2026-08-10"></div>
+      <div class="field"><label>Time</label>
+        <input id="ntTm" type="time" value="09:00"></div>
+    </div>
+
+    <div class="field"><label>Quick dates</label>
+      <div class="chips-row">${['Today','Tomorrow','This weekend','Next week','No date']
+        .map(q=>`<button class="chip" data-act="quickdate" data-v="${q}">${q}</button>`).join('')}</div></div>
+
+    <div class="frow">
+      <div class="field"><label>Repeat</label><select id="ntR" data-act="repeatpick">
+        ${['Does not repeat','Every day','Every week','Every month','Every 6 months','Every year','Custom…']
+          .map(o=>`<option ${S.repeatChoice===o?'selected':''}>${o}</option>`).join('')}</select></div>
+      <div class="field"><label>Assigned to</label><select id="ntW">
+        <option value="N">nitin</option><option value="P">priya</option>
+        <option value="B">both — either can close it</option></select></div>
+    </div>
+
+    <div class="frow">
+      <div class="field"><label>Owner</label><select id="ntO">
+        <option value="N">nitin</option><option value="P">priya</option></select></div>
+      <div class="field"><label>Needs sign-off from</label><select id="ntA">
+        <option value="">Nobody</option><option value="N">nitin</option><option value="P">priya</option></select></div>
+    </div>
+
+    <div class="frow">
+      <div class="field"><label>Remind</label><select id="ntRem">
+        <option>At the due time</option><option>1 hour before</option>
+        <option>The morning of</option><option>The day before</option><option>Do not remind</option></select></div>
+      <div class="field"><label>Expected effort</label>
+        <input id="ntM" type="number" min="0" step="5" value="15" placeholder="minutes"></div>
+      <div class="field"><label>Alarm</label><select id="ntAl">
+        <option>None</option><option>Chime</option><option>Spoken</option></select></div>
+    </div>
+
+    ${S.repeatChoice==='Custom…' ? `<div class="frow">
+      <div class="field"><label>Every</label>
+        <input id="ntCn" type="number" min="1" value="${S.customEvery}"></div>
+      <div class="field"><label>&nbsp;</label><select id="ntCu">
+        ${['days','weeks','months','years'].map(u=>
+          `<option ${S.customUnit===u?'selected':''}>${u}</option>`).join('')}</select></div>
+    </div>` : ''}
+
+    <div class="field"><label>Labels</label>
+      <div class="lblwrap">
+        <button type="button" class="lbltrigger" data-act="labelMenu">
+          <span id="lblText">${S.newLabels.length ? S.newLabels.join(', ') : 'Add labels…'}</span>
+          <span class="caret">&#9662;</span>
+        </button>
+        <div class="lblmenu" id="lblMenu" hidden></div>
+      </div>
+    </div>
+
+    <label class="switch"><input type="checkbox" id="ntEsc" checked>
+      <span>Escalate if it slips — nudge, then the owner&apos;s chain, then the house</span></label>
+
+    <label class="switch"><input type="checkbox" id="ntFirm">
+      <span>Hard deadline — it cannot simply roll forward</span></label>
+
+    <div class="sheet-foot"><button class="btn" data-act="close">Cancel</button>
+      <button class="btn pri" data-act="create">Add the task</button></div>
+  </div></div>`;
+
+  const have=BOARD.map(b=>b.k), avail=Object.keys(LIB).filter(k=>!have.includes(k));
+  return `<div class="scrim" data-act="close"><div class="sheet panel" data-stop>
+    <h3>Add a widget</h3>
+    ${avail.length?`<div style="display:flex;flex-direction:column;gap:8px">
+      ${avail.map(k=>`<button class="btn" style="justify-content:space-between" data-act="add" data-v="${k}">
+        ${LIB[k].name}<span style="font-family:var(--mono);font-size:10px;opacity:.65">${LIB[k].sizes.join(' · ')}</span>
+      </button>`).join('')}</div>`
+      :`<div class="empty"><b>All placed</b><span>Every widget is already on the grid.</span></div>`}
+    <div class="sheet-foot"><button class="btn" data-act="close">Done</button></div></div></div>`;
+}
+
+/* ── frames ─────────────────────────────────────────────────── */
+function ui(surface, inner, extra='', bare=false) {
+  const app = (surface!=='kiosk' && S.page==='tasks') ? ' data-app="todo"' : '';
+  return `<div class="ui" data-surface="${surface}" data-daypart="${S.daypart}"
+    data-weather="${S.weather}"${app}>
+    ${scene()}${inner}${extra}
+    ${(!bare && S.toast)?`<div class="toast">${esc(S.toast)}</div>`:''}</div>`;
+}
+
+function frame(sfc, inner, cap='') {
+  const m=SURF[sfc];
+  return `<div class="frame"><div class="frame-cap"><b>${m.label}</b><em>${m.w} &times; ${m.h}</em>
+    ${m.tags.map(t=>`<em>${t}</em>`).join('')}${cap}</div>
+    <div class="screen" data-w="${m.w}" data-h="${m.h}">
+      <div class="render" style="width:${m.w}px;height:${m.h}px">${inner}</div></div></div>`;
+}
+
+function render() {
+  const st=document.getElementById('stage');
+  if (S.surface==='remote') {
+    // Render the wall at whatever the kiosk has pointed it to, then put S.page
+    // back — otherwise the paired view permanently rewrites the page you were
+    // on, and switching back to Desktop lands somewhere you never chose.
+    const keep = S.page;
+    S.page = S.wallPage;
+    const wallFrame = frame('wall', ui('wall', renderWork()), '<em>follows the kiosk</em>');
+    S.page = keep;
+    st.innerHTML=`<div class="pair">
+      ${frame('kiosk', ui('kiosk',renderKiosk(), ''), '<em>turn the encoder &rarr;</em>')}
+      ${wallFrame}
+    </div>`;
+  } else if (S.surface==='kiosk') {
+    st.innerHTML=frame('kiosk', ui('kiosk',renderKiosk(), ''));
+  } else if (S.surface==='phone') {
+    st.innerHTML=frame('phone', ui('phone',renderPhone(), sheet()));
+  } else {
+    st.innerHTML=frame(S.surface, ui(S.surface, renderWork(), sheet()+palette()));
+  }
+
+  const seg=(id,v)=>document.querySelectorAll(`#${id} button`).forEach(b=>
+    b.setAttribute('aria-pressed', String(b.dataset.v===v)));
+  seg('segSurface',S.surface); seg('segDaypart',S.daypart);
+  seg('segWeather',S.weather);
+  fit(); hud();
+}
+
+function fit() {
+  document.querySelectorAll('.screen').forEach(sc=>{
+    const w=+sc.dataset.w, h=+sc.dataset.h;
+    const k=Math.min(1, (sc.parentElement.clientWidth||w)/w);
+    sc.style.width=(w*k)+'px'; sc.style.height=(h*k)+'px';
+    sc.querySelector('.render').style.transform=`scale(${k})`;
+  });
+}
+window.addEventListener('resize', fit);
+
+/* The phone's rail is the same picker on the other axis: pad so the first and
+   last destinations can reach the middle, then glide the live one into it.
+   Padding is set here rather than in CSS because percentage padding resolves
+   against width even when you want height — and here we need it symmetric and
+   measured either way. */
+function centrePhoneRail() {
+  const track = document.querySelector('.ph-track');
+  if (!track || !track.clientWidth) return;
+  const items = track.querySelectorAll('.ph-tab');
+  if (!items.length) return;
+  const first = items[0], last = items[items.length - 1];
+  const padL = Math.max(0, (track.clientWidth - first.offsetWidth) / 2);
+  const padR = Math.max(0, (track.clientWidth - last.offsetWidth) / 2);
+  if (Math.abs(parseFloat(track.style.paddingLeft || 0) - padL) > 0.5) {
+    track.style.paddingLeft = padL + 'px';
+    track.style.paddingRight = padR + 'px';
+  }
+  const on = track.querySelector('.ph-tab.on');
+  if (!on) return;
+  _auto = true;
+  clearTimeout(_autoT);
+  _autoT = setTimeout(() => { _auto = false; }, _calm ? 60 : 520);
+  track.scrollTo({ left: on.offsetLeft - (track.clientWidth / 2) + (on.offsetWidth / 2),
+                   behavior: _calm ? 'auto' : 'smooth' });
+}
+
+/* ── the app picker selects by scrolling ──────────────────────────────
+   Whatever settles in the band becomes live. Debounced, so flicking past
+   three apps does not send the wall to each of them in turn. `scroll` does
+   not bubble, so this listens in the capture phase. */
+document.addEventListener('scroll', e => {
+  const t = e.target;
+  if (!t || !t.closest || _auto) return;
+  const vertical = t.closest('.vsel-list');
+  const horizontal = t.closest('.ph-track');
+  const list = vertical || horizontal;
+  if (!list) return;
+
+  clearTimeout(_snapT);
+  _snapT = setTimeout(() => {
+    const band = list.parentElement.querySelector(vertical ? '.vsel-band' : '.ph-band');
+    if (!band) return;
+    const r = band.getBoundingClientRect();
+    const centre = vertical ? r.top + r.height / 2 : r.left + r.width / 2;
+    let best = null, bestD = Infinity;
+    list.querySelectorAll(vertical ? '.vsel-i' : '.ph-tab').forEach(el => {
+      const b = el.getBoundingClientRect();
+      const mid = vertical ? b.top + b.height / 2 : b.left + b.width / 2;
+      const d = Math.abs(mid - centre);
+      if (d < bestD) { bestD = d; best = el; }
+    });
+    const slug = best && best.dataset.v;
+    if (!slug) return;
+    if (vertical && slug !== S.wallPage) { S.wallPage = slug; toast(`Wall showing ${slug}`); }
+    if (horizontal && slug !== S.page) { S.page = slug; render(); }
+  }, 200);
+}, true);
+
+/* ── the bend wheel also takes a flick or a scroll gesture ── */
+document.addEventListener('wheel', e => {
+  const track = e.target.closest('[data-bend]');
+  if (!track) return;
+  e.preventDefault();
+  BEND.el = track.querySelector('[data-wheel]');
+  BEND.box = track.getBoundingClientRect();
+  track.classList.add('held');
+  bendTo(BEND.rate * BEND.max + e.deltaY * 0.55);
+  clearTimeout(BEND.settle);
+  BEND.settle = setTimeout(bendRelease, 190);
+}, { passive: false });
+
+/* ── the bend wheel ───────────────────────────────────────────────────
+   Deliberately outside render(): the wheel is manipulated directly rather
+   than re-rendered, so a state change mid-drag cannot swap the node out from
+   under the pointer — the failure the label scramble hit earlier. Deflection
+   is a *rate*: the further you push, the faster the wall scrolls, and letting
+   go springs it back to centre. */
+const BEND = { max: 74, el: null, box: null, rate: 0, timer: null };
+
+function bendTo(px) {
+  const clamped = Math.max(-BEND.max, Math.min(BEND.max, px));
+  if (BEND.el) BEND.el.style.transform = `translateY(${clamped}px)`;
+  BEND.rate = clamped / BEND.max;                 // -1 .. 1
+  if (!BEND.timer) {
+    BEND.timer = setInterval(() => {
+      if (!BEND.rate) return;
+      S.wallScroll = Math.max(0, Math.min(100, S.wallScroll + BEND.rate * 2.5));
+    }, 40);
+  }
+}
+
+function bendRelease() {
+  BEND.rate = 0;
+  if (BEND.el) BEND.el.style.transform = 'translateY(0px)';
+  const track = BEND.el && BEND.el.closest('.pbend');
+  if (track) track.classList.remove('held');
+  BEND.el = null; BEND.box = null;
+  clearInterval(BEND.timer); BEND.timer = null;
+  clearTimeout(BEND.settle); BEND.settle = null;
+}
+
+document.addEventListener('pointerdown', e => {
+  const track = e.target.closest('[data-bend]');
+  if (!track) return;
+  e.preventDefault();
+  BEND.el = track.querySelector('[data-wheel]');
+  BEND.box = track.getBoundingClientRect();
+  track.classList.add('held');
+  track.setPointerCapture && track.setPointerCapture(e.pointerId);
+  bendTo(e.clientY - (BEND.box.top + BEND.box.height / 2));
+});
+document.addEventListener('pointermove', e => {
+  if (!BEND.el || !BEND.box) return;
+  bendTo(e.clientY - (BEND.box.top + BEND.box.height / 2));
+});
+['pointerup','pointercancel','pointerleave'].forEach(ev =>
+  document.addEventListener(ev, () => { if (BEND.el) bendRelease(); }));
+
+/* ── the scroller's motion ─────────────────────────────────────────────
+   Two things a static list does not do: the column glides the live app to
+   the band rather than jumping, and the label resolves out of noise when it
+   changes — the readout-settling effect that reads as a HUD acquiring a
+   target. Both are skipped under prefers-reduced-motion. */
+let _lastWall = null;
+let _auto = false, _autoT = null, _snapT = null;
+const GLYPHS = '▚▞▛▜▙▟◤◥◣◢╱╲┃━┏┓┗┛01';
+const _calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function hud() {
+  centrePhoneRail();
+  const on = document.querySelector('.vsel-i.on');
+  if (!on) { _lastWall = null; return; }
+
+  // Centre the column on the band. The padding cannot be a percentage: padding
+  // percentages resolve against the containing block's *width*, even vertically,
+  // so `calc(50% - 28px)` was half the column's width and every item sat high.
+  const list = on.closest('.vsel-list');
+  if (list && list.clientHeight) {
+    const pad = Math.max(0, (list.clientHeight - on.offsetHeight) / 2);
+    if (Math.abs(parseFloat(list.style.paddingTop || 0) - pad) > 0.5) {
+      list.style.paddingTop = list.style.paddingBottom = pad + 'px';
+    }
+    const target = on.offsetTop - (list.clientHeight / 2) + (on.offsetHeight / 2);
+    // Flag the programmatic scroll so the picker's own scroll handler does not
+    // treat it as the user choosing something — that loop would fight itself.
+    _auto = true;
+    clearTimeout(_autoT);
+    _autoT = setTimeout(() => { _auto = false; }, _calm ? 60 : 520);
+    list.scrollTo({ top: target, behavior: _calm ? 'auto' : 'smooth' });
+  }
+
+  if (_lastWall === S.wallPage) return;
+  const first = _lastWall === null;
+  _lastWall = S.wallPage;
+  if (_calm || first) return;
+
+  // Resolve the label out of noise. The node is re-queried every tick rather
+  // than captured: selecting an app also fires a toast, which re-renders and
+  // replaces the element — a held reference would animate a detached node.
+  const real = (WALL_APPS.find(a => a.slug === S.wallPage) || {}).title || '';
+  if (!real) return;
+  let frame = 0;
+  clearInterval(hud._t);
+  hud._t = setInterval(() => {
+    const el = document.querySelector('.vsel-i.on .vsel-t');
+    if (!el) { clearInterval(hud._t); return; }
+    frame++;
+    const settled = Math.floor(frame / 1.6);
+    el.textContent = real.split('').map((ch, i) =>
+      i < settled || ch === ' ' ? ch : GLYPHS[(Math.random() * GLYPHS.length) | 0]
+    ).join('');
+    if (settled >= real.length) { clearInterval(hud._t); el.textContent = real; }
+  }, 28);
+}
+
+/* ── one delegated listener ─────────────────────────────────── */
+/* Typing in a search box updates state without a re-render stealing focus:
+   we patch the value in place and only re-render the results region. */
+/* A navigator you can reach without the mouse. The rail lists what is
+   installed; this reaches anything, which is what the Apps page was failing
+   to be. */
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault(); S.palette = !S.palette; S.query = ''; render();
+  } else if (e.key === 'Escape' && (S.palette || S.sheet)) {
+    S.palette = false; S.sheet = null; render();
+  }
+});
+
+/* Selects fire `change`, not `click`, so these cannot ride the delegated click
+   handler. Each mutates state and redraws only what it has to — a full render
+   would rebuild the dialog and wipe everything already typed. */
+document.addEventListener('change', e => {
+  const el = e.target;
+
+  if (el.matches('[data-act="repeatpick"]')) {
+    S.repeatChoice = el.value;
+    render();                      // the custom row appears or disappears
+    const again = document.getElementById('ntR');
+    if (again) again.focus();
+    return;
+  }
+
+});
+
+/* Redrawn in place, never through render(): rebuilding the dialog would wipe
+   everything already typed. One function keeps the trigger text and the menu
+   rows agreeing — the earlier version updated the chips but not the option
+   list, so a removed label could never be added back. */
+function redrawLabels() {
+  const text = document.getElementById('lblText');
+  const menu = document.getElementById('lblMenu');
+  if (!text || !menu) return;
+
+  text.textContent = S.newLabels.length ? S.newLabels.join(', ') : 'Add labels…';
+  menu.innerHTML =
+    LABELS.map(l => {
+      const on = S.newLabels.includes(l);
+      return `<button type="button" class="lblrow" data-act="toggleLabel" data-v="${l}"
+                aria-pressed="${on}"><span class="box">${on ? '✓' : ''}</span>${l}</button>`;
+    }).join('')
+    + `<button type="button" class="lblrow new" data-act="newLabelInline">＋ New label…</button>`;
+}
+
+document.addEventListener('input', e => {
+  const f=e.target.closest('[data-act="query"], [data-act="kfind"]'); if(!f) return;
+  if (f.dataset.act==='kfind') S.kq=f.value; else S.query=f.value;
+  const pos=f.selectionStart; render();
+  const again=document.querySelector(`[data-act="${f.dataset.act}"]`);
+  if (again) { again.focus(); again.setSelectionRange(pos,pos); }
+});
+
+document.addEventListener('click', e => {
+  const sg=e.target.closest('.bar .seg button');
+  if (sg) {
+    const id=sg.parentElement.id, v=sg.dataset.v;
+    if(id==='segSurface'){S.surface=v;S.drawer=false;S.sheet=null;S.editing=false;}
+    if(id==='segDaypart')S.daypart=v; if(id==='segWeather')S.weather=v;
+    return render();
+  }
+  // Any click outside the member switcher closes it.
+  if (S.memberMenu && !e.target.closest('.mewrap')) { S.memberMenu = false; render(); }
+
+  // Any click outside the labels control closes its menu.
+  const menu = document.getElementById('lblMenu');
+  if (menu && !menu.hasAttribute('hidden') && !e.target.closest('.lblwrap')) {
+    menu.setAttribute('hidden', '');
+  }
+
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const stop = e.target.closest('[data-stop]');
+  if (stop && !stop.contains(el)) return;   // the only action found is the scrim behind it
+  const {act,v,id,i}=el.dataset;
+
+  switch(act){
+    case 'page': S.page=v; S.drawer=false; S.editing=false; S.memberMenu=false; break;
+    case 'todopage': S.todoPage=v; S.query=''; break;
+    case 'syspage': S.sysPage=v; break;
+    case 'palette': S.palette=true; S.query=''; break;
+    case 'wallpower':
+      S.wallOn=!S.wallOn;
+      toast(S.wallOn ? 'The 24" is on' : 'The 24" is off — this panel stays on');
+      break;
+
+    case 'toast': toast(v); break;
+    case 'saved': S.saved = S.saved===v ? '' : v; toast(`Filter: ${v}`); break;
+    case 'goto':
+      S.palette=false; S.query='';
+      if (el.dataset.a==='tasks') { S.page='tasks'; S.todoPage=v; }
+      else if (el.dataset.a==='sys') { S.page='system'; S.sysPage=v; }
+      else { S.page=v; }
+      break;
+    case 'toggle': { const t=TASKS.find(x=>x.id===+id); t.done=!t.done;
+      if(t.done){t.late=false; toast(`Done — ${t.title}`);} break; }
+    case 'filter': S.filter=v; break;
+    case 'edit': S.editing=!S.editing; break;
+    case 'drawer': S.drawer=v==='1'; break;
+    case 'sheet': S.sheet=v; break;
+    case 'close': S.sheet=null; S.palette=false; break;
+    case 'size': BOARD[+i].size=v; break;
+
+    case 'shuffle': {
+      // Randomise order AND size. The grid must stay clean regardless — that is
+      // the whole claim the size system is making.
+      BOARD = BOARD.map(b=>({ k:b.k, size: LIB[b.k].sizes[Math.floor(Math.random()*LIB[b.k].sizes.length)] }))
+                   .sort(()=>Math.random()-0.5);
+      toast('Shuffled — still tiles clean');
+      break;
+    }
+    case 'add': BOARD.push({k:v, size:LIB[v].sizes[0]}); toast(`${LIB[v].name} added`); break;
+    case 'create': {
+      const g=id=>document.getElementById(id);
+      const repeatText = () => {
+        const r = g('ntR').value;
+        if (r !== 'Custom…') return r;
+        const n = Math.max(1, +g('ntCn').value || 1);
+        const unit = g('ntCu').value;
+        return `Every ${n === 1 ? unit.replace(/s$/, '') : n + ' ' + unit}`;
+      };
+      const title=(g('ntT').value||'').trim()||'Untitled task';
+      const iso=g('ntD').value;
+      const due=iso ? new Date(iso+'T00:00:00').toLocaleDateString('en-GB',
+                    {weekday:'short', day:'numeric', month:'short'}) : 'No date';
+      const rep=repeatText();
+      TASKS.unshift({ id:Date.now(), title, pri:+g('ntP').value, due, late:false,
+        who:g('ntW').value==='P'?'P':'N', done:false, mine:true,
+        labels:[...S.newLabels], repeat: rep==='Does not repeat'?null:rep,
+        esc:0, approver:g('ntA').value||null });
+      S.newLabels=[]; S.repeatChoice='Does not repeat';
+      S.sheet=null; toast('Task added'); break;
+    }
+    case 'newLabel': {
+      const name = (window.prompt('New label') || '').trim();
+      if (name && !LABELS.includes(name)) { LABELS.push(name); toast(`Label “${name}” added`); }
+      break;
+    }
+    case 'memberMenu': S.memberMenu = !S.memberMenu; break;
+
+    case 'beMember':
+      S.member = v; S.scope = 'self'; S.memberMenu = false;
+      toast(`You are ${me().name}`);
+      break;
+
+    case 'scope':
+      S.scope = v; S.memberMenu = false;
+      toast(v === 'all' ? 'Showing everyone'
+                        : 'Showing what the 24-inch is displaying');
+      break;
+
+    case 'labelMenu': {
+      const menu = document.getElementById('lblMenu');
+      if (!menu) return;
+      const opening = menu.hasAttribute('hidden');
+      if (opening) { redrawLabels(); menu.removeAttribute('hidden'); }
+      else menu.setAttribute('hidden', '');
+      return;
+    }
+    case 'toggleLabel': {
+      S.newLabels = S.newLabels.includes(v)
+        ? S.newLabels.filter(x => x !== v) : [...S.newLabels, v];
+      redrawLabels();          // menu stays open — tick several in one go
+      return;
+    }
+    case 'newLabelInline': {
+      const name = (window.prompt('New label') || '').trim();
+      if (name) {
+        if (!LABELS.includes(name)) LABELS.push(name);
+        if (!S.newLabels.includes(name)) S.newLabels.push(name);
+        redrawLabels();
+      }
+      return;
+    }
+    case 'ntlabel': {
+      // Toggle in place. Re-rendering would rebuild the dialog and wipe every
+      // field the person had already filled in — which is how the typed title
+      // came back as "Untitled task".
+      S.newLabels = S.newLabels.includes(v)
+        ? S.newLabels.filter(x=>x!==v) : [...S.newLabels, v];
+      el.setAttribute('aria-pressed', String(S.newLabels.includes(v)));
+      return;
+    }
+    case 'quickdate': {
+      const d=new Date('2026-08-09T00:00:00');
+      const add=n=>{ const x=new Date(d); x.setDate(x.getDate()+n); return x.toISOString().slice(0,10); };
+      const map={ 'Today':add(0), 'Tomorrow':add(1), 'This weekend':add(6),
+                  'Next week':add(7), 'No date':'' };
+      const el2=document.getElementById('ntD'); if (el2) el2.value = map[v];
+      return;   // no re-render: it would wipe what is already typed
+    }
+    case 'wall': S.wallPage=v; toast(`Wall showing ${v}`); break;
+    case 'kctl': toast(`${v} — sent to the wall`); break;
+
+    /* One implementation, whichever surface asked. In the product this is a
+       call into the app's own api module — the same one Slack's Done button
+       already uses — never a per-surface reimplementation. */
+    case 'appaction': {
+      const next = live().filter(t=>!t.done)
+        .sort((x,y)=>(y.late?1:0)-(x.late?1:0) || x.pri-y.pri)[0];
+      if (v==='complete-next' && next) { next.done=true; next.late=false;
+        toast(`Done — ${next.title}`); }
+      else if (v==='snooze-next' && next) { next.due='In an hour'; next.late=false;
+        toast(`Snoozed — ${next.title}`); }
+      else if (v==='new-task') { S.sheet='task'; }
+      else if (v==='rearrange') { S.editing=!S.editing; toast(S.editing?'Rearranging':'Layout saved'); }
+      else if (v==='add-widget') { S.sheet='widget'; }
+      else toast('Nothing due');
+      break;
+    }
+
+    case 'nav': S.navPath=v; toast(`Wall -> ${v}`); break;
+
+    case 'zoom': {
+      const z=Math.round((S.dial.zoom + (+el.dataset.d)*ZOOM.step)*100)/100;
+      S.dial.zoom=Math.max(ZOOM.min, Math.min(ZOOM.max, z));
+      break;
+    }
+    case 'zoomseek': {
+      const r=el.getBoundingClientRect();
+      if (r.width) {
+        const f=Math.max(0, Math.min(1, (e.clientX-r.left)/r.width));
+        const raw=ZOOM.min + f*(ZOOM.max-ZOOM.min);
+        S.dial.zoom=Math.round(raw/ZOOM.step)*ZOOM.step;
+        S.dial.zoom=Math.round(S.dial.zoom*100)/100;
+      }
+      break;
+    }
+    case 'vol': S.dial.volume=Math.max(0, Math.min(100, S.dial.volume + (+el.dataset.d)*5)); break;
+    case 'volseek': {
+      const r=el.getBoundingClientRect();
+      if (r.width) S.dial.volume=Math.round(Math.max(0, Math.min(100,
+        ((e.clientX-r.left)/r.width)*100))/5)*5;
+      break;
+    }
+  }
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
