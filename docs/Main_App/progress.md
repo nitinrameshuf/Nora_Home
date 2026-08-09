@@ -3809,3 +3809,15 @@ each into per-script `.woff2` files (fontsource's normal behaviour — still all
 self-hosted, still no network call), output pulled back and deployed. `--s0`
 and the per-surface overrides read correctly from `getComputedStyle` in a
 browser; both fonts register via `document.fonts` with no console errors.
+
+### Deployed and observed on the Pi — Story 44 is Complete
+
+`git pull` + `./nora upgrade`, then checked rather than assumed: every `.woff2`
+`url()` inside the built `tokens.css` — rewritten by
+`CompressedManifestStaticFilesStorage` to its own double-hashed name — resolves
+200 over HTTPS. Both physical screens reloaded and screenshotted: pixel-identical
+to Story 44's own before shot, which is correct — nothing consumes the ramp or
+the font yet, and the deliverable was that the layer compiles and ships without
+touching what a person sees. `./nora test` on the Pi: 972 passed, 23 skipped
+(the two git-dependent tests correctly skip inside the container, same as
+Story 43).
