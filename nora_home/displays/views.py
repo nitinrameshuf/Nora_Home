@@ -64,6 +64,7 @@ def kiosk(request):
             control["hue"] = KEY_HUES[key_index % len(KEY_HUES)]
         app["index"] = index
 
+    from nora_home.notifications import volume as volume_settings
     from nora_home.ui import zoom as zoom_settings
 
     return render(request, "displays/kiosk.html", {
@@ -75,6 +76,7 @@ def kiosk(request):
         "wall_zoom": zoom_settings.stored().get("wall", 1.0),
         "zoom_min": zoom_settings.MIN_ZOOM,
         "zoom_max": zoom_settings.MAX_ZOOM["wall"],
+        "alarm_volume": volume_settings.stored(),
         # The desk opens on Home, and the readout says so. Which app the wall
         # is *actually* on is not stored anywhere today — the wall holds that
         # state in its own iframe — so this is the desk's starting position,

@@ -38,11 +38,11 @@ logger = logging.getLogger(__name__)
 # commit, which is what the rule above demands), while `zoom` is handled
 # server-side — it writes a house setting and turns into a `refresh`, so the
 # wall needs no handler for it at all.
-KIOSK_ACTIONS = {"navigate", "refresh", "say", "scroll", "zoom"}
+KIOSK_ACTIONS = {"navigate", "refresh", "say", "scroll", "zoom", "volume"}
 
 # The subset that is *not* relayed verbatim, and so is exempt from the
 # "wall-live.js must implement it" rule the test enforces.
-SERVER_SIDE_ACTIONS = {"zoom"}
+SERVER_SIDE_ACTIONS = {"zoom", "volume"}
 
 
 class DisplayConsumer(AsyncJsonWebsocketConsumer):
@@ -154,12 +154,33 @@ class KioskConsumer(AsyncJsonWebsocketConsumer):
                                   "display": target, "zoom": zoom})
             return
 
+        # Volume is a house-wide setting, not a property of one screen, so it
+        # is applied here and the screens are told nothing at all — the next
+        # sound the house makes is simply quieter (there is no mixer on the
+        # host to call; see nora_home/notifications/volume.py).
+        if action == "volume":
+            level = await self._apply_volume(content.get("delta"))
+            await self.send_json({"type": "ack", "action": action,
+                                  "display": target, "volume": level})
+            return
+
         payload = {"type": action, **{k: v for k, v in content.items()
                                       if k not in {"action", "display"}}}
 
         await self.channel_layer.group_send(
             group_for(target), {"type": "display.message", "payload": payload})
         await self.send_json({"type": "ack", "action": action, "display": target})
+
+    @database_sync_to_async
+    def _apply_volume(self, delta):
+        """Nudge the house's alarm volume and persist it. Returns what stuck."""
+        from nora_home.notifications import volume as volume_settings
+
+        try:
+            step = float(delta)
+        except (TypeError, ValueError):
+            step = 0.0
+        return volume_settings.save(volume_settings.stored() + step)
 
     @database_sync_to_async
     def _apply_zoom(self, target, delta):

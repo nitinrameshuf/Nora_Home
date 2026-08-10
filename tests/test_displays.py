@@ -88,7 +88,7 @@ def test_the_alert_banner_is_still_handled():
 def test_kiosk_actions_stay_a_short_allow_list():
     """Actions accumulate; handlers do not. Keeping the list tight is what stops
     the two drifting apart again."""
-    assert KIOSK_ACTIONS == {"navigate", "refresh", "say", "scroll", "zoom"}
+    assert KIOSK_ACTIONS == {"navigate", "refresh", "say", "scroll", "zoom", "volume"}
 
 
 # ── the bus ──────────────────────────────────────────────────────────────────
@@ -426,6 +426,7 @@ def test_zoom_and_scroll_are_live_on_the_desk(client, adult, kiosk_display):
     body = client.get("/home/displays/kiosk/").content.decode()
 
     assert 'data-kiosk-action="zoom"' in body, "the zoom fader is not wired"
+    assert 'data-kiosk-action="volume"' in body, "the volume fader is not wired"
     assert "data-desk-bend" in body, "the scroll wheel is not wired"
     assert 'class="pbend is-dead"' not in body
 
@@ -601,3 +602,34 @@ def test_the_wall_scrolls_its_canvas_not_its_document():
     assert "contentWindow.scrollBy" not in code, (
         "scrollBy on the iframe window scrolls the document, which the wall "
         "has explicitly disabled")
+
+
+@pytest.mark.django_db
+def test_volume_from_the_panel_writes_the_house_setting():
+    """Volume is house-wide, not a property of one screen, so nothing is sent
+    to a display at all — the next sound the house makes is simply quieter."""
+    from nora_home.notifications import volume as volume_settings
+
+    volume_settings.save(80)
+    consumer = KioskConsumer()
+
+    level = consumer._apply_volume.__wrapped__(consumer, -10)
+
+    assert level == 70
+    assert volume_settings.stored() == 70
+
+
+@pytest.mark.django_db
+def test_the_volume_keys_cannot_drive_it_out_of_range():
+    from nora_home.notifications import volume as volume_settings
+
+    volume_settings.save(100)
+    consumer = KioskConsumer()
+
+    for _ in range(20):
+        level = consumer._apply_volume.__wrapped__(consumer, 10)
+    assert level == 100
+
+    for _ in range(30):
+        level = consumer._apply_volume.__wrapped__(consumer, -10)
+    assert level == 0

@@ -360,3 +360,90 @@ def test_the_test_settings_have_no_real_credentials(settings):
     assert django_settings.NORA_HOME_GROQ_API_KEY == ""
     assert django_settings.ANTHROPIC_API_KEY == ""
     assert django_settings.NORA_HOME_AI_ENABLED is False
+
+
+# ── alarm volume (Story 51) ──────────────────────────────────────────────────
+
+def _tone(peak: int = 20000, frames: int = 400) -> bytes:
+    """A tiny 16-bit mono WAV whose loudest sample is `peak`."""
+    import io
+    import wave
+
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(8000)
+        w.writeframes(b"".join(
+            (peak if i % 2 else -peak).to_bytes(2, "little", signed=True)
+            for i in range(frames)))
+    return buf.getvalue()
+
+
+def _peak(data: bytes) -> int:
+    import io
+    import wave
+
+    with wave.open(io.BytesIO(data), "rb") as r:
+        frames = r.readframes(r.getnframes())
+    return max(abs(int.from_bytes(frames[i:i + 2], "little", signed=True))
+               for i in range(0, len(frames) - 1, 2))
+
+
+def test_volume_scales_the_samples_because_the_pi_has_no_mixer():
+    """Story 51 planned a host mixer call. The Pi's HDMI audio devices expose
+    no ALSA mixer controls at all, so the level is applied to the samples
+    before the WAV is written for the host to play."""
+    from nora_home.notifications import volume
+
+    quiet = volume.apply(_tone(), "audio/wav", level=50)
+
+    assert _peak(quiet) == pytest.approx(10000, abs=2)
+
+
+def test_full_volume_returns_the_audio_untouched():
+    from nora_home.notifications import volume
+
+    original = _tone()
+
+    assert volume.apply(original, "audio/wav", level=100) is original
+
+
+def test_a_format_we_cannot_scale_is_played_rather_than_dropped():
+    """A chime someone drops in as an mp3 should still play at full volume
+    rather than not at all — returning unplayable bytes would be worse than
+    being loud."""
+    from nora_home.notifications import volume
+
+    blob = b"not really audio"
+
+    assert volume.apply(blob, "audio/mpeg", level=10) is blob
+
+
+def test_scaling_clamps_rather_than_wrapping():
+    """An overflowing sample wraps +32767 to -32768, which is not "slightly
+    too loud", it is a crack."""
+    from nora_home.notifications import volume
+
+    loud = volume.apply(_tone(peak=32000), "audio/wav", level=100 * 4)
+
+    assert _peak(loud) <= 32767
+
+
+def test_a_corrupt_wav_is_played_unchanged_rather_than_raising():
+    """This runs on the delivery path — a bad file must not take the whole
+    notification down."""
+    from nora_home.notifications import volume
+
+    junk = b"RIFF____WAVEfmt " + b"\x00" * 40
+
+    assert volume.apply(junk, "audio/wav", level=25) == junk
+
+
+@pytest.mark.django_db
+def test_the_stored_volume_is_clamped_to_a_percentage():
+    from nora_home.notifications import volume
+
+    assert volume.save(500) == 100
+    assert volume.save(-20) == 0
+    assert volume.save("loud") == volume.DEFAULT_VOLUME

@@ -59,6 +59,8 @@
     Kiosk.zoomMax = parseFloat(desk && desk.getAttribute("data-zoom-max")) || 2.0;
     var shown = parseFloat(desk && desk.getAttribute("data-zoom"));
     if (!isNaN(shown)) Kiosk.showZoom(shown);
+    var vol = parseFloat(desk && desk.getAttribute("data-volume"));
+    if (!isNaN(vol)) Kiosk.showVolume(vol);
     Kiosk.wireBendWheel();
 
     // No accidental pinch-zoom or text selection on a wall-mounted panel.
@@ -127,6 +129,18 @@
     // The cap is 26px wide and the groove is inset 12px each side, so the
     // travel is (100% - 24px) — matching .slot's own geometry in
     // components.css rather than assuming the track is the full width.
+    if (fill) fill.style.width = "calc((100% - 24px) * " + pct.toFixed(4) + ")";
+    if (cap) cap.style.left = "calc(12px + (100% - 24px) * " + pct.toFixed(4) + ")";
+  };
+
+  /* Same shape as showZoom, against 0-100 rather than the zoom bounds. */
+  Kiosk.showVolume = function (level) {
+    var readout = document.querySelector("[data-desk-volume-value]");
+    var fill = document.querySelector("[data-desk-volume-fill]");
+    var cap = document.querySelector("[data-desk-volume-cap]");
+    if (readout) readout.textContent = level + "%";
+
+    var pct = Math.max(0, Math.min(1, level / 100));
     if (fill) fill.style.width = "calc((100% - 24px) * " + pct.toFixed(4) + ")";
     if (cap) cap.style.left = "calc(12px + (100% - 24px) * " + pct.toFixed(4) + ")";
   };
@@ -240,6 +254,7 @@
       // rather than what it asked for — press "+" at the ceiling and the
       // readout should simply stop moving.
       if (data.type === "ack" && typeof data.zoom === "number") Kiosk.showZoom(data.zoom);
+      if (data.type === "ack" && typeof data.volume === "number") Kiosk.showVolume(data.volume);
       // `./nora screens` broadcasts {type:"refresh"} to every connected screen
       // after a deploy. wall-live.js has always honoured it; this file never
       // did, so the kiosk silently kept its old markup while the wall updated

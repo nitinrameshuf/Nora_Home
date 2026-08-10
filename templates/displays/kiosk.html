@@ -17,12 +17,11 @@ that declares none gets a single "Open" key rather than an empty bank.
 **Zoom and the bend wheel went live in Story 51.** Zoom nudges the wall's stored
 zoom and reloads it; the wheel sends a scroll *rate* the wall integrates.
 
-**Two controls are still deliberately dead.** Volume needs a host mixer call the
-container cannot make, and wall-only power has no working mechanism on this
-hardware at all — Story 51 tested four and disproved or blocked every one (see
-docs/Main_App/progress.md). Both need a host-side helper that only root can
-install, so they carry `disabled` and `.is-dead` and read as unlit rather than
-as controls that quietly do nothing.
+**One control is still deliberately dead.** Wall-only power has no working
+mechanism on this hardware — Story 51 tested six, including as root, and every
+one is disproved (see docs/Main_App/progress.md). It carries `disabled` and
+`.is-dead` and reads as unlit rather than as a control that quietly does
+nothing.
 
 See base.html's note on zoom. The kiosk's own ceiling is lower than the wall's
 (nora_home/ui/zoom.py) because at 1024 physical, a large zoom puts the layout
@@ -44,7 +43,8 @@ viewport under the 860px breakpoint while media queries still report 1024.
   <div class="desk" data-desk
        data-zoom="{{ wall_zoom|floatformat:2 }}"
        data-zoom-min="{{ zoom_min|floatformat:2 }}"
-       data-zoom-max="{{ zoom_max|floatformat:2 }}">
+       data-zoom-max="{{ zoom_max|floatformat:2 }}"
+       data-volume="{{ alarm_volume }}">
     <span class="screw tl"></span><span class="screw tr"></span>
     <span class="screw bl"></span><span class="screw br"></span>
 
@@ -135,13 +135,23 @@ viewport under the 860px breakpoint while media queries still report 1024.
         </div>
       </div>
 
-      <div class="fader is-dead">
-        <div class="fader-h"><span>Volume</span><b>&mdash;</b></div>
-        <div class="fader-hint">spoken alarms and chimes &middot; Story 51</div>
+      {% comment %}
+      Live as of Story 51, and applied in software: the Pi's HDMI audio has no
+      ALSA mixer at all, so the house scales the samples before writing the WAV
+      the host plays (nora_home/notifications/volume.py). It therefore takes
+      effect on the next sound rather than instantly, which is the only moment
+      it means anything.
+      {% endcomment %}
+      <div class="fader">
+        <div class="fader-h"><span>Volume</span><b data-desk-volume-value>{{ alarm_volume }}%</b></div>
+        <div class="fader-hint">spoken alarms and chimes</div>
         <div class="fader-row">
-          <button class="hkey" disabled aria-label="Volume down"><span class="lg">&minus;</span></button>
-          <span class="slot"><span class="slot-fill"></span><span class="fcap"></span></span>
-          <button class="hkey" disabled aria-label="Volume up"><span class="lg">+</span></button>
+          <button class="hkey" type="button" data-kiosk-action="volume" data-delta="-10"
+                  aria-label="Alarm volume down"><span class="lg">&minus;</span></button>
+          <span class="slot"><span class="slot-fill" data-desk-volume-fill></span>
+            <span class="fcap" data-desk-volume-cap></span></span>
+          <button class="hkey" type="button" data-kiosk-action="volume" data-delta="10"
+                  aria-label="Alarm volume up"><span class="lg">+</span></button>
         </div>
       </div>
 

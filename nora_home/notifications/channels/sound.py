@@ -75,10 +75,17 @@ class SoundChannel(BaseChannel):
         cache_dir.mkdir(parents=True, exist_ok=True)
         _prune_stale(cache_dir)
 
-        filename = f"{delivery.pk}{extension}"
-        (cache_dir / filename).write_bytes(data)
+        # Applied here, at the last moment before the bytes hit the bind mount,
+        # because there is no mixer on the other side to apply it — see
+        # nora_home/notifications/volume.py (Story 51).
+        from nora_home.notifications import volume as volume_settings
 
-        return {"target": "wall-speakers", "ref": filename}
+        filename = f"{delivery.pk}{extension}"
+        (cache_dir / filename).write_bytes(
+            volume_settings.apply(data, content_type))
+
+        return {"target": "wall-speakers", "ref": filename,
+                "volume": volume_settings.stored()}
 
     def _resolve(self, context: dict) -> tuple[bytes, str] | None:
         """The audio this notification is asking for, from whichever of the two
