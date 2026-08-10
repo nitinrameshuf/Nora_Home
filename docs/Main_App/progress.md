@@ -4142,5 +4142,25 @@ and navigating there works, the merged System page renders health + install
 `/home/system/?days=30`, `/home/apps/` 404s cleanly, and the kiosk shows
 seven tiles plus System/Settings with no leftover Apps tile.
 
-Story 47 is **Built, unproven** — not yet deployed to or seen on the
-physical hardware.
+**Deployed and observed on the Pi.** Pushed, pulled clean, `./nora upgrade`
+(all services healthy), `./nora test` on the Pi itself (970 passed, the same
+three pre-existing `test_speech.py` failures). `./nora screens` — the soft
+reload broadcast — was not enough to see the change on the kiosk: it kept its
+stale eight-tile render, leftover "Apps" tile included, even though the
+server-side route was already confirmed gone (`manage.py shell` ->
+`reverse("core:app_directory")` raises). The wall's iframe refreshed
+correctly from the same broadcast; only `./nora screens relaunch` (a hard
+Chromium restart) picked up the kiosk's new markup. Screenshotted both
+physical screens after that: the wall shows the new nav, the kiosk shows
+exactly seven tiles plus System/Settings.
+
+**That gap is a real, pre-existing bug, not something this story caused —
+flagged separately rather than fixed here.** `nora`'s `cmd_screens()` claims
+in its own comment that "both screens already handle a refresh message by
+calling window.location.reload() themselves (wall-live.js, kiosk.js)" — true
+of `wall-live.js`, not of `kiosk.js`, whose `onmessage` handler only ever
+handles `data.type === "error"`. The soft reload broadcast has apparently
+never actually worked for the kiosk. Spawned as a follow-up task
+(`task_97af295f`) rather than chased down inside this story.
+
+Story 47 is **Complete**.
