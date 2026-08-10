@@ -4260,3 +4260,26 @@ startup**, so after `./nora assets` and pulling `dist/` back, the dev server
 must be restarted or it serves a hash that no longer exists — the page then
 renders with no components.css at all and looks catastrophically broken for a
 reason that has nothing to do with the change.
+
+**Seen on the physical wall.** Deployed, `./nora screens relaunch`, screenshotted:
+the wall renders the wall's own layout at the new sizes — Due next (L) beside
+Open now (M), the year heatmap full width (XL), House health (S) — and the
+console rail carries TEMP 48° and DISK 19% with their bars, above the member
+chip. `./nora test` on the Pi: **987 passed, 0 failed**, the first fully green
+Pi run in three stories, which is the quiet-hours fix proving itself at 01:40
+— exactly when it used to fail.
+
+**One thing worth recording is a mistake I made reading the screen.** The vitals
+band looked *empty* to me in a 1:1 crop, and I spent a stretch chasing it
+through the deploy pipeline — checking the served HTML (present), the deployed
+CSS (present), the container's own dist (different hashes from the repo's,
+which is real but expected: the Dockerfile has its own `assets` build stage, so
+the image builds its own bundle and the `static` named volume keeps older
+hashes around). Brightening the band 4x showed TEMP and DISK had been rendering
+the whole time. Measuring the pixels put it at **15.93:1** contrast — better
+than the member chip beside it. The lesson is the one this project keeps
+relearning from the other side: *looking* at the screen is what catches the
+bugs a green suite cannot, but an unaided glance at a small mono readout on a
+dark rail is not looking — measuring is. Nothing was wrong; I nearly "fixed" it.
+
+Story 48 is **Complete**.
