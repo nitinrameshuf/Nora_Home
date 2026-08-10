@@ -234,6 +234,34 @@ def navigation(role: str = "member") -> list[dict]:
     ]
 
 
+def palette_destinations(role: str = "member") -> list[dict]:
+    """Every real place the ⌘K palette (Story 47) can send someone — Home's
+    own pages plus each nav=True app's page and its declared sections. Reads
+    the registry rather than inventing a list, same discipline CLAUDE.md §4
+    asks of the mockup itself: a destination that stops resolving here is a
+    bug the palette would otherwise hide behind a search box.
+
+    Sections are prefixed with the app's own title once an app has more than
+    one — Todo's "Calendar" would otherwise be indistinguishable from a
+    different app's page of the same name."""
+    from django.urls import reverse
+
+    dests = [
+        {"title": "Home", "url": reverse("core:dashboard")},
+        {"title": "System", "url": reverse("core:system_status")},
+        {"title": "Settings", "url": reverse("core:settings")},
+    ]
+    for group in navigation(role):
+        for app in group["apps"]:
+            dests.append({"title": app.title, "url": app.url})
+            for section in app.sections:
+                title = section["title"]
+                if len(app.sections) > 1:
+                    title = f"{app.title} — {title}"
+                dests.append({"title": title, "url": section["path"]})
+    return dests
+
+
 def app_for_path(path: str) -> "AppMetadata | None":
     """Which app this URL is *inside*, or `None` on the platform's own pages.
 

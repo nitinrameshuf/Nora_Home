@@ -301,21 +301,22 @@ def test_the_activity_chart_only_stacks_sources_that_appeared(adult):
     assert [s["name"] for s in options["activity"]["series"]] == ["Actions"]
 
 
-# ── the page ─────────────────────────────────────────────────────────────────
+# ── the page — merged into System, Story 47 ───────────────────────────────────
 
 def test_the_page_renders(client, admin_member):
+    """/home/log/ redirects; the actual page is System now."""
     client.force_login(admin_member)
 
-    response = client.get(reverse("core:house_log"))
+    response = client.get(reverse("core:system_status"))
 
     assert response.status_code == 200
-    assert "House log" in response.content.decode()
+    assert "Timeline" in response.content.decode()
 
 
 def test_the_page_survives_a_hand_edited_query_string(client, admin_member):
     client.force_login(admin_member)
 
-    response = client.get(reverse("core:house_log"),
+    response = client.get(reverse("core:system_status"),
                           {"days": "nonsense", "severity": "banana",
                            "source": "no-such-source"})
 
@@ -325,6 +326,15 @@ def test_the_page_survives_a_hand_edited_query_string(client, admin_member):
 
 
 def test_the_page_needs_a_signed_in_member(client):
-    response = client.get(reverse("core:house_log"))
+    response = client.get(reverse("core:system_status"))
 
     assert response.status_code == 302
+
+
+def test_the_old_url_redirects_there_with_its_query_string(client, admin_member):
+    client.force_login(admin_member)
+
+    response = client.get(reverse("core:house_log"), {"days": "30"})
+
+    assert response.status_code == 302
+    assert response["Location"] == reverse("core:system_status") + "?days=30"

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from django.conf import settings
 
-from nora_home.core.registry import navigation
+from nora_home.core.registry import navigation, palette_destinations
 
 
 def house(request):
@@ -23,6 +23,10 @@ def house(request):
         "nora_version": settings.NORA_HOME_VERSION,
         "nora_env": settings.NORA_HOME_ENV,
         "nav": navigation(role),
+        # The ⌘K palette (Story 47) — computed here rather than in JS so it's
+        # grounded in the same registry the nav itself reads, not a second,
+        # hand-maintained list that can drift from what's actually installed.
+        "nh_palette": palette_destinations(role) if authenticated else [],
         "ai_enabled": settings.NORA_HOME_AI_ENABLED,
         "request_id": getattr(request, "request_id", ""),
         "active_members": active_members,

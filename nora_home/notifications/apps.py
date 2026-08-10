@@ -13,9 +13,11 @@ class NotificationsConfig(NoraAppConfig):
     nora_title = "Alerts"
     nora_description = "Slack, in-app, and on-screen alerts, with delivery receipts."
     nora_icon = "bell"
-    # Rendered manually as "Alerts" above the app-registry nav loop in base.html
-    # (with a bell/count badge), not through the loop itself — this category
-    # only matters so it doesn't leave a stray, empty "System" group behind.
+    # Rendered through the same flat "Apps" nav loop as every other nav=True
+    # app (Story 47), just with a bell/count badge appended — base.html
+    # special-cases the slug for that one addition, nothing more. category
+    # still matters for navigation()'s other consumer, the wall dashboard's
+    # one-column-per-category layout.
     nora_category = Category.HOUSE
     nora_order = 20
     nora_url_prefix = "home/alerts/"

@@ -58,11 +58,11 @@ nora_home/ui/zoom.py for the measurements behind the choice.
       <b>{{ house_name }}</b>
     </a>
 
-    {% comment %}
-    Everything below the brand comes from the app registry, so installing an
-    app is the only thing needed to make it appear here. Nothing is hardcoded
-    that an app could provide for itself.
-    {% endcomment %}
+    <button class="btn ghost" type="button" data-nh-palette-open
+            style="width:100%;justify-content:flex-start;margin-bottom:10px">
+      Search <kbd>&#8984;K</kbd>
+    </button>
+
     {% comment %}
     Inside an app, its own sections come first — without this the sidebar showed
     the house's pages and nothing else no matter where you were, so an app's
@@ -82,32 +82,37 @@ nora_home/ui/zoom.py for the measurements behind the choice.
       {% endfor %}
     {% endif %}
 
+    {% comment %}
+    Two groups, seven destinations — Story 47. Home is the base app: its own
+    pages (Dashboard, System, Settings) group under it, nothing else does.
+    "Apps" is deliberately flat, not sub-grouped by Category the way
+    nora_home.core.registry.navigation() groups things elsewhere (the wall's
+    dashboard still lays out one column per category) — the only things
+    called apps here are the four registered apps with nav=True, and grouping
+    four items by category was the earlier draft's mistake this story's own
+    notes warn against repeating.
+    {% endcomment %}
+    <div class="grp-lab">Home</div>
     <a class="nav" href="{% url 'core:dashboard' %}"
        {% if request.path == '/home/' %}aria-current="page"{% endif %}>Home</a>
-    <a class="nav" href="{% url 'notifications:inbox' %}">
-      Alerts <span class="pill" data-nh-bell data-count="0" hidden></span>
-    </a>
+    <a class="nav" href="{% url 'core:system_status' %}"
+       {% if request.path == '/home/system/' %}aria-current="page"{% endif %}>System</a>
+    <a class="nav" href="{% url 'core:settings' %}"
+       {% if request.path == '/home/settings/' %}aria-current="page"{% endif %}>Settings</a>
 
+    <div class="grp-lab">Apps</div>
     {% for group in nav %}
-      <div class="grp-lab">{{ group.label }}</div>
       {% for app in group.apps %}
-        {% if app.slug != 'notifications' %}
+        {% if app.slug == 'notifications' %}
+          <a class="nav" href="{{ app.url }}"
+             {% if request.path == app.url %}aria-current="page"{% endif %}>
+            {{ app.title }} <span class="pill" data-nh-bell data-count="0" hidden></span>
+          </a>
+        {% else %}
           <a class="nav" href="{{ app.url }}"
              {% if request.path == app.url %}aria-current="page"{% endif %}>{{ app.title }}</a>
         {% endif %}
       {% endfor %}
-      {% if group.key == 'house' %}
-        {% comment %}
-          Apps/Status/Settings aren't app-registry entries — they're platform
-          pages the house always has, so they ride along in the same group
-          rather than getting their own header.
-        {% endcomment %}
-        <a class="nav" href="{% url 'core:app_directory' %}">Apps</a>
-        <a class="nav" href="{% url 'core:house_log' %}"
-           {% if request.path == '/home/log/' %}aria-current="page"{% endif %}>Log</a>
-        <a class="nav" href="{% url 'core:system_status' %}">Status</a>
-        <a class="nav" href="{% url 'core:settings' %}">Settings</a>
-      {% endif %}
     {% endfor %}
 
     {% comment %}
@@ -189,10 +194,12 @@ nora_home/ui/zoom.py for the measurements behind the choice.
     </div>
   </main>
 </div>
+{% if request.user.is_authenticated %}{{ nh_palette|json_script:"nh-palette-data" }}{% endif %}
 {% endblock %}
 
 {% vite_asset 'assets/js/nh-app.js' %}
 {% vite_asset 'assets/js/nh-scene.js' %}
+{% vite_asset 'assets/js/nh-palette.js' %}
 {% if nh_bot_enabled %}{% vite_asset 'assets/js/nh-bot.js' %}{% endif %}
 {% block scripts %}{% endblock %}
 </body>

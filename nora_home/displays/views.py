@@ -51,9 +51,12 @@ def kiosk(request):
         "nav": nav,
         "apps_with_controls": apps_with_controls,
         "home_url": reverse("core:dashboard"),
+        # "Apps" is gone (Story 47 deleted the directory it pointed at in
+        # favour of the ⌘K palette, which needs a keyboard the kiosk doesn't
+        # have) and "Status" is now "System" — Status and the House log
+        # merged onto one page at the same URL.
         "house_links": [
-            {"title": "Apps", "url": reverse("core:app_directory")},
-            {"title": "Status", "url": reverse("core:system_status")},
+            {"title": "System", "url": reverse("core:system_status")},
             {"title": "Settings", "url": reverse("core:settings")},
         ],
     })

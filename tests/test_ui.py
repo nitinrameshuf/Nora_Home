@@ -673,8 +673,8 @@ def test_no_page_bridges_a_stylesheet_that_no_longer_exists(client, admin_member
 
     client.force_login(admin_member)
 
-    for name in ("core:dashboard", "core:system_status", "core:house_log",
-                 "core:settings", "core:app_directory", "notifications:inbox",
+    for name in ("core:dashboard", "core:system_status",
+                 "core:settings", "notifications:inbox",
                  "todo:board", "todo:reporting"):
         body = client.get(reverse(name)).content.decode()
         for old in ("nora-home.css", "todo.css", "dashboard.css", "displays.css"):

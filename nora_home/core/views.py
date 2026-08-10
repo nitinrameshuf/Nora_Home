@@ -1,4 +1,5 @@
-"""Dashboard, app directory, the House log, settings, health, and error pages."""
+"""Dashboard, System (health + the House log, merged in Story 47), settings,
+health, and error pages."""
 
 from __future__ import annotations
 
@@ -15,31 +16,9 @@ from django.views.decorators.http import require_http_methods
 
 from nora_home.core.audit import record
 from nora_home.core.health import collect_health
-from nora_home.core.registry import house_apps
 
 WALL_SCHEDULE_KEY = "displays.wall_power_schedule"
 WALL_SCHEDULE_DEFAULT = {"enabled": False, "start_hour": 9, "end_hour": 20}
-
-
-@login_required
-def app_directory(request):
-    """Apps the family has added to the house — not the platform's own
-    built-in pieces (Displays, Alerts, Todo, and so on are each their own
-    Django app internally, for code organization, but nobody "installed"
-    them the way a family app gets added; house_apps() is the registry's own
-    name for that distinction). Empty until someone adds one.
-
-    Also filters to nora_has_page=True: a couple of platform apps exist
-    purely to hold registry metadata (widget ownership, telemetry
-    provenance) with no urls.py and no page of their own — showing those
-    meant rows pointing at a URL that either 404s or silently lands on a
-    completely different app's page. This mostly matters if a future house
-    app ever does the same.
-    """
-    return render(request, "core/app_directory.html", {
-        "apps": [a for a in house_apps(include_disabled=True) if a.has_page],
-        "page_title": "Apps",
-    })
 
 
 @never_cache
@@ -70,14 +49,46 @@ def weather_current(request):
 
 @login_required
 def system_status(request):
-    """Human-readable version of /health, plus recent audit activity."""
-    from nora_home.core.models import AuditEvent
+    """The System page — Story 47 merged what used to be Status and the House
+    log. Health/install cards plus the log's own filterable timeline, on one
+    page; "Recent activity" (an unfiltered AuditEvent list) is gone, since the
+    timeline's own "audit" source already shows the same events, filterable
+    alongside health/notification/integration/telemetry ones — see
+    nora_home.core.houselog for what counts as an event and why most of what
+    the house does does not.
+
+    The filter form is a plain GET form on purpose — no JavaScript, no stored
+    state. Every view of this page is a URL, so "look at what happened on
+    Tuesday" is something one person can send another.
+    """
+    from nora_home.core import houselog
+
+    days = _clamp_int(request.GET.get("days"), houselog.DEFAULT_DAYS, 1, 365)
+    since = timezone.now() - timedelta(days=days)
+    chosen = [s for s in request.GET.getlist("source") if s in houselog.SOURCES]
+    severity = request.GET.get("severity", "")
+    query = request.GET.get("q", "").strip()
+
+    entries = houselog.timeline(since=since, sources=chosen or None,
+                                severity=severity, query=query)
 
     return render(request, "core/system_status.html", {
         "health": collect_health(),
-        "events": AuditEvent.objects.select_related("actor")[:50],
         "version": settings.NORA_HOME_VERSION,
         "environment": settings.NORA_HOME_ENV,
+        "entries": entries,
+        "charts": houselog.charts(entries, since=since, until=timezone.now()),
+        "sources": houselog.SOURCES,
+        "chosen_sources": chosen,
+        "severities": houselog.SEVERITY_ORDER,
+        "severity": severity,
+        "days": days,
+        "q": query,
+        # The cap is worth saying out loud rather than letting the page quietly
+        # end: "200 entries" and "200 entries, and there were more" are different
+        # answers to "did anything else happen".
+        "truncated": len(entries) >= houselog.DEFAULT_LIMIT,
+        "limit": houselog.DEFAULT_LIMIT,
         "page_title": "System",
     })
 
@@ -129,39 +140,15 @@ def styleguide(request):
 
 @login_required
 def house_log(request):
-    """The House log — every subsystem's record of itself, on one timeline.
-
-    All filtering is in the query string and nothing is stored, so a filtered
-    view is a URL someone can send to somebody else. See nora_home.core.houselog
-    for what counts as an event and why most of what the house does does not.
-    """
-    from nora_home.core import houselog
-
-    days = _clamp_int(request.GET.get("days"), houselog.DEFAULT_DAYS, 1, 365)
-    since = timezone.now() - timedelta(days=days)
-    chosen = [s for s in request.GET.getlist("source") if s in houselog.SOURCES]
-    severity = request.GET.get("severity", "")
-    query = request.GET.get("q", "").strip()
-
-    entries = houselog.timeline(since=since, sources=chosen or None,
-                                severity=severity, query=query)
-
-    return render(request, "core/house_log.html", {
-        "entries": entries,
-        "charts": houselog.charts(entries, since=since, until=timezone.now()),
-        "sources": houselog.SOURCES,
-        "chosen_sources": chosen,
-        "severities": houselog.SEVERITY_ORDER,
-        "severity": severity,
-        "days": days,
-        "q": query,
-        # The cap is worth saying out loud rather than letting the page quietly
-        # end: "200 entries" and "200 entries, and there were more" are different
-        # answers to "did anything else happen".
-        "truncated": len(entries) >= houselog.DEFAULT_LIMIT,
-        "limit": houselog.DEFAULT_LIMIT,
-        "page_title": "House log",
-    })
+    """Retired 2026-08-09 (Story 47) — System absorbed this page. Kept as a
+    redirect, query string intact, so an old bookmark of a filtered log view
+    (a URL someone was sent, per the docstring this page used to carry) still
+    lands somewhere useful rather than 404ing. @login_required stays so an
+    unauthenticated hit goes straight to the login page rather than bouncing
+    through system/ first."""
+    qs = request.META.get("QUERY_STRING", "")
+    url = reverse("core:system_status")
+    return redirect(f"{url}?{qs}" if qs else url)
 
 
 def _clamp_int(raw, default: int, low: int, high: int) -> int:

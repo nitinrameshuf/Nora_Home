@@ -377,7 +377,7 @@ docker/ scripts/ docs/  entrypoint, provisioning, this folder
 ```
 /                       → redirects to /home/
 /home/                  the home dashboard (per-person widget grid)
-/home/log/              the House log — one timeline over every subsystem
+/home/log/              redirects to /home/system/, query string intact (Story 47)
 /home/alerts/           notifications
 /home/displays/         redirects to /home/settings/ (the screen cards live there)
 /home/displays/wall/    THE 24" SCREEN — iframe shell, shows real app pages remotely
@@ -385,8 +385,7 @@ docker/ scripts/ docs/  entrypoint, provisioning, this folder
 /home/ai/               assistant console
 /home/measurements/     telemetry
 /home/integrations/     integrations
-/home/apps/             app directory
-/home/system/           health and audit
+/home/system/           health, install info, and the House log's timeline — merged, Story 47
 /home/settings/         house-wide config, your profile, and the two screens
 /accounts/              switch (passwordless), profile, household
 /api/                   platform API (device-token auth)

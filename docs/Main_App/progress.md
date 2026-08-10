@@ -4087,3 +4087,60 @@ real data on top (an actually-overdue task in red), the kiosk's own button
 grid unaffected on the second screen.
 
 Story 46 is **Complete**.
+
+## 2026-08-09 — Story 47: Information Architecture
+
+Nav drops from nine destinations to seven, in two labelled groups — Home
+(Dashboard/System/Settings) and Apps (the four registered apps with
+nav=True: Todo, Alerts, Measurements, Integrations). base.html builds these
+two groups directly rather than through `registry.navigation()`'s own
+category grouping, which was left alone — the wall dashboard still uses it
+for a one-column-per-category layout, and flattening the nav is a different
+job from flattening that.
+
+**Status and the House log merged into one System page** at the URL Status
+already owned (`/home/system/`). "Recent activity" — System's own unfiltered
+`AuditEvent` list — is gone rather than kept as a third, competing list: the
+log's own "audit" source already shows the same events, filterable alongside
+health/notification/integration/telemetry ones. `/home/log/` is now a
+redirect, query string intact — a filtered log view used to be a URL someone
+could send to somebody else, and that still has to work through the
+redirect, not just land on a bare page.
+
+**The Apps directory is deleted, replaced by a ⌘K palette.** Its destination
+list is grounded in the registry (`palette_destinations()` in registry.py,
+reusing `navigation()`) rather than hand-maintained — Home/System/Settings
+plus every nav app's page and its declared `nora_sections`, prefixed with the
+app's own title once it has more than one ("Todo — Calendar"). A house app
+that adds a nav entry or a section shows up in the palette automatically; a
+link that stops resolving is caught by
+`test_every_palette_destination_actually_resolves`, the same invariant the
+old directory's own test protected. Filtering is a plain case-insensitive
+substring match on the title, same as the mockup's own `palette()`. The
+kiosk's `house_links` tile list dropped "Apps" (no keyboard there for ⌘K,
+and the four nav apps already have their own tiles) and renamed "Status" to
+"System".
+
+The member switcher (household chip) already matched this story's own
+spec from earlier work — lists other members plus Everyone/Wall, nothing
+about Settings — so nothing changed there. Same for the mockup's own
+household fixture (nitin/Priya, not `bootstrap_home --demo`'s
+nitin/partner/kid) — already fixed in an earlier session.
+
+### Verified
+
+975 tests green locally. Built on the Pi (a new JS file needed `./nora
+assets` re-run before its manifest entry existed — the one snag, not a bug,
+just the established round-trip). 971 passed there, the same three
+pre-existing `test_speech.py` failures as Stories 45/46. Checked in the local
+dev-server browser signed in as an admin: the nav renders exactly seven
+destinations in two groups, ⌘K (via the Search button — real ⌘K/Ctrl+K is a
+Chrome shortcut in this automated browser, intercepted before it reaches the
+page) opens the palette, filtering to "report" narrows to "Todo — Reporting"
+and navigating there works, the merged System page renders health + install
++ filter + charts + timeline on one page, `/home/log/?days=30` redirects to
+`/home/system/?days=30`, `/home/apps/` 404s cleanly, and the kiosk shows
+seven tiles plus System/Settings with no leftover Apps tile.
+
+Story 47 is **Built, unproven** — not yet deployed to or seen on the
+physical hardware.

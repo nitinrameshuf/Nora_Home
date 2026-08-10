@@ -80,6 +80,12 @@
     "src": "assets/js/nh-charts.js",
     "isEntry": true
   },
+  "assets/js/nh-palette.js": {
+    "file": "js/nh-palette.p6y82Gma.js",
+    "name": "js/nh-palette",
+    "src": "assets/js/nh-palette.js",
+    "isEntry": true
+  },
   "assets/js/nh-picker.js": {
     "file": "js/nh-picker.DzaxU91u.js",
     "name": "js/nh-picker",

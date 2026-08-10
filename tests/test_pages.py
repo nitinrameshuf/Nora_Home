@@ -15,6 +15,7 @@ needs *a* signed-in member, and nothing needs a password.
 from __future__ import annotations
 
 import pytest
+from django.contrib.auth.models import AnonymousUser
 from django.urls import reverse
 
 from nora_home.accounts.models import HouseMember
@@ -23,13 +24,13 @@ from nora_home.core.registry import registered_apps
 pytestmark = pytest.mark.django_db
 
 
-# Every platform page a person can reach, by URL name.
+# Every platform page a person can reach, by URL name. core:house_log is
+# deliberately not here — Story 47 turned it into a redirect (see below),
+# not a page that renders 200 on its own.
 PLATFORM_PAGES = [
     "core:dashboard",
-    "core:app_directory",
     "core:system_status",
     "core:settings",
-    "core:house_log",
     "accounts:household",
     "notifications:inbox",
     "telemetry:index",
@@ -267,35 +268,69 @@ def test_unticking_the_schedule_disables_it(client, adult):
     assert get_setting("displays.wall_power_schedule")["enabled"] is False
 
 
-# ── the app directory tells the truth ────────────────────────────────────────
+# ── the ⌘K palette tells the truth (Story 47 deleted the Apps directory) ─────
 
-def test_the_apps_page_lists_only_the_familys_apps(client, admin_member):
-    """"Django's definition of app is what we will use" — platform subsystems
-    are not house apps and must not pad this page out.
+def test_the_palette_lists_home_and_every_nav_app(client, admin_member):
+    """Home is the base app; the only things called apps are the four
+    registered apps with nav=True. A house app leaking in unnoticed, or a
+    platform page silently dropping out, would both be bugs the search box
+    would otherwise hide."""
+    from nora_home.core.registry import palette_destinations
 
-    Zero house apps installed is the current, legitimate state (the reference
-    app was removed 2026-08-05 — see docs/Main_App/subsystems/todo.md §1) and
-    stays that way until Story 24. Skip rather than assert non-empty; the
-    invariant this test actually protects — no platform app leaking in — still
-    runs below whenever there is something to check."""
     client.force_login(admin_member)
 
-    apps = client.get(reverse("core:app_directory")).context["apps"]
-    if not apps:
-        pytest.skip("no house apps installed — expected until Story 24")
+    titles = [d["title"] for d in palette_destinations("admin")]
+    for expected in ("Home", "System", "Settings", "Alerts", "Measurements",
+                     "Integrations"):
+        assert expected in titles, f"{expected} is missing from the palette"
+    # Todo declares sections, so its own bare title never appears — "Todo —
+    # Tasks" etc. does instead. See palette_destinations()'s own docstring.
+    assert any(t.startswith("Todo") for t in titles), "no Todo destination in the palette"
 
-    for meta in apps:
-        assert not meta.is_platform, f"{meta.slug} is a platform app"
 
+def test_every_palette_destination_actually_resolves(client, admin_member):
+    """The palette must never send someone somewhere that 404s."""
+    from nora_home.core.registry import palette_destinations
 
-def test_every_linked_app_actually_resolves(client, admin_member):
-    """The directory must never link somewhere that 404s."""
     client.force_login(admin_member)
 
-    for meta in client.get(reverse("core:app_directory")).context["apps"]:
-        if not meta.has_page:
-            continue
-        assert client.get(meta.url).status_code == 200, f"{meta.url} is broken"
+    for dest in palette_destinations("admin"):
+        assert client.get(dest["url"]).status_code == 200, f"{dest['url']} is broken"
+
+
+def test_the_palette_is_empty_when_signed_out(rf):
+    """nora_home.core.context_processors.house() skips palette_destinations()
+    entirely for an unauthenticated request, rather than computing it at the
+    default role — nobody signed out should see a member's own nav baked into
+    a page's HTML."""
+    from nora_home.core.context_processors import house
+
+    request = rf.get("/home/")
+    request.user = AnonymousUser()
+
+    assert house(request)["nh_palette"] == []
+
+
+# ── the old House log URL still lands somewhere useful ───────────────────────
+
+def test_the_old_log_url_redirects_to_system(client, admin_member):
+    client.force_login(admin_member)
+
+    response = client.get("/home/log/")
+
+    assert response.status_code == 302
+    assert response["Location"] == reverse("core:system_status")
+
+
+def test_the_old_log_url_keeps_its_query_string(client, admin_member):
+    """A filtered log view was a URL someone could send to somebody else —
+    that has to keep working through the redirect, not just the bare page."""
+    client.force_login(admin_member)
+
+    response = client.get("/home/log/", {"days": "30", "severity": "warning"})
+
+    assert response.status_code == 302
+    assert response["Location"] == reverse("core:system_status") + "?days=30&severity=warning"
 
 
 # ── error pages ──────────────────────────────────────────────────────────────
