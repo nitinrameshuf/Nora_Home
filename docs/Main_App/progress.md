@@ -4081,5 +4081,9 @@ already flagged). Checked in the local dev-server browser at `/home/` and
 the kiosk template: the daypart gradient and orb read clearly through the
 veil behind the glass panes at noon and dusk, `.stars` populate on load, and
 the kiosk's heavier veil keeps its button grid legible against the same sky.
+Deployed to the Pi (`./nora upgrade`, all services healthy) and screenshotted
+on the physical wall: the night orb sits dim in the sky exactly as spec'd,
+real data on top (an actually-overdue task in red), the kiosk's own button
+grid unaffected on the second screen.
 
 Story 46 is **Complete**.
