@@ -3897,3 +3897,57 @@ they load.
 Phase B: every real template still renders through the old system. Story 45
 stays *built*, not *Complete*, until Phase B rewires them and the old files
 are gone.
+
+## 2026-08-09 — Story 45, Phase B: the shell, and a bridge for everything else
+
+`base.html`'s sidebar and topbar rewritten onto the arc-reactor system —
+`.sidebar`/`.nav-link`/`.nav-group`/`.topbar`/`.profile-*` gone, replaced by
+`.rail`/`.nav`/`.grp-lab`/`.appbar`/`.me`/`.memenu` (`assets/css/shell.css`),
+ported from the mockup's own `rail()`/`appbar()`, not redrawn. The household
+switcher moves from a topbar dropdown into the rail's own foot, matching the
+mockup's IA — it changes who is looking at the house, so it lives with
+navigation. Dark-only was already decided (CLAUDE.md §4); the theme toggle
+and its `localStorage`-backed JS are deleted, not restyled.
+
+Converting the shell touches every page at once, so the twenty templates not
+yet rewired onto `components.css` each bridge `nora-home.css` back in via
+their own `{% block head %}` — `base.html` no longer loads it centrally. The
+dashboard's own grid stays bridged, deliberately: it's built client-side by
+`dashboard.js` from a JSON payload (Gridstack drag/resize/save-layout), not
+server-rendered markup, so converting it means rewriting that JS's rendering
+internals — its own pass, not folded into this one. Kiosk and wall are
+standalone shells that don't extend `base.html`; untouched, unaffected.
+
+### One real bug, found by screenshot
+
+`shell.css` was `@layer comp` at first, matching `components.css`'s
+convention. `nora-home.css`'s bare `a { color: var(--accent) }` (unlayered)
+beat `.nav { color: var(--dim) }` (layered) despite `.nav` being the more
+specific selector — every nav label rendered in the old orange accent instead
+of the rail's own ink colour. **A cascade layer always loses to unlayered CSS
+regardless of specificity** — the mechanism that makes the bridge work at all
+(old markup keeps its old look) also means the shell's *own* chrome loses to
+any unlayered noise on a bridged page unless it competes on the same
+(unlayered) terms. Fixed by removing `@layer comp` from `shell.css` — normal
+specificity then does the right thing, since `.nav` genuinely outranks a bare
+`a`.
+
+### Verified
+
+997 tests green, three new regressions (shell never re-layers, the rail never
+regresses to old markup, every bridged page carries its bridge). Deployed to
+the Pi: every real page fetched over HTTPS and checked for template errors —
+zero, across home, todo, system, log, settings, measurements, integrations,
+apps, household, kiosk, wall. 995 passed on the Pi itself. Both physical
+screens screenshotted: the wall shows the new rail with correct colours, the
+active-page glow, and the real household in the switcher; the kiosk
+unaffected, as expected.
+
+### Not done
+
+The dashboard's client-side grid, and roughly twenty content templates
+(Todo's own pages, Settings, System, House log, Alerts, Measurements,
+Integrations, the AI console, Household) still render through
+`nora-home.css`/`todo.css`/`dashboard.css` inside the new shell. Kiosk and
+wall are untouched. Story 45 stays *built*, not *Complete*, until those are
+converted too and the old files are actually deleted.
