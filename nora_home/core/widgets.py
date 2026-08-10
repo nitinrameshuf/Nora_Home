@@ -13,7 +13,7 @@ class HouseHealthWidget(StatWidget):
     title = "House health"
     description = "Whether the Pi and everything it depends on is behaving."
     icon = "heart"
-    default_size = (3, 2)
+    sizes = ("S", "M")
     refresh_seconds = 120
 
     def stat(self, request):  # noqa: ARG002
@@ -31,7 +31,7 @@ class CpuTemperatureWidget(ChartWidget):
     subtitle = "Last 24 hours"
     description = "CPU temperature. Worth watching if the Pi lives in a cupboard."
     icon = "thermometer"
-    default_size = (5, 3)
+    sizes = ("M", "L", "XL")
     refresh_seconds = 600
 
     def option(self, request):  # noqa: ARG002
@@ -62,7 +62,7 @@ class DiskWidget(StatWidget):
     title = "Disk"
     description = "How much room is left on the Pi. Backups fill cards quietly."
     icon = "disk"
-    default_size = (3, 2)
+    sizes = ("S", "M")
     refresh_seconds = 900
 
     def stat(self, request):  # noqa: ARG002

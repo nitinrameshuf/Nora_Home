@@ -374,3 +374,102 @@ def test_a_critical_service_being_down_makes_the_house_unhealthy(monkeypatch):
     monkeypatch.setitem(health_module.PROBES, "database", lambda: {"status": "down"})
 
     assert collect_health()["healthy"] is False
+
+
+# ── the console rail's vitals (Story 48) ─────────────────────────────────────
+
+def test_the_rail_only_shows_vitals_the_house_actually_measures():
+    """The mockup's rail drew six vitals — CPU, MEM, TEMP, FAN, LOAD, UP — and
+    its own comment admits only temperature and disk are collected. Story 52
+    adds the rest as telemetry series. Until then a rail showing a plausible
+    CPU number would be worse than a short rail, because it would be believed.
+    """
+    from nora_home.core.vitals import rail_vitals
+
+    keys = {vital["key"] for vital in rail_vitals()}
+
+    assert keys <= {"TEMP", "DISK"}, f"invented vitals: {keys - {'TEMP', 'DISK'}}"
+
+
+def test_the_rail_never_calls_the_full_health_sweep(monkeypatch):
+    """This runs in a context processor on every page in the house.
+    collect_health() additionally opens TCP connections to redis, rabbitmq,
+    mongo and MinIO with a 2s timeout each — eight seconds of socket work per
+    page render is what makes a wall feel broken."""
+    import nora_home.core.health as health
+    from nora_home.core.vitals import rail_vitals
+
+    def explode():
+        raise AssertionError("rail_vitals() must not call collect_health()")
+
+    monkeypatch.setattr(health, "collect_health", explode)
+
+    rail_vitals()
+
+
+def test_a_failed_probe_costs_that_vital_not_the_page(monkeypatch):
+    """Chrome on every page: a probe that raises must drop its own line and
+    leave the rest of the rail standing (CLAUDE.md §6, failures degrade).
+
+    Both halves are asserted deliberately. There is no thermal zone on a
+    laptop, so "TEMP is absent" is true here whatever the code does — the
+    working case has to be forced first or this test proves nothing off the
+    Pi, which is exactly where it usually runs.
+    """
+    import nora_home.core.health as health
+    from nora_home.core.vitals import rail_vitals
+
+    monkeypatch.setattr(health, "check_cpu_temperature",
+                        lambda: {"status": "ok", "celsius": 50.0})
+    assert "TEMP" in {v["key"] for v in rail_vitals()}
+
+    def explode():
+        raise OSError("thermal zone went away")
+
+    monkeypatch.setattr(health, "check_cpu_temperature", explode)
+
+    keys = {vital["key"] for vital in rail_vitals()}
+
+    assert "TEMP" not in keys
+    assert "DISK" in keys, "one broken probe took the whole rail down with it"
+
+
+def test_every_bar_is_a_percentage(monkeypatch):
+    """The bar is rendered straight into `width: N%`, so a value outside 0-100
+    would overflow its own track rather than clamp."""
+    import nora_home.core.health as health
+    from nora_home.core.vitals import rail_vitals
+
+    monkeypatch.setattr(health, "check_cpu_temperature",
+                        lambda: {"status": "critical", "celsius": 400.0})
+    monkeypatch.setattr(health, "check_disk",
+                        lambda: {"status": "ok", "percent_used": -20.0, "free_gb": 1})
+
+    for vital in rail_vitals():
+        assert 0 <= vital["bar"] <= 100, f"{vital['key']} bar is {vital['bar']}"
+
+
+def test_a_hot_pi_is_marked_warm(monkeypatch):
+    import nora_home.core.health as health
+    from nora_home.core.vitals import rail_vitals
+
+    monkeypatch.setattr(health, "check_cpu_temperature",
+                        lambda: {"status": "warning", "celsius": 75.0})
+
+    temp = [v for v in rail_vitals() if v["key"] == "TEMP"][0]
+
+    assert temp["warm"] is True
+
+
+def test_signing_out_costs_nothing_to_compute(rf):
+    """No vitals for an anonymous request — the login page has no rail to put
+    them in, and probing the machine for a page that cannot show them is pure
+    waste on every unauthenticated hit."""
+    from django.contrib.auth.models import AnonymousUser
+
+    from nora_home.core.context_processors import house
+
+    request = rf.get("/home/")
+    request.user = AnonymousUser()
+
+    assert house(request)["nh_vitals"] == []

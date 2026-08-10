@@ -20,24 +20,31 @@ from nora_home.core.models import TimeStampedModel
 # layout full of tracker.* keys sees those tiles quietly disappear rather than
 # getting an error page.
 #
-# Widths deliberately match across the row rather than using each widget's own
-# default_size — a narrower widget stacked under a wider one is exactly what
-# reads as "uneven" on a real screen, even though each width is individually
-# correct.
+# Sizes pack to whole rows — 6+3+3, then 12 — which is the point of the size
+# system (Story 48): every size is a whole number of cells on a 12-column grid,
+# so no arrangement can leave a ragged gap. Before that, widths were arbitrary
+# (w, h) pairs and matching them across a row by hand was the only way to stop
+# a screen reading as uneven.
 STARTER_LAYOUT = [
-    {"key": "todo.DueNextWidget", "x": 0, "y": 0, "w": 4, "h": 4},
-    {"key": "todo.OpenLoadWidget", "x": 4, "y": 0, "w": 4, "h": 4},
-    {"key": "todo.StreakWidget", "x": 8, "y": 0, "w": 4, "h": 4},
-    {"key": "core.HouseHealthWidget", "x": 0, "y": 4, "w": 4, "h": 2},
+    {"key": "todo.DueNextWidget", "size": "L"},
+    {"key": "todo.OpenLoadWidget", "size": "S"},
+    {"key": "core.HouseHealthWidget", "size": "S"},
+    {"key": "todo.CompletionHeatmapWidget", "size": "XL"},
 ]
 
 
 class DashboardLayout(TimeStampedModel):
     """One arrangement of widgets on a grid.
 
-    `items` is a list of {"key", "x", "y", "w", "h"} in a 12-column grid. A key
-    that no longer resolves (app uninstalled, widget renamed) is skipped at render
-    time rather than deleted, so reinstalling the app restores the layout.
+    `items` is an **ordered** list of {"key", "size"}, where size is one of
+    S/M/L/XL (nora_home.dashboard.widgets.SIZES). Order is the layout: CSS grid
+    places the tiles with `grid-auto-flow: row dense`, so there are no stored
+    coordinates to go stale and no arrangement that can leave a ragged gap.
+    Story 48 replaced the old {"x", "y", "w", "h"} form; migration 0003 carries
+    existing layouts across.
+
+    A key that no longer resolves (app uninstalled, widget renamed) is skipped at
+    render time rather than deleted, so reinstalling the app restores the layout.
     """
 
     class Surface(models.TextChoices):

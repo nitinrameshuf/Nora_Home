@@ -65,12 +65,9 @@ def home(request):
         widget = by_key.get(item.get("key", ""))
         if widget is None or not widget.is_visible(request):
             continue  # app uninstalled or hidden — skip, do not delete the entry
-        placed.append({
-            "x": item.get("x", 0), "y": item.get("y", 0),
-            "w": item.get("w", widget.default_size[0]),
-            "h": item.get("h", widget.default_size[1]),
-            "widget": widget.payload(request),
-        })
+        # The list's order *is* the layout — CSS grid places the tiles — so the
+        # only thing to carry per item is which size it was set to.
+        placed.append({"widget": widget.payload(request, item.get("size", ""))})
 
     return render(request, "dashboard/home.html", {
         "layout": layout,
@@ -83,11 +80,16 @@ def home(request):
 
 @login_required
 def widget_data(request, key: str):
-    """Fresh data for one widget — used by auto-refresh and by the wall display."""
+    """Fresh data for one widget — used by auto-refresh and by the wall display.
+
+    `?size=` matters here rather than being cosmetic: a list at M is a readout
+    and at L is four rows, so refreshing without the caller's current size
+    would quietly redraw the tile as a different variant.
+    """
     widget = get_widget(key, getattr(request.user, "role", "member"))
     if widget is None:
         return JsonResponse({"error": "no such widget"}, status=404)
-    return JsonResponse(widget.payload(request))
+    return JsonResponse(widget.payload(request, request.GET.get("size", "")))
 
 
 @login_required
@@ -102,10 +104,10 @@ def catalog(request):
 @login_required
 @require_POST
 def save_layout(request):
-    """Persist a drag-and-drop rearrangement.
+    """Persist a rearrangement — the order of the list, and each item's size.
 
-    Positions are validated rather than trusted: a malformed payload from a stale
-    tab should not be able to write nonsense that breaks everyone's home screen.
+    Both are validated rather than trusted: a malformed payload from a stale tab
+    should not be able to write nonsense that breaks everyone's home screen.
     """
     try:
         payload = json.loads(request.body or b"{}")
@@ -119,26 +121,21 @@ def save_layout(request):
         return JsonResponse({"ok": False, "error": "too many widgets"}, status=400)
 
     layout = _layout_for(request)
-    known = {w.key for w in _widgets_for(request, layout)}
+    by_key = {w.key: w for w in _widgets_for(request, layout)}
     cleaned = []
     for item in raw_items:
-        if not isinstance(item, dict) or item.get("key") not in known:
+        if not isinstance(item, dict):
             continue
-        cleaned.append({
-            "key": item["key"],
-            "x": _clamp(item.get("x"), 0, 11),
-            "y": _clamp(item.get("y"), 0, 200),
-            "w": _clamp(item.get("w"), 1, 12),
-            "h": _clamp(item.get("h"), 1, 12),
-        })
+        widget = by_key.get(item.get("key"))
+        if widget is None:
+            continue
+        # resolve_size() rather than a bare membership test: it is the same
+        # fallback the renderer uses, so a size the widget does not offer is
+        # stored as what will actually be drawn, instead of being persisted
+        # and silently re-resolved on every page load.
+        cleaned.append({"key": item["key"],
+                        "size": widget.resolve_size(item.get("size", ""))})
 
     layout.items = cleaned
     layout.save(update_fields=["items", "updated_at"])
     return JsonResponse({"ok": True, "count": len(cleaned)})
-
-
-def _clamp(value, low: int, high: int) -> int:
-    try:
-        return max(low, min(int(value), high))
-    except (TypeError, ValueError):
-        return low

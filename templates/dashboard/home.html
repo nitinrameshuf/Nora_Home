@@ -13,18 +13,6 @@ built for the mockup's click router, which nothing on this page uses.
   <button class="btn ghost" type="button" data-dash-edit>Rearrange</button>
 {% endblock %}
 
-{% block head %}
-  {% comment %}
-  Story 45, Phase B: dashboard.css is gone. Its .dash-tile/.dash-stat/
-  .dash-picker rules were fully replaced by the same .nh-tile/.card/.read/
-  .row/dialog.dash-picker rules components.css already carries — loading
-  both would have meant dashboard.css's unlayered .dash-picker__item beating
-  components.css's layered one regardless of which looks newer, the exact
-  cascade-layer trap shell.css hit (see CLAUDE.md §4).
-  {% endcomment %}
-  <link rel="stylesheet" href="{% static 'nora_home/vendor/gridstack.min.css' %}">
-{% endblock %}
-
 {% block content %}
   <div class="dash" data-dash
        data-placed="{{ placed_json }}"
@@ -56,12 +44,15 @@ built for the mockup's click router, which nothing on this page uses.
 
 {% block scripts %}
   {% comment %}
-  ECharts and Gridstack are vendored rather than pulled from a CDN — the house has
-  to work with the internet down. `make vendor` fetches them. Until then the
-  dashboard still renders stats and lists; only charts wait.
+  ECharts is vendored rather than pulled from a CDN — the house has to work with
+  the internet down. `make vendor` fetches it. Until then the dashboard still
+  renders stats and lists; only charts wait.
+
+  Gridstack is gone (Story 48). Absolute x/y/w/h is what let a screen look
+  ragged; whole-cell S/M/L/XL sizes on a 12-column CSS grid cannot, so the
+  library the drag-and-resize needed went with the coordinates it moved.
   {% endcomment %}
   <script src="{% static 'nora_home/vendor/echarts.min.js' %}" defer onerror="window.__nhNoECharts=true"></script>
-  <script src="{% static 'nora_home/vendor/gridstack-all.js' %}" defer onerror="window.__nhNoGridstack=true"></script>
   {% vite_asset 'assets/js/nh-charts.js' %}
   {% vite_asset 'assets/js/dashboard.js' %}
 {% endblock %}

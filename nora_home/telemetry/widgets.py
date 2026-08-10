@@ -25,9 +25,10 @@ class HouseVitalsWidget(ListWidget):
     description = ("The latest reading from every measurement series in the "
                    "house, grouped by category — not just this app's own.")
     icon = "activity"
-    default_size = (4, 5)
+    sizes = ("M", "L")
     refresh_seconds = 120
     empty_message = "Nothing measured yet."
+    summary_unit = "measured"  # what the count means at M, where this is a readout
 
     def rows(self, request):
         members = scope_members(request)

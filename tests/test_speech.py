@@ -174,7 +174,29 @@ def test_speak_says_nothing_when_there_is_nothing_to_say(settings):
     assert speech.speak("   ") is False
 
 
-def test_speak_queues_the_text_not_the_audio(settings):
+@pytest.fixture
+def not_quiet():
+    """Pin the house out of quiet hours for a test that expects speech to work.
+
+    Without this, a test that calls speak() passes by day and fails by night:
+    todo.alarms.is_quiet_now() reads the wall clock against the house-wide
+    `notifications.quiet_hours` window (22:00-07:00 by default), so speak()
+    correctly returns False after 22:00 and the assertions below read as a
+    broken feature instead of a sleeping house.
+
+    Found when the suite went red at 01:35 having been green at 20:00 the same
+    evening. It is also the real reason three of these tests "only failed on
+    the Pi" across two earlier sessions — that was never the container's
+    environment, it was what time the suite happened to be run. A window of
+    0-0 is never quiet: is_quiet_now()'s `start <= hour < end` can hold for no
+    hour at all.
+    """
+    from nora_home.core.settings_store import set_setting
+
+    set_setting("notifications.quiet_hours", {"start": 0, "end": 0})
+
+
+def test_speak_queues_the_text_not_the_audio(settings, not_quiet):
     """`Notification.context` is a JSONField — SoundChannel's own docstring is
     explicit that raw audio cannot survive the round trip. The text goes in and
     synthesis happens on delivery, exactly as a task's alarm is re-resolved
@@ -217,7 +239,7 @@ def test_something_urgent_can_override_quiet_hours(settings):
                         respect_quiet_hours=False) is True
 
 
-def test_a_long_announcement_is_trimmed(settings):
+def test_a_long_announcement_is_trimmed(settings, not_quiet):
     from nora_home.notifications.models import Notification
 
     settings.NORA_HOME_TTS_PROVIDER = "groq"
@@ -229,7 +251,7 @@ def test_a_long_announcement_is_trimmed(settings):
     assert len(spoken) <= speech.MAX_SPEECH_CHARS
 
 
-def test_the_title_shows_the_words_that_were_spoken(settings):
+def test_the_title_shows_the_words_that_were_spoken(settings, not_quiet):
     from nora_home.notifications.models import Notification
 
     settings.NORA_HOME_TTS_PROVIDER = "groq"

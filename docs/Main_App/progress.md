@@ -4164,3 +4164,99 @@ never actually worked for the kiosk. Spawned as a follow-up task
 (`task_97af295f`) rather than chased down inside this story.
 
 Story 47 is **Complete**.
+
+## 2026-08-09 — Story 48: Work Layout — Desktop & Wall
+
+**Widgets stopped having sizes and started having size *variants*.** The layout
+schema changed with them: `DashboardLayout.items` was
+`{"key", "x", "y", "w", "h"}` and is now an **ordered** `{"key", "size"}` where
+size is one of S(3x1) / M(6x1) / L(6x2) / XL(12x1). The order *is* the layout —
+CSS grid places the tiles with `grid-auto-flow: row dense` — so there are no
+coordinates to go stale and no arrangement that can leave a ragged gap, which
+is the whole claim the size system makes. Migration `dashboard/0003` carries
+existing layouts across, recovering order from the old coordinates (top to
+bottom, then left to right) before dropping them; a naive pass in stored order
+would have scrambled everyone's screen, because Gridstack wrote items in
+whatever order they were last dragged.
+
+**Gridstack is gone.** Absolute x/y/w/h is what let a screen look ragged in the
+first place; with whole-cell sizes the library that dragged and resized those
+coordinates has nothing left to do. Reordering is now a move-earlier/move-later
+button rather than a drag — deliberately, because the phone is a first-class
+surface and HTML5 drag-and-drop does not work on touch without a polyfill. One
+mechanism that works everywhere beat a nicer one that works on a laptop.
+
+**Each size is a designed state, and the platform owns what that means.** The
+four base classes define their own kind at every size, so an app author writes
+a widget once and it renders correctly everywhere it can be placed — "renders
+at every size it declares" is a promise the platform keeps rather than homework
+for whoever writes the widget. The substantive case: **a list at S or M is not
+a truncated list, it is a readout.** A 6x1 cell holds a heading and one line, so
+one squeezed row reads as broken, while "0 due · Nothing due. Enjoy it." reads
+as an answer — the payload's own `kind` changes and the browser draws a stat.
+Verified live: switching Due next from L to M turned `kind-list` (6x2) into
+`kind-stat` (6x1) with exactly that readout. `StatWidget` drops its sparkline at
+S for the same reason.
+
+**The console rail's vitals show only what the house genuinely measures.** The
+mockup drew six — CPU, MEM, TEMP, FAN, LOAD, UP — and its own comment admits
+only temperature and disk are collected; Story 52 adds the rest as telemetry
+series. So the rail shows TEMP and DISK and nothing else. A rail with a
+plausible CPU number would be worse than a short rail, because it would be
+believed. `nora_home/core/vitals.py` is the seam Story 52 extends, and it calls
+`check_disk()`/`check_cpu_temperature()` directly rather than `collect_health()`
+— this runs in a context processor on every page in the house, and
+`collect_health()` additionally opens TCP connections to redis, rabbitmq, mongo
+and MinIO with a 2s timeout each. Eight seconds of socket work per page render
+is what makes a wall feel broken. A test asserts it never calls the sweep.
+
+### Two real bugs, both found by measuring rather than reading
+
+- **The bottom 40% of the screen was empty again.** `.bento`'s `min-height:100%`
+  is what makes rows share leftover height, but a percentage needs a containing
+  block with a definite height — and the dashboard wraps its grid in a
+  `[data-dash]` div the mockup does not have (it carries the JSON payload and
+  the empty state). A plain block with auto height swallowed it silently:
+  measured **437px of grid inside a 739px canvas**. Every rule involved was
+  individually correct. Fixed by giving the wrapper the height chain
+  (`display:flex; min-height:100%`, grid `flex:1`); re-measured at 809/841.
+- **The suite is time-of-day dependent, and has been for two sessions.**
+  `test_speech.py`'s three failures were recorded twice as "the Pi container's
+  own environment" and flagged as a separate task. They are not environmental:
+  `todo.alarms.is_quiet_now()` reads the wall clock against the house-wide
+  22:00-07:00 window, so `speak()` correctly returns False at night and three
+  tests that never pinned the window went red. Found because the suite was
+  green at 20:00 and red at 01:35 the same evening. Fixed with a `not_quiet`
+  fixture; the suite is now green **at** 01:35, which is when it used to fail.
+  `docs/Main_App/testing.md` claims the suite "gives the same answer on a
+  laptop and on the Pi" — it did not, and the failure shape (an ambient input
+  nothing declares) is the same class as the TTS key that once made unit tests
+  spend money.
+
+### Deviations from the mockup, deliberately
+
+Two of the mockup's declared size sets are not honoured, and both are cases
+where its bespoke per-widget bodies express something the platform's four kinds
+do not. `open_now` offered L as "a readout, a rule, and three task rows" — a
+list inside a stat, which would need a `TemplateWidget`; it offers S and M
+here. `pitemp` offered S — a full ECharts line chart in a 3x1 cell is about
+150px wide; it offers M, L and XL. Recorded rather than silently absorbed,
+because the mockup is the approved reference.
+
+### Verified
+
+989 tests green, including a contract test that renders **every registered
+widget at every size it declares** — 10 widgets, 22 variants — so a house app
+gets the same check for free. Pixel overflow is a browser question and stays
+with tests/qa (Story 55). Checked in a browser at 1440 (grid fills the height,
+tiles pack to whole rows, Rearrange shows only the sizes each widget declares),
+and at 375 (cards flow to their content, no overflow, the M readout renders).
+The phone *shell* is still cramped — the rail renders inline and the heading
+wraps — which is Story 49's stated scope ("the rail never renders inline"), not
+this one's.
+
+One local-dev gotcha worth knowing: **django-vite caches the manifest at
+startup**, so after `./nora assets` and pulling `dist/` back, the dev server
+must be restarted or it serves a hash that no longer exists — the page then
+renders with no components.css at all and looks catastrophically broken for a
+reason that has nothing to do with the change.

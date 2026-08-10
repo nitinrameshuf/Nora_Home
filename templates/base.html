@@ -125,6 +125,27 @@ nora_home/ui/zoom.py for the measurements behind the choice.
     {% endcomment %}
     {% if request.user.is_authenticated %}
       <div class="rail-foot">
+        {% comment %}
+        The console rail's vitals — Story 48. Only what the house genuinely
+        measures appears here; see nora_home/core/vitals.py for why the other
+        four the mockup drew are absent until Story 52 collects them, and why
+        this must stay a cheap local read rather than a health sweep.
+        {% endcomment %}
+        {% if nh_vitals %}
+          <div class="vitals panel">
+            {% for vital in nh_vitals %}
+              <div class="vit">
+                <span class="vk">{{ vital.key }}</span>
+                {% if vital.bar is not None %}
+                  <span class="vbar{% if vital.warm %} warm{% endif %}">
+                    <i style="width:{{ vital.bar }}%"></i>
+                  </span>
+                {% endif %}
+                <span class="vv">{{ vital.value }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
         <details class="profile-menu mewrap">
           <summary class="me">
             <span class="av">{{ request.user.name|first|upper }}</span>

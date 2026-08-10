@@ -466,11 +466,44 @@
      .ck/.empty/.nh-spark, the exact classes {% nh_tile %}/{% nh_card %}/
      {% nh_stat %}/{% nh_list %}/{% nh_empty %} already emit server-side, so
      a widget looks identical whether Django or dashboard.js drew it. */
-  .dash-grip {
-    background: none; border: 0; color: var(--faint); cursor: grab; padding: 2px;
-    display: none; /* only relevant, and only shown, while editing */
+  /* `.bento`'s own `min-height: 100%` is what makes rows share the leftover
+     height instead of leaving the bottom of the screen empty — but a
+     percentage needs a containing block with a definite height, and the
+     dashboard wraps its grid in a `[data-dash]` div the mockup does not have
+     (it carries the JSON payload and the empty state). A plain block with
+     auto height silently swallows the percentage: measured 437px of grid in a
+     739px canvas, which is the original "bottom 40% of the screen is empty"
+     complaint reappearing through a wrapper rather than through the grid.
+     Found by measuring the rendered boxes, not by reading the CSS — every
+     rule here was individually correct. */
+  .dash { display: flex; flex-direction: column; min-height: 100%; }
+  .dash > [data-dash-grid] { flex: 1; }
+
+  /* The size cycler, only in Rearrange mode. Ported from the mockup's .szbtn.
+     A widget shows one button per size it declares, so the row is two buttons
+     wide for most widgets and four for none of them. */
+  .szbtn {
+    font-family: var(--font-mono); font-size: 9.5px; font-weight: 700; letter-spacing: .06em;
+    border: 1px solid var(--edge); background: transparent; color: var(--faint);
+    border-radius: 5px; padding: 2px 5px; line-height: 1.4; display: none;
   }
-  [data-dash].is-editing .dash-grip { display: inline-flex; }
+  [data-dash].is-editing .szbtn { display: inline-flex; }
+  .szbtn:hover { color: var(--arc-300); border-color: var(--edge-hot); }
+  .szbtn[aria-pressed="true"] { background: var(--arc-500); border-color: var(--arc-500); color: #032430; }
+
+  /* Move earlier/later, not a drag handle. Order *is* the layout now (Story
+     48), so reordering is moving one step through a list — and a button does
+     that on a touchscreen, which HTML5 drag-and-drop does not do at all
+     without a polyfill. The phone is a first-class surface here, so one
+     mechanism that works everywhere beats a better one that works on a
+     laptop. */
+  .dash-move {
+    background: none; border: 0; color: var(--faint); cursor: pointer; padding: 2px 3px;
+    line-height: 1; display: none; font-size: 12px;
+  }
+  [data-dash].is-editing .dash-move { display: inline-flex; }
+  .dash-move:hover { color: var(--arc-300); }
+  .dash-move[disabled] { opacity: .3; cursor: default; }
   [data-dash].is-editing .nh-tile { outline: 1px dashed var(--edge-hot); outline-offset: 2px; }
   .dash-remove {
     background: none; border: 0; color: var(--faint); cursor: pointer; font-size: 16px;
@@ -480,7 +513,8 @@
   .dash-remove:hover { color: var(--crit); }
   /* Nothing on the wall is interactive — strip the editing affordances
      regardless of edit state, matching the old dashboard.css's own rule. */
-  html[data-surface="wall"] .dash-grip,
+  html[data-surface="wall"] .dash-move,
+  html[data-surface="wall"] .szbtn,
   html[data-surface="wall"] .dash-remove { display: none !important; }
 
   .dash__empty {

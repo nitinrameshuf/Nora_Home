@@ -23,7 +23,7 @@ from nora_home.core.registry import all_widgets, get_widget
 from nora_home.dashboard.models import STARTER_LAYOUT, DashboardLayout
 from nora_home.dashboard.widgets import (
     GRID_COLUMNS,
-    MAX_ROWS,
+    SIZES,
     ChartWidget,
     ListWidget,
     StatWidget,
@@ -226,10 +226,15 @@ def test_every_widget_has_a_key_and_a_title():
 
 
 def test_every_widget_fits_the_grid():
+    """Every declared size is a real one, and every real one is whole cells on
+    a 12-column grid — which is what makes any arrangement tile without gaps."""
     for widget in all_widgets("admin"):
-        width, height = widget.default_size
-        assert 1 <= width <= GRID_COLUMNS, f"{widget.key} is {width} columns wide"
-        assert 1 <= height <= MAX_ROWS
+        assert widget.sizes, f"{widget.key} declares no sizes at all"
+        for name in widget.sizes:
+            assert name in SIZES, f"{widget.key} declares unknown size {name!r}"
+            width, _rows = SIZES[name]
+            assert GRID_COLUMNS % width == 0, (
+                f"{name} is {width} columns, which does not divide {GRID_COLUMNS}")
 
 
 def test_widget_keys_are_unique():
@@ -251,7 +256,8 @@ def test_get_widget_returns_none_for_an_unknown_key():
 def test_menu_entries_carry_what_the_picker_needs():
     for widget in all_widgets("admin"):
         entry = widget.as_menu_entry()
-        assert set(entry) >= {"key", "title", "app", "kind", "w", "h"}
+        assert set(entry) >= {"key", "title", "app", "kind", "sizes", "size"}
+        assert entry["size"] in entry["sizes"]
 
 
 def test_a_widget_that_raises_renders_as_unavailable(rf, member):
@@ -301,10 +307,116 @@ def test_a_list_widget_carries_its_empty_message(rf, member):
     request = rf.get("/home/")
     request.user = member
 
-    payload = Empty().payload(request)
+    payload = Empty().payload(request, "L")
 
     assert payload["rows"] == []
     assert payload["empty_message"] == "All clear."
+
+
+def test_a_list_is_a_readout_at_a_size_too_small_to_be_a_list(rf, member):
+    """The size system's actual claim: each size is a *designed state*, not the
+    same content stretched. A 6x1 cell holds a heading and one line, so showing
+    one truncated row there would read as a broken list. It shows a count and
+    the row that matters instead — and the payload's own `kind` changes, so the
+    browser draws a readout rather than the caller having to know."""
+    class Due(ListWidget):
+        title = "Due next"
+        summary_unit = "due"
+
+        def rows(self, request):
+            return [{"title": "Change the water filter", "status": "late"},
+                    {"title": "Book the boiler service"}]
+
+    request = rf.get("/home/")
+    request.user = member
+
+    small = Due().payload(request, "M")
+    large = Due().payload(request, "L")
+
+    assert small["kind"] == "stat"
+    assert small["stat"]["value"] == 2
+    assert small["stat"]["unit"] == "due"
+    assert small["stat"]["label"] == "Change the water filter"
+    assert large["kind"] == "list"
+    assert len(large["rows"]) == 2
+
+
+def test_an_empty_list_says_so_in_its_readout_too(rf, member):
+    """"Nothing due. Enjoy it." has to survive the switch to a readout — an
+    empty list that collapsed to a bare "0" would lose the whole sentence."""
+    class Empty(ListWidget):
+        title = "Nothing"
+        empty_message = "All clear."
+
+        def rows(self, request):
+            return []
+
+    request = rf.get("/home/")
+    request.user = member
+
+    payload = Empty().payload(request, "M")
+
+    assert payload["stat"]["value"] == 0
+    assert payload["stat"]["label"] == "All clear."
+
+
+def test_a_stat_drops_its_sparkline_at_the_smallest_size(rf, member):
+    """At 3x1 the number, its unit, a caption and a trend line do not all fit,
+    and the line is the first thing that stops being legible rather than merely
+    small."""
+    class Temp(StatWidget):
+        title = "Pi temperature"
+
+        def stat(self, request):
+            return {"value": 52, "unit": "C", "spark": [48, 50, 52]}
+
+    request = rf.get("/home/")
+    request.user = member
+
+    assert "spark" not in Temp().payload(request, "S")["stat"]
+    assert Temp().payload(request, "M")["stat"]["spark"] == [48, 50, 52]
+
+
+def test_a_widget_renders_at_every_size_it_declares(rf, admin_member):
+    """The contract Story 48 makes: "renders at every size it declares" is the
+    platform's promise, not homework for whoever writes the widget. A widget
+    that raises, or returns an error payload, at one of its own sizes is a bug
+    here — and this covers every registered widget, so a house app gets the
+    same check for free.
+
+    Pixel overflow is a browser question and belongs to tests/qa (Story 55);
+    what this can prove is that every declared variant actually builds."""
+    request = rf.get("/home/")
+    request.user = admin_member
+    # A real request always has one, and scope_members() reads it — without
+    # this the widgets that filter by view scope fail here for a reason that
+    # has nothing to do with their sizes.
+    request.session = {}
+
+    for widget in all_widgets("admin"):
+        for size in widget.sizes:
+            payload = widget.payload(request, size)
+            assert payload["kind"] != "error", (
+                f"{widget.key} fails to render at {size}: "
+                f"{payload.get('message', '')}")
+            assert payload["size"] == size
+            assert payload["c"] in {3, 6, 12}
+
+
+def test_an_unknown_size_falls_back_rather_than_raising(rf, member):
+    """A stored layout can name a size a widget has since dropped. It renders
+    at the widget's default rather than 500ing the whole home screen."""
+    class Small(StatWidget):
+        title = "Small"
+        sizes = ("S",)
+
+        def stat(self, request):
+            return {"value": 1}
+
+    request = rf.get("/home/")
+    request.user = member
+
+    assert Small().payload(request, "XL")["size"] == "S"
 
 
 def test_load_widget_rejects_a_class_that_is_not_a_widget():
@@ -315,19 +427,31 @@ def test_load_widget_returns_none_for_a_missing_import():
     assert load_widget("nope.nothing.AtAll") is None
 
 
-def test_load_widget_clamps_an_out_of_range_size():
-    """A widget declaring 40 columns would otherwise push everything else off
-    the grid on every screen that shows it."""
-    class TooWide(Widget):
-        default_size = (40, 99)
+def test_load_widget_drops_a_size_that_does_not_exist():
+    """A size name that is not one of S/M/L/XL would place a tile nowhere: the
+    renderer falls back to M and the picker offers a button that does nothing
+    visible. Drop the name, keep the widget."""
+    class Roomy(Widget):
+        sizes = ("S", "HUGE")
 
     module = __name__
     import sys
-    setattr(sys.modules[module], "TooWide", TooWide)
+    setattr(sys.modules[module], "Roomy", Roomy)
 
-    widget = load_widget(f"{module}.TooWide")
+    widget = load_widget(f"{module}.Roomy")
 
-    assert widget.default_size == (GRID_COLUMNS, MAX_ROWS)
+    assert widget.sizes == ("S",)
+
+
+def test_load_widget_leaves_a_widget_with_no_valid_size_renderable():
+    class Nonsense(Widget):
+        sizes = ("HUGE",)
+
+    module = __name__
+    import sys
+    setattr(sys.modules[module], "Nonsense", Nonsense)
+
+    assert load_widget(f"{module}.Nonsense").sizes == ("M",)
 
 
 # ── the home page ────────────────────────────────────────────────────────────
@@ -370,12 +494,25 @@ def test_saving_a_layout_persists_it(client, adult):
     client.force_login(adult)
     key = all_widgets("admin")[0].key
 
-    response = _save(client, [{"key": key, "x": 1, "y": 2, "w": 4, "h": 3}])
+    widget = all_widgets("admin")[0]
+    size = widget.sizes[-1]
+
+    response = _save(client, [{"key": key, "size": size}])
 
     assert response.status_code == 200
     assert response.json()["ok"] is True
-    assert DashboardLayout.for_member(adult).items == [
-        {"key": key, "x": 1, "y": 2, "w": 4, "h": 3}]
+    assert DashboardLayout.for_member(adult).items == [{"key": key, "size": size}]
+
+
+def test_the_saved_order_is_the_layout(client, adult):
+    """There are no coordinates any more — order is the only thing that says
+    where a tile goes, so it has to survive the round trip exactly."""
+    client.force_login(adult)
+    keys = [w.key for w in all_widgets("admin")[:3]]
+
+    _save(client, [{"key": k, "size": "S"} for k in reversed(keys)])
+
+    assert DashboardLayout.for_member(adult).keys() == list(reversed(keys))
 
 
 def test_adding_a_widget_actually_saves_it(client, adult):
@@ -385,7 +522,7 @@ def test_adding_a_widget_actually_saves_it(client, adult):
     client.force_login(adult)
     existing = DashboardLayout.for_member(adult).items
     new_key = all_widgets("admin")[-1].key
-    items = [*existing, {"key": new_key, "x": 0, "y": 40, "w": 4, "h": 3}]
+    items = [*existing, {"key": new_key, "size": "S"}]
 
     _save(client, items)
 
@@ -401,24 +538,23 @@ def test_an_unknown_widget_key_is_dropped(client, adult):
     assert DashboardLayout.for_member(adult).items == []
 
 
-def test_positions_are_clamped_to_the_grid(client, adult):
+def test_a_size_the_widget_does_not_offer_is_resolved_not_stored(client, adult):
+    """Stored as what will actually be drawn. Persisting a size the widget does
+    not offer would mean re-resolving it on every single page load, and the
+    stored layout disagreeing forever with the screen it describes."""
+    client.force_login(adult)
+    widget = all_widgets("admin")[0]
+
+    _save(client, [{"key": widget.key, "size": "NONSENSE"}])
+
+    assert DashboardLayout.for_member(adult).items[0]["size"] == widget.default_size
+
+
+def test_a_non_string_size_does_not_break_the_save(client, adult):
     client.force_login(adult)
     key = all_widgets("admin")[0].key
 
-    _save(client, [{"key": key, "x": 999, "y": -5, "w": 99, "h": 0}])
-
-    item = DashboardLayout.for_member(adult).items[0]
-    assert item["x"] == 11
-    assert item["y"] == 0
-    assert item["w"] == 12
-    assert item["h"] == 1
-
-
-def test_non_numeric_positions_do_not_break_the_save(client, adult):
-    client.force_login(adult)
-    key = all_widgets("admin")[0].key
-
-    response = _save(client, [{"key": key, "x": "left", "y": None, "w": [], "h": {}}])
+    response = _save(client, [{"key": key, "size": {"nope": 1}}])
 
     assert response.status_code == 200
 
@@ -552,3 +688,29 @@ def test_the_migration_maps_each_tracker_widget_to_one_that_exists():
     missing = [key for key in migration.REPLACEMENTS.values() if get_widget(key) is None]
 
     assert not missing, f"the migration points at widgets that do not exist: {missing}"
+
+
+def test_a_migrated_layout_naming_an_unavailable_size_still_renders(client, adult):
+    """Migration 0003 maps old (w, h) pairs to sizes by dimension alone — it
+    cannot ask the registry what a widget declares, because a migration must
+    keep meaning what it meant when it ran rather than following today's app
+    code. So a layout can legitimately carry a size its widget does not offer
+    (a 4x4 OpenLoadWidget became "L"; it declares only S and M).
+
+    That is safe by design, not by luck: resolve_size() falls back at render
+    time, which is the same mechanism that lets a widget drop a variant without
+    rewriting everyone's stored layout behind their back. This asserts the
+    page actually comes back, and comes back at the size that will be drawn.
+    """
+    client.force_login(adult)
+    small = [w for w in all_widgets("admin") if "XL" not in w.sizes][0]
+    layout = DashboardLayout.for_member(adult)
+    layout.items = [{"key": small.key, "size": "XL"}]
+    layout.save()
+
+    response = client.get("/home/")
+
+    assert response.status_code == 200
+    placed = json.loads(response.context["placed_json"])
+    assert placed[0]["widget"]["size"] == small.default_size
+    assert placed[0]["widget"]["kind"] != "error"

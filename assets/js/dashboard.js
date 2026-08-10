@@ -3,22 +3,26 @@
  *
  * Widgets arrive from the server already rendered as data — a chart option, a stat,
  * a list of rows, or a block of HTML. This file lays them out, draws them, refreshes
- * them on their own timers, and saves the arrangement when someone drags things
- * around.
+ * them on their own timers, and saves the arrangement when someone rearranges it.
  *
- * Two optional dependencies, both vendored (see `make vendor`):
- *   Gridstack  drag-and-resize. Without it the grid is static but perfectly usable.
+ * Story 48: **the layout is an ordered list, not a set of coordinates.** Each item
+ * is {key, size} where size is one of S/M/L/XL, and CSS grid places the tiles with
+ * `grid-auto-flow: row dense` (see .bento in components.css). Gridstack is gone —
+ * absolute x/y/w/h is what made a screen able to look ragged in the first place,
+ * and with whole-cell sizes on a 12-column grid no arrangement can. Reordering is
+ * moving an item one step through the list, which is a button rather than a drag
+ * because the phone is a first-class surface and HTML5 drag-and-drop does not work
+ * on touch without a polyfill.
+ *
+ * One optional dependency, vendored (see `make vendor`):
  *   ECharts    charts. Without it chart widgets show a short note instead.
- * The dashboard is deliberately useful with neither, because a Pi with no internet
+ * The dashboard is deliberately useful without it, because a Pi with no internet
  * on first boot should still show the family their day.
  *
- * Story 45, Phase B: the markup this file builds moved onto the arc-reactor
- * component classes (.nh-tile/.card/.card-h/.body/.read/.row/.ck/.empty) —
- * the same ones {% nh_tile %}/{% nh_card %}/{% nh_stat %}/{% nh_list %}
- * render server-side, so a dashboard widget looks identical to any other
- * card in the house. Gridstack's own x/y/w/h units are already a 12-column
- * grid, same as --c/--r, so building a tile is a straight translation, not a
- * redesign.
+ * The markup built here is the arc-reactor component set (.nh-tile/.card/.card-h/
+ * .body/.read/.row/.ck/.empty) — the same classes {% nh_tile %}/{% nh_card %}/
+ * {% nh_stat %}/{% nh_list %} render server-side, so a dashboard widget looks
+ * identical to any other card in the house.
  */
 (function (window, document) {
   "use strict";
@@ -26,11 +30,11 @@
   var Dash = {
     root: null,
     gridEl: null,
-    grid: null,          // the Gridstack instance, when available
-    placed: [],
+    placed: [],       // ordered [{widget}] — the order IS the layout
     catalog: [],
     saveUrl: "",
     widgetUrlTemplate: "",
+    editing: false,
     timers: []
   };
 
@@ -60,26 +64,16 @@
   Dash.render = function () {
     Dash.clearTimers();
     Dash.gridEl.innerHTML = "";
+    Dash.gridEl.classList.add("bento");
 
     var empty = Dash.root.querySelector("[data-dash-empty]");
     if (empty) empty.hidden = Dash.placed.length > 0;
 
     if (!Dash.placed.length) return;
 
-    Dash.placed.forEach(function (item) {
-      Dash.gridEl.appendChild(Dash.buildTile(item));
+    Dash.placed.forEach(function (item, index) {
+      Dash.gridEl.appendChild(Dash.buildTile(item, index));
     });
-
-    if (window.GridStack && !window.__nhNoGridstack) {
-      Dash.initGridstack();
-    } else {
-      // Static fallback: honour each widget's width and height on a plain CSS
-      // grid — reuses .bento (components.css) rather than a parallel grid
-      // class, since .nh-tile's own grid-column/grid-row rule is already
-      // scoped to `.bento > .nh-tile` and a widget's --c/--r are set on it
-      // either way.
-      Dash.gridEl.classList.add("bento");
-    }
 
     Dash.placed.forEach(function (item) {
       Dash.draw(item.widget);
@@ -87,52 +81,16 @@
     });
   };
 
-  Dash.initGridstack = function () {
-    Dash.gridEl.classList.add("grid-stack");
-    Array.prototype.forEach.call(Dash.gridEl.children, function (child) {
-      child.classList.add("grid-stack-item");
-    });
-
-    Dash.grid = window.GridStack.init({
-      column: 12,
-      // rem, not a bare number (which Gridstack treats as px): the wall
-      // scales its whole root font-size 1.6x (Story 39) so its text stays
-      // readable from three metres, and a tile's *height* has to grow with
-      // it or its now-larger content — a stat's big number, in particular —
-      // gets clipped by the tile's own overflow:hidden. Found by looking at
-      // the wall itself, not by reading this file: a fixed 80px height is
-      // exactly the kind of thing that looks correct in isolation and is
-      // silently wrong the moment the root font-size it never accounted for
-      // changes. 5rem == 80px at the normal 16px root, so nothing changes
-      // anywhere else.
-      cellHeight: 5,
-      cellHeightUnit: "rem",
-      margin: 8,
-      float: false,
-      disableDrag: true,       // opt in via "Rearrange"
-      disableResize: true,
-      handle: ".dash-grip"
-    }, Dash.gridEl);
-
-    Dash.grid.on("change", function () {
-      if (Dash.editing) Dash.save();
-    });
-  };
-
-  Dash.buildTile = function (item) {
+  Dash.buildTile = function (item, index) {
     var widget = item.widget;
 
     var tile = document.createElement("div");
     tile.className = "nh-tile";
-    tile.setAttribute("gs-x", item.x);
-    tile.setAttribute("gs-y", item.y);
-    tile.setAttribute("gs-w", item.w);
-    tile.setAttribute("gs-h", item.h);
-    // Gridstack's own x/y/w/h are already a 12-column grid, the same units
-    // --c/--r expect, so no conversion — just the same numbers under the
-    // names components.css's .bento > .nh-tile rule actually reads.
-    tile.style.setProperty("--c", item.w);
-    tile.style.setProperty("--r", item.h);
+    // The server already resolved the size to cells — the browser never owns
+    // that table, so a size the widget stopped offering renders as whatever
+    // the server fell back to rather than as two different answers.
+    tile.style.setProperty("--c", widget.c);
+    tile.style.setProperty("--r", widget.r);
     tile.dataset.key = widget.key;
 
     var card = document.createElement("div");
@@ -154,19 +112,36 @@
 
     var tools = document.createElement("div");
     tools.className = "tools";
+
+    // One button per size this widget declares. Outside edit mode they are
+    // hidden by CSS and the source app's name shows instead.
     if (widget.app) {
       var app = document.createElement("span");
       app.className = "src";
       app.textContent = widget.app;
       tools.appendChild(app);
     }
-    var grip = document.createElement("button");
-    grip.className = "dash-grip"; grip.type = "button";
-    grip.setAttribute("aria-label", "Drag to move"); grip.textContent = "\u283f";
-    tools.appendChild(grip);
+    (widget.sizes || []).forEach(function (name) {
+      var button = document.createElement("button");
+      button.className = "szbtn";
+      button.type = "button";
+      button.textContent = name;
+      button.setAttribute("aria-pressed", String(name === widget.size));
+      button.setAttribute("aria-label", "Size " + name + ": " + (widget.title || ""));
+      button.addEventListener("click", function () { Dash.resize(widget.key, name); });
+      tools.appendChild(button);
+    });
+
+    tools.appendChild(moveButton("\u2039", "Move earlier", index === 0, function () {
+      Dash.move(index, -1);
+    }));
+    tools.appendChild(moveButton("\u203a", "Move later",
+      index === Dash.placed.length - 1, function () { Dash.move(index, 1); }));
+
     var remove = document.createElement("button");
     remove.className = "dash-remove"; remove.type = "button";
-    remove.setAttribute("aria-label", "Remove"); remove.textContent = "\u00d7";
+    remove.setAttribute("aria-label", "Remove " + (widget.title || "widget"));
+    remove.textContent = "\u00d7";
     remove.addEventListener("click", function () { Dash.remove(widget.key); });
     tools.appendChild(remove);
     head.appendChild(tools);
@@ -180,6 +155,17 @@
     tile.appendChild(card);
     return tile;
   };
+
+  function moveButton(glyph, label, disabled, handler) {
+    var button = document.createElement("button");
+    button.className = "dash-move";
+    button.type = "button";
+    button.textContent = glyph;
+    button.setAttribute("aria-label", label);
+    button.disabled = disabled;
+    button.addEventListener("click", handler);
+    return button;
+  }
 
   /* ── drawing ─────────────────────────────────────────────────────────────── */
   Dash.draw = function (widget) {
@@ -329,16 +315,23 @@
   }
 
   /* ── refresh ─────────────────────────────────────────────────────────────── */
+  /* Always carries the size. A list at M is a readout and at L is four rows, so
+     refreshing without it would quietly redraw the tile as a different variant
+     — the tile would keep its cells and change what is inside them. */
+  Dash.fetchWidget = function (key, size) {
+    var url = Dash.widgetUrlTemplate.replace("KEY", encodeURIComponent(key))
+      + "?size=" + encodeURIComponent(size || "");
+    return fetch(url, { credentials: "same-origin" })
+      .then(function (response) { return response.ok ? response.json() : null; });
+  };
+
   Dash.scheduleRefresh = function (widget) {
     if (!widget.refresh_seconds) return;
 
     var timer = window.setInterval(function () {
       if (document.hidden) return;   // never poll a tab nobody is looking at
-      fetch(Dash.widgetUrlTemplate.replace("KEY", encodeURIComponent(widget.key)), {
-        credentials: "same-origin"
-      })
-        .then(function (response) { return response.json(); })
-        .then(function (fresh) { Dash.draw(fresh); })
+      Dash.fetchWidget(widget.key, widget.size)
+        .then(function (fresh) { if (fresh) Dash.draw(fresh); })
         .catch(function () { /* keep the stale tile rather than blanking it */ });
     }, widget.refresh_seconds * 1000);
 
@@ -369,12 +362,35 @@
 
     var button = document.querySelector("[data-dash-edit]");
     if (button) button.textContent = Dash.editing ? "Done" : "Rearrange";
+  };
 
-    if (Dash.grid) {
-      Dash.grid.enableMove(Dash.editing);
-      Dash.grid.enableResize(Dash.editing);
-    }
-    if (!Dash.editing) Dash.save();
+  /* Change one widget's size. The server owns what a size means — a list at M
+     is a readout and at L is four rows — so this refetches that widget rather
+     than resizing the tile around stale content, which is the whole difference
+     between "a designed state" and "the same content stretched". */
+  Dash.resize = function (key, size) {
+    var item = Dash.placed.filter(function (each) {
+      return each.widget.key === key;
+    })[0];
+    if (!item || item.widget.size === size) return;
+
+    item.widget.size = size;
+    Dash.save()
+      .then(function () { return Dash.fetchWidget(key, size); })
+      .then(function (fresh) {
+        if (fresh) item.widget = fresh;
+        Dash.render();
+      })
+      .catch(function () { /* save() already told the family */ });
+  };
+
+  Dash.move = function (index, delta) {
+    var target = index + delta;
+    if (target < 0 || target >= Dash.placed.length) return;
+    var moved = Dash.placed.splice(index, 1)[0];
+    Dash.placed.splice(target, 0, moved);
+    Dash.render();
+    Dash.save();
   };
 
   Dash.openPicker = function () {
@@ -433,66 +449,29 @@
   };
 
   Dash.add = function (entry) {
-    var w = entry.w || 4, h = entry.h || 3;
-    var pos = Dash.nextSlot(w);
-
+    // Appended, not slotted: order is the layout and `dense` does the packing,
+    // so there is no "next free position" to work out — the shelf packer this
+    // replaced existed only because coordinates had to be invented by hand.
     Dash.placed.push({
-      x: pos.x, y: pos.y, w: w, h: h,
       widget: { key: entry.key, kind: entry.kind, title: entry.title,
-                subtitle: entry.subtitle, app: entry.app, refresh_seconds: 0 }
+                subtitle: entry.subtitle, app: entry.app, refresh_seconds: 0,
+                size: entry.size, sizes: entry.sizes || [] }
     });
 
     Dash.save().then(function () { window.location.reload(); });
-  };
-
-  // Fills the current row left-to-right before starting a new one — a plain
-  // "shelf" packer, not general bin-packing, but enough to stop every added
-  // widget landing in its own row at x:0 under whatever's already there,
-  // which is what actually reads as "clumped and uneven" on screen.
-  Dash.nextSlot = function (w) {
-    if (!Dash.placed.length) return { x: 0, y: 0 };
-
-    var lastRowY = Dash.placed.reduce(function (max, item) {
-      return Math.max(max, item.y);
-    }, 0);
-    var rowEdge = Dash.placed.reduce(function (edge, item) {
-      return item.y === lastRowY ? Math.max(edge, item.x + item.w) : edge;
-    }, 0);
-
-    if (rowEdge + w <= 12) return { x: rowEdge, y: lastRowY };
-
-    var bottom = Dash.placed.reduce(function (max, item) {
-      return Math.max(max, item.y + item.h);
-    }, 0);
-    return { x: 0, y: bottom };
   };
 
   Dash.remove = function (key) {
     Dash.placed = Dash.placed.filter(function (item) {
       return item.widget.key !== key;
     });
-    var tile = Dash.gridEl.querySelector('[data-key="' + cssEscape(key) + '"]');
-    if (tile) {
-      if (Dash.grid) Dash.grid.removeWidget(tile);
-      else tile.remove();
-    }
+    Dash.render();
     Dash.save();
-    if (!Dash.placed.length) Dash.render();
   };
 
   Dash.save = function () {
     var items = Dash.placed.map(function (item) {
-      var node = Dash.gridEl.querySelector(
-        '[data-key="' + cssEscape(item.widget.key) + '"]');
-      var position = (Dash.grid && node) ? node.gridstackNode : null;
-
-      return {
-        key: item.widget.key,
-        x: position ? position.x : item.x,
-        y: position ? position.y : item.y,
-        w: position ? position.w : item.w,
-        h: position ? position.h : item.h
-      };
+      return { key: item.widget.key, size: item.widget.size };
     });
 
     return fetch(Dash.saveUrl, {

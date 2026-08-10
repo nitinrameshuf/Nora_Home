@@ -533,7 +533,7 @@ class WeeklyVolume(ChartWidget):
     title = "Training volume"
     subtitle = "Last 12 weeks"
     description = "Total kg moved per week."   # shown in the widget picker
-    default_size = (6, 4)                      # 12-column grid; a row is ~80px
+    sizes = ("L", "XL")                        # which of S/M/L/XL you offer
     refresh_seconds = 600
 
     def option(self, request):
@@ -547,7 +547,7 @@ class WeeklyVolume(ChartWidget):
 
 class LastSession(StatWidget):
     title = "Last session"
-    default_size = (3, 2)
+    sizes = ("S", "M")
 
     def stat(self, request):
         session = latest_for(request.user)
@@ -561,6 +561,34 @@ chart in the house looking like one system.
 
 Four widget types: `ChartWidget` (`option()`), `StatWidget` (`stat()`),
 `ListWidget` (`rows()`), `TemplateWidget` (`template` + `context()`).
+
+### Sizes
+
+Declare which of **S / M / L / XL** your widget offers, smallest first; the first
+one you list is what the picker places. They are whole cells on a 12-column grid
+— `S` 3x1, `M` 6x1, `L` 6x2, `XL` 12x1 — which is what stops any arrangement
+leaving a ragged gap. There are no arbitrary widths; the family picks a size, not
+a pixel count, and the grid packs the rest.
+
+**You do not write a variant per size.** Each of the four base classes above
+defines what its own kind looks like at every size, so a widget you write once
+renders correctly everywhere it can be placed:
+
+| Kind | Small (S, M) | Large (L, XL) |
+|---|---|---|
+| `StatWidget` | the number and its caption; `S` drops the sparkline | number, caption, sparkline |
+| `ListWidget` | **a readout** — a count plus the row that matters | the list, 4 rows at `L`, 6 at `XL` |
+| `ChartWidget` | the chart, drawn to fill its cells | same, in more cells |
+
+A list becoming a readout is the point rather than a shortcut: a 6x1 cell holds a
+heading and one line, so one truncated row there reads as a broken list, while a
+count with the next item under it reads as an answer. Set `summary_unit` (`"due"`,
+`"open"`) to say what the count counts, and override `summary(rows)` for a
+different headline.
+
+`tests/test_dashboard.py::test_a_widget_renders_at_every_size_it_declares`
+renders every registered widget at every size it declares, so a size that does
+not work is a failing test rather than something a family member finds.
 
 Keep these fast. Every visible widget renders on one page load, and the wall display
 re-renders forever.

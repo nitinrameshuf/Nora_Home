@@ -95,6 +95,32 @@
     border-color: var(--arc-400); color: #032430; box-shadow: 0 0 16px var(--glow);
   }
 
+  /* ── the console rail's vitals (Story 48) ──
+     Ported from the mockup's .vitals/.vit/.vk/.vv/.vbar. `.panel` comes from
+     components.css (layered), and only supplies the glass and the corner
+     brackets — the padding/flow below is this file's, so the two do not
+     collide the way a duplicated bare selector would. */
+  .vitals { padding: 9px 11px; margin-bottom: 9px; display: flex; flex-direction: column; gap: 5px; }
+  .vit {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-mono); font-size: calc(var(--s0) * .72); letter-spacing: .09em;
+  }
+  .vit .vk { color: var(--faint); text-transform: uppercase; width: 32px; flex: none; }
+  .vit .vv {
+    color: var(--arc-300); font-variant-numeric: tabular-nums; margin-left: auto;
+    min-width: 46px; text-align: right;
+  }
+  .vit .vbar { flex: 1; height: 3px; border-radius: 2px; background: rgba(120, 200, 235, .14); overflow: hidden; }
+  .vit .vbar i {
+    display: block; height: 100%;
+    background: linear-gradient(90deg, var(--arc-600), var(--arc-400));
+    box-shadow: 0 0 8px var(--glow);
+  }
+  .vit .vbar.warm i {
+    background: linear-gradient(90deg, #b87a1e, var(--warn));
+    box-shadow: 0 0 8px rgba(255, 182, 72, .5);
+  }
+
   /* ── the household switcher (member chip) ── */
   .rail-foot { margin-top: auto; padding-top: 12px; }
   .mewrap { position: relative; }

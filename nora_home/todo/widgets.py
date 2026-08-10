@@ -55,7 +55,7 @@ class OpenLoadWidget(StatWidget):
     title = "Open now"
     description = "How much is actually open, and how much of it is late."
     icon = "target"
-    default_size = (3, 2)
+    sizes = ("S", "M")
     refresh_seconds = 300
 
     def stat(self, request):
@@ -84,7 +84,7 @@ class TypicalThroughputWidget(StatWidget):
     description = ("What a realistic day actually looks like for you — the "
                    "median, not an average nobody ever hits.")
     icon = "chart"
-    default_size = (3, 2)
+    sizes = ("S", "M")
     refresh_seconds = 3600
 
     def stat(self, request):
@@ -105,7 +105,7 @@ class StreakWidget(StatWidget):
     description = ("Days with something finished. Shows a rolling ratio, or a "
                    "classic resets-on-a-miss streak, depending on your tone.")
     icon = "spark"
-    default_size = (3, 2)
+    sizes = ("S", "M")
     refresh_seconds = 900
 
     def stat(self, request):
@@ -123,9 +123,10 @@ class DueNextWidget(ListWidget):
     title = "Due next"
     description = "The next few things of yours, soonest first."
     icon = "sun"
-    default_size = (4, 4)
+    sizes = ("M", "L", "XL")
     refresh_seconds = 120
     empty_message = "Nothing due. Enjoy it."
+    summary_unit = "due"  # what the count means at M, where this is a readout
 
     def rows(self, request):
         members = scope_members(request)
@@ -154,7 +155,7 @@ class CompletionHeatmapWidget(ChartWidget):
     subtitle = "Days with something finished"
     description = "A calendar heatmap of everything completed over the last year."
     icon = "calendar"
-    default_size = (12, 3)
+    sizes = ("L", "XL")
     refresh_seconds = 3600
     wall_safe = True
 
@@ -189,7 +190,7 @@ class CumulativeFlowWidget(ChartWidget):
     description = ("Whether the pile is growing. Two lines pulling apart means "
                    "more is arriving than leaving.")
     icon = "chart"
-    default_size = (6, 4)
+    sizes = ("L", "XL")
     refresh_seconds = 1800
 
     def option(self, request):

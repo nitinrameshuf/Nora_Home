@@ -323,15 +323,20 @@ looking like one system no matter who wrote the app. Declare them in `apps.py`
 | `ListWidget` | `rows(request)` | `[{"title", "meta", "status", "url", "action_url"}, ...]` |
 | `TemplateWidget` | `context(request)` | Context for your own template — the escape hatch |
 
-Class attributes: `title`, `subtitle`, `description`, `icon`, `default_size=(w, h)`,
-`refresh_seconds`, `empty_message`.
+Class attributes: `title`, `subtitle`, `description`, `icon`, `sizes`,
+`refresh_seconds`, `empty_message`, `summary_unit`.
+
+`sizes` is which of **S / M / L / XL** you offer, smallest first — whole cells on
+a 12-column grid (3x1, 6x1, 6x2, 12x1). Each base class already defines what its
+kind looks like at every size, so you write the widget once; see
+DEVELOPMENT.md § Sizes.
 
 ```python
 from nora_home.core.registry import scope_members
 
 class WeekVolumeWidget(ChartWidget):
     title = "Volume this week"
-    default_size = (4, 3)
+    sizes = ("L", "XL")
     refresh_seconds = 300
 
     def option(self, request):
