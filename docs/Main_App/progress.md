@@ -4496,3 +4496,87 @@ to the System page — the wall came back showing System current in its rail,
 real health rows and live timeline entries. The desk moves the wall.
 
 Story 50 is **Complete**.
+
+## 2026-08-10 — Story 51: Kiosk Control Channel (two of four)
+
+Two of the desk's four dead controls came alive and are proven on the
+hardware. The other two are not done, and one of them is not *doable* on this
+Pi — which is the part worth writing down.
+
+### Zoom, live and proven
+
+The panel does not hold zoom state: the keys nudge the stored
+`displays.zoom`, the consumer clamps it per surface via `nora_home/ui/zoom.py`
+and turns the action into a `refresh`, and the wall reloads at the new size.
+Handled server-side rather than relayed, so wall-live.js needs no `case
+"zoom"` at all. `KIOSK_ACTIONS` grew a `SERVER_SIDE_ACTIONS` exemption so the
+"every action must have a handler on the wall" rule stayed honest instead of
+being weakened, plus a test that an exempt action can never silently fall
+back into the relay path.
+
+Proven on the panel: three taps of "+" took the wall 1.00 → 1.15, the wall
+reloaded visibly larger, and the desk's own fader moved to match — painted
+from the server's ack rather than from what it asked for, so pressing "+" at
+the ceiling simply stops. Clamping is covered by tests that were checked
+non-vacuously: with `clamp()` neutered they fail, with it restored they pass.
+
+### Scroll, live and proven, after two real bugs
+
+The message carries a **rate**, not a position — the panel has no way to know
+how long the wall's page is, and a spring-centred wheel is a rate control.
+The wall integrates it on a 50ms interval and tears the interval down on a
+rate of 0.
+
+- **The wall was scrolling the wrong thing.** `contentWindow.scrollBy()`
+  scrolls the document, and shell.css sets
+  `html[data-surface="wall"] body { overflow: hidden }` — `.canvas` is the
+  scrolling box. The message arrived, the interval ran, and a 3-second hold on
+  the physical wall with a genuinely long page up moved **zero pixels**.
+  Isolated by driving the bus directly from inside the container, which
+  separated "does the wall obey" from "does the wheel send".
+- **The wheel lost the press to `setPointerCapture`.** It was called before
+  `apply()`, and it throws `InvalidStateError` for a pointer the UA no longer
+  considers active — so the `.held` glow appeared, the wheel never moved, and
+  no rate was ever sent. Found by screenshotting the panel mid-hold: lit, but
+  centred. Guarded now, and `release` is bound on the window as well, because
+  a refused capture would otherwise mean a release off the wheel never
+  arrives and the wall scrolls forever.
+
+Proven on the panel: a 3-second hold scrolls the wall (full-frame change,
+matching the direct-bus control), and on release the wall stops dead — zero
+pixel drift over the following four seconds.
+
+### Wall-only power: still unsolved, and now with evidence
+
+The story's own hypothesis was `vcgencmd display_power 0 <display>`, to be
+proven before the button ships. It was tested first, before any code, and it
+is wrong. Four mechanisms, all tested on this Pi:
+
+| Mechanism | Result |
+|---|---|
+| `vcgencmd display_power` | **Disproven** — `error=1 error_msg="Command not registered"` on this Pi 5 (kernel 6.18). `get_display_id` likewise. |
+| HDMI-CEC standby | **Disproven** — `/dev/cec0`+`cec-ctl` exist and configure fine, but a scan of the wall's port finds only our own logical address. The 24" does not implement CEC. |
+| DRM sysfs `dpms` write | **Blocked** — needs root, and passwordless sudo is *not* available on this Pi despite CLAUDE.md saying `pre-provision-pi.sh` grants it. |
+| `xrandr --output HDMI-1 --off` | **Disproven as usable** — it does turn the wall off, and reflows the desktop doing it: HDMI-2 jumps to `+0+0` and **both** Chromium windows collapse onto the kiosk at 1024x600. Restored with `--auto --pos` plus `./nora screens relaunch`. This is the "fragile" in CLAUDE.md, now with a mechanism. |
+
+`xrandr --output HDMI-1 --brightness 0` is the one thing that is per-output,
+reversible and does not reflow — but it is a scanout gamma transform, so the
+backlight stays on and it is *blanking*, not power. It is also invisible to
+`scrot`: the framebuffer is unchanged, and the wall measured an identical
+30.28 mean at brightness 1.0 and 0.0. Worth knowing before anyone tries to
+verify it from a screenshot.
+
+The power key therefore stays dead rather than shipping mislabelled.
+
+### Volume: not done, deliberately
+
+It needs a host mixer call, and the host half of that (a watcher plus an
+`amixer` invocation, following the same "container writes, host acts" shape
+as alarm playback) can only be installed by root. Shipping the app half alone
+would put a fader on the panel that moves and changes nothing — exactly what
+Story 50 made the dead controls dead to avoid. It stays dead until its host
+half can be installed.
+
+**Story 51 is two-of-four.** Zoom and scroll are Complete and proven on the
+hardware; volume and wall-only power are not, and wall-only power has no known
+working mechanism on this Pi at all.
