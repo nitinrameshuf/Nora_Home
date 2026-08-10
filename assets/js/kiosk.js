@@ -163,21 +163,38 @@
     bend.addEventListener("pointerdown", function (event) {
       active = true;
       bend.classList.add("held");
-      bend.setPointerCapture(event.pointerId);
+      // Capture is a nicety — it makes releasing *off* the wheel still deliver
+      // the stop. It is not allowed to cost us the actual press: it throws
+      // InvalidStateError for a pointer the UA no longer considers active, and
+      // with it before apply() a throw meant the wheel lit up and then did
+      // nothing at all. Seen on the panel: the .held glow appeared, the wheel
+      // never moved, and no scroll was ever sent.
+      try {
+        bend.setPointerCapture(event.pointerId);
+      } catch (error) {
+        /* release still arrives via pointerup on the element itself */
+      }
       apply(rateFrom(event));
     });
     bend.addEventListener("pointermove", function (event) {
       if (active) apply(rateFrom(event));
     });
+    function release() {
+      if (!active) return;
+      active = false;
+      bend.classList.remove("held");
+      if (wheel) wheel.style.transform = "";
+      bend.setAttribute("aria-valuenow", "0");
+      Kiosk.send({ action: "scroll", display: Kiosk.target, rate: 0 });
+    }
+
+    // On the element *and* on the window: if setPointerCapture was refused,
+    // a release outside the wheel would otherwise never arrive and the wall
+    // would scroll forever. `release` is idempotent, so hearing it twice is
+    // harmless.
     ["pointerup", "pointercancel"].forEach(function (name) {
-      bend.addEventListener(name, function () {
-        if (!active) return;
-        active = false;
-        bend.classList.remove("held");
-        if (wheel) wheel.style.transform = "";
-        bend.setAttribute("aria-valuenow", "0");
-        Kiosk.send({ action: "scroll", display: Kiosk.target, rate: 0 });
-      });
+      bend.addEventListener(name, release);
+      window.addEventListener(name, release);
     });
   };
 
