@@ -545,46 +545,216 @@
   .dash-picker__title { font-weight: 600; font-size: calc(var(--s0) * .94); }
   .dash-picker__desc { font-size: calc(var(--s0) * .8); color: var(--faint); }
 
-  /* ── the kiosk shell (Story 45, Phase B) — the mockup's own "square keys"
-     bank (.hkey/.d-bank, already ported above) plus the header/footer/status/
-     toast chrome around it, which the mockup draws as part of .desk but this
-     app keeps as its own real page rather than the mockup's single-purpose
-     control-surface layout (kiosk.html still navigates the wall by URL, the
-     same job, simpler shell). ── */
-  body.kiosk { margin: 0; background: var(--void); color: var(--txt); font-family: var(--font-sans); overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
-  .kiosk-header {
-    flex: none; display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 16px; background: var(--panel-solid); border-bottom: 1px solid var(--edge);
-    font-family: var(--font-mono); font-size: calc(var(--s0) * .9);
+  /* ── the kiosk: the control desk (Story 50) ──
+     Ported from the mockup's `@layer kiosk` — the desk shell, its screws,
+     the dot-matrix readout, the link lamp, the key bank, the faders and the
+     scroll wheel. `.hkey` (the illuminated key) and `.vsel*` (the app
+     scroller, the Picker's vertical form) are already above, from Story 45
+     Phase A; this is the panel they sit in.
+
+     Story 45's own simpler `.kiosk-header`/`.kiosk-grid`/`.kiosk-tile`/
+     `.kiosk-controls` shell is deleted with this — it was explicitly a
+     placeholder ("this app keeps as its own real page rather than the
+     mockup's single-purpose control-surface layout"), and this story is
+     where the real layout arrives. `.kiosk-toast` survives; it is the only
+     piece of that shell the desk still uses. */
+  body.kiosk {
+    margin: 0; background: var(--void); color: var(--txt);
+    font-family: var(--font-sans); overflow: hidden; height: 100vh;
   }
-  .kiosk-header strong { letter-spacing: .1em; text-transform: uppercase; color: var(--arc-100); }
-  /* Default is connected — kiosk.js only ever adds .is-offline, on the
-     assumption the socket is up until told otherwise. */
-  .kiosk-status { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); display: inline-block; }
-  .kiosk-status.is-offline { background: var(--crit); box-shadow: 0 0 8px var(--crit); }
-  .kiosk-grid {
-    flex: 1; min-height: 0; overflow-y: auto; display: grid;
+  .desk {
+    height: 100%; display: flex; flex-direction: column; width: 100%; position: relative;
+    background: linear-gradient(163deg, #16212c 0%, #0d151e 42%, #070d14 100%);
+  }
+  /* brushed-metal tooth, very low contrast */
+  .desk::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+    background: repeating-linear-gradient(97deg, rgba(255, 255, 255, .014) 0 1px, transparent 1px 3px);
+  }
+  .screw {
+    position: absolute; width: 11px; height: 11px; border-radius: 50%; z-index: 4;
+    background: radial-gradient(circle at 34% 30%, #33414f, #131c25 70%, #0a1119);
+    box-shadow: inset 0 1px 1px rgba(190, 220, 240, .22), 0 1px 2px rgba(0, 0, 0, .7);
+  }
+  .screw::after {
+    content: ""; position: absolute; inset: 0; margin: auto; width: 7px; height: 1.5px;
+    background: #0a1119; border-radius: 1px; transform: rotate(34deg);
+  }
+  .screw.tl { top: 9px; left: 9px; } .screw.tr { top: 9px; right: 9px; }
+  .screw.bl { bottom: 9px; left: 9px; } .screw.br { bottom: 9px; right: 9px; }
+
+  /* ── header: brand, dot-matrix readout, lamp ── */
+  .d-head {
+    display: flex; align-items: center; gap: 14px; padding: 11px 26px; flex: none;
+    border-bottom: 1px solid #06232e; position: relative; z-index: 2;
+    box-shadow: 0 1px 0 rgba(150, 210, 240, .06);
+  }
+  .d-brand { display: flex; align-items: center; gap: 9px; }
+  .d-brand b {
+    font-family: var(--font-mono); font-size: calc(var(--s0) * .86); font-weight: 700;
+    letter-spacing: .34em; text-transform: uppercase; color: #93b4c6;
+  }
+  .d-readout {
+    margin-left: auto; display: flex; align-items: center; gap: 11px;
+    padding: 6px 16px; border-radius: 5px; background: #04090e; border: 1px solid #0a1a23;
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, .85); position: relative; overflow: hidden;
+  }
+  /* the dot grid a real LED matrix would have */
+  .d-readout::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(circle, rgba(0, 0, 0, .5) 32%, transparent 33%);
+    background-size: 3px 3px;
+  }
+  .d-readout span {
+    font-family: var(--font-mono); font-size: calc(var(--s0) * .66); letter-spacing: .2em;
+    color: #2c5c6d; text-transform: uppercase;
+  }
+  .d-readout b {
+    font-family: var(--font-mono); font-size: var(--s1); letter-spacing: .24em;
+    text-transform: uppercase; color: #7ff0ff; text-shadow: 0 0 12px rgba(56, 214, 255, .9);
+  }
+  .d-lamp {
+    display: flex; align-items: center; gap: 7px; font-family: var(--font-mono);
+    font-size: calc(var(--s0) * .68); letter-spacing: .18em; color: #3fd9a0; text-transform: uppercase;
+  }
+  .d-lamp i {
+    width: 9px; height: 9px; border-radius: 50%; background: #3ff0b0;
+    box-shadow: 0 0 10px #3ff0b0, inset 0 -1px 2px rgba(0, 0, 0, .4);
+  }
+  .d-lamp.lost { color: #ff6b78; }
+  .d-lamp.lost i { background: #ff4d5e; box-shadow: 0 0 10px #ff4d5e; }
+
+  /* ── panel layout ── */
+  .d-main { flex: 1; display: grid; grid-template-columns: 236px 1fr 84px; min-height: 0; position: relative; z-index: 2; }
+  .d-enc {
+    border-right: 1px solid #06232e; box-shadow: 1px 0 0 rgba(150, 210, 240, .05);
+    padding: 14px 0 16px; display: flex; flex-direction: column; align-items: stretch;
+    gap: 10px; min-height: 0;
+  }
+  .d-lab {
+    font-family: var(--font-mono); font-size: calc(var(--s0) * .64); letter-spacing: .28em;
+    text-transform: uppercase; color: #4e7284; flex: none; padding: 0 14px;
+  }
+  .d-keys { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+  .d-keys-h { display: flex; align-items: center; gap: 10px; flex: none; }
+  .d-keys-h .d-lab { padding: 0; }
+  .d-keys-h .bank {
+    margin-left: auto; font-family: var(--font-mono); font-size: calc(var(--s0) * .62);
+    letter-spacing: .16em; color: #4e7284; border: 1px solid #17303c;
+    border-radius: 4px; padding: 2px 8px;
+  }
+  /* One constant key size. auto-fill with a FIXED track, not 1fr — a bank of
+     two keys should look like two keys, not two very wide keys. */
+  .d-bank {
+    flex: 1; min-height: 0; overflow-y: auto; display: grid; gap: 12px;
     grid-template-columns: repeat(auto-fill, 128px); grid-auto-rows: 128px;
-    gap: 12px; padding: 16px; align-content: start;
+    align-content: start; justify-content: start;
   }
-  .kiosk-tile {
-    --key: var(--arc-500);
-    position: relative; border: 1px solid rgba(120, 200, 235, .16); color: #dcecf5;
-    background: linear-gradient(180deg, #101a24 0%, #0b131b 55%, #070d14 100%);
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-    font-family: var(--font-mono); text-transform: uppercase; border-radius: 12px;
-    padding: 12px; box-shadow: inset 0 1px 0 rgba(180, 225, 245, .09), 0 2px 0 #050b11, 0 5px 10px rgba(0, 0, 0, .5);
+  .d-bank[hidden] { display: none; }
+  .d-bank .hkey {
+    width: 128px; height: 128px; min-height: 0; border-radius: 14px; padding: 16px;
+    justify-content: center; align-items: center;
+    background: linear-gradient(180deg,
+      color-mix(in srgb, var(--key) 9%, #121c25) 0%,
+      color-mix(in srgb, var(--key) 5%, #0b131b) 100%);
+    box-shadow: inset 0 1px 0 rgba(180, 225, 245, .09), 0 2px 0 #050b11, 0 6px 14px rgba(0, 0, 0, .5);
   }
-  .kiosk-tile:hover { border-color: var(--edge-hot); }
-  .kiosk-tile:active, .kiosk-tile.is-pressed { transform: translateY(2px); border-color: var(--arc-500); }
-  .kiosk-tile__title { font-size: calc(var(--s0) * .92); font-weight: 700; letter-spacing: .08em; text-align: center; }
-  .kiosk-tile__hint { font-size: calc(var(--s0) * .64); color: var(--faint); letter-spacing: .08em; }
-  .kiosk-tile--back { --key: var(--faint); }
-  .kiosk-controls {
-    flex: none; display: flex; gap: 12px; padding: 12px 16px 20px;
-    background: var(--panel-solid); border-top: 1px solid var(--edge);
+  .d-bank .hkey .lg { text-align: center; color: #e2f1f8; font-size: calc(var(--s0) * .88); letter-spacing: .08em; }
+  .d-bank .hkey .led { top: 14px; right: 14px; left: auto; width: 10px; height: 10px; box-shadow: 0 0 10px var(--key); }
+  .d-bank .hkey:hover {
+    border-color: color-mix(in srgb, var(--key) 55%, transparent);
+    box-shadow: inset 0 1px 0 rgba(180, 225, 245, .14), 0 2px 0 #050b11,
+                0 0 20px color-mix(in srgb, var(--key) 25%, transparent);
   }
-  .kiosk-control { flex: 1; }
+  .hkey.is-pressed { transform: translateY(2px); border-color: var(--arc-500); }
+
+  /* ── the wall's scroll control (Story 51) ── */
+  .d-scroll {
+    border-left: 1px solid #06232e; box-shadow: -1px 0 0 rgba(150, 210, 240, .05);
+    padding: 14px 10px 16px; display: flex; flex-direction: column; align-items: center;
+    gap: 9px; min-height: 0;
+  }
+  .d-scroll .d-lab { padding: 0; }
+  .pbend {
+    position: relative; flex: 1; min-height: 0; width: 46px; border-radius: 10px;
+    border: 1px solid #060d14; overflow: hidden;
+    background: linear-gradient(180deg, #050b11, #0a121a 50%, #050b11);
+    box-shadow: inset 0 4px 10px rgba(0, 0, 0, .9), inset 0 -4px 10px rgba(0, 0, 0, .9);
+  }
+  .pbend-detent {
+    position: absolute; left: 6px; right: 6px; top: 50%; height: 1px; translate: 0 -50%;
+    background: var(--arc-500); opacity: .5; box-shadow: 0 0 8px var(--arc-500); z-index: 2;
+  }
+  .pwheel {
+    position: absolute; left: 4px; right: 4px; height: 78px; top: 50%; margin-top: -39px;
+    border-radius: 7px; z-index: 1; border: 1px solid #05090e;
+    background: linear-gradient(180deg, #0d151d 0%, #26333f 14%, #33434f 50%, #26333f 86%, #0d151d 100%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .7), 0 0 16px rgba(56, 214, 255, .1);
+  }
+  /* the ridges that make a mod wheel a mod wheel */
+  .pwheel::after {
+    content: ""; position: absolute; inset: 5px 7px; border-radius: 3px;
+    background: repeating-linear-gradient(180deg, rgba(190, 225, 245, .20) 0 1px, transparent 1px 5px);
+  }
+
+  /* ── faders ── */
+  .d-foot {
+    flex: none; display: grid; grid-template-columns: 1fr 1fr 132px 132px; gap: 14px;
+    padding: 12px 22px 16px; border-top: 1px solid #06232e;
+    box-shadow: inset 0 1px 0 rgba(150, 210, 240, .06); position: relative; z-index: 2; align-items: end;
+  }
+  .fader { display: flex; flex-direction: column; gap: 5px; }
+  .fader-row { display: flex; gap: 9px; align-items: center; }
+  .fader-row .hkey { min-height: 34px; height: 34px; width: 38px; flex: none; padding: 0; }
+  .fader-hint {
+    font-family: var(--font-mono); font-size: calc(var(--s0) * .58); letter-spacing: .06em;
+    color: #3d5a6b; margin-top: -2px;
+  }
+  .fader-h { display: flex; align-items: baseline; gap: 8px; }
+  .fader-h span {
+    font-family: var(--font-mono); font-size: calc(var(--s0) * .64); letter-spacing: .22em;
+    text-transform: uppercase; color: #4e7284;
+  }
+  .fader-h b {
+    margin-left: auto; font-family: var(--font-mono); font-size: calc(var(--s0) * .86);
+    color: #7ff0ff; font-variant-numeric: tabular-nums; text-shadow: 0 0 10px rgba(56, 214, 255, .6);
+  }
+  .slot {
+    position: relative; display: block; flex: 1; height: 34px; border-radius: 5px; border: 1px solid #060d14;
+    background: linear-gradient(180deg, #060c12, #0b141c); box-shadow: inset 0 3px 6px rgba(0, 0, 0, .85);
+  }
+  /* the travel groove */
+  .slot::before {
+    content: ""; position: absolute; left: 12px; right: 12px; top: 50%; height: 3px; translate: 0 -50%;
+    border-radius: 2px; background: #04080d; box-shadow: inset 0 1px 2px rgba(0, 0, 0, .9);
+  }
+  .slot-fill {
+    position: absolute; left: 12px; top: 50%; height: 3px; translate: 0 -50%; border-radius: 2px;
+    background: linear-gradient(90deg, #0b7a9e, #7fe9ff); box-shadow: 0 0 10px var(--glow); width: 0;
+  }
+  .fcap {
+    position: absolute; top: 3px; bottom: 3px; left: 12px; width: 26px; translate: -50% 0; border-radius: 4px;
+    background: linear-gradient(180deg, #2b3947 0%, #1a2531 50%, #101923 100%);
+    border: 1px solid #05090e;
+    box-shadow: inset 0 1px 0 rgba(175, 220, 245, .3), 0 2px 5px rgba(0, 0, 0, .7);
+  }
+  /* grip lines on the fader knob */
+  .fcap::after {
+    content: ""; position: absolute; inset: 5px 7px; border-radius: 1px;
+    background: repeating-linear-gradient(180deg, rgba(150, 200, 225, .22) 0 1px, transparent 1px 4px);
+  }
+
+  /* ── controls the platform cannot drive yet (Story 51) ──
+     Drawn, because the desk's composition is the design, but unlit and
+     inert. A fader that slides and changes nothing, or a power key that
+     looks armed and does nothing, is the "dead button with no error
+     anywhere" this project keeps warning about — so they read as a panel
+     whose capability has not been fitted rather than as working hardware. */
+  .is-dead { opacity: .38; cursor: not-allowed; pointer-events: none; }
+  .is-dead .led { background: #2c5c6d; box-shadow: none; }
+  .is-dead .pwheel { box-shadow: none; }
+  .is-dead .pbend-detent { opacity: .2; box-shadow: none; }
+
   .kiosk-toast {
     position: fixed; left: 50%; bottom: 96px; translate: -50% 0; z-index: 60;
     background: var(--panel-solid); border: 1px solid var(--edge-hot); border-radius: 999px;

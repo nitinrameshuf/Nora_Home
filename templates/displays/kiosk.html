@@ -1,14 +1,28 @@
-{% load static django_vite %}<!doctype html>
+{% load static django_vite nh %}<!doctype html>
 {% comment %}
-The 10.1" touchscreen on the Pi's second HDMI output. It never shows the app
-itself — it is a set of button screens that tell the 24" wall which page to
-show. Tapping an app switches the wall to it AND swaps the kiosk's own
-buttons to that app's controls (if it declared any via nora_kiosk_controls —
-see NoraAppConfig in nora_home/core/registry.py) so the remote stays
-relevant to whatever's currently on the big screen. Screens scroll if a
-house has grown enough apps that they don't fit on one 10" panel.
-{% endcomment %}
-{% comment %}
+The 10.1" touchscreen on the Pi's second HDMI output, rebuilt in Story 50 as a
+piece of hardware rather than a web page: an app scroller, a bank of
+illuminated keys, two faders, a scroll wheel, a power key, and a dot-matrix
+readout. It never shows the app itself — it tells the 24" wall what to show.
+
+Design language is the mockup's (@layer kiosk), taken from Teenage Engineering:
+monospace only, a tight palette, few well-placed controls, limitation as the
+aesthetic.
+
+**Every key is a path.** navigate / refresh / banner is the entire vocabulary
+wall-live.js implements, so a key can only ever send the wall somewhere. An app
+declares nora_kiosk_controls and its keys appear with no platform change; an app
+that declares none gets a single "Open" key rather than an empty bank.
+
+**Some of this desk is deliberately dead.** The two faders, the scroll wheel and
+the wall power key are drawn because the desk's composition is the design — but
+the capabilities behind them do not exist yet and belong to Story 51 (zoom from
+the panel, a scroll message wall-live.js does not implement, a host mixer call
+for volume, and wall-only power, which CLAUDE.md records as unsolved and which
+Story 51's own warn says must be proven on hardware before it ships). They carry
+`disabled` and `.is-dead`, so they read as unlit rather than as controls that
+quietly do nothing.
+
 See base.html's note on zoom. The kiosk's own ceiling is lower than the wall's
 (nora_home/ui/zoom.py) because at 1024 physical, a large zoom puts the layout
 viewport under the 860px breakpoint while media queries still report 1024.
@@ -22,81 +36,136 @@ viewport under the 860px breakpoint while media queries still report 1024.
   <title>{{ house_name }} — kiosk</title>
   <link rel="stylesheet" href="{% vite_asset_url 'assets/css/tokens.css' %}">
   <link rel="stylesheet" href="{% vite_asset_url 'assets/css/components.css' %}">
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nh-scene.css' %}">
 </head>
 <body class="kiosk" data-target-display="{{ target }}">
-  {% include "partials/scene.html" %}
   {% csrf_token %}
 
-  <header class="kiosk-header">
-    <div>
-      <strong>{{ house_name }}</strong>
-      <span class="card-subtitle">driving <code>{{ target }}</code></span>
+  <div class="desk" data-desk>
+    <span class="screw tl"></span><span class="screw tr"></span>
+    <span class="screw bl"></span><span class="screw br"></span>
+
+    <div class="d-head">
+      <div class="d-brand">
+        <svg width="22" height="22" viewBox="0 0 40 40" aria-hidden="true">
+          <circle cx="20" cy="20" r="18" fill="none" stroke="#38d6ff" stroke-width="1.4" opacity=".45"/>
+          <circle cx="20" cy="20" r="12.5" fill="none" stroke="#7fe9ff" stroke-width="1.2" opacity=".7" stroke-dasharray="4 3"/>
+          <circle cx="20" cy="20" r="7" fill="none" stroke="#a5eeff" stroke-width="1.6"/>
+          <circle cx="20" cy="20" r="3.4" fill="#e8fbff"/>
+        </svg>
+        <b>{{ house_name }}</b>
+      </div>
+      <div class="d-readout" data-desk-readout>
+        <span>Wall</span><b data-desk-readout-value>{{ current_app.title }}</b>
+      </div>
+      {% comment %}
+      The lamp is real: kiosk.js already tracks the websocket, and if it drops
+      every key on this panel is dead. Starts linked and only ever goes lost —
+      the same polarity .kiosk-status had.
+      {% endcomment %}
+      <div class="d-lamp" data-desk-lamp><i></i><span data-desk-lamp-text>Linked to wall</span></div>
     </div>
-    <span class="kiosk-status" data-kiosk-status></span>
-  </header>
 
-  <main class="kiosk-grid" data-kiosk-screen="menu">
-    {% comment %}
-    Home is hardcoded because the nav has no entry for it — it is the app's
-    root, not an app. Everything else comes from the registry, so a new house
-    app appears here on its own. Alerts is deliberately *not* hardcoded: the
-    notifications app already supplies it, and pinning it here as well produced
-    two identical "Alerts" tiles on a 10" screen.
-    {% endcomment %}
-    <button class="kiosk-tile" data-kiosk-action="navigate"
-            data-path="{{ home_url }}" type="button">
-      <span class="kiosk-tile__title">Home</span>
-    </button>
-    {% for group in nav %}
-      {% for app in group.apps %}
-        <button class="kiosk-tile"
-                data-kiosk-action="{% if app.kiosk_controls %}switch-app{% else %}navigate{% endif %}"
-                data-app="{{ app.slug }}" data-path="{{ app.url }}" type="button">
-          <span class="kiosk-tile__title">{{ app.title }}</span>
-          <span class="kiosk-tile__hint">{{ group.label }}</span>
-        </button>
-      {% endfor %}
-    {% endfor %}
-    {% for link in house_links %}
-      <button class="kiosk-tile" data-kiosk-action="navigate"
-              data-path="{{ link.url }}" type="button">
-        <span class="kiosk-tile__title">{{ link.title }}</span>
-        <span class="kiosk-tile__hint">This house</span>
+    <div class="d-main">
+      <div class="d-enc">
+        <div class="d-lab">App</div>
+        {% nh_picker items=wall_apps active=current_app.slug %}
+      </div>
+
+      <div class="d-keys">
+        <div class="d-keys-h">
+          <span class="d-lab"><span data-desk-app-title>{{ current_app.title }}</span> &mdash; send the wall to</span>
+          <span class="bank" data-desk-bank-count>Bank 1 / 1</span>
+        </div>
+        {% comment %}
+        One bank per app, all rendered, all hidden but the current one — the
+        same shape the old two-level screen used. Keys are paths, so there is
+        nothing to fetch when the scroller moves.
+        {% endcomment %}
+        {% for app in wall_apps %}
+          <div class="d-bank" data-desk-bank="{{ app.slug }}" {% if app.slug != current_app.slug %}hidden{% endif %}>
+            {% for control in app.controls %}
+              <button type="button" class="hkey" style="--key:{{ control.hue }}"
+                      data-kiosk-action="navigate" data-path="{{ control.path }}">
+                <span class="num">{{ forloop.counter }}</span>
+                <span class="led"></span>
+                <span class="lg">{{ control.title }}</span>
+              </button>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="d-scroll">
+        <div class="d-lab">Scroll</div>
+        {% comment %}
+        Story 51. wall-live.js implements navigate, refresh and banner only —
+        there is no message that moves the wall's content, so this wheel has
+        nothing to send yet.
+        {% endcomment %}
+        <div class="pbend is-dead" aria-label="Scroll the wall (not yet available)" aria-disabled="true">
+          <span class="pbend-detent" aria-hidden="true"></span>
+          <span class="pwheel" aria-hidden="true"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-foot">
+      {% comment %}
+      Both faders are Story 51's: zoom has a HouseSetting behind it but nothing
+      that writes it from here, and volume needs a host mixer call the
+      container cannot make. Drawn at their real current values so the desk is
+      honest about the house's state even while the controls are dead.
+      {% endcomment %}
+      <div class="fader is-dead">
+        <div class="fader-h"><span>Zoom</span><b>{{ nh_zoom|default:"1.00" }}&times;</b></div>
+        <div class="fader-hint">24&quot; text + layout &middot; Story 51</div>
+        <div class="fader-row">
+          <button class="hkey" disabled aria-label="Zoom down"><span class="lg">&minus;</span></button>
+          <span class="slot"><span class="slot-fill"></span><span class="fcap"></span></span>
+          <button class="hkey" disabled aria-label="Zoom up"><span class="lg">+</span></button>
+        </div>
+      </div>
+
+      <div class="fader is-dead">
+        <div class="fader-h"><span>Volume</span><b>&mdash;</b></div>
+        <div class="fader-hint">spoken alarms and chimes &middot; Story 51</div>
+        <div class="fader-row">
+          <button class="hkey" disabled aria-label="Volume down"><span class="lg">&minus;</span></button>
+          <span class="slot"><span class="slot-fill"></span><span class="fcap"></span></span>
+          <button class="hkey" disabled aria-label="Volume up"><span class="lg">+</span></button>
+        </div>
+      </div>
+
+      <button type="button" class="hkey wide" style="--key:#7aa2ff" data-kiosk-action="refresh">
+        <span class="led"></span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12a9 9 0 11-3-6.7"/><path d="M21 3v6h-6"/>
+        </svg>
+        <span class="lg">Reload</span>
       </button>
-    {% endfor %}
-  </main>
 
-  {% for app_slug, app in apps_with_controls.items %}
-    <main class="kiosk-grid" data-kiosk-screen="app:{{ app_slug }}" hidden>
-      <button class="kiosk-tile kiosk-tile--back" data-kiosk-action="show-menu" type="button">
-        <span class="kiosk-tile__title">&larr; Apps</span>
+      {% comment %}
+      Story 51, and the hardest of the four: CLAUDE.md records that
+      `xset dpms force off` blanks both screens together and that per-output
+      `xrandr --off` proved fragile. Powering the 24" down without taking this
+      panel with it is unsolved, so this key cannot ship live.
+      {% endcomment %}
+      <button type="button" class="hkey wide is-dead" style="--key:#ff6b78" disabled>
+        <span class="led"></span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3v9"/><path d="M6.3 6.3a8 8 0 1011.4 0"/>
+        </svg>
+        <span class="lg">24&quot; off</span>
       </button>
-      {% for control in app.kiosk_controls %}
-        <button class="kiosk-tile" data-kiosk-action="navigate"
-                data-path="{{ control.path }}" type="button">
-          <span class="kiosk-tile__title">{{ control.title }}</span>
-          <span class="kiosk-tile__hint">{{ app.title }}</span>
-        </button>
-      {% endfor %}
-    </main>
-  {% endfor %}
-
-  {% comment %}
-  Only actions wall-live.js actually implements belong here. "Dim"/"Wake"
-  (sleep/wake) were left over from the old ambient wall and did nothing on
-  the iframe wall that replaced it — the screens are powered down by the
-  host-side schedule in Settings (xset dpms), not from this footer.
-  {% endcomment %}
-  <footer class="kiosk-controls">
-    <button class="btn kiosk-control" data-kiosk-action="show-menu" type="button">Apps</button>
-    <button class="btn kiosk-control" data-kiosk-action="refresh" type="button">Reload</button>
-  </footer>
+    </div>
+  </div>
 
   <div class="kiosk-toast" data-kiosk-toast role="status"></div>
 
   {% vite_asset 'assets/js/nh-app.js' %}
-  {% vite_asset 'assets/js/nh-scene.js' %}
+  {% vite_asset 'assets/js/nh-picker.js' %}
   {% vite_asset 'assets/js/kiosk.js' %}
 </body>
 </html>

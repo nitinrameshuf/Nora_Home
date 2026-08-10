@@ -332,3 +332,133 @@ def test_display_pages_require_a_signed_in_member(client):
     response = client.get("/home/displays/kiosk/")
 
     assert response.status_code == 302
+
+
+# ── the control desk (Story 50) ───────────────────────────────────────────────
+
+def test_the_desk_offers_home_and_every_nav_app(client, adult, kiosk_display):
+    """The app scroller is grounded in the registry, so installing an app puts
+    it on the desk with no platform change. Home is not a nav app — it is the
+    base platform — so it is named explicitly and must still be there."""
+    from nora_home.core.registry import wall_apps
+
+    client.force_login(adult)
+    body = client.get("/home/displays/kiosk/").content.decode()
+
+    for app in wall_apps("adult"):
+        assert f'data-desk-bank="{app["slug"]}"' in body, f"{app['slug']} has no key bank"
+    assert 'data-v="home"' in body
+
+
+def test_every_app_on_the_desk_has_at_least_one_key(client, adult, kiosk_display):
+    """An app that declares no nora_kiosk_controls still gets one key. An empty
+    bank reads as a broken panel, not as "this app has one destination"."""
+    from nora_home.core.registry import wall_apps
+
+    for app in wall_apps("adult"):
+        assert app["controls"], f"{app['slug']} would render an empty bank"
+
+
+def test_every_key_on_the_desk_is_a_path_that_resolves(client, adult, kiosk_display):
+    """Every key is a path the wall navigates to, because navigate/refresh/
+    banner is the whole vocabulary wall-live.js implements. A key pointing at
+    a URL that 404s is a dead control that looks alive."""
+    from nora_home.core.registry import wall_apps
+
+    client.force_login(adult)
+
+    for app in wall_apps("adult"):
+        for control in app["controls"]:
+            assert client.get(control["path"]).status_code == 200, (
+                f"{app['slug']} key {control['title']!r} -> {control['path']} is broken")
+
+
+def test_the_controls_story_51_owns_are_rendered_dead(client, adult, kiosk_display):
+    """The two faders, the scroll wheel and wall power are drawn because the
+    desk's composition is the design, but the platform cannot drive any of
+    them yet (Story 51 — and wall-only power is recorded as unsolved). They
+    must be inert and visibly unlit: a control that moves and changes nothing
+    is the "dead button with no error anywhere" this project warns about."""
+    client.force_login(adult)
+    body = client.get("/home/displays/kiosk/").content.decode()
+
+    # The power key is the one that must never be live before it is proven on
+    # hardware — it carries both `disabled` and the dead treatment.
+    assert body.count("is-dead") >= 4, "the Story 51 controls are not marked dead"
+    assert 'class="pbend is-dead"' in body
+
+    # And none of them may carry a real action.
+    import re
+    for block in re.findall(r"<button[^>]*is-dead[^>]*>", body):
+        assert "data-kiosk-action" not in block, (
+            f"a dead control carries a live action: {block}")
+        assert "disabled" in block, f"a dead control is not disabled: {block}"
+
+
+def test_the_desk_never_sends_an_action_the_wall_cannot_handle(client, adult, kiosk_display):
+    """The same guarantee test_every_kiosk_action_has_a_handler_on_the_wall
+    makes about the allow-list, asserted against the rendered panel — every
+    data-kiosk-action actually on the desk must be one wall-live.js implements."""
+    import re
+
+    client.force_login(adult)
+    body = client.get("/home/displays/kiosk/").content.decode()
+
+    on_the_panel = set(re.findall(r'data-kiosk-action="([a-z-]+)"', body))
+
+    assert on_the_panel, "the desk has no live controls at all"
+    assert on_the_panel <= KIOSK_ACTIONS, (
+        f"the desk sends {sorted(on_the_panel - KIOSK_ACTIONS)}, which the wall "
+        "does not implement")
+
+
+def test_the_kiosk_reloads_itself_when_the_bus_says_refresh():
+    """`./nora screens` broadcasts {type:"refresh"} to every connected screen
+    after a deploy, and `nora`'s own comment claimed both screens honoured it.
+    wall-live.js always did; kiosk.js never had the branch, so the kiosk
+    silently kept its old markup — found on the physical panel deploying Story
+    47, where it held an eight-tile render containing a since-deleted tile and
+    only a full Chromium restart cleared it."""
+    source = KIOSK_JS.read_text()
+
+    assert 'data.type === "refresh"' in source, (
+        "kiosk.js ignores the refresh broadcast — ./nora screens will silently "
+        "leave the panel stale after every deploy")
+    assert "location.reload" in source
+
+
+def test_the_desk_reuses_the_picker_rather_than_a_second_scroller(client, adult, kiosk_display):
+    """The app scroller is Story 45's Picker component in its vertical form —
+    "the kiosk's vertical app scroller and the phone's horizontal rail are the
+    same control rotated". A second hand-rolled scroller here is how the two
+    drift apart."""
+    client.force_login(adult)
+    body = client.get("/home/displays/kiosk/").content.decode()
+
+    assert 'data-nh-picker data-orientation="vertical"' in body
+    assert "nh-picker" in body, "the Picker's own script is not loaded"
+
+
+def test_every_registered_app_declares_an_icon_this_house_can_draw():
+    """nora_icon is a name; nora_home.ui.icons is the only thing that turns it
+    into a drawing. A name with no entry renders as nothing at all — which on
+    the kiosk's scroller is an unlabelled blank where an app should be."""
+    from nora_home.core.registry import registered_apps
+    from nora_home.ui.icons import icon, names
+
+    missing = [a.slug for a in registered_apps() if a.nav and not icon(a.icon)]
+
+    assert not missing, (
+        f"{missing} declare an icon nora_home.ui.icons cannot draw; "
+        f"known names are {names()}")
+
+
+def test_the_bank_legend_is_derived_not_hardcoded():
+    """The mockup draws a fixed "Bank 1 / 1", which is true of a two-app
+    prototype and silently becomes wrong the first time an app declares more
+    controls than fit. The real panel computes it from what actually
+    overflows."""
+    source = KIOSK_JS.read_text()
+
+    assert "updateBankLabel" in source
+    assert "scrollHeight" in source, "the bank legend is not derived from real overflow"

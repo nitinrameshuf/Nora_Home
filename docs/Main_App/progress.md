@@ -4397,3 +4397,90 @@ skeleton refactor didn't regress the two screens that are physical — not a
 photo of a phone. That is the honest ceiling for this story specifically.
 
 Story 49 is **Complete**.
+
+## 2026-08-10 — Story 50: Kiosk — The Control Desk
+
+The 10.1" panel is a piece of hardware now rather than a web page: an app
+scroller down the left, a bank of numbered illuminated keys for whatever it
+has selected, a dot-matrix readout naming what the wall is showing, a link
+lamp, two faders, a scroll wheel and a power key. Design language is the
+mockup's `@layer kiosk` — Teenage Engineering by way of monospace-only type,
+a tight palette and limitation as the aesthetic — ported rather than redrawn.
+
+**Two components it did not have to build.** The app scroller is Story 45's
+Picker in its vertical form (`.vsel`), finally driven for the first time —
+"the kiosk's vertical app scroller and the phone's horizontal rail are the
+same control rotated", and Story 49 wired the horizontal one a day earlier.
+The keys are Story 45's `.hkey`. What Story 50 adds is the panel they sit in.
+
+**Everything on the desk is grounded in the registry.**
+`nora_home.core.registry.wall_apps()` returns Home plus every nav=True app,
+each carrying its own `nora_kiosk_controls` as keys — so installing an app
+gives it a key bank with no platform change, which is the claim the story
+makes. An app that declares none gets a single "Open" key rather than an
+empty bank, because an empty bank reads as a broken panel. Today that means
+Todo has five keys and everything else has one, exactly as the story
+predicted. A test walks every key on every bank and asserts the path it
+points at actually returns 200 — a key aimed at a 404 is a dead control that
+looks alive.
+
+**`nora_home/ui/icons.py` is new, and slightly overdue.** Every app has
+declared `nora_icon` since Story 2 and nothing anywhere turned that name into
+a drawing — base.html hand-writes its brand mark and the Picker's own
+docstring admits it "has no icon-name lookup of its own". The scroller is the
+first surface that genuinely needs one. Paths come from the mockup's own `I`
+map; exactly one glyph is new (a chain link for Integrations, which the
+mockup never needed because its prototype registry only held Home and Todo).
+A test asserts no nav app declares an icon this house cannot draw, since a
+missing one renders as a blank row rather than an error.
+
+### Part of this desk is deliberately dead, and says so
+
+The two faders, the scroll wheel and the wall power key are drawn because the
+desk's composition *is* the design, but nothing behind them exists yet — all
+four are Story 51's, and wall-only power is recorded in CLAUDE.md as unsolved
+(`xset dpms force off` blanks both screens; per-output `xrandr --off` proved
+fragile). They render `disabled` and `.is-dead`: dimmed, LEDs unlit,
+pointer-events off. A fader that slides and changes nothing is precisely the
+"dead button with no error anywhere" this project keeps warning about, so
+they read as a panel whose capability has not been fitted. A test asserts
+every `.is-dead` control carries `disabled` and no `data-kiosk-action`.
+
+### Three bugs, one of them shipped two stories ago
+
+- **kiosk.js never honoured the bus's `refresh`.** `./nora screens`
+  broadcasts `{type:"refresh"}` after a deploy and `nora`'s own comment
+  claimed both screens handled it; wall-live.js always did, kiosk.js never
+  had the branch. That is why deploying Story 47 left the panel showing an
+  eight-tile render containing a since-deleted tile until a full Chromium
+  restart. Fixed here, in the file being rewritten anyway, with a test.
+- **The bank legend was decorative.** The mockup hardcodes "Bank 1 / 1",
+  which is true of a two-app prototype and silently becomes wrong the first
+  time an app declares more controls than fit. It is derived from real
+  overflow now.
+- **And the first version of that derivation could never reach the last
+  page.** `floor(scrollTop / clientHeight) + 1` looks right and is not:
+  `scrollTop` maxes out at `scrollHeight - clientHeight`, so a two-page bank
+  scrolled fully to the bottom sat at ~0.45 of a page and the legend stuck at
+  "1 / 2". Found by deliberately overflowing a bank in the browser and
+  scrolling it, not by reading the code back. It maps across the scrollable
+  *range* now, and reads 1/1, then 1/2 → 2/2.
+
+**One thing not explained.** Twice early on, the kiosk page navigated itself
+to `/home/` shortly after load. Both times correlated with a sign-in
+navigation of mine still resolving. With tracing armed — `beforeunload`,
+`nh-pick`, and every `Kiosk.send` recorded into `sessionStorage` so it
+survives a navigation — it did not recur across five clean loads, and the
+trace showed only `socketState=1`. Recorded as unreproduced rather than
+fixed, because claiming otherwise would be a guess.
+
+### Verified
+
+1010 tests green, including nine new ones covering the desk specifically.
+Driven in a browser at the panel's real 1024x600: the scroller picks Todo,
+the readout changes to TODO, the bank swaps to Todo's five declared controls
+with their own key colours, and the picker's own state follows. The desk
+fills the panel exactly (`d-foot` bottom == 600, `d-scroll` right == 1024) —
+measured, because the browser pane letterboxes a viewport smaller than
+itself and the black margin around the screenshot looks exactly like a
+layout bug until you check.

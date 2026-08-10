@@ -278,6 +278,52 @@ def phone_tabs(role: str = "member") -> list[dict]:
     return tabs
 
 
+def wall_apps(role: str = "member") -> list[dict]:
+    """What the kiosk's control desk can send the 24" wall to (Story 50).
+
+    One entry per destination the desk's app scroller offers — Home first,
+    then every nav=True app — each carrying the keys its bank shows:
+
+        {"slug", "title", "icon", "path", "controls": [{"title", "path"}]}
+
+    `controls` is the app's own `nora_kiosk_controls`, which is why installing
+    an app gives it a key bank with no platform change. An app that declares
+    none still gets one key: without it the bank would be empty and the desk
+    would read as broken rather than as "this app has one destination".
+
+    Home is not a registered app with nav=True (it is the base platform, see
+    app_for_path) so its own destinations are named here — the same three the
+    desktop rail's "Home" group holds.
+    """
+    from django.urls import reverse
+
+    from nora_home.ui.icons import icon
+
+    desk = [{
+        "slug": "home",
+        "title": "Home",
+        "icon": icon("home"),
+        "path": reverse("core:dashboard"),
+        "controls": [
+            {"title": "Dashboard", "path": reverse("core:dashboard")},
+            {"title": "System", "path": reverse("core:system_status")},
+            {"title": "Settings", "path": reverse("core:settings")},
+        ],
+    }]
+    for group in navigation(role):
+        for app in group["apps"]:
+            controls = [{"title": c["title"], "path": c["path"]}
+                        for c in app.kiosk_controls]
+            desk.append({
+                "slug": app.slug,
+                "title": app.title,
+                "icon": icon(app.icon),
+                "path": app.url,
+                "controls": controls or [{"title": "Open", "path": app.url}],
+            })
+    return desk
+
+
 def app_for_path(path: str) -> "AppMetadata | None":
     """Which app this URL is *inside*, or `None` on the platform's own pages.
 

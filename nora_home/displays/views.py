@@ -30,35 +30,48 @@ def wall(request, slug: str = ""):
     })
 
 
+# The bank cycles through these, so two keys side by side are never the same
+# colour. Copied from the mockup's own KEY_HUES.
+KEY_HUES = ["#38d6ff", "#3ff0b0", "#ffb648", "#ff6b78",
+            "#a78bfa", "#7aa2ff", "#a3e635", "#f472b6"]
+
+
 @login_required
 @xframe_options_sameorigin
 def kiosk(request):
-    """The 10.1" touchscreen. Big targets, one thumb — a remote control for
-    the wall, never the app itself. Tiles mirror the same nav structure the
-    sidebar uses, so a new house app appears here automatically. An app that
-    declares nora_kiosk_controls (NoraAppConfig) gets its own button screen,
-    swapped in on the kiosk the moment someone switches the wall to it.
+    """The 10.1" touchscreen — a control desk, not a web page (Story 50).
+
+    An app scroller down the left picks which app the wall shows; that app's
+    own `nora_kiosk_controls` become the illuminated key bank, so installing an
+    app gives it keys with no platform change. Every key is a path the wall
+    navigates to, because navigate/refresh/banner is the entire vocabulary
+    wall-live.js implements.
+
+    The desk also carries controls whose capability the platform does not have
+    yet — the two faders, the scroll wheel and wall-only power, all owned by
+    Story 51. They render *dead* (see `.is-dead` in components.css and the
+    template's own comment): present, because the desk's composition is the
+    design, but visibly unlit and `disabled`, because a control that moves and
+    changes nothing is the "dead button with no error anywhere" this project
+    keeps warning about.
     """
+    from nora_home.core.registry import wall_apps
+
     role = getattr(request.user, "role", "member")
-    nav = navigation(role)
-    apps_with_controls = {
-        app.slug: app
-        for group in nav for app in group["apps"]
-        if app.kiosk_controls
-    }
+    desk = wall_apps(role)
+    for index, app in enumerate(desk):
+        for key_index, control in enumerate(app["controls"]):
+            control["hue"] = KEY_HUES[key_index % len(KEY_HUES)]
+        app["index"] = index
+
     return render(request, "displays/kiosk.html", {
         "target": settings.NORA_HOME_MAIN_DISPLAY_SLUG,
-        "nav": nav,
-        "apps_with_controls": apps_with_controls,
-        "home_url": reverse("core:dashboard"),
-        # "Apps" is gone (Story 47 deleted the directory it pointed at in
-        # favour of the ⌘K palette, which needs a keyboard the kiosk doesn't
-        # have) and "Status" is now "System" — Status and the House log
-        # merged onto one page at the same URL.
-        "house_links": [
-            {"title": "System", "url": reverse("core:system_status")},
-            {"title": "Settings", "url": reverse("core:settings")},
-        ],
+        "wall_apps": desk,
+        # The desk opens on Home, and the readout says so. Which app the wall
+        # is *actually* on is not stored anywhere today — the wall holds that
+        # state in its own iframe — so this is the desk's starting position,
+        # not a claim about the wall.
+        "current_app": desk[0],
     })
 
 
