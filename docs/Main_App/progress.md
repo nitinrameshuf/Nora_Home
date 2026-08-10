@@ -4580,3 +4580,50 @@ half can be installed.
 **Story 51 is two-of-four.** Zoom and scroll are Complete and proven on the
 hardware; volume and wall-only power are not, and wall-only power has no known
 working mechanism on this Pi at all.
+
+### Later the same day — volume solved, and power exhaustively disproved
+
+`pre-provision-pi.sh` was run, so passwordless sudo now works and the two
+blocked items could be finished properly. One was; one turned out not to be
+blocked by permissions at all.
+
+**Volume is done, and not the way the story planned it.** The plan was "a host
+mixer call, reached the same way audio already is". There is no mixer to call:
+the Pi's HDMI audio devices (`vc4hdmi0`/`vc4hdmi1`) expose **no ALSA mixer
+controls whatsoever** — `amixer -c 0 scontrols` returns nothing, because Pi
+HDMI audio has no hardware volume. So the level is applied where the audio is
+produced: `nora_home/notifications/volume.py` scales the samples before
+`SoundChannel` writes the WAV that `aplay` reads.
+
+That is better than the original plan *for this house*: no host script, no
+systemd unit, no provisioning step and no root, so it cannot drift out of sync
+with the Pi the way anything in `provision-pi.sh` can. `audioop` would have
+been the obvious tool and is gone — removed from the stdlib in 3.13, and both
+the Pi (3.13) and this laptop (3.14) are past it — so the 16-bit scaling is a
+dozen lines by hand, clamping rather than wrapping (an overflowing sample wraps
++32767 to −32768, which is not "slightly too loud", it is a crack).
+
+Proven end to end on the hardware: three taps of "−" on the physical panel took
+the stored level 100 → 70, and a WAV pushed through the real delivery path came
+out at 14000 peak from a 20000 source. Exactly 70%.
+
+**Wall-only power is not permission-blocked. It is not available.** With root,
+two more mechanisms were tested and both failed:
+
+| Mechanism (as root) | Result |
+|---|---|
+| DRM sysfs `dpms` write | **Disproven** — the attribute is `-r--r--r--`. Read-only for root too; it is a kernel attribute mode, not a permission problem. |
+| `/sys/class/backlight` | **Disproven** — empty. HDMI monitors expose no backlight device. |
+| `xrandr --off` + `--pos` pin | **Disproven** — X still lands HDMI-2 at `+0+0`. |
+| `xrandr --off` + `--fb 2944x1080` pin | **Disproven** — the framebuffer does stay 2944 wide, and HDMI-2 still reports `+0+0`. |
+
+Six mechanisms now, all disproved. The remaining option is a session change:
+Wayland's `wlr-randr` can do per-output DPMS — but CLAUDE.md records that this
+Pi was deliberately moved *to* X11 because labwc/Wayland refused to honour
+window placement across two outputs, which is the whole reason the wall and
+kiosk land on the right screens at all. Trading working screen placement for a
+power button is not a trade to make quietly, so **the power key stays dead** and
+this is a decision for the family rather than a bug to fix.
+
+**Story 51 is three of four**, and the fourth is blocked by the hardware and an
+architectural choice rather than by effort.
