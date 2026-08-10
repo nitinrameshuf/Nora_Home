@@ -3951,3 +3951,135 @@ Integrations, the AI console, Household) still render through
 `nora-home.css`/`todo.css`/`dashboard.css` inside the new shell. Kiosk and
 wall are untouched. Story 45 stays *built*, not *Complete*, until those are
 converted too and the old files are actually deleted.
+
+## 2026-08-09 — Story 45, Phase B complete: every page converted, the old front end gone
+
+Every real template rewired onto `tokens.css`/`shell.css`/`components.css` —
+the eight Todo pages and their two shared partials, the dashboard, System,
+House log, Settings, the Apps directory, Alerts, Integrations, Telemetry, the
+AI console, the household page, the passwordless switcher, and both physical
+screens (kiosk, wall). `nora-home.css`, `todo.css`, `dashboard.css` and
+`displays.css` are **deleted** — nothing in the codebase references them.
+
+**The dashboard's grid was the genuinely hard piece.** It is built
+client-side by `dashboard.js` from a JSON payload (Gridstack drag/resize/
+save-layout), not server-rendered markup, so "convert it" meant rewriting
+`buildTile()`/`drawChart()`/`drawStat()`/`drawList()`/`openPicker()` to emit
+`.nh-tile`/`.card`/`.read`/`.row` — the same classes `{% nh_tile %}`/
+`{% nh_card %}`/`{% nh_stat %}`/`{% nh_list %}` already render server-side —
+instead of the old `.dash-tile`/`.dash-stat`/`.item-list`. Gridstack's own
+x/y/w/h are already a 12-column grid, the same units `--c`/`--r` expect, so
+the translation was mechanical once the target markup was settled.
+
+**Every action button kept its JS's own data-attribute contract** rather than
+switching to `{% nh_button %}`'s `data-act`/`data-v` — `todo.js` reads
+`data-todo-action`/`data-url`, `dashboard.js` reads `data-dash-add`/`-edit`/
+`-close`, and mixing conventions silently breaks whichever script reads the
+wrong one (found once, in `detail.html`, before it shipped — fixed by
+hand-writing those specific buttons instead of forcing them through
+`nh_button`). Recurrence-field toggling, task completion, and the widget
+picker dialog were all re-exercised against the new markup, not just
+rendered.
+
+### Two real regressions, both found by opening a page
+
+- **Deleting `nora-home.css` deleted the wall's cursor-hiding rule with it.**
+  `wireWallCursor()` in `nh-app.js` still set `data-cursor="idle"` on
+  `<html>`, but nothing was left to read it — the wall's pointer would have
+  stayed permanently visible or permanently invisible depending on initial
+  state, either way a real regression on hardware nobody would have caught
+  from the diff. The rule (gated on the idle flag, `body *` so it beats every
+  link's own `cursor:pointer`) is back in `shell.css`, unchanged, just
+  relocated from the file that owned it before.
+- **`.report-grid`'s tiles carry the same `--c`/`--r` custom properties
+  `.bento`'s do, but the CSS rule connecting them to an actual grid-column
+  span was scoped to `.bento > .nh-tile` only.** Reporting's eight chart
+  cards and five table cards all rendered as single-width columns, titles
+  wrapped to two or three characters a line ("ARR / VS / FIN" for "Arriving
+  vs finishing"). Fixed by extending that one selector to cover
+  `.report-grid` too. Now a regression test:
+  `test_nh_components.py::test_every_tile_grid_gets_the_sizing_rule`.
+
+### Also fixed along the way
+
+The cross-layer collision audit's allowlist shrank where a file was deleted
+(`.btn` no longer collides with anything now that `nora-home.css` is gone)
+and grew where `nh-scene.css` — kept deliberately, Story 46's job — legitimately
+touches new class names (`.kiosk-header`, `.kiosk-tile`, `.kiosk-controls`,
+same complementary-glass relationship `.card` already had). Two tests
+(`test_todo_analytics`, `test_todo_calendar`) that asserted on now-deleted
+class names were rewritten to check the same underlying behaviour — empty
+report cards render compact, a completed calendar instance looks different
+from a merely-planned one — against the new markup. Two tests that guarded
+`nora-home.css`'s own "must be rem" constraint were retired outright, not
+adapted: CSS `zoom` (Story 44) scales px identically to rem, which is what
+made the constraint disappear rather than merely move file.
+
+### Verified
+
+995 tests green locally. Deployed to the Pi: every real page fetched over
+HTTPS and checked for template errors and stale stylesheet references — zero,
+across all 20-odd pages including both screens. `./nora test` on the Pi:
+990 passed — the three that didn't are in `test_speech.py`, pass cleanly on a
+laptop (21/21), touch nothing this phase changed, and are almost certainly
+the container's own environment (flagged separately, not chased down here).
+Both physical screens screenshotted after reload: the wall shows the real
+dashboard — a genuinely overdue task in red, "2 open · Overdue 1 day", the
+real signed-in member in the switcher — and the kiosk's own button grid,
+unaffected.
+
+Story 45 is **Complete**.
+
+## 2026-08-09 — Story 46: The Scene — Time and Weather Only
+
+Season and the landscape (hills, canopy, blossom, snowcap, horizon SVG) are
+gone entirely — `nora_home/ui/scene.py`'s `season_for()` deleted along with
+`NORA_HOME_LAT`'s season use, `data-season` off both `<html>`s, and
+`nh-scene.css` rewritten class-for-class from the mockup's own `@layer base`
+scene rules and `scene()` render function rather than redrawn: `.scene`,
+`.sky` (four daypart gradients), `.orb` + halo, `.stars`, `.wx`
+(`.cloud`/`.drop`/`.flake`), `.grid-o`/`.scan`. The glass-pane/legibility
+rules this file used to carry moved to components.css/shell.css back in
+Story 45 — this file now owns exactly the sky, the celestial body, and
+weather, nothing components.css already draws.
+
+**The veil+vignette trap the mockup already hit was worth carrying over
+rather than rediscovering**: `background: var(--veil), linear-gradient(...)`
+is invalid — a colour cannot be a layer in a comma-separated `background`
+shorthand, and the browser drops the whole declaration, silently removing
+the veil. `background-image` with two `linear-gradient()`s (the first a flat
+colour wash) is the form that works. The kiosk gets a heavier veil
+(`--veil: rgba(3, 6, 11, .88)`, an `html[data-surface="kiosk"]` token
+override in `tokens.css`, same pattern as its type ramp) — it's an
+instrument someone operates, not the ambient screen, and a bright sun disc
+on a control is unreadable.
+
+**Stars and weather are generated client-side, not server-rendered.** The
+mockup's own `scene()` randomizes 22 star positions and up to 60
+raindrops/44 snowflakes for an organic feel — hardcoding that many positions
+in Django templates would either be a giant static blob or read as an
+obviously-repeating pattern on a screen that's on for hours. `nh-scene.js`
+renders `.stars`/`.wx` on load and re-renders `.wx` only when the polled
+weather condition actually changes.
+
+**One real, unrelated bug found getting a Pi build to run at all**: `./nora
+assets` referenced `$ROOT`, a variable never defined anywhere in the script —
+`set -euo pipefail` turned that into a hard failure on every invocation.
+Fixed to `$(pwd)` (the script already `cd`s to its own directory, the repo
+root, at line 20). Unrelated to this story's own scope but blocking every
+verification step, so fixed rather than worked around.
+
+### Verified
+
+976 tests green locally (`nh_components` down to zero old-vs-new collisions
+now that `nh-scene.css` no longer touches `.card`/`.kiosk-tile`/etc — the
+allowlist emptied out rather than merely shrinking). Built on the Pi via
+Docker (the established path — `./nora assets`, node never installed on any
+machine here), `dist/` pulled back. `./nora test` on the Pi: 990 passed, the
+same three pre-existing `test_speech.py` failures as Story 45 (unrelated,
+already flagged). Checked in the local dev-server browser at `/home/` and
+the kiosk template: the daypart gradient and orb read clearly through the
+veil behind the glass panes at noon and dusk, `.stars` populate on load, and
+the kiosk's heavier veil keeps its button grid legible against the same sky.
+
+Story 46 is **Complete**.

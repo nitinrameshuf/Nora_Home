@@ -115,6 +115,10 @@
   html[data-surface="kiosk"] {
     --s0: 14px; --s1: 17px; --s2: 22px; --s3: 28px; --s4: 38px; --lab: 11px;
     --gap: 12px; --pad: 16px; --rad: 14px; --tap: 60px;
+    /* The kiosk is an instrument you operate, not a surface you look at, so
+       the scene recedes much further here than anywhere else — a bright sun
+       disc landing on the power key is a control nobody can read. Story 46. */
+    --veil: rgba(3, 6, 11, 0.88);
   }
 
   /* The wall renders the desktop layout, one ramp up — no separate design. */

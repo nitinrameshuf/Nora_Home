@@ -1,59 +1,24 @@
 """
-The living background — season, daypart, weather.
+The living background — daypart, weather.
 
-This is the "Almanac" design system's engine (CLAUDE.md §4). Two properties
-matter more than any individual value: it must never raise, because it runs in a
-context processor on the first paint of every page in the house; and the wall
-and the kiosk must always agree about what moment it is, since they sit two
-metres apart and poll the same endpoint.
+This is the arc-reactor design system's scene engine (CLAUDE.md §4, Story 46).
+Season and the landscape were removed entirely in Story 46 — "The Scene — Time
+and Weather Only". Two properties matter more than any individual value: it
+must never raise, because it runs in a context processor on the first paint of
+every page in the house; and the wall and the kiosk must always agree about
+what moment it is, since they sit two metres apart and poll the same endpoint.
 """
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import datetime
 
 import pytest
 
 from nora_home.core.settings_store import set_setting
-from nora_home.ui.scene import current_scene, daypart_for, season_for
+from nora_home.ui.scene import current_scene, daypart_for
 
 pytestmark = pytest.mark.django_db
-
-
-# ── season ───────────────────────────────────────────────────────────────────
-
-@pytest.mark.parametrize("month,expected", [
-    (12, "winter"), (1, "winter"), (2, "winter"),
-    (3, "spring"), (4, "spring"), (5, "spring"),
-    (6, "summer"), (7, "summer"), (8, "summer"),
-    (9, "autumn"), (10, "autumn"), (11, "autumn"),
-])
-def test_meteorological_seasons_in_the_northern_hemisphere(settings, month, expected):
-    settings.NORA_HOME_LAT = 40.7128  # the house's real latitude
-
-    assert season_for(date(2026, month, 15)) == expected
-
-
-@pytest.mark.parametrize("month,expected", [
-    (12, "summer"), (1, "summer"), (6, "winter"), (9, "spring"), (3, "autumn"),
-])
-def test_seasons_flip_south_of_the_equator(settings, month, expected):
-    settings.NORA_HOME_LAT = -33.87  # Sydney
-
-    assert season_for(date(2026, month, 15)) == expected
-
-
-def test_an_unset_latitude_does_not_break_the_season(settings):
-    """The background has to render on a fresh install with nothing configured."""
-    settings.NORA_HOME_LAT = None
-
-    assert season_for(date(2026, 1, 15)) == "winter"
-
-
-def test_the_equator_counts_as_northern(settings):
-    settings.NORA_HOME_LAT = 0.0
-
-    assert season_for(date(2026, 1, 15)) == "winter"
 
 
 # ── daypart, from real sunrise and sunset ────────────────────────────────────
@@ -112,7 +77,7 @@ def test_winter_daylight_is_shorter_than_summer_daylight():
 def test_current_scene_has_every_axis_the_css_needs():
     scene = current_scene()
 
-    assert set(scene) >= {"season", "daypart", "weather", "temp_c", "updated_at"}
+    assert set(scene) >= {"daypart", "weather", "temp_c", "updated_at"}
 
 
 def test_weather_defaults_to_clear_before_the_integration_has_run():
@@ -144,7 +109,6 @@ def test_current_scene_survives_a_corrupt_weather_setting(stored):
 def test_the_scene_is_computed_once_so_screens_cannot_disagree():
     """The wall and the kiosk both poll core:weather_current. If two calls a
     moment apart disagreed, the two screens would show different skies."""
-    assert current_scene()["season"] == current_scene()["season"]
     assert current_scene()["daypart"] == current_scene()["daypart"]
 
 
@@ -157,7 +121,7 @@ def test_the_weather_endpoint_returns_the_same_scene(client, adult):
     payload = client.get("/home/api/weather/").json()
 
     assert payload["weather"] == "snow"
-    assert payload["season"] == current_scene()["season"]
+    assert payload["daypart"] == current_scene()["daypart"]
 
 
 def test_the_weather_endpoint_works_before_any_weather_exists(client, adult):

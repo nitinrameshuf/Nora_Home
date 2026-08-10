@@ -208,18 +208,19 @@ ASSETS_CSS = Path(settings.BASE_DIR) / "assets" / "css"
 # Collisions already known and accepted, because the file on one side of them
 # is scheduled for deletion rather than fixed — CLAUDE.md §4, "the front end
 # is rewritten from the mockup, not migrated": assets/css/{dashboard,displays,
-# nh-bot,nh-scene,nora-home,todo}.css all go when the real templates are
-# rewired onto this component library. Until then, the same class name
-# legitimately means two different things in the old system and the new one.
-# Same shape as tests/test_house_apps.py's KNOWN_MODEL_IMPORT_DEBT: named,
-# dated, and meant to shrink to nothing rather than grow.
-KNOWN_OLD_VS_NEW_COLLISIONS = {
-    # nh-scene.css (kept until Story 46) adds glass-pane background/blur/
-    # text-legibility to these — non-conflicting properties layered on top of
-    # what components.css/shell.css already draw, same relationship as .card.
-    "card", "empty", "dash__empty",
-    "kiosk-header", "kiosk-tile", "kiosk-controls", "kiosk-tile__hint",
-}
+# nh-bot,nora-home,todo}.css all go when the real templates are rewired onto
+# this component library. Until then, the same class name legitimately means
+# two different things in the old system and the new one. Same shape as
+# tests/test_house_apps.py's KNOWN_MODEL_IMPORT_DEBT: named, dated, and meant
+# to shrink to nothing rather than grow.
+#
+# nh-scene.css was rewritten in Story 46 to own exactly the sky/orb/weather
+# (.scene, .sky, .orb, .stars, .wx, .grid-o, .scan) and nothing that
+# components.css/shell.css already draw — the glass-pane/legibility rules it
+# used to carry (.card, .kiosk-tile, ...) moved there in Story 45. Empty on
+# purpose; the file stays in old_files below so a *new* collision still
+# announces itself.
+KNOWN_OLD_VS_NEW_COLLISIONS: set[str] = set()
 
 RULE = re.compile(r"([^{}]+)\{([^{}]*)\}")
 CLASS_TOKEN = re.compile(r"\.(-?[a-zA-Z_][\w-]*)")
