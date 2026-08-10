@@ -4484,3 +4484,15 @@ fills the panel exactly (`d-foot` bottom == 600, `d-scroll` right == 1024) —
 measured, because the browser pane letterboxes a viewport smaller than
 itself and the black margin around the screenshot looks exactly like a
 layout bug until you check.
+
+**Seen on the physical panel, driving the physical wall.** Deployed
+(`./nora upgrade`, all services healthy), `./nora test` on the Pi: 1008
+passed, 0 failed. The 10.1" shows the desk — brand, `WALL / HOME` readout, a
+green `LINKED TO WALL` lamp, the app scroller with HOME in the band under its
+reticle, three numbered keys in their own colours, `Bank 1 / 1`, the scroll
+wheel, and the two faders and power key visibly dimmed. Then the actual
+point: tapping the `SYSTEM` key with `xdotool` on the panel navigated the 24"
+to the System page — the wall came back showing System current in its rail,
+real health rows and live timeline entries. The desk moves the wall.
+
+Story 50 is **Complete**.
