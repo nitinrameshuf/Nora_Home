@@ -262,6 +262,22 @@ def palette_destinations(role: str = "member") -> list[dict]:
     return dests
 
 
+def phone_tabs(role: str = "member") -> list[dict]:
+    """The phone's bottom tab bar (Story 49) — Home plus every nav=True app,
+    the same list the desktop rail's "Apps" group renders, with Home itself
+    added in front. A fixed row of tabs tops out around five, which is what
+    keeps this to exactly Home + the four registered apps rather than also
+    walking each app's own sections (those live in the phone's sub-rail
+    instead, from `nh_app_sections`, once someone is inside that app)."""
+    from django.urls import reverse
+
+    tabs = [{"slug": "home", "title": "Home", "url": reverse("core:dashboard")}]
+    for group in navigation(role):
+        for app in group["apps"]:
+            tabs.append({"slug": app.slug, "title": app.title, "url": app.url})
+    return tabs
+
+
 def app_for_path(path: str) -> "AppMetadata | None":
     """Which app this URL is *inside*, or `None` on the platform's own pages.
 

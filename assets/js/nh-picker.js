@@ -62,7 +62,21 @@ document.addEventListener("alpine:init", () => {
     },
 
     /* Centres `item` in the band. `smooth` is false on first load (nobody
-       should see the list glide into place on page load) and true after. */
+       should see the list glide into place on page load) and true after.
+
+       A fourth trap, found live in Story 49 (the phone's horizontal rail is
+       this component's first real consumer — the kiosk's vertical form is
+       still unwired, Story 50's job): `behavior: "auto"` does NOT mean
+       "instant". Per the CSSOM View spec, `"auto"` explicitly means "defer to
+       the element's CSS `scroll-behavior`" — and .ph-track/.vsel-list both
+       set `scroll-behavior: smooth`, so the "instant" branch below was
+       silently animating on every page load, exactly the glide the comment
+       above says nobody should see. Only `"instant"` actually bypasses CSS
+       scroll-behavior unconditionally. Confirmed the hard way: an isolated
+       div with `scroll-behavior: smooth` reproducibly ignored a direct
+       `scrollLeft` assignment *and* `scrollTo({behavior:"auto"})` — stuck at
+       0 — while `scrollTo({behavior:"instant"})` on the identical element
+       applied immediately. */
     centre(item, smooth = true) {
       if (!item) return;
       const vertical = this.orientation !== "horizontal";
@@ -84,8 +98,8 @@ document.addEventListener("alpine:init", () => {
       clearTimeout(this.settleTimer);
       this.settleTimer = setTimeout(() => { this.auto = false; }, smooth ? 520 : 60);
       this.list.scrollTo(vertical
-        ? { top: target, behavior: smooth ? "smooth" : "auto" }
-        : { left: target, behavior: smooth ? "smooth" : "auto" });
+        ? { top: target, behavior: smooth ? "smooth" : "instant" }
+        : { left: target, behavior: smooth ? "smooth" : "instant" });
     },
 
     /* @scroll.capture.debounce.200ms on the list. Ignored while a

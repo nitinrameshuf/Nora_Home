@@ -1,0 +1,76 @@
+{% load static django_vite %}<!doctype html>
+{% comment %}
+The one `<html>`/`<head>` every non-kiosk page in the house shares. Story 49
+split base.html into this skeleton plus two shells
+(layouts/desktop_shell.html, layouts/phone_shell.html) because a Django
+`{% block %}` cannot appear twice in one template, even inside
+mutually-exclusive `{% if %}` branches — so choosing between "the desktop
+rail" and "the phone's bottom tabs" has to happen at `{% extends %}`, one
+level above where `{% block heading/actions/content %}` are actually
+declared. base.html itself is now a one-line `{% extends nh_shell_template %}`
+redirect (nora_home/ui/context_processors.py's surface()); every real page
+still just does `{% extends "base.html" %}`, unchanged.
+
+Surfaces (wall, kiosk, phone, tablet, desktop) are set server-side on <html>
+so CSS can respond without any viewport measuring in JavaScript.
+
+`zoom` only ever appears on the wall and the kiosk — the two screens whose
+viewing distance the browser cannot work out for itself. A phone or laptop is
+held at arm's length, which is what every browser default already assumes, so
+nh_zoom is None there and this attribute is not emitted at all.
+
+zoom rather than a root font-size multiplier, deliberately: it scales borders,
+shadows and radii along with the text. Scaling font-size alone leaves those as
+1-device-pixel hairlines while everything around them grows, and *that*
+mismatch is what reads as "zoomed in". Set in Settings > Screens; see
+nora_home/ui/zoom.py for the measurements behind the choice.
+{% endcomment %}
+<html lang="en" data-surface="{{ surface }}" data-theme="dark"
+      {% if nh_app %}data-app="{{ nh_app.slug }}"{% endif %}
+      {% if nh_zoom %}style="zoom: {{ nh_zoom }}"{% endif %}
+      data-daypart="{{ nh_daypart }}" data-weather="{{ nh_weather }}"
+      {% if not nh_bot_enabled %}data-nh-bot="off"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0c1015">
+  <title>{% block title %}{% if page_title %}{{ page_title }} · {% endif %}{{ house_name }}{% endblock %}</title>
+  {% comment %}
+  tokens.css, shell.css, components.css — the whole house, Story 45. Every
+  template that used to bridge nora-home.css/todo.css/dashboard.css/
+  displays.css back in via its own {% block head %} has been rewired onto
+  this instead, and all four of those files are deleted — see CLAUDE.md §4's
+  Story 45 entry for the two real bugs that surfaced doing it (Tailwind's
+  @theme prefix, and a cascade layer always losing to unlayered CSS
+  regardless of specificity, which is why shell.css and components.css are
+  NOT both `@layer comp`).
+  {% endcomment %}
+  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/tokens.css' %}">
+  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/shell.css' %}">
+  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/components.css' %}">
+  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nh-scene.css' %}">
+  {% if nh_bot_enabled %}<link rel="stylesheet" href="{% vite_asset_url 'assets/css/nh-bot.css' %}">{% endif %}
+  {% block head %}{% endblock %}
+</head>
+<body>
+{% block body %}{% endblock %}
+
+{% vite_asset 'assets/js/nh-app.js' %}
+{% vite_asset 'assets/js/nh-scene.js' %}
+{% vite_asset 'assets/js/nh-palette.js' %}
+{% if surface == "phone" %}
+  {% comment %}
+  Alpine only loads on the phone today — it is nh-picker.js's own dependency
+  (the bottom tab bar) and the only place Alpine.start() is called. The
+  drawer's open/close state is a plain inline `x-data="{ open: false }"` in
+  phone_shell.html, which needs no separate registration once Alpine is on
+  the page.
+  {% endcomment %}
+  {% vite_asset 'assets/js/nh-picker.js' %}
+  {% vite_asset 'assets/js/nh-phone-nav.js' %}
+{% endif %}
+{% if nh_bot_enabled %}{% vite_asset 'assets/js/nh-bot.js' %}{% endif %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

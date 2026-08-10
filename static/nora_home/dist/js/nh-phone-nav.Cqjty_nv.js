@@ -1,0 +1,2 @@
+(function(r,e){var i=e.getElementById("nh-phone-tabs-data");if(i){var a;try{a=JSON.parse(i.textContent)}catch{a=[]}if(a.length){var l={};a.forEach(function(t){l[t.slug]=t.url}),e.addEventListener("nh-pick",function(t){if(!(!t.target.classList||!t.target.classList.contains("ph-rail"))){var n=l[t.detail.slug];n&&n!==r.location.pathname&&(r.location.href=n)}})}}})(window,document);
+//# sourceMappingURL=nh-phone-nav.Cqjty_nv.js.map

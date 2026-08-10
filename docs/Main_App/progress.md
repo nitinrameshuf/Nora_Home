@@ -4283,3 +4283,98 @@ bugs a green suite cannot, but an unaided glance at a small mono readout on a
 dark rail is not looking — measuring is. Nothing was wrong; I nearly "fixed" it.
 
 Story 48 is **Complete**.
+
+## 2026-08-10 — Story 49: Work Layout — Phone
+
+**The bug this story exists to fix**: base.html rendered the desktop's
+`.rail`/`.nh-main` unconditionally, so a phone got the 228px sidebar injected
+as a full-width centred text stack between content blocks, and cards
+squeezed into the ~60px column left over had their titles clip to four
+stacked words. A phone now gets a genuinely different shell: one column,
+full bleed, a bottom tab bar for which app, a drawer for Home's own pages
+and the household switcher.
+
+**The mechanism, not just the markup, needed solving first.** A Django
+`{% block %}` cannot appear twice in one template, even inside
+mutually-exclusive `{% if %}` branches — confirmed by actually compiling one
+(`TemplateSyntaxError: 'block' tag with name 'content' appears more than
+once`), not assumed. So `templates/base.html` — every real page's
+`{% extends %}` target — became a one-line `{% extends nh_shell_template %}`
+redirect, computed in `nora_home.ui.context_processors.surface()`, pointing
+at `layouts/desktop_shell.html` or `layouts/phone_shell.html`. Both extend
+`layouts/skeleton.html` for the shared `<html>`/`<head>` and declare
+`heading`/`actions`/`content` in their own layout-appropriate positions.
+Every real page still says `{% extends "base.html" %}`, unchanged — the
+split is invisible from a child template's own point of view, which is what
+kept ~20 existing templates from needing a single edit.
+
+**The household switcher moved to its own partial** (`partials/
+member_switcher.html`) rather than being duplicated into the drawer — the
+mockup's own `memberChip()` carries the warning "two copies of this drifted
+apart four times already in this mockup; one function now", and a shared
+partial rules that out structurally rather than by discipline. A test
+(`test_the_household_switcher_is_identical_on_phone_and_desktop`) diffs the
+rendered markup from both shells (CSRF tokens excluded — a real per-request
+difference, not a drift) to prove it.
+
+**The bottom tab bar reuses Story 45's Picker component** rather than being
+built fresh — `{% nh_picker orientation="horizontal" %}` is exactly "the
+kiosk's vertical app scroller and the phone's horizontal rail are the same
+control rotated", already built in Phase A and never wired into a real page
+until now. `nora_home.core.registry.phone_tabs()` grounds its items in the
+registry (Home + every nav=True app), the same discipline `palette_destinations()`
+already established. A selection only ever *picks* — `assets/js/nh-phone-nav.js`
+is the new host-page decision that turns a pick into a real page load, scoped
+to `.ph-rail` specifically so a future non-navigating use of the same
+component elsewhere isn't misread.
+
+**The drawer holds only System and Settings.** The mockup's own two-app
+prototype needed an "Apps" group in its drawer because its tabs only reached
+Home/Todo/Alerts; our real `phone_tabs()` already covers Home plus all four
+nav apps, so there is no separate "Apps" group left for the drawer to repeat
+— it is purely Home's own sub-pages (Dashboard is the Home tab already) plus
+the household switcher.
+
+### A real, spec-grounded bug found by actually using the Picker for the first time
+
+The active tab was not centering in the band — "HOME" sat in the middle
+regardless of which app the page was actually inside, confirmed live and not
+merely suspected. Root cause, isolated to a two-line reproduction (a bare
+`<div>` with `scroll-behavior: smooth` in CSS): **`scrollTo({behavior:
+"auto"})` does not mean instant.** Per the CSSOM View spec, `"auto"`
+explicitly means "defer to the element's own CSS `scroll-behavior`" — and
+`.ph-track`/`.vsel-list` both set `scroll-behavior: smooth` — so `centre()`'s
+supposedly-instant first-load call (`smooth ? "smooth" : "auto"`) was asking
+for a smooth animation both times, contradicting its own comment ("nobody
+should see the list glide into place on page load"). Fixed to
+`smooth ? "smooth" : "instant"` — only `"instant"` unconditionally bypasses
+CSS `scroll-behavior`. A direct `scrollLeft` assignment on the same element
+showed the identical symptom.
+
+This is Story 45's own file (`assets/js/nh-picker.js`), shipped and reviewed
+months ago, sitting undiscovered because nothing had actually driven the
+horizontal form of the Picker to a non-first item in a real browser until
+this story's own bottom tab bar did. A regression test
+(`test_picker_never_asks_scrollto_for_auto_behavior`) asserts the string
+never comes back.
+
+### Verified
+
+1001 tests green, including a contract-style test that renders both shells
+for the same page and diffs them, and six tests exercising the phone shell
+specifically (no `.rail`/`.appbar` on phone, the right tab marked current on
+both Home and inside Todo, the drawer's contents, app sections as `.ph-sub`
+chips, no stale-stylesheet references). Checked live in a real browser at
+375×812 with a genuine mobile UA (not just a resized desktop window — the
+UA drives `SurfaceMiddleware`'s own detection): the dashboard renders full
+width with legible card titles, the tab bar correctly centers "TODO" while
+inside `/todo/calendar/` (after the Picker fix — before it, "HOME" sat there
+regardless), the drawer opens showing System/Settings/the household
+switcher and closes on tapping outside it, and the desktop shell at a real
+desktop viewport is provably unaffected (full rail, vitals, both nav
+groups).
+
+Story 49 is **Built, unproven** — not yet deployed to or seen on physical
+hardware; there is no physical phone this project tests against, so
+"physical hardware" for this story means the Pi-built assets actually
+running under the deployed house, not a screenshot of a phone.

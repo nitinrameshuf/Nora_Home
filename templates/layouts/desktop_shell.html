@@ -1,0 +1,127 @@
+{% extends "layouts/skeleton.html" %}
+{% comment %}
+The desktop/wall/tablet shell — Story 49 split this out of base.html
+unchanged (moved, not rewritten) so it could sit alongside
+layouts/phone_shell.html as a sibling `{% extends %}` target. See
+layouts/skeleton.html's own comment for why the split exists.
+{% endcomment %}
+
+{% block body %}
+{% include "partials/scene.html" %}
+<div class="nh-shell">
+  <nav class="rail" aria-label="House navigation">
+    <a class="brand" href="/">
+      <svg width="22" height="22" viewBox="0 0 40 40" aria-hidden="true">
+        <circle cx="20" cy="20" r="18" fill="none" stroke="#38d6ff" stroke-width="1.4" opacity=".45"/>
+        <circle cx="20" cy="20" r="12.5" fill="none" stroke="#7fe9ff" stroke-width="1.2" opacity=".7" stroke-dasharray="4 3"/>
+        <circle cx="20" cy="20" r="7" fill="none" stroke="#a5eeff" stroke-width="1.6"/>
+        <circle cx="20" cy="20" r="3.4" fill="#e8fbff"/>
+      </svg>
+      <b>{{ house_name }}</b>
+    </a>
+
+    <button class="btn ghost" type="button" data-nh-palette-open
+            style="width:100%;justify-content:flex-start;margin-bottom:10px">
+      Search <kbd>&#8984;K</kbd>
+    </button>
+
+    {% comment %}
+    Inside an app, its own sections come first — without this the sidebar showed
+    the house's pages and nothing else no matter where you were, so an app's
+    sub-pages (Todo's calendar, reporting, labels) were reachable only by typing
+    a URL. The house nav stays underneath rather than being replaced: navigation
+    must never become a dead end, and "back to the house" should not be a
+    special case an app has to remember to provide.
+
+    Any app gets this by declaring `nora_sections` on its NoraAppConfig — see
+    docs/Main_App/DEVELOPMENT.md.
+    {% endcomment %}
+    {% if nh_app_sections %}
+      <div class="grp-lab">{{ nh_app.title }}</div>
+      {% for section in nh_app_sections %}
+        <a class="nav" href="{{ section.path }}"
+           {% if request.path == section.path %}aria-current="page"{% endif %}>{{ section.title }}</a>
+      {% endfor %}
+    {% endif %}
+
+    {% comment %}
+    Two groups, seven destinations — Story 47. Home is the base app: its own
+    pages (Dashboard, System, Settings) group under it, nothing else does.
+    "Apps" is deliberately flat, not sub-grouped by Category the way
+    nora_home.core.registry.navigation() groups things elsewhere (the wall's
+    dashboard still lays out one column per category) — the only things
+    called apps here are the four registered apps with nav=True, and grouping
+    four items by category was the earlier draft's mistake this story's own
+    notes warn against repeating.
+    {% endcomment %}
+    <div class="grp-lab">Home</div>
+    <a class="nav" href="{% url 'core:dashboard' %}"
+       {% if request.path == '/home/' %}aria-current="page"{% endif %}>Home</a>
+    <a class="nav" href="{% url 'core:system_status' %}"
+       {% if request.path == '/home/system/' %}aria-current="page"{% endif %}>System</a>
+    <a class="nav" href="{% url 'core:settings' %}"
+       {% if request.path == '/home/settings/' %}aria-current="page"{% endif %}>Settings</a>
+
+    <div class="grp-lab">Apps</div>
+    {% for group in nav %}
+      {% for app in group.apps %}
+        {% if app.slug == 'notifications' %}
+          <a class="nav" href="{{ app.url }}"
+             {% if request.path == app.url %}aria-current="page"{% endif %}>
+            {{ app.title }} <span class="pill" data-nh-bell data-count="0" hidden></span>
+          </a>
+        {% else %}
+          <a class="nav" href="{{ app.url }}"
+             {% if request.path == app.url %}aria-current="page"{% endif %}>{{ app.title }}</a>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+
+    {% if request.user.is_authenticated %}
+      <div class="rail-foot">
+        {% comment %}
+        The console rail's vitals — Story 48. Only what the house genuinely
+        measures appears here; see nora_home/core/vitals.py for why the other
+        four the mockup drew are absent until Story 52 collects them, and why
+        this must stay a cheap local read rather than a health sweep.
+        {% endcomment %}
+        {% if nh_vitals %}
+          <div class="vitals panel">
+            {% for vital in nh_vitals %}
+              <div class="vit">
+                <span class="vk">{{ vital.key }}</span>
+                {% if vital.bar is not None %}
+                  <span class="vbar{% if vital.warm %} warm{% endif %}">
+                    <i style="width:{{ vital.bar }}%"></i>
+                  </span>
+                {% endif %}
+                <span class="vv">{{ vital.value }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+        {% include "partials/member_switcher.html" %}
+      </div>
+    {% endif %}
+  </nav>
+
+  <main class="nh-main">
+    <div class="appbar">
+      <h1>{% block heading %}{{ page_title|default:"Home" }}{% endblock %}</h1>
+      <span class="sp"></span>
+      {% block actions %}{% endblock %}
+    </div>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="pill {{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <div class="canvas">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+{% if request.user.is_authenticated %}{{ nh_palette|json_script:"nh-palette-data" }}{% endif %}
+{% endblock %}

@@ -201,6 +201,13 @@
   html[data-surface="wall"][data-cursor="idle"] body,
   html[data-surface="wall"][data-cursor="idle"] body * { cursor: none; }
 
+  /* Alpine removes [x-cloak] once it has processed an element; until then
+     this hides it. Without this the phone's .drawer — position:absolute,
+     inset:0, no display:none of its own — renders as a full-screen overlay
+     for the moment between first paint and Alpine.start() finishing, since
+     x-show only starts hiding it once Alpine actually runs. */
+  [x-cloak] { display: none !important; }
+
   /* ── pill (bell count, flash messages) ── */
   .pill {
     display: inline-flex; align-items: center; gap: .35rem; padding: 3px 10px; border-radius: 999px;
@@ -212,3 +219,38 @@
   .pill.warn { background: rgba(255, 182, 72, .16); color: var(--warn); border-color: transparent; }
   .pill.alert, .pill.error { background: rgba(255, 77, 94, .18); color: var(--crit); border-color: transparent; }
   .pill.info { background: rgba(122, 162, 255, .14); color: var(--info); border-color: transparent; }
+
+  /* ── the phone shell (Story 49) ──
+     Ported from the mockup's `@layer phone` (`.ph`, `.ph-top`, `.ph-body`,
+     `.ph-sub`, `.drawer`). `.ph-rail`/`.ph-band`/`.ph-track`/`.ph-tab` — the
+     bottom tab bar itself — are the Picker component and already live in
+     components.css (Story 45 Phase A); this is the shell chrome around it,
+     the phone's equivalent of `.rail`/`.appbar`/`.canvas` above. */
+  .ph { display: flex; flex-direction: column; height: 100%; position: relative; z-index: 1; }
+  .ph-top { display: flex; align-items: center; gap: 11px; padding: 14px 16px 10px; flex: none; flex-wrap: wrap; }
+  .ph-top h1 {
+    margin: 0; font-family: var(--font-mono); font-size: var(--s2); font-weight: 700;
+    letter-spacing: .15em; text-transform: uppercase; color: var(--arc-100);
+  }
+  .ph-top .av { margin-left: auto; width: 34px; height: 34px; font-size: 13px; border: 0; }
+  .ph-body { flex: 1; padding: 4px 16px 12px; display: flex; flex-direction: column; gap: 12px; overflow: auto; min-height: 0; }
+  .ph-body > .card { min-height: 110px; }
+
+  /* The section rail sits directly on top of the tab bar: which app, and
+     which part of it, both within thumb reach at the bottom of the screen. */
+  .ph-sub {
+    flex: none; display: flex; gap: 7px; overflow-x: auto; padding: 9px 14px;
+    border-top: 1px solid var(--edge); background: rgba(5, 10, 17, .55);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+            mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  }
+  .ph-sub::-webkit-scrollbar { height: 0; }
+  .ph-sub .chip { flex: none; font-size: calc(var(--s0) * .76); }
+
+  .drawer { position: absolute; inset: 0; z-index: 50; display: flex; }
+  .drawer .pn {
+    width: 76%; overflow: visible; background: var(--panel-solid); backdrop-filter: blur(22px);
+    border-right: 1px solid var(--edge-hot); padding: 16px 12px; display: flex; flex-direction: column; gap: 2px;
+  }
+  .drawer .rest { flex: 1; background: rgba(2, 5, 10, .6); border: 0; }
+  .drawer .rail-foot { margin-top: auto; padding-top: 12px; }

@@ -1,0 +1,60 @@
+{% comment %}
+The household switcher — Story 44/45, extracted to its own partial in Story 49
+so the desktop rail and the phone drawer render the exact same markup rather
+than two copies drifting apart (the mockup's own memberChip() carries the
+same warning: "two copies of this drifted apart four times already... one
+function now").
+
+Native <details>, same as the mechanism it has always used — nh-app.js's
+wireProfileMenu() already closes any open .profile-menu on an outside click,
+and covers this one for free since it matches on that class, not on where in
+the page it is. Requires request.user.is_authenticated to be true; both
+callers already guard on that.
+{% endcomment %}
+<details class="profile-menu mewrap">
+  <summary class="me">
+    <span class="av">{{ request.user.name|first|upper }}</span>
+    <span>
+      <span class="who">
+        {% if nh_view_scope == "all" %}Everyone{% elif nh_view_scope == "wall" %}the Wall{% else %}{{ request.user.name }}{% endif %}
+      </span>
+      <span class="role">{% if nh_view_scope == "self" %}{{ request.user.get_role_display }}{% else %}viewing{% endif %}</span>
+    </span>
+    <span class="caret">&#9652;</span>
+  </summary>
+  <div class="memenu">
+    <div class="mehead">
+      Signed in as {% if nh_view_scope == "all" %}Everyone{% elif nh_view_scope == "wall" %}the Wall{% else %}{{ request.user.name }}{% endif %}
+    </div>
+    {% for member in active_members %}
+      {% if member.id != request.user.id or nh_view_scope != "self" %}
+        <form method="post" action="{% url 'accounts:switch_to' member.id %}">
+          {% csrf_token %}
+          <button class="meopt" type="submit">
+            <span class="av sm">{{ member.name|first|upper }}</span>{{ member.name }}
+          </button>
+        </form>
+      {% endif %}
+    {% endfor %}
+    {% comment %}
+    "Everyone" and "Wall" are not people. They change *what you are looking
+    at*, not *who you are*, so each gets a line explaining what it means
+    rather than sitting in the household list unlabelled.
+    {% endcomment %}
+    <div class="mehead melabel">Show me</div>
+    {% if nh_view_scope != "all" %}
+      <form method="post" action="{% url 'accounts:switch_to_everyone' %}">
+        {% csrf_token %}
+        <button class="meopt" type="submit">Everyone
+          <em>The whole household's tasks and numbers, combined</em></button>
+      </form>
+    {% endif %}
+    {% if nh_view_scope != "wall" %}
+      <form method="post" action="{% url 'accounts:switch_to_wall' %}">
+        {% csrf_token %}
+        <button class="meopt" type="submit">The 24&quot; wall
+          <em>What the big screen shows &mdash; rearrange its tiles from here</em></button>
+      </form>
+    {% endif %}
+  </div>
+</details>

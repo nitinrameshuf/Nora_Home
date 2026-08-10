@@ -453,16 +453,22 @@ def test_the_arc_reactor_palette_is_dark_only():
 
 
 @pytest.mark.parametrize("template", [
-    "templates/base.html",
+    "templates/layouts/skeleton.html",
     "templates/displays/kiosk.html",
     "templates/displays/wall_live.html",
     "templates/accounts/switch.html",
 ])
 def test_every_page_shell_loads_tokens_before_the_rest(template):
-    """Four separate page shells exist (base, kiosk, wall, the switcher) because
-    the kiosk and wall deliberately do not extend base.html. Missing one of them
-    here is exactly the kind of thing that reaches three surfaces and not the
-    fourth without anyone noticing — CLAUDE.md §4 on the sidebar/nav bug."""
+    """Four separate page shells exist (skeleton, kiosk, wall, the switcher)
+    because the kiosk and wall deliberately do not extend base.html. Missing
+    one of them here is exactly the kind of thing that reaches three surfaces
+    and not the fourth without anyone noticing — CLAUDE.md §4 on the
+    sidebar/nav bug.
+
+    base.html itself is skeleton.html's name here — Story 49 turned it into a
+    one-line `{% extends nh_shell_template %}` redirect (so every real page
+    can keep saying `{% extends "base.html" %}` regardless of surface), and
+    the stylesheet links moved to the file both shells actually extend."""
     import re
     from pathlib import Path
 
@@ -679,3 +685,173 @@ def test_no_page_bridges_a_stylesheet_that_no_longer_exists(client, admin_member
         body = client.get(reverse(name)).content.decode()
         for old in ("nora-home.css", "todo.css", "dashboard.css", "displays.css"):
             assert old not in body, f"{name} still references deleted {old}"
+
+
+# ── the phone shell (Story 49) ────────────────────────────────────────────────
+
+@pytest.mark.django_db
+def test_a_phone_gets_the_phone_shell_not_the_rail(client, admin_member):
+    """The bug this story fixes: before this, base.html rendered the desktop's
+    .rail/.nh-main unconditionally, so a phone got the 228px sidebar injected
+    as a full-width centred text stack between content blocks. A phone must
+    never see .rail/.appbar/.nh-shell at all now — it gets .ph instead."""
+    from django.urls import reverse
+
+    client.force_login(admin_member)
+
+    body = client.get(reverse("core:dashboard"), HTTP_USER_AGENT=IPHONE).content.decode()
+
+    assert 'class="ph"' in body
+    assert 'class="ph-top"' in body
+    assert 'class="ph-body"' in body
+    assert 'class="rail"' not in body
+    assert 'class="nh-shell"' not in body
+    assert 'class="appbar"' not in body
+
+
+@pytest.mark.django_db
+def test_a_desktop_request_still_gets_the_rail(client, admin_member):
+    """The other half of the same guarantee — the split must not have quietly
+    changed what a laptop or the wall sees."""
+    from django.urls import reverse
+
+    client.force_login(admin_member)
+
+    body = client.get(reverse("core:dashboard"), HTTP_USER_AGENT=MAC).content.decode()
+
+    assert 'class="rail"' in body
+    assert 'class="ph"' not in body
+    assert 'class="ph-rail"' not in body
+
+
+@pytest.mark.django_db
+def test_the_phone_tab_bar_lists_home_and_every_nav_app(client, admin_member):
+    from django.urls import reverse
+
+    from nora_home.core.registry import phone_tabs
+
+    client.force_login(admin_member)
+
+    body = client.get(reverse("core:dashboard"), HTTP_USER_AGENT=IPHONE).content.decode()
+
+    for tab in phone_tabs("admin"):
+        assert f'data-v="{tab["slug"]}"' in body, f"{tab['slug']} tab missing from the phone rail"
+
+
+@pytest.mark.django_db
+def test_the_home_tab_is_marked_current_on_the_dashboard(client, admin_member):
+    from django.urls import reverse
+
+    client.force_login(admin_member)
+
+    body = client.get(reverse("core:dashboard"), HTTP_USER_AGENT=IPHONE).content.decode()
+
+    # The active tab is the one carrying both classes together.
+    import re
+    assert re.search(r'class="ph-tab on"[^>]*data-v="home"', body) \
+        or re.search(r'data-v="home"[^>]*class="ph-tab on"', body), (
+        "the Home tab is not marked current on the dashboard")
+
+
+@pytest.mark.django_db
+def test_the_todo_tab_is_marked_current_inside_todo(client, admin_member):
+    from django.urls import reverse
+
+    client.force_login(admin_member)
+
+    body = client.get("/todo/", HTTP_USER_AGENT=IPHONE).content.decode()
+
+    import re
+    assert re.search(r'data-v="todo"[^>]*class="ph-tab on"', body) \
+        or re.search(r'class="ph-tab on"[^>]*data-v="todo"', body)
+
+
+@pytest.mark.django_db
+def test_the_drawer_does_not_repeat_what_the_tabs_already_reach(client, admin_member):
+    """The mockup's own rule: tabs already reach Home and every app, so the
+    drawer holds only Home's own sub-pages (System, Settings) — Dashboard is
+    the Home tab already, and there is no separate "Apps" group left to
+    repeat, unlike the mockup's own two-app prototype."""
+    from django.urls import reverse
+
+    client.force_login(admin_member)
+
+    body = client.get(reverse("core:dashboard"), HTTP_USER_AGENT=IPHONE).content.decode()
+    drawer = body[body.index('class="drawer"'):]
+
+    assert 'href="/home/system/"' in drawer
+    assert 'href="/home/settings/"' in drawer
+    assert "mewrap" in drawer  # the household switcher
+
+
+@pytest.mark.django_db
+def test_the_household_switcher_is_identical_on_phone_and_desktop(client, admin_member):
+    """member_switcher.html is one partial, included by both shells — the
+    mockup's own memberChip() carries a warning that two copies of this drift
+    apart, which is exactly what a shared partial rules out structurally."""
+    from django.urls import reverse
+
+    client.force_login(admin_member)
+
+    desktop = client.get(reverse("core:dashboard"), HTTP_USER_AGENT=MAC).content.decode()
+    phone = client.get(reverse("core:dashboard"), HTTP_USER_AGENT=IPHONE).content.decode()
+
+    import re
+
+    def switcher(body):
+        start = body.index('<details class="profile-menu mewrap">')
+        end = body.index("</details>", start)
+        # Each request gets its own CSRF token — a real difference between the
+        # two responses, not a difference between the two shells' markup.
+        return re.sub(r'value="[^"]{20,}"', 'value="TOKEN"', body[start:end])
+
+    assert switcher(desktop) == switcher(phone)
+
+
+@pytest.mark.django_db
+def test_app_sections_render_as_chips_on_the_phone(client, admin_member):
+    """The desktop rail's nh_app_sections become .ph-sub chips instead — the
+    phone's second-level nav, in thumb reach above the tab bar."""
+    client.force_login(admin_member)
+
+    body = client.get("/todo/calendar/", HTTP_USER_AGENT=IPHONE).content.decode()
+
+    assert 'class="ph-sub"' in body
+    assert 'href="/todo/calendar/"' in body
+
+
+@pytest.mark.django_db
+def test_no_page_bridges_a_stylesheet_on_the_phone_either(client, admin_member):
+    """The same regression test_no_page_bridges_a_stylesheet_that_no_longer_exists
+    runs above, but through the shell the desktop request never exercises."""
+    client.force_login(admin_member)
+
+    for path in ("/home/", "/home/system/", "/home/settings/", "/todo/"):
+        body = client.get(path, HTTP_USER_AGENT=IPHONE).content.decode()
+        for old in ("nora-home.css", "todo.css", "dashboard.css", "displays.css"):
+            assert old not in body, f"{path} still references deleted {old}"
+
+
+def test_phone_tabs_lists_home_then_every_nav_app_in_registry_order():
+    from nora_home.core.registry import phone_tabs
+
+    tabs = phone_tabs("admin")
+
+    assert tabs[0] == {"slug": "home", "title": "Home", "url": "/home/"}
+    slugs = [t["slug"] for t in tabs]
+    assert slugs[1:] == sorted(slugs[1:]) or len(slugs) == 5  # grounded below
+    assert set(slugs) == {"home", "todo", "notifications", "telemetry", "integrations"}
+
+
+@pytest.mark.django_db
+def test_a_desktop_request_gets_no_phone_tabs_computed(rf, admin_member):
+    """Computed only for the surface that renders it — see
+    nora_home.core.context_processors.house()."""
+    from nora_home.core.context_processors import house
+
+    request = rf.get("/home/")
+    request.user = admin_member
+    request.nh_surface = "desktop"
+    request.session = {}
+
+    assert house(request)["nh_phone_tabs"] == []

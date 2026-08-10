@@ -191,6 +191,26 @@ def test_picker_js_never_names_a_method_init():
     assert "\n    init(" not in js, "a component method literally named init() collides with Alpine's own"
 
 
+def test_picker_never_asks_scrollto_for_auto_behavior():
+    """`behavior: "auto"` does not mean "instant" — per the CSSOM View spec it
+    means "defer to the element's CSS scroll-behavior", and .ph-track/
+    .vsel-list both set scroll-behavior: smooth. Found live in Story 49 (the
+    phone's horizontal rail, this component's first real consumer): the
+    initial, supposedly-instant centre() call was silently deferring to CSS
+    and animating on every page load — the exact glide the function's own
+    comment says nobody should see. Confirmed with an isolated element:
+    scrollTo({behavior:"auto"}) on scroll-behavior:smooth left scrollLeft at
+    0; scrollTo({behavior:"instant"}) on the identical element applied
+    immediately. Only "instant" is safe here."""
+    from pathlib import Path
+
+    from django.conf import settings
+
+    js = (Path(settings.BASE_DIR) / "assets" / "js" / "nh-picker.js").read_text(encoding="utf-8")
+    assert 'behavior: smooth ? "smooth" : "auto"' not in js
+    assert js.count('"instant"') >= 2, "centre() should ask for \"instant\" on both axes"
+
+
 def test_picker_icon_is_rendered_unescaped_and_title_is_not():
     """icon is trusted markup (see picker.html); title is always user-visible
     text and must never be — the two must not be treated the same way."""

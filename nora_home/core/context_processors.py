@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from django.conf import settings
 
-from nora_home.core.registry import navigation, palette_destinations
+from nora_home.core.registry import navigation, palette_destinations, phone_tabs
 from nora_home.core.vitals import rail_vitals
 
 
@@ -31,6 +31,11 @@ def house(request):
         # The console rail's vitals (Story 48). Cheap local file reads only —
         # see nora_home.core.vitals on why this must never call collect_health().
         "nh_vitals": rail_vitals() if authenticated else [],
+        # The phone's bottom tab bar (Story 49) — only computed on the surface
+        # that renders it; the wall and kiosk never see this key at all.
+        "nh_phone_tabs": (phone_tabs(role)
+                          if authenticated and getattr(request, "nh_surface", "") == "phone"
+                          else []),
         "ai_enabled": settings.NORA_HOME_AI_ENABLED,
         "request_id": getattr(request, "request_id", ""),
         "active_members": active_members,

@@ -1,0 +1,94 @@
+{% extends "layouts/skeleton.html" %}
+{% load nh %}
+{% comment %}
+The phone shell — Story 49. Replaces what used to happen by default (nothing:
+base.html rendered the desktop's `.rail`/`.nh-main` unconditionally, so a
+phone got the 228px sidebar injected as a full-width centred text stack
+between content blocks, and cards squeezed into the ~60px column left over
+had their titles clip to four stacked words). One column, full bleed, and
+navigation moves to where a thumb already is: a bottom tab bar for which app,
+a drawer for Home's own pages and the household switcher.
+
+Ported from the mockup's renderPhone() — `.ph-top`/`.ph-body`/`.ph-sub`/
+`.ph-rail`/`.drawer` are its structure, not a redesign. Two differences from
+it, both because the mockup is a single-page app and this is not:
+
+- The bottom tab bar is `{% nh_picker orientation="horizontal" %}` (Story 45's
+  Picker component, already built for exactly this — "the kiosk's vertical
+  app scroller and the phone's horizontal rail are the same control rotated")
+  driving real page loads via assets/js/nh-phone-nav.js, not an in-memory
+  page switch.
+- The drawer holds only System and Settings. The mockup's own comment reads
+  "tabs already reach Home, Todo and Alerts, so the drawer does not repeat
+  them" — true here too, except our tabs (nora_home.core.registry.phone_tabs)
+  already cover Home plus all four nav apps, so there is no "Apps" group left
+  for the drawer to hold at all; it is purely Home's own sub-pages (Dashboard
+  is the Home tab already) plus the household switcher.
+{% endcomment %}
+
+{% block body %}
+{% include "partials/scene.html" %}
+<div class="ph" x-data="{ drawerOpen: false }">
+  <div class="ph-top">
+    <h1>{% block heading %}{{ page_title|default:"Home" }}{% endblock %}</h1>
+    {% block actions %}{% endblock %}
+    {% if request.user.is_authenticated %}
+      <button class="av" type="button" @click="drawerOpen = true" aria-label="Menu">
+        {{ request.user.name|first|upper }}
+      </button>
+    {% endif %}
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="pill {{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="ph-body">
+    {% block content %}{% endblock %}
+  </div>
+
+  {% if nh_app_sections %}
+    <div class="ph-sub">
+      {% for section in nh_app_sections %}
+        <a class="chip" href="{{ section.path }}"
+           aria-pressed="{% if request.path == section.path %}true{% else %}false{% endif %}">{{ section.title }}</a>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% with active_tab=nh_app.slug|default:"home" %}
+    {% nh_picker items=nh_phone_tabs active=active_tab orientation="horizontal" %}
+  {% endwith %}
+
+  {% if request.user.is_authenticated %}
+    <div class="drawer" x-show="drawerOpen" x-cloak @keydown.escape.window="drawerOpen = false">
+      <div class="pn">
+        <a class="brand" href="/">
+          <svg width="22" height="22" viewBox="0 0 40 40" aria-hidden="true">
+            <circle cx="20" cy="20" r="18" fill="none" stroke="#38d6ff" stroke-width="1.4" opacity=".45"/>
+            <circle cx="20" cy="20" r="12.5" fill="none" stroke="#7fe9ff" stroke-width="1.2" opacity=".7" stroke-dasharray="4 3"/>
+            <circle cx="20" cy="20" r="7" fill="none" stroke="#a5eeff" stroke-width="1.6"/>
+            <circle cx="20" cy="20" r="3.4" fill="#e8fbff"/>
+          </svg>
+          <b>{{ house_name }}</b>
+        </a>
+        <div class="grp-lab">Home</div>
+        <a class="nav" href="{% url 'core:system_status' %}"
+           {% if request.path == '/home/system/' %}aria-current="page"{% endif %}>System</a>
+        <a class="nav" href="{% url 'core:settings' %}"
+           {% if request.path == '/home/settings/' %}aria-current="page"{% endif %}>Settings</a>
+        <div class="rail-foot">
+          {% include "partials/member_switcher.html" %}
+        </div>
+      </div>
+      <button class="rest" type="button" @click="drawerOpen = false" aria-label="Close menu"></button>
+    </div>
+  {% endif %}
+</div>
+{% if request.user.is_authenticated %}
+  {{ nh_palette|json_script:"nh-palette-data" }}
+  {{ nh_phone_tabs|json_script:"nh-phone-tabs-data" }}
+{% endif %}
+{% endblock %}

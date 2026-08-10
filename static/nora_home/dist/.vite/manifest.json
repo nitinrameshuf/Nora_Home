@@ -27,7 +27,7 @@
     ]
   },
   "assets/css/shell.css": {
-    "file": "css/shell.DT_XmQR4.css",
+    "file": "css/shell.BTUJulvc.css",
     "src": "assets/css/shell.css",
     "isEntry": true,
     "name": "css/shell",
@@ -86,8 +86,14 @@
     "src": "assets/js/nh-palette.js",
     "isEntry": true
   },
+  "assets/js/nh-phone-nav.js": {
+    "file": "js/nh-phone-nav.Cqjty_nv.js",
+    "name": "js/nh-phone-nav",
+    "src": "assets/js/nh-phone-nav.js",
+    "isEntry": true
+  },
   "assets/js/nh-picker.js": {
-    "file": "js/nh-picker.DzaxU91u.js",
+    "file": "js/nh-picker.DY7Cxmnj.js",
     "name": "js/nh-picker",
     "src": "assets/js/nh-picker.js",
     "isEntry": true

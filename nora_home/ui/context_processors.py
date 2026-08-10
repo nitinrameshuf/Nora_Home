@@ -18,6 +18,19 @@ def surface(request):
         "nh_app": inside,
         "nh_app_sections": list(inside.sections) if inside else [],
         "surface": current,
+        # Story 49: base.html is a pure `{% extends nh_shell_template %}`
+        # redirect, so the phone gets a genuinely different shell — a bottom
+        # tab bar and a full-bleed single column — rather than the desktop
+        # rail's `.rail`/`.nh-main` squeezed into a 375px viewport (which is
+        # what used to inject a full-width centred text stack between content
+        # blocks and clip card titles to four stacked words). A Django
+        # `{% block %}` cannot appear twice in one template even inside
+        # mutually-exclusive `{% if %}` branches — confirmed, not assumed:
+        # `TemplateSyntaxError: 'block' tag with name 'content' appears more
+        # than once` — so the choice has to happen at `{% extends %}`, one
+        # level up, not inside base.html itself.
+        "nh_shell_template": ("layouts/phone_shell.html" if current == "phone"
+                              else "layouts/desktop_shell.html"),
         # None on a phone or laptop, so their markup carries no zoom at all —
         # those are held at arm's length, which is what the browser already
         # assumes. See nora_home/ui/zoom.py.
