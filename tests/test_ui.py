@@ -619,3 +619,62 @@ class TestScreenZoom:
         event = AuditEvent.objects.filter(action="zoom.changed").first()
         assert event is not None
         assert event.detail["wall_zoom"] == 1.3
+
+
+# ── Story 45, Phase B: the shell rewrite ──────────────────────────────────
+
+def _shell() -> str:
+    from pathlib import Path
+
+    from django.conf import settings
+
+    return (Path(settings.BASE_DIR) / "assets" / "css" / "shell.css").read_text(
+        encoding="utf-8")
+
+
+def test_shell_css_is_not_layered():
+    """A cascade layer always loses to unlayered CSS regardless of
+    specificity. shell.css was `@layer comp` once, and nora-home.css's bare,
+    unlayered `a { color: var(--accent) }` beat `.nav { color: var(--dim) }`
+    every time despite `.nav` being the more specific selector — every nav
+    label rendered in the old orange accent instead of the rail's own ink
+    colour. The shell has to win unconditionally, on every page, bridged or
+    not, so it competes with nora-home.css on the same (unlayered) terms."""
+    import re
+
+    without_comments = re.sub(r"/\*.*?\*/", "", _shell(), flags=re.S)
+    assert "@layer" not in without_comments, (
+        "shell.css is layered again — it will lose to any bridged page's "
+        "unlayered nora-home.css regardless of selector specificity")
+
+
+@pytest.mark.django_db
+def test_the_rail_never_uses_the_old_sidebar_markup(client, admin_member):
+    """base.html's nav was rewritten from .sidebar/.nav-link/.nav-group onto
+    .rail/.nav/.grp-lab (Story 45, Phase B) — these two systems must never
+    both be present, or the page is carrying dead structure from the rewrite
+    rather than having actually completed it."""
+    from django.urls import reverse
+
+    client.force_login(admin_member)
+    body = client.get(reverse("core:dashboard")).content.decode()
+
+    assert 'class="rail"' in body
+    assert 'class="sidebar"' not in body
+    assert "nav-link" not in body
+    assert "profile-trigger" not in body
+    assert "data-theme-toggle" not in body
+
+
+@pytest.mark.django_db
+def test_bridged_pages_still_load_the_old_stylesheet(client, admin_member):
+    """Pages not yet rewired onto components.css must bridge nora-home.css
+    themselves (base.html no longer loads it), or their content renders with
+    no styling at all — the exact failure this test would have caught."""
+    from django.urls import reverse
+
+    client.force_login(admin_member)
+
+    for name in ("core:system_status", "core:house_log", "notifications:inbox"):
+        body = client.get(reverse(name)).content.decode()
+        assert "nora-home" in body, f"{name} lost its bridge to the old stylesheet"

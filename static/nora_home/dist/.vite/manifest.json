@@ -53,6 +53,15 @@
       "css/nora-home.css"
     ]
   },
+  "assets/css/shell.css": {
+    "file": "css/shell.XnOKkRYD.css",
+    "src": "assets/css/shell.css",
+    "isEntry": true,
+    "name": "css/shell",
+    "names": [
+      "css/shell.css"
+    ]
+  },
   "assets/css/todo.css": {
     "file": "css/todo.D0eRnlQk.css",
     "src": "assets/css/todo.css",
@@ -90,7 +99,7 @@
     "isEntry": true
   },
   "assets/js/nh-app.js": {
-    "file": "js/nh-app.B-mjkQZ-.js",
+    "file": "js/nh-app.DiZBX95u.js",
     "name": "js/nh-app",
     "src": "assets/js/nh-app.js",
     "isEntry": true

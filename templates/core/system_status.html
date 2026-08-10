@@ -1,5 +1,18 @@
 {% extends "base.html" %}
 
+{% load django_vite %}
+{% block head %}
+{% comment %}
+  Bridge to the old front end — this page has not been rewired onto
+  tokens.css/components.css yet (Story 45, Phase B; see CLAUDE.md §4).
+  nora-home.css is unlayered and components.css is @layer comp, so this
+  wins for any class name both define (.card, .btn, .empty, ...) without
+  needing !important or higher specificity — see base.html's own head
+  comment for why that ordering is safe.
+{% endcomment %}
+  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nora-home.css' %}">
+{% endblock %}
+
 {% block content %}
   <div class="card-grid">
     <div class="card">

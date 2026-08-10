@@ -1,6 +1,10 @@
 /*
  * Shared front-end behaviour: CSRF-aware fetch, optimistic completion ticks,
- * card auto-refresh, and the theme toggle. Vanilla, no build step.
+ * and card auto-refresh. Vanilla, no build step.
+ *
+ * The theme toggle this file used to carry is gone: Phase 8 (CLAUDE.md §4)
+ * deleted the light theme rather than rebuild it, so there is nothing left to
+ * toggle to.
  *
  * House apps get `NoraHome.post(url, data)` for free — it handles the CSRF token so
  * nobody has to remember to.
@@ -91,19 +95,6 @@
     });
   }
 
-  function wireTheme() {
-    var stored = window.localStorage.getItem("nora-home-theme");
-    if (stored) document.documentElement.setAttribute("data-theme", stored);
-
-    document.addEventListener("click", function (event) {
-      if (!event.target.closest("[data-theme-toggle]")) return;
-      var root = document.documentElement;
-      var next = root.getAttribute("data-theme") === "light" ? "dark" : "light";
-      root.setAttribute("data-theme", next);
-      window.localStorage.setItem("nora-home-theme", next);
-    });
-  }
-
   /* The profile menu is a native <details>, which only closes again on a
      second click on its own <summary> — not on a click anywhere else, which
      is what every other dropdown/menu convention on the web actually does. */
@@ -146,7 +137,6 @@
   document.addEventListener("DOMContentLoaded", function () {
     wireTicks();
     wireCardRefresh();
-    wireTheme();
     wireProfileMenu();
     wireWallCursor();
   });

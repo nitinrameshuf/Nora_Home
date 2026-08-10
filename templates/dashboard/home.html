@@ -9,6 +9,14 @@
 {% endblock %}
 
 {% block head %}
+  {% comment %}
+  Bridge to the old front end — the dashboard grid is built client-side by
+  dashboard.js from a JSON payload (Gridstack drag/resize/save-layout), not
+  server-rendered markup, so converting it onto the nh_* components means
+  rewriting that JS's rendering internals, not just this template. Its own
+  pass — see CLAUDE.md §4's Story 45 entry.
+  {% endcomment %}
+  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nora-home.css' %}">
   <link rel="stylesheet" href="{% static 'nora_home/vendor/gridstack.min.css' %}">
   <link rel="stylesheet" href="{% vite_asset_url 'assets/css/dashboard.css' %}">
 {% endblock %}

@@ -14,6 +14,8 @@ Reporting (§10). Every card follows the Visual discipline table:
 {% endcomment %}
 
 {% block head %}
+  {% comment %}Bridge to the old front end — not yet rewired onto tokens.css/components.css (Story 45, Phase B; CLAUDE.md §4).{% endcomment %}
+  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nora-home.css' %}">
   <link rel="stylesheet" href="{% vite_asset_url 'assets/css/todo.css' %}">
 {% endblock %}
 

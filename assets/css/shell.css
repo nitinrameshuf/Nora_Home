@@ -1,0 +1,168 @@
+/* The site shell — the sidebar/rail, the topbar, and the household switcher —
+ * Story 45, Phase B. Not one of the story's eleven named components (Card,
+ * Stat, ...), but the same discipline: ported from the mockup's `@layer work`
+ * (`.rail`, `.nav`, `.grp-lab`, `.brand`) and from this session's own
+ * household-switcher work in the mockup (`.mewrap`/`.me`/`.memenu`/`.meopt`),
+ * not redrawn from scratch.
+ *
+ * base.html is the only template that loads this file. Every other template
+ * still bridges to the old nora-home.css for its own content area until it is
+ * converted in a later pass — see CLAUDE.md §4's Story 45 entry. The shell
+ * chrome uses its own class names throughout (.rail, .nav, .grp-lab, .me, ...)
+ * rather than reusing nora-home.css's (.sidebar, .nav-link, .topbar) — on
+ * purpose, so this file and nora-home.css can be loaded on the same bridged
+ * page without the two colliding the way .card/.btn/.empty already do.
+ *
+ * Deliberately NOT `@layer comp`, unlike components.css. A cascade layer
+ * always loses to unlayered CSS regardless of specificity — a bare, global
+ * `a { color: ... }` in nora-home.css (unlayered) was beating `.nav { color:
+ * ... }` here even though a class selector is more specific than a bare
+ * element one, purely because this file was layered and nora-home.css is
+ * not. The shell has to win unconditionally, on every page, bridged or not
+ * — ordinary specificity does that correctly once this file competes on the
+ * same terms nora-home.css does. Found by looking at a screenshot: every nav
+ * label rendered in the old system's orange accent instead of the new
+ * rail's own ink colour.
+ */
+
+@import "tailwindcss";
+
+@source "../../templates/**/*.html";
+@source "../../nora_home/**/*.py";
+
+  /* position:relative + z-index:1, not just layout: nh-scene.css's ambient
+     background is `position:fixed; z-index:0` behind everything, and this is
+     what the old .shell/.main used to do to sit above it. Those class names
+     are gone from this markup now, so the stacking has to be re-established
+     here rather than inherited from a file this story does not touch (Story
+     46 rewrites nh-scene.css properly; until then, nothing here reads its
+     --pane-rgb/--pane-app system at all — .rail/.appbar bring their own glass
+     via --panel/--panel-solid, already visible above). */
+  .nh-shell { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+  .nh-main { position: relative; z-index: 1; }
+
+  /* ── the rail ── */
+  .rail {
+    width: 228px; flex: none; padding: 14px 12px 12px; display: flex; flex-direction: column;
+    border-right: 1px solid var(--edge-hot);
+    background: linear-gradient(180deg, rgba(8, 17, 27, .86), rgba(5, 11, 19, .92));
+    backdrop-filter: blur(20px) saturate(1.2);
+    box-shadow: 1px 0 0 rgba(56, 214, 255, .1), 14px 0 40px rgba(0, 0, 0, .45);
+  }
+  html[data-surface="wall"] .rail { width: 296px; }
+
+  .brand { display: flex; align-items: center; gap: 11px; padding: 2px 4px 16px; text-decoration: none; }
+  .brand svg { flex: none; }
+  .brand b {
+    font-family: var(--font-mono); font-size: calc(var(--s0) * .9); font-weight: 700;
+    letter-spacing: .2em; text-transform: uppercase; color: var(--arc-100);
+    text-shadow: 0 0 16px var(--glow-soft);
+  }
+
+  .grp-lab {
+    display: flex; align-items: center; gap: 9px; padding: 15px 4px 7px;
+    font-family: var(--font-mono); font-size: var(--lab); letter-spacing: .2em;
+    text-transform: uppercase; color: var(--arc-600); white-space: nowrap;
+  }
+  .grp-lab::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--edge-hot), transparent); }
+
+  .nav {
+    display: flex; align-items: center; gap: 10px; padding: 7px 9px 7px 10px; margin-bottom: 3px;
+    border-radius: 8px; border: 1px solid transparent; background: transparent; width: 100%;
+    text-align: left; min-height: var(--tap); position: relative; color: var(--dim);
+    font-family: var(--font-mono); font-size: calc(var(--s0) * .82); font-weight: 600;
+    letter-spacing: .12em; text-transform: uppercase; text-decoration: none;
+  }
+  .nav .ib {
+    width: 26px; height: 26px; flex: none; display: grid; place-items: center; border-radius: 6px;
+    border: 1px solid var(--edge); background: rgba(56, 214, 255, .05); color: var(--arc-300);
+  }
+  .nav .ib svg { width: 15px; height: 15px; }
+  .nav:hover { color: var(--txt); border-color: var(--edge); background: rgba(56, 214, 255, .05); text-decoration: none; }
+  .nav:hover .ib { border-color: var(--edge-hot); }
+  .nav[aria-current="page"] {
+    color: var(--arc-100);
+    background: linear-gradient(90deg, rgba(56, 214, 255, .22), rgba(56, 214, 255, .02));
+    border-color: var(--edge-hot);
+    box-shadow: 0 0 22px var(--glow-soft);
+  }
+  .nav[aria-current="page"]::before {
+    content: ""; position: absolute; left: -1px; top: 6px; bottom: 6px; width: 3px; border-radius: 2px;
+    background: var(--arc-400); box-shadow: 0 0 12px var(--arc-500), 0 0 22px var(--glow);
+  }
+  .nav[aria-current="page"] .ib {
+    background: linear-gradient(160deg, var(--arc-400), var(--arc-600));
+    border-color: var(--arc-400); color: #032430; box-shadow: 0 0 16px var(--glow);
+  }
+
+  /* ── the household switcher (member chip) ── */
+  .rail-foot { margin-top: auto; padding-top: 12px; }
+  .mewrap { position: relative; }
+  .me {
+    display: flex; align-items: center; gap: 10px; padding: 8px 9px; border-radius: 8px;
+    border: 1px solid var(--edge); background: rgba(56, 214, 255, .04); width: 100%;
+    text-align: left; min-height: var(--tap); cursor: pointer; list-style: none;
+  }
+  .me::-webkit-details-marker { display: none; }
+  .me:hover { border-color: var(--edge-hot); background: var(--hover); }
+  .me > span:not(.av) { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+  .av {
+    width: 28px; height: 28px; border-radius: 50%; flex: none; display: grid; place-items: center;
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: #032430;
+    background: linear-gradient(150deg, var(--arc-300), var(--arc-600)); box-shadow: 0 0 14px var(--glow);
+  }
+  .me .who { font-family: var(--font-mono); font-size: calc(var(--s0) * .82); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+  .me .role { font-family: var(--font-mono); font-size: calc(var(--s0) * .7); color: var(--faint); letter-spacing: .08em; }
+  .me .caret { margin-left: auto; color: var(--faint); font-size: 10px; }
+
+  .memenu {
+    position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 20;
+    background: var(--panel-solid); border: 1px solid var(--edge-hot); border-radius: 11px;
+    padding: 6px; box-shadow: 0 16px 40px rgba(0, 0, 0, .65); max-height: 340px; overflow-y: auto;
+  }
+  .mehead {
+    font-family: var(--font-mono); font-size: var(--lab); letter-spacing: .14em;
+    text-transform: uppercase; color: var(--faint); padding: 8px 9px 5px;
+  }
+  .melabel { border-top: 1px solid var(--edge); margin-top: 4px; padding-top: 4px; }
+  .meopt {
+    width: 100%; display: flex; align-items: center; gap: 9px; text-align: left;
+    background: transparent; border: 0; border-radius: 8px; padding: 8px 9px;
+    color: var(--dim); font: inherit; font-size: calc(var(--s0) * .9);
+    min-height: var(--tap); flex-wrap: wrap; text-decoration: none;
+  }
+  .meopt:hover { background: var(--hover); color: var(--txt); }
+  .meopt em {
+    flex-basis: 100%; font-style: normal; font-size: calc(var(--s0) * .76);
+    color: var(--faint); line-height: 1.4;
+  }
+  .av.sm { width: 22px; height: 22px; font-size: 10px; }
+
+  /* ── the appbar (topbar) ── */
+  .nh-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .appbar {
+    display: flex; align-items: center; gap: 11px; padding: 11px 20px; flex: none;
+    border-bottom: 1px solid var(--edge); background: var(--panel); backdrop-filter: blur(18px);
+  }
+  html[data-app] .appbar { background: var(--panel-solid); }
+  .appbar h1 {
+    margin: 0; font-family: var(--font-mono); font-size: var(--s2); font-weight: 700;
+    letter-spacing: .16em; text-transform: uppercase; color: var(--arc-100);
+    text-shadow: 0 0 22px var(--glow-soft);
+  }
+  .appbar .sp { flex: 1; }
+
+  .canvas { flex: 1; padding: 16px 20px; overflow: auto; min-height: 0; }
+  html[data-app] .canvas { background: rgba(5, 10, 17, .72); }
+
+  /* ── pill (bell count, flash messages) ── */
+  .pill {
+    display: inline-flex; align-items: center; gap: .35rem; padding: 3px 10px; border-radius: 999px;
+    font-family: var(--font-mono); font-size: calc(var(--s0) * .7); font-weight: 700;
+    letter-spacing: .06em; background: rgba(56, 214, 255, .12); color: var(--arc-300);
+    border: 1px solid var(--edge-hot); white-space: nowrap;
+  }
+  .pill.ok { background: rgba(63, 240, 176, .16); color: var(--ok); border-color: transparent; }
+  .pill.warn { background: rgba(255, 182, 72, .16); color: var(--warn); border-color: transparent; }
+  .pill.alert, .pill.error { background: rgba(255, 77, 94, .18); color: var(--crit); border-color: transparent; }
+  .pill.info { background: rgba(122, 162, 255, .14); color: var(--info); border-color: transparent; }
