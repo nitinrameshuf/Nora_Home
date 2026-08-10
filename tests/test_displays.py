@@ -20,7 +20,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from nora_home.displays.bus import ALL_DISPLAYS_GROUP, broadcast, group_for, send_to_display
-from nora_home.displays.consumers import KIOSK_ACTIONS
+from nora_home.displays.consumers import KIOSK_ACTIONS, KioskConsumer
 from nora_home.displays.models import HEARTBEAT_GRACE_SECONDS, Display
 
 pytestmark = pytest.mark.django_db
@@ -44,16 +44,38 @@ def test_the_wall_script_exists():
     assert WALL_LIVE_JS.exists(), f"{WALL_LIVE_JS} is missing"
 
 
-def test_every_kiosk_action_has_a_handler_on_the_wall():
+def test_every_relayed_kiosk_action_has_a_handler_on_the_wall():
     """A kiosk button wired to an action the wall ignores is a dead control that
-    looks alive. This is the regression guard for exactly that."""
+    looks alive. This is the regression guard for exactly that.
+
+    SERVER_SIDE_ACTIONS are exempt because they are never relayed: `zoom`
+    writes a house setting in the consumer and turns into a `refresh`, so the
+    wall having no `case "zoom"` is correct rather than a missing handler."""
+    from nora_home.displays.consumers import SERVER_SIDE_ACTIONS
+
     handled = _handled_message_types()
 
-    unimplemented = {a for a in KIOSK_ACTIONS if a != "say"} - handled
+    relayed = {a for a in KIOSK_ACTIONS if a != "say"} - SERVER_SIDE_ACTIONS
+    unimplemented = relayed - handled
 
     assert not unimplemented, (
         f"kiosk may send {sorted(unimplemented)}, but wall-live.js has no handler. "
         "Add the handler in the same commit as the action.")
+
+
+def test_a_server_side_action_is_never_also_relayed():
+    """The exemption above is only safe while those actions really are handled
+    in the consumer. One that slipped back into the relay path would reach a
+    wall with no handler and silently do nothing — the exact failure the
+    allow-list exists to prevent."""
+    from nora_home.displays.consumers import SERVER_SIDE_ACTIONS
+
+    source = (Path(settings.BASE_DIR) / "nora_home" / "displays" / "consumers.py").read_text()
+
+    for action in SERVER_SIDE_ACTIONS:
+        assert f'action == "{action}"' in source, (
+            f"{action} is exempt from the wall-handler rule but the consumer "
+            "has no branch for it — it would be relayed to a wall that ignores it")
 
 
 def test_the_alert_banner_is_still_handled():
@@ -66,7 +88,7 @@ def test_the_alert_banner_is_still_handled():
 def test_kiosk_actions_stay_a_short_allow_list():
     """Actions accumulate; handlers do not. Keeping the list tight is what stops
     the two drifting apart again."""
-    assert KIOSK_ACTIONS == {"navigate", "refresh", "say"}
+    assert KIOSK_ACTIONS == {"navigate", "refresh", "say", "scroll", "zoom"}
 
 
 # ── the bus ──────────────────────────────────────────────────────────────────
@@ -373,26 +395,39 @@ def test_every_key_on_the_desk_is_a_path_that_resolves(client, adult, kiosk_disp
                 f"{app['slug']} key {control['title']!r} -> {control['path']} is broken")
 
 
-def test_the_controls_story_51_owns_are_rendered_dead(client, adult, kiosk_display):
-    """The two faders, the scroll wheel and wall power are drawn because the
-    desk's composition is the design, but the platform cannot drive any of
-    them yet (Story 51 — and wall-only power is recorded as unsolved). They
-    must be inert and visibly unlit: a control that moves and changes nothing
-    is the "dead button with no error anywhere" this project warns about."""
+def test_the_controls_with_no_capability_behind_them_are_rendered_dead(
+        client, adult, kiosk_display):
+    """A control that moves and changes nothing is the "dead button with no
+    error anywhere" this project warns about, so anything the platform cannot
+    actually drive must be inert and visibly unlit.
+
+    Story 51 made zoom and the scroll wheel live. Volume and wall power are
+    still dead, and for different reasons worth keeping straight: volume needs
+    a host mixer call the container cannot make, and wall-only power has no
+    working mechanism on this hardware at all — four were tested and every one
+    was disproved or blocked (docs/Main_App/progress.md)."""
+    import re
+
     client.force_login(adult)
     body = client.get("/home/displays/kiosk/").content.decode()
 
-    # The power key is the one that must never be live before it is proven on
-    # hardware — it carries both `disabled` and the dead treatment.
-    assert body.count("is-dead") >= 4, "the Story 51 controls are not marked dead"
-    assert 'class="pbend is-dead"' in body
-
-    # And none of them may carry a real action.
-    import re
+    assert "is-dead" in body, "nothing is marked dead, but volume and power still are"
+    # Whatever is dead must be genuinely inert, not merely dimmed.
     for block in re.findall(r"<button[^>]*is-dead[^>]*>", body):
         assert "data-kiosk-action" not in block, (
             f"a dead control carries a live action: {block}")
         assert "disabled" in block, f"a dead control is not disabled: {block}"
+
+
+def test_zoom_and_scroll_are_live_on_the_desk(client, adult, kiosk_display):
+    """The other half of the same guarantee: Story 51's two solved
+    capabilities must actually be wired, not still drawn dead."""
+    client.force_login(adult)
+    body = client.get("/home/displays/kiosk/").content.decode()
+
+    assert 'data-kiosk-action="zoom"' in body, "the zoom fader is not wired"
+    assert "data-desk-bend" in body, "the scroll wheel is not wired"
+    assert 'class="pbend is-dead"' not in body
 
 
 def test_the_desk_never_sends_an_action_the_wall_cannot_handle(client, adult, kiosk_display):
@@ -462,3 +497,88 @@ def test_the_bank_legend_is_derived_not_hardcoded():
 
     assert "updateBankLabel" in source
     assert "scrollHeight" in source, "the bank legend is not derived from real overflow"
+
+
+# ── the control channel (Story 51) ───────────────────────────────────────────
+
+@pytest.mark.django_db
+def test_zoom_from_the_panel_writes_the_house_setting():
+    """The panel does not carry zoom state — it nudges the stored setting and
+    the wall reloads at whatever was saved."""
+    from nora_home.ui import zoom as zoom_settings
+
+    zoom_settings.save({"wall": 1.0, "kiosk": 1.0})
+    consumer = KioskConsumer()
+
+    stored = consumer._apply_zoom.__wrapped__(consumer, "wall", 0.25)
+
+    assert stored == pytest.approx(1.25)
+    assert zoom_settings.stored()["wall"] == pytest.approx(1.25)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("surface,target_attr,ceiling", [
+    ("wall", "NORA_HOME_MAIN_DISPLAY_SLUG", 2.0),
+    ("kiosk", "NORA_HOME_KIOSK_DISPLAY_SLUG", 1.2),
+])
+def test_the_panel_cannot_drive_a_screen_past_its_own_ceiling(
+        surface, target_attr, ceiling):
+    """Holding "+" must stop at the clamp rather than walking a screen to a
+    size that breaks it — the kiosk's ceiling is lower than the wall's because
+    its layout viewport drops under the 860px breakpoint first."""
+    from django.conf import settings as dj_settings
+
+    from nora_home.ui import zoom as zoom_settings
+
+    zoom_settings.save({"wall": 1.0, "kiosk": 1.0})
+    consumer = KioskConsumer()
+    target = getattr(dj_settings, target_attr)
+
+    stored = None
+    for _ in range(40):                     # far past the ceiling on purpose
+        stored = consumer._apply_zoom.__wrapped__(consumer, target, 0.25)
+
+    assert stored == pytest.approx(ceiling)
+
+
+@pytest.mark.django_db
+def test_a_nonsense_zoom_delta_leaves_the_screen_alone():
+    """The delta arrives as a string off a data attribute; a malformed one
+    must not move the wall or raise inside the consumer."""
+    from nora_home.ui import zoom as zoom_settings
+
+    zoom_settings.save({"wall": 1.15, "kiosk": 1.0})
+    consumer = KioskConsumer()
+
+    stored = consumer._apply_zoom.__wrapped__(consumer, "wall", "sideways")
+
+    assert stored == pytest.approx(1.15)
+
+
+def test_the_wall_integrates_a_scroll_rate_rather_than_a_position():
+    """The wheel is spring-centred, so the message is a rate. A position would
+    need the panel to know how long the wall's page is, which it cannot."""
+    source = WALL_LIVE_JS.read_text()
+
+    assert "setScrollRate" in source
+    assert "data.rate" in source
+    assert "scrollBy" in source, "the wall never actually moves its content"
+
+
+def test_the_wall_stops_scrolling_when_the_wheel_is_released():
+    """A rate of 0 must tear the interval down. An always-on screen left
+    scrolling forever because nobody sent a stop is the failure this shape
+    invites."""
+    source = WALL_LIVE_JS.read_text()
+
+    assert "clearInterval" in source, "the scroll interval is never cleared"
+
+
+def test_the_bend_wheel_sends_zero_on_release():
+    source = KIOSK_JS.read_text()
+
+    assert "pointerup" in source and "rate: 0" in source, (
+        "releasing the wheel does not stop the wall")
+    assert "setPointerCapture" in source, (
+        "without pointer capture, releasing off the wheel never delivers the "
+        "stop and the wall scrolls forever")

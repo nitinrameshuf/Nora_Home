@@ -14,7 +14,9 @@
     socket: null,
     reconnectDelay: 1000,
     slug: document.body.getAttribute("data-display-slug") || "wall",
-    frame: null
+    frame: null,
+    scrollRate: 0,
+    scrollTimer: null
   };
 
   WallLive.init = function () {
@@ -68,12 +70,58 @@
       case "refresh":
         window.location.reload();
         break;
+      case "scroll":
+        WallLive.setScrollRate(data.rate);
+        break;
       case "banner":
         WallLive.banner(data);
         break;
       default:
         break;
     }
+  };
+
+  /* Scrolling the wall (Story 51).
+   *
+   * The message carries a *rate*, not a position, because the control at the
+   * other end is a spring-centred bend wheel: you push it and it returns to
+   * centre. A position would need the panel to know how long the wall's page
+   * is, which it has no way to find out — a rate needs nothing but the sign
+   * and how hard.
+   *
+   * So the wall integrates it: one interval, scrolling by `rate` pixels a
+   * tick until a rate of 0 arrives (the wheel springing back) or the socket
+   * drops. The interval is torn down when idle rather than left spinning on
+   * an always-on screen.
+   *
+   * It scrolls the *iframe's* document, not this shell — the shell is exactly
+   * viewport-sized and never scrolls. Same-origin, so reaching into
+   * contentWindow is allowed; it is wrapped anyway, because a cross-origin
+   * page in there some day should stop the wall scrolling, not throw on every
+   * tick forever.
+   */
+  WallLive.setScrollRate = function (rate) {
+    var next = Number(rate) || 0;
+    WallLive.scrollRate = Math.max(-120, Math.min(120, next));
+
+    if (!WallLive.scrollRate) {
+      if (WallLive.scrollTimer) {
+        window.clearInterval(WallLive.scrollTimer);
+        WallLive.scrollTimer = null;
+      }
+      return;
+    }
+    if (WallLive.scrollTimer) return;
+
+    WallLive.scrollTimer = window.setInterval(function () {
+      var frame = WallLive.frame;
+      if (!frame || !WallLive.scrollRate) return;
+      try {
+        frame.contentWindow.scrollBy(0, WallLive.scrollRate);
+      } catch (error) {
+        WallLive.setScrollRate(0);   // not ours to scroll — stop trying
+      }
+    }, 50);
   };
 
   /* An alert takes over the top of the wall for a while, then hands it back.

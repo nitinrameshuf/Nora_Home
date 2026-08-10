@@ -14,14 +14,15 @@ wall-live.js implements, so a key can only ever send the wall somewhere. An app
 declares nora_kiosk_controls and its keys appear with no platform change; an app
 that declares none gets a single "Open" key rather than an empty bank.
 
-**Some of this desk is deliberately dead.** The two faders, the scroll wheel and
-the wall power key are drawn because the desk's composition is the design — but
-the capabilities behind them do not exist yet and belong to Story 51 (zoom from
-the panel, a scroll message wall-live.js does not implement, a host mixer call
-for volume, and wall-only power, which CLAUDE.md records as unsolved and which
-Story 51's own warn says must be proven on hardware before it ships). They carry
-`disabled` and `.is-dead`, so they read as unlit rather than as controls that
-quietly do nothing.
+**Zoom and the bend wheel went live in Story 51.** Zoom nudges the wall's stored
+zoom and reloads it; the wheel sends a scroll *rate* the wall integrates.
+
+**Two controls are still deliberately dead.** Volume needs a host mixer call the
+container cannot make, and wall-only power has no working mechanism on this
+hardware at all — Story 51 tested four and disproved or blocked every one (see
+docs/Main_App/progress.md). Both need a host-side helper that only root can
+install, so they carry `disabled` and `.is-dead` and read as unlit rather than
+as controls that quietly do nothing.
 
 See base.html's note on zoom. The kiosk's own ceiling is lower than the wall's
 (nora_home/ui/zoom.py) because at 1024 physical, a large zoom puts the layout
@@ -40,7 +41,10 @@ viewport under the 860px breakpoint while media queries still report 1024.
 <body class="kiosk" data-target-display="{{ target }}">
   {% csrf_token %}
 
-  <div class="desk" data-desk>
+  <div class="desk" data-desk
+       data-zoom="{{ wall_zoom|floatformat:2 }}"
+       data-zoom-min="{{ zoom_min|floatformat:2 }}"
+       data-zoom-max="{{ zoom_max|floatformat:2 }}">
     <span class="screw tl"></span><span class="screw tr"></span>
     <span class="screw bl"></span><span class="screw br"></span>
 
@@ -98,31 +102,36 @@ viewport under the 860px breakpoint while media queries still report 1024.
       <div class="d-scroll">
         <div class="d-lab">Scroll</div>
         {% comment %}
-        Story 51. wall-live.js implements navigate, refresh and banner only —
-        there is no message that moves the wall's content, so this wheel has
-        nothing to send yet.
+        Live as of Story 51. A spring-centred bend wheel: push it and hold to
+        scroll the wall, let go and it returns to centre and the wall stops.
+        It sends a *rate*, not a position — the panel has no way to know how
+        long the wall's page is, and a rate needs only sign and force.
         {% endcomment %}
-        <div class="pbend is-dead" aria-label="Scroll the wall (not yet available)" aria-disabled="true">
+        <div class="pbend" data-desk-bend role="slider" tabindex="0"
+             aria-label="Scroll the wall" aria-valuemin="-1" aria-valuemax="1" aria-valuenow="0">
           <span class="pbend-detent" aria-hidden="true"></span>
-          <span class="pwheel" aria-hidden="true"></span>
+          <span class="pwheel" data-desk-wheel aria-hidden="true"></span>
         </div>
       </div>
     </div>
 
     <div class="d-foot">
       {% comment %}
-      Both faders are Story 51's: zoom has a HouseSetting behind it but nothing
-      that writes it from here, and volume needs a host mixer call the
-      container cannot make. Drawn at their real current values so the desk is
-      honest about the house's state even while the controls are dead.
+      Live as of Story 51. The keys nudge the wall's stored zoom
+      (nora_home/ui/zoom.py clamps it to 0.8–2.0) and the wall reloads at the
+      new size; the readout and the fill are updated from the ack, so the desk
+      shows what was actually stored rather than what was asked for.
       {% endcomment %}
-      <div class="fader is-dead">
-        <div class="fader-h"><span>Zoom</span><b>{{ nh_zoom|default:"1.00" }}&times;</b></div>
-        <div class="fader-hint">24&quot; text + layout &middot; Story 51</div>
+      <div class="fader">
+        <div class="fader-h"><span>Zoom</span><b data-desk-zoom-value>{{ wall_zoom|floatformat:2 }}&times;</b></div>
+        <div class="fader-hint">24&quot; text + layout &middot; {{ zoom_min|floatformat:2 }}–{{ zoom_max|floatformat:2 }}</div>
         <div class="fader-row">
-          <button class="hkey" disabled aria-label="Zoom down"><span class="lg">&minus;</span></button>
-          <span class="slot"><span class="slot-fill"></span><span class="fcap"></span></span>
-          <button class="hkey" disabled aria-label="Zoom up"><span class="lg">+</span></button>
+          <button class="hkey" type="button" data-kiosk-action="zoom" data-delta="-0.05"
+                  aria-label="Zoom the wall down"><span class="lg">&minus;</span></button>
+          <span class="slot"><span class="slot-fill" data-desk-zoom-fill></span>
+            <span class="fcap" data-desk-zoom-cap></span></span>
+          <button class="hkey" type="button" data-kiosk-action="zoom" data-delta="0.05"
+                  aria-label="Zoom the wall up"><span class="lg">+</span></button>
         </div>
       </div>
 

@@ -32,7 +32,17 @@ logger = logging.getLogger(__name__)
 # belonged to the pre-rendered ambient wall that the iframe wall replaced — the
 # server happily relayed them and the wall silently ignored every one, so a
 # kiosk button wired to any of them looked functional and did nothing.
-KIOSK_ACTIONS = {"navigate", "refresh", "say"}
+#
+# Story 51 adds two, and they are different shapes: `scroll` is relayed to the
+# screen like the others (wall-live.js grew a handler for it in the same
+# commit, which is what the rule above demands), while `zoom` is handled
+# server-side — it writes a house setting and turns into a `refresh`, so the
+# wall needs no handler for it at all.
+KIOSK_ACTIONS = {"navigate", "refresh", "say", "scroll", "zoom"}
+
+# The subset that is *not* relayed verbatim, and so is exempt from the
+# "wall-live.js must implement it" rule the test enforces.
+SERVER_SIDE_ACTIONS = {"zoom"}
 
 
 class DisplayConsumer(AsyncJsonWebsocketConsumer):
@@ -130,12 +140,47 @@ class KioskConsumer(AsyncJsonWebsocketConsumer):
             return
 
         target = content.get("display") or settings.NORA_HOME_MAIN_DISPLAY_SLUG
+
+        # Most actions are relayed straight through to the screen. `zoom` is
+        # not: it changes a stored house setting, and the screen only needs to
+        # be told to reload afterwards, so it is handled here and turns into a
+        # refresh (Story 51).
+        if action == "zoom":
+            zoom = await self._apply_zoom(target, content.get("delta"))
+            await self.channel_layer.group_send(
+                group_for(target), {"type": "display.message",
+                                    "payload": {"type": "refresh"}})
+            await self.send_json({"type": "ack", "action": action,
+                                  "display": target, "zoom": zoom})
+            return
+
         payload = {"type": action, **{k: v for k, v in content.items()
                                       if k not in {"action", "display"}}}
 
         await self.channel_layer.group_send(
             group_for(target), {"type": "display.message", "payload": payload})
         await self.send_json({"type": "ack", "action": action, "display": target})
+
+    @database_sync_to_async
+    def _apply_zoom(self, target, delta):
+        """Nudge one screen's zoom and persist it. Returns what was stored.
+
+        Clamping lives in nora_home.ui.zoom (0.8–2.0 on the wall, 0.8–1.2 on
+        the kiosk — its layout viewport drops under the 860px breakpoint
+        before then), so the panel cannot drive a screen to a size that
+        breaks it however many times someone presses the key.
+        """
+        from nora_home.ui import zoom as zoom_settings
+
+        surface = "kiosk" if target == settings.NORA_HOME_KIOSK_DISPLAY_SLUG else "wall"
+        try:
+            step = float(delta)
+        except (TypeError, ValueError):
+            step = 0.0
+
+        current = dict(zoom_settings.stored())
+        current[surface] = zoom_settings.clamp(surface, current.get(surface, 1.0) + step)
+        return zoom_settings.save(current)[surface]
 
     async def display_message(self, event):
         await self.send_json(event["payload"])
