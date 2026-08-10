@@ -582,3 +582,22 @@ def test_the_bend_wheel_sends_zero_on_release():
     assert "setPointerCapture" in source, (
         "without pointer capture, releasing off the wheel never delivers the "
         "stop and the wall scrolls forever")
+
+
+def test_the_wall_scrolls_its_canvas_not_its_document():
+    """`html[data-surface="wall"] body { overflow: hidden }` (shell.css) means
+    the wall never scrolls at the body level — `.canvas` is the scrolling box.
+    The first version called contentWindow.scrollBy() and moved nothing at
+    all: the message arrived, the interval ran, and a 3-second hold on the
+    physical wall with a long page up produced zero pixels of movement."""
+    source = WALL_LIVE_JS.read_text()
+    # Comments stripped first — this file explains the old bug in prose, and
+    # matching that would fail on the very sentence documenting the fix.
+    code = re.sub(r"/\*.*?\*/", "", source, flags=re.S)
+    code = re.sub(r"//[^\n]*", "", code)
+
+    assert "scrollerIn" in code
+    assert ".canvas" in code, "the wall does not target its scrolling element"
+    assert "contentWindow.scrollBy" not in code, (
+        "scrollBy on the iframe window scrolls the document, which the wall "
+        "has explicitly disabled")

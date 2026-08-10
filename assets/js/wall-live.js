@@ -117,11 +117,30 @@
       var frame = WallLive.frame;
       if (!frame || !WallLive.scrollRate) return;
       try {
-        frame.contentWindow.scrollBy(0, WallLive.scrollRate);
+        var target = WallLive.scrollerIn(frame.contentDocument);
+        if (target) target.scrollTop += WallLive.scrollRate;
       } catch (error) {
         WallLive.setScrollRate(0);   // not ours to scroll — stop trying
       }
     }, 50);
+  };
+
+  /* Which element inside the wall's iframe actually scrolls.
+   *
+   * NOT the document: shell.css sets `html[data-surface="wall"] body {
+   * overflow: hidden }` so the wall never scrolls at the body level, and
+   * `.canvas` is the scrolling box. `contentWindow.scrollBy()` therefore did
+   * exactly nothing — the message arrived, the interval ran, and the wall sat
+   * still. Found on the physical wall with a genuinely long page (System) up:
+   * a 3-second hold moved zero pixels.
+   *
+   * Falls back to the document's own scroller so this keeps working if a page
+   * ever scrolls normally instead. */
+  WallLive.scrollerIn = function (doc) {
+    if (!doc) return null;
+    var canvas = doc.querySelector(".canvas");
+    if (canvas && canvas.scrollHeight > canvas.clientHeight) return canvas;
+    return doc.scrollingElement || doc.documentElement;
   };
 
   /* An alert takes over the top of the wall for a while, then hands it back.
