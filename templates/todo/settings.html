@@ -1,5 +1,4 @@
-{% extends "base.html" %}{% load django_vite %}
-{% load static %}
+{% extends "base.html" %}{% load django_vite nh %}
 
 {% comment %}
 Todo's own settings (§10, "Tone"), at /todo/settings/ — not the platform
@@ -12,58 +11,43 @@ per-setting overrides underneath default to "follow the preset", so nobody has
 to understand six settings to pick a tone.
 {% endcomment %}
 
-{% block head %}
-  {% comment %}Bridge to the old front end — not yet rewired onto tokens.css/components.css (Story 45, Phase B; CLAUDE.md §4).{% endcomment %}
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nora-home.css' %}">
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/todo.css' %}">
-{% endblock %}
-
 {% block heading %}Todo settings{% endblock %}
 
 {% block actions %}
-  <a class="btn" href="{% url 'todo:board' %}">Tasks</a>
-  <a class="btn" href="{% url 'todo:reporting' %}">Reporting</a>
+  {% url 'todo:board' as board_url %}
+  {% url 'todo:reporting' as reporting_url %}
+  {% nh_button label="Tasks" href=board_url %}
+  {% nh_button label="Reporting" href=reporting_url %}
 {% endblock %}
 
 {% block content %}
   <form method="post">
     {% csrf_token %}
 
-    <h2>Tone</h2>
-    <p class="todo-report__sub">
-      How the house talks to you about your own numbers. The numbers themselves
-      are the same either way &mdash; only the wording, the colour and how much
-      is shown at a glance change.
-    </p>
-
-    <div class="todo-tones">
-      {% for card in tone_cards %}
-        <label class="todo-tone">
-          <input type="radio" name="tone" value="{{ card.value }}"
-                 {% if card.chosen %}checked{% endif %}>
-          <span class="todo-tone__body">
-            <span class="todo-tone__name">{{ card.label }}</span>
-            <ul class="todo-tone__list">
+    {% nh_card title="Tone" subtitle="How the house talks to you about your own numbers. The numbers themselves are the same either way — only the wording, the colour and how much is shown at a glance change." %}
+      <div class="frow">
+        {% for card in tone_cards %}
+          <label class="panel" style="display:block;padding:var(--pad);cursor:pointer;border:1px solid {% if card.chosen %}var(--edge-hot){% else %}var(--edge){% endif %}">
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">
+              <input type="radio" name="tone" value="{{ card.value }}" {% if card.chosen %}checked{% endif %}
+                     style="accent-color:var(--arc-500);width:16px;height:16px">
+              <b style="font-family:var(--font-mono);font-size:calc(var(--s0)*.9);letter-spacing:.08em;text-transform:uppercase">{{ card.label }}</b>
+            </div>
+            <ul style="margin:0;padding-left:18px;font-size:calc(var(--s0)*.86);color:var(--dim)">
               {% for line in card.lines %}<li>{{ line }}</li>{% endfor %}
             </ul>
-          </span>
-        </label>
-      {% endfor %}
-    </div>
+          </label>
+        {% endfor %}
+      </div>
+    {% endnh_card %}
 
-    <h2>Individual settings</h2>
-    <p class="todo-report__sub">
-      These sit underneath the preset. Leave one on &ldquo;follow the
-      preset&rdquo; and it moves whenever the preset does.
-    </p>
-
-    <div class="todo-overrides">
+    {% nh_card title="Individual settings" subtitle="These sit underneath the preset. Leave one on “follow the preset” and it moves whenever the preset does." %}
       {% for row in overrides %}
-        <div class="field">
-          <label for="override-{{ row.key }}">{{ row.label }}</label>
-          <select id="override-{{ row.key }}" name="override_{{ row.key }}">
+        <div class="set-row">
+          <span class="k">{{ row.label }}</span>
+          <select id="override-{{ row.key }}" name="override_{{ row.key }}" style="margin-left:auto">
             <option value="preset" {% if row.following_preset %}selected{% endif %}>
-              Follow the preset &mdash; {{ row.preset_label }}
+              Follow the preset — {{ row.preset_label }}
             </option>
             {% for option in row.options %}
               <option value="{{ option.raw }}" {% if option.selected %}selected{% endif %}>
@@ -73,23 +57,23 @@ to understand six settings to pick a tone.
           </select>
         </div>
       {% endfor %}
-    </div>
+    {% endnh_card %}
 
-    <h2>Due times</h2>
-    <div class="todo-overrides">
-      <div class="field">
-        <label for="default-due-hour">Default hour for date-only tasks</label>
-        <select id="default-due-hour" name="default_due_hour">
+    {% nh_card title="Due times" %}
+      <div class="set-row">
+        <span class="k">Default hour for date-only tasks</span>
+        <select id="default-due-hour" name="default_due_hour" style="margin-left:auto">
           {% for hour in hours %}
-            <option value="{{ hour }}"
-                    {% if hour == preference.default_due_hour %}selected{% endif %}>
+            <option value="{{ hour }}" {% if hour == preference.default_due_hour %}selected{% endif %}>
               {{ hour|stringformat:"02d" }}:00
             </option>
           {% endfor %}
         </select>
       </div>
-    </div>
+    {% endnh_card %}
 
-    <button class="btn btn-primary" type="submit">Save settings</button>
+    <div class="sheet-foot" style="justify-content:flex-start;margin-top:14px">
+      {% nh_button label="Save settings" variant="pri" button_type="submit" %}
+    </div>
   </form>
 {% endblock %}

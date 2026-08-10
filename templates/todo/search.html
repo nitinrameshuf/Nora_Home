@@ -1,95 +1,107 @@
-{% extends "base.html" %}{% load django_vite %}
-{% load static %}
-
-{% block head %}
-  {% comment %}Bridge to the old front end — not yet rewired onto tokens.css/components.css (Story 45, Phase B; CLAUDE.md §4).{% endcomment %}
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nora-home.css' %}">
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/todo.css' %}">
-{% endblock %}
+{% extends "base.html" %}{% load django_vite nh %}
 
 {% block heading %}Search{% endblock %}
 
 {% block actions %}
-  <a class="btn" href="{% url 'todo:board' %}">Tasks</a>
+  {% url 'todo:board' as board_url %}
+  {% nh_button label="Tasks" href=board_url %}
 {% endblock %}
 
 {% block content %}
-  <form class="todo-form todo-search-form" method="get">
-    <div class="todo-search-row">
-      <input type="text" name="q" value="{{ params.q }}" placeholder="Title, description or comments…"
-             style="max-width:340px">
+  {% nh_card title="Search" %}
+    <form method="get">
+      <div class="frow">
+        <div class="field">
+          <label>Title, description or comments</label>
+          <input class="srch" type="text" name="q" value="{{ params.q }}" placeholder="Search…">
+        </div>
+        <div class="field">
+          <label>Label</label>
+          <select name="label">
+            <option value="">Any label</option>
+            {% for label in labels %}
+              <option value="{{ label.name }}" {% if params.label == label.name %}selected{% endif %}>{{ label.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>Priority</label>
+          <select name="priority">
+            <option value="">Any priority</option>
+            {% for value, label in priorities %}
+              <option value="{{ value }}" {% if params.priority == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>Owner</label>
+          <select name="owner_id">
+            <option value="">Anyone</option>
+            {% for m in house_members %}
+              <option value="{{ m.pk }}" {% if params.owner_id == m.pk|stringformat:"s" %}selected{% endif %}>{{ m.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>State</label>
+          <select name="state">
+            <option value="">Any state</option>
+            {% for value, label in states %}
+              <option value="{{ value }}" {% if params.state == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>Due after</label>
+          <input type="date" name="due_after" value="{{ params.due_after }}">
+        </div>
+        <div class="field">
+          <label>Due before</label>
+          <input type="date" name="due_before" value="{{ params.due_before }}">
+        </div>
+      </div>
+      <label class="switch" style="margin-top:12px">
+        <input type="checkbox" name="overdue" value="1" {% if params.overdue %}checked{% endif %}>
+        <span>Overdue only</span>
+      </label>
+      <div class="sheet-foot" style="justify-content:flex-start;margin-top:14px">
+        {% nh_button label="Search" variant="pri" button_type="submit" %}
+      </div>
+    </form>
+  {% endnh_card %}
 
-      <select name="label">
-        <option value="">Any label</option>
-        {% for label in labels %}
-          <option value="{{ label.name }}" {% if params.label == label.name %}selected{% endif %}>{{ label.name }}</option>
-        {% endfor %}
-      </select>
-
-      <select name="priority">
-        <option value="">Any priority</option>
-        {% for value, label in priorities %}
-          <option value="{{ value }}" {% if params.priority == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select>
-
-      <select name="owner_id">
-        <option value="">Anyone</option>
-        {% for m in house_members %}
-          <option value="{{ m.pk }}" {% if params.owner_id == m.pk|stringformat:"s" %}selected{% endif %}>{{ m.name }}</option>
-        {% endfor %}
-      </select>
-
-      <select name="state">
-        <option value="">Any state</option>
-        {% for value, label in states %}
-          <option value="{{ value }}" {% if params.state == value %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select>
-
-      <label class="todo-search-date">Due after <input type="date" name="due_after" value="{{ params.due_after }}"></label>
-      <label class="todo-search-date">Due before <input type="date" name="due_before" value="{{ params.due_before }}"></label>
-
-      <label class="checks"><input type="checkbox" name="overdue" value="1" {% if params.overdue %}checked{% endif %}> Overdue only</label>
-
-      <button class="btn btn-primary" type="submit">Search</button>
-    </div>
-  </form>
-
-  <div class="todo-toolbar">
-    <form method="post" action="{% url 'todo:save_filter' %}" class="todo-save-search">
+  {% nh_toolbar %}
+    <form method="post" action="{% url 'todo:save_filter' %}" style="display:flex;gap:9px;align-items:center;flex:1">
       {% csrf_token %}
       {% for key, value in params.as_dict.items %}
         <input type="hidden" name="{{ key }}" value="{{ value }}">
       {% endfor %}
-      <input type="text" name="name" placeholder="Name this search" maxlength="100" required>
-      <button class="btn" type="submit">Save search</button>
+      <input class="srch" style="flex:1" type="text" name="name" placeholder="Name this search" maxlength="100" required>
+      {% nh_button label="Save search" button_type="submit" %}
     </form>
-    <div class="spacer"></div>
-  </div>
+  {% endnh_toolbar %}
 
   {% if saved_filters %}
-    <div class="todo-saved-filters">
+    <div class="chips-row" style="margin:10px 0">
       {% for saved in saved_filters %}
-        <span class="todo-saved-filter">
-          <a href="{% url 'todo:search' %}?{% for k, v in saved.params.items %}{{ k }}={{ v }}&{% endfor %}">{{ saved.name }}</a>
-          <button class="todo-saved-filter__delete" type="button" data-todo-action="delete-filter"
-                  data-url="{% url 'todo:delete_saved_filter' saved.pk %}" title="Delete this saved search">&times;</button>
+        <span class="chip" style="gap:8px">
+          <a href="{% url 'todo:search' %}?{% for k, v in saved.params.items %}{{ k }}={{ v }}&{% endfor %}" style="color:inherit;text-decoration:none">{{ saved.name }}</a>
+          <button type="button" data-todo-action="delete-filter"
+                  data-url="{% url 'todo:delete_saved_filter' saved.pk %}" title="Delete this saved search"
+                  style="background:none;border:0;color:inherit;cursor:pointer;padding:0">&times;</button>
         </span>
       {% endfor %}
     </div>
   {% endif %}
 
   {% if not params.is_empty %}
-    <div class="todo-col__list">
-      {% for task in results %}
-        {% include "todo/_card.html" with task=task %}
-      {% empty %}
-        <div class="todo-empty">Nothing matches.</div>
-      {% endfor %}
-    </div>
+    {% for task in results %}
+      {% include "todo/_card.html" with task=task %}
+    {% empty %}
+      {% nh_empty title="Nothing matches" %}
+    {% endfor %}
   {% else %}
-    <p class="card-subtitle">Search or apply a filter to see results.</p>
+    {% nh_empty title="No search yet" message="Search or apply a filter to see results." %}
   {% endif %}
 {% endblock %}
 

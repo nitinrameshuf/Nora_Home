@@ -27,15 +27,14 @@ nora_home/ui/zoom.py for the measurements behind the choice.
   <meta name="theme-color" content="#0c1015">
   <title>{% block title %}{% if page_title %}{{ page_title }} · {% endif %}{{ house_name }}{% endblock %}</title>
   {% comment %}
-  tokens.css, shell.css, components.css: the new system (Story 44/45). Every
-  template that has not been rewired onto it yet adds nora-home.css (and its
-  own todo.css/dashboard.css/...) back via {% block head %} as a bridge — see
-  CLAUDE.md §4's Story 45 entry. That bridge works *because* nora-home.css is
-  unlayered and components.css is `@layer comp`: an unlayered rule always
-  beats a layered one regardless of load order, so a bridged page's old
-  markup keeps its old look even with both files present, while shell.css's
-  own class names (.rail, .nav, .me, ...) never collide with nora-home.css's
-  (.sidebar, .nav-link, .topbar) in the first place.
+  tokens.css, shell.css, components.css — the whole house, Story 45. Every
+  template that used to bridge nora-home.css/todo.css/dashboard.css/
+  displays.css back in via its own {% block head %} has been rewired onto
+  this instead, and all four of those files are deleted — see CLAUDE.md §4's
+  Story 45 entry for the two real bugs that surfaced doing it (Tailwind's
+  @theme prefix, and a cascade layer always losing to unlayered CSS
+  regardless of specificity, which is why shell.css and components.css are
+  NOT both `@layer comp`).
   {% endcomment %}
   <link rel="stylesheet" href="{% vite_asset_url 'assets/css/tokens.css' %}">
   <link rel="stylesheet" href="{% vite_asset_url 'assets/css/shell.css' %}">

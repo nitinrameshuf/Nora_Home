@@ -1,70 +1,53 @@
-{% extends "base.html" %}{% load django_vite %}
-{% load static %}
-
-{% block head %}
-  {% comment %}Bridge to the old front end — not yet rewired onto tokens.css/components.css (Story 45, Phase B; CLAUDE.md §4).{% endcomment %}
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nora-home.css' %}">
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/todo.css' %}">
-{% endblock %}
+{% extends "base.html" %}{% load django_vite nh %}
 
 {% block heading %}Calendar{% endblock %}
 
 {% block actions %}
-  <a class="btn" href="{% url 'todo:board' %}">Tasks</a>
+  {% url 'todo:board' as board_url %}
+  {% nh_button label="Tasks" href=board_url %}
 {% endblock %}
 
 {% block content %}
-  <div class="todo-toolbar">
-    <a class="btn" href="{{ prev_url }}" aria-label="Previous month">&larr;</a>
-    <strong>{{ month_label }}</strong>
-    <a class="btn" href="{{ next_url }}" aria-label="Next month">&rarr;</a>
-    {% if not on_current_month %}
-      <a class="btn" href="?">Today</a>
-    {% endif %}
-    <div class="spacer"></div>
-    <span class="todo-cal-key">
-      <span class="todo-cal-key__dot todo-cal-key__dot--planned"></span> Planned
-      <span class="todo-cal-key__dot todo-cal-key__dot--actual"></span> Actual
-      <span class="todo-cal-key__dot todo-cal-key__dot--event"></span> Event
+  {% nh_toolbar %}
+    {% nh_button label="←" href=prev_url %}
+    <strong style="font-family:var(--font-mono);letter-spacing:.1em;text-transform:uppercase">{{ month_label }}</strong>
+    {% nh_button label="→" href=next_url %}
+    {% if not on_current_month %}{% nh_button label="Today" href="?" %}{% endif %}
+    <span style="margin-left:auto;display:flex;gap:12px;align-items:center;font-family:var(--font-mono);font-size:calc(var(--s0)*.76);color:var(--faint)">
+      <span><span class="lab-dot" style="background:var(--arc-500);display:inline-block;margin-right:4px"></span>Planned</span>
+      <span><span class="lab-dot" style="background:rgba(56,214,255,.5);display:inline-block;margin-right:4px"></span>Actual</span>
+      <span><span class="lab-dot" style="background:var(--dim);display:inline-block;margin-right:4px"></span>Event</span>
     </span>
-  </div>
+  {% endnh_toolbar %}
 
-  <div class="todo-cal">
-    <div class="todo-cal__weekdays">
-      <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span>
-      <span>Fri</span><span>Sat</span><span>Sun</span>
-    </div>
-    {% for week in grid %}
-      <div class="todo-cal__week">
-        {% for day in week %}
-          <div class="todo-cal__day{% if not day.in_month %} todo-cal__day--out{% endif %}{% if day.is_today %} todo-cal__day--today{% endif %}">
-            <div class="todo-cal__daynum">{{ day.date|date:"j" }}</div>
-            <div class="todo-cal__items">
+  {% nh_card title="" %}
+    <div class="cal">
+      <div class="cal-h">
+        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span>
+        <span>Fri</span><span>Sat</span><span>Sun</span>
+      </div>
+      <div class="cal-g">
+        {% for week in grid %}
+          {% for day in week %}
+            <div class="cal-d{% if not day.in_month %} out{% endif %}{% if day.is_today %} now{% endif %}">
+              <div class="cal-n">{{ day.date|date:"j" }}</div>
               {% for event in day.events %}
-                <div class="todo-cal__item todo-cal__item--event" title="{{ event.title }}">
-                  {{ event.title }}
-                  {% if event.recurrence == "yearly" %}<span title="Repeats every year">&#8635;</span>{% endif %}
-                </div>
+                <span class="cal-t event" title="{{ event.title }}">
+                  {{ event.title }}{% if event.recurrence == "yearly" %} &#8635;{% endif %}
+                </span>
               {% endfor %}
               {% for instance in day.actual %}
-                <a class="todo-cal__item todo-cal__item--actual todo-outcome--{{ instance.outcome }}"
-                   href="{% url 'todo:detail' instance.task.uuid %}" title="{{ instance.task.title }}">
-                  {{ instance.task.title }}
-                </a>
+                <a class="cal-t actual" href="{% url 'todo:detail' instance.task.uuid %}" title="{{ instance.task.title }}">{{ instance.task.title }}</a>
               {% endfor %}
               {% for instance in day.planned %}
-                <a class="todo-cal__item todo-cal__item--planned"
-                   href="{% url 'todo:detail' instance.task.uuid %}" title="{{ instance.task.title }}">
-                  {{ instance.task.title }}
-                  {% if instance.task.recurrence_type == "rolling" %}
-                    <span title="Rolling recurrence — only its next occasion is ever scheduled">&#8635;</span>
-                  {% endif %}
+                <a class="cal-t" href="{% url 'todo:detail' instance.task.uuid %}" title="{{ instance.task.title }}">
+                  {{ instance.task.title }}{% if instance.task.recurrence_type == "rolling" %} &#8635;{% endif %}
                 </a>
               {% endfor %}
             </div>
-          </div>
+          {% endfor %}
         {% endfor %}
       </div>
-    {% endfor %}
-  </div>
+    </div>
+  {% endnh_card %}
 {% endblock %}

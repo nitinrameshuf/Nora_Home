@@ -1,5 +1,4 @@
-{% extends "base.html" %}{% load django_vite %}
-{% load static %}
+{% extends "base.html" %}{% load django_vite static nh %}
 
 {% comment %}
 Reporting (§10). Every card follows the Visual discipline table:
@@ -13,77 +12,52 @@ Reporting (§10). Every card follows the Visual discipline table:
   * Good news is small — "nothing late" is a word, not a card.
 {% endcomment %}
 
-{% block head %}
-  {% comment %}Bridge to the old front end — not yet rewired onto tokens.css/components.css (Story 45, Phase B; CLAUDE.md §4).{% endcomment %}
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nora-home.css' %}">
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/todo.css' %}">
-{% endblock %}
-
 {% block heading %}Reporting{% endblock %}
 
 {% block actions %}
-  <a class="btn" href="{% url 'todo:board' %}">Tasks</a>
-  <a class="btn" href="{% url 'todo:settings' %}">Settings</a>
+  {% url 'todo:board' as board_url %}
+  {% url 'todo:settings' as settings_url %}
+  {% nh_button label="Tasks" href=board_url %}
+  {% nh_button label="Settings" href=settings_url %}
 {% endblock %}
 
 {% block content %}
-  <div class="todo-figures">
-    <div class="todo-figure">
-      <div class="todo-figure__value">{{ d.load.count }}</div>
-      <div class="todo-figure__label">
-        open{% if d.load.overdue %} ·
-          <span {% if red_overdue %}class="is-alert"{% endif %}>{{ overdue_phrase }}</span>
-        {% endif %}
-      </div>
+  <div class="bstats">
+    <div class="bstat">
+      <b>{{ d.load.count }}</b>
+      <span>open{% if d.load.overdue %} &middot; {{ overdue_phrase }}{% endif %}</span>
     </div>
-
-    <div class="todo-figure">
+    <div class="bstat">
       {% if d.throughput.median is None %}
-        <div class="todo-figure__value todo-figure__value--none">&mdash;</div>
-        <div class="todo-figure__label">not enough history yet</div>
+        <b>&mdash;</b><span>not enough history</span>
       {% else %}
-        <div class="todo-figure__value">{{ d.throughput.median }}</div>
-        <div class="todo-figure__label">
-          typically finished a day
-          {% if d.throughput.low != d.throughput.high %}
-            <span class="todo-figure__aside">{{ d.throughput.low }}&ndash;{{ d.throughput.high }} normal</span>
-          {% endif %}
-        </div>
+        <b>{{ d.throughput.median }}</b><span>typically finished a day</span>
       {% endif %}
     </div>
-
-    <div class="todo-figure">
+    <div class="bstat">
       {% if tone.streaks == "classic" %}
-        <div class="todo-figure__value">{{ d.streak.classic }}</div>
-        <div class="todo-figure__label">day streak</div>
+        <b>{{ d.streak.classic }}</b><span>day streak</span>
       {% else %}
-        <div class="todo-figure__value">{{ d.streak.ratio_done }}<span class="todo-figure__of">/{{ d.streak.ratio_of }}</span></div>
-        <div class="todo-figure__label">days with something done</div>
+        <b>{{ d.streak.ratio_done }}/{{ d.streak.ratio_of }}</b><span>days with something done</span>
       {% endif %}
     </div>
-
-    <div class="todo-figure">
+    <div class="bstat">
       {% if d.first_touch.median_days is None %}
-        <div class="todo-figure__value todo-figure__value--none">&mdash;</div>
-        <div class="todo-figure__label">nothing finished yet</div>
+        <b>&mdash;</b><span>nothing finished yet</span>
       {% else %}
-        <div class="todo-figure__value">{{ d.first_touch.median_days }}</div>
-        <div class="todo-figure__label">days to first touch</div>
+        <b>{{ d.first_touch.median_days }}</b><span>days to first touch</span>
       {% endif %}
     </div>
-
-    <div class="todo-figure">
+    <div class="bstat">
       {% if d.estimates.ratio is None %}
-        <div class="todo-figure__value todo-figure__value--none">&mdash;</div>
-        <div class="todo-figure__label">no times recorded yet</div>
+        <b>&mdash;</b><span>no times recorded</span>
       {% else %}
-        <div class="todo-figure__value">{{ d.estimates.ratio }}&times;</div>
-        <div class="todo-figure__label">actual vs planned</div>
+        <b>{{ d.estimates.ratio }}&times;</b><span>actual vs planned</span>
       {% endif %}
     </div>
   </div>
 
-  <div class="todo-report">
+<div class="report-grid">
     {% include "todo/_chart_card.html" with id="chart-flow" title="Arriving vs finishing" sub="Last 60 days" option=charts.flow span=6 empty="Nothing to plot yet." %}
     {% include "todo/_chart_card.html" with id="chart-histogram" title="Things finished in a day" sub="How the days actually spread" option=charts.histogram span=6 empty="Nothing finished yet." %}
     {% include "todo/_chart_card.html" with id="chart-heatmap" title="The year so far" sub="Days with something finished" option=charts.heatmap span=12 h=200 empty="Nothing finished yet." %}
@@ -94,101 +68,99 @@ Reporting (§10). Every card follows the Visual discipline table:
     {% include "todo/_chart_card.html" with id="chart-estimates" title="Planned vs actual" sub="Minutes" option=charts.estimates span=6 empty="No times recorded yet." %}
 
     {% comment %}
-    The table cards below follow the same rule as the chart cards: when there is
-    nothing in them they collapse to one line. They are written out rather than
-    included because each has a different table body, but the empty branch has
-    to look identical to _chart_card.html's or the page reads as two designs.
+    The table cards below follow the same rule as the chart cards: when there
+    is nothing in them they collapse to one line — nh_empty inside nh_card,
+    same as _chart_card.html's own empty branch, so the page reads as one
+    design rather than two.
     {% endcomment %}
-    <section class="card todo-report__card{% if d.priorities.0.share is None %} todo-report__card--empty{% endif %}"
-             style="grid-column:span 6">
-      <h3 class="todo-report__title">Priority mix</h3>
-      {% if d.priorities.0.share is None %}
-        <p class="todo-empty">Nothing open.</p>
-      {% else %}
-        <p class="todo-report__sub">Whether priority still means anything</p>
-        <table class="todo-table">
-          {% for row in d.priorities %}
-            <tr><td>{{ row.label }}</td><td class="num">{{ row.count }}</td><td class="num">{{ row.share }}%</td></tr>
-          {% endfor %}
-        </table>
-      {% endif %}
-    </section>
+    <div class="nh-tile" style="--c:6;--r:1">
+      {% nh_card title="Priority mix" %}
+        {% if d.priorities.0.share is None %}
+          {% nh_empty title="Nothing open" %}
+        {% else %}
+          <p class="cap">Whether priority still means anything</p>
+          <table class="tbl">
+            {% for row in d.priorities %}
+              <tr><td>{{ row.label }}</td><td class="num">{{ row.count }}</td><td class="num">{{ row.share }}%</td></tr>
+            {% endfor %}
+          </table>
+        {% endif %}
+      {% endnh_card %}
+    </div>
 
-    <section class="card todo-report__card{% if not d.aging %} todo-report__card--empty{% endif %}"
-             style="grid-column:span 6">
-      <h3 class="todo-report__title">Oldest still open</h3>
-      {% if d.aging %}
-        <p class="todo-report__sub">Deal with it, or park it</p>
-        <table class="todo-table">
-          {% for row in d.aging %}
-            <tr>
-              <td><a href="{% url 'todo:detail' row.uuid %}">{{ row.title }}</a></td>
-              <td class="num">{{ row.age_days }}d</td>
-              <td>
-                <button class="btn btn-ghost" type="button" data-todo-action="archive"
-                        data-url="{% url 'todo:archive' row.uuid %}">Not now</button>
-              </td>
-            </tr>
-          {% endfor %}
-        </table>
-      {% else %}
-        <p class="todo-empty">Nothing open.</p>
-      {% endif %}
-    </section>
+    <div class="nh-tile" style="--c:6;--r:1">
+      {% nh_card title="Oldest still open" %}
+        {% if d.aging %}
+          <p class="cap">Deal with it, or park it</p>
+          <table class="tbl">
+            {% for row in d.aging %}
+              <tr>
+                <td><a href="{% url 'todo:detail' row.uuid %}">{{ row.title }}</a></td>
+                <td class="num">{{ row.age_days }}d</td>
+                <td><button class="btn ghost" type="button" data-todo-action="archive"
+                            data-url="{% url 'todo:archive' row.uuid %}">Not now</button></td>
+              </tr>
+            {% endfor %}
+          </table>
+        {% else %}
+          {% nh_empty title="Nothing open" %}
+        {% endif %}
+      {% endnh_card %}
+    </div>
 
-    <section class="card todo-report__card{% if not d.deferrals %} todo-report__card--empty{% endif %}"
-             style="grid-column:span 6">
-      <h3 class="todo-report__title">Which labels keep sliding</h3>
-      {% if d.deferrals %}
-        <p class="todo-report__sub">Rescheduled, last 180 days</p>
-        <table class="todo-table">
-          {% for row in d.deferrals %}
-            <tr>
-              <td>{{ row.label|default:"Unlabelled" }}</td>
-              <td class="num">{{ row.moves }}&times;</td>
-              <td class="num">{% if row.median_days is None %}&mdash;{% else %}{{ row.median_days }}d{% endif %}</td>
-            </tr>
-          {% endfor %}
-        </table>
-      {% else %}
-        <p class="todo-empty">Nothing has been rescheduled.</p>
-      {% endif %}
-    </section>
+    <div class="nh-tile" style="--c:6;--r:1">
+      {% nh_card title="Which labels keep sliding" %}
+        {% if d.deferrals %}
+          <p class="cap">Rescheduled, last 180 days</p>
+          <table class="tbl">
+            {% for row in d.deferrals %}
+              <tr>
+                <td>{{ row.label|default:"Unlabelled" }}</td>
+                <td class="num">{{ row.moves }}&times;</td>
+                <td class="num">{% if row.median_days is None %}&mdash;{% else %}{{ row.median_days }}d{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </table>
+        {% else %}
+          {% nh_empty title="Nothing has been rescheduled" %}
+        {% endif %}
+      {% endnh_card %}
+    </div>
 
-    <section class="card todo-report__card{% if not d.recoveries %} todo-report__card--empty{% endif %}"
-             style="grid-column:span 6">
-      <h3 class="todo-report__title">Came back to it</h3>
-      {% if d.recoveries %}
-        <p class="todo-report__sub">Stopped for a while, then picked it up again</p>
-        <table class="todo-table">
-          {% for row in d.recoveries %}
-            <tr><td>after {{ row.gap_days }} days</td><td class="num">{{ row.returned_on|date:"j M Y" }}</td></tr>
-          {% endfor %}
-        </table>
-      {% else %}
-        <p class="todo-empty">No gaps to come back from yet.</p>
-      {% endif %}
-    </section>
+    <div class="nh-tile" style="--c:6;--r:1">
+      {% nh_card title="Came back to it" %}
+        {% if d.recoveries %}
+          <p class="cap">Stopped for a while, then picked it up again</p>
+          <table class="tbl">
+            {% for row in d.recoveries %}
+              <tr><td>after {{ row.gap_days }} days</td><td class="num">{{ row.returned_on|date:"j M Y" }}</td></tr>
+            {% endfor %}
+          </table>
+        {% else %}
+          {% nh_empty title="No gaps to come back from yet" %}
+        {% endif %}
+      {% endnh_card %}
+    </div>
 
-    <section class="card todo-report__card{% if not d.recent %} todo-report__card--empty{% endif %}"
-             style="grid-column:span 12">
-      <h3 class="todo-report__title">What you decided to do, and did</h3>
-      {% if d.recent %}
-        <p class="todo-report__sub">Most recent first</p>
-        <table class="todo-table">
-          {% for row in d.recent %}
-            <tr>
-              <td><a href="{% url 'todo:detail' row.uuid %}">{{ row.title }}</a></td>
-              <td>{{ row.completed_at|date:"D j M, H:i" }}</td>
-              <td>{{ row.by|default:"" }}</td>
-              <td class="num">{% if row.minutes %}{{ row.minutes }}m{% endif %}</td>
-            </tr>
-          {% endfor %}
-        </table>
-      {% else %}
-        <p class="todo-empty">Nothing finished yet.</p>
-      {% endif %}
-    </section>
+    <div class="nh-tile" style="--c:12;--r:1">
+      {% nh_card title="What you decided to do, and did" %}
+        {% if d.recent %}
+          <p class="cap">Most recent first</p>
+          <table class="tbl">
+            {% for row in d.recent %}
+              <tr>
+                <td><a href="{% url 'todo:detail' row.uuid %}">{{ row.title }}</a></td>
+                <td>{{ row.completed_at|date:"D j M, H:i" }}</td>
+                <td>{{ row.by|default:"" }}</td>
+                <td class="num">{% if row.minutes %}{{ row.minutes }}m{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </table>
+        {% else %}
+          {% nh_empty title="Nothing finished yet" %}
+        {% endif %}
+      {% endnh_card %}
+    </div>
   </div>
 {% endblock %}
 

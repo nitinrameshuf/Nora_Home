@@ -165,7 +165,10 @@ def test_a_completed_instance_shows_as_actual_not_planned(client, member, make_t
 
     response = client.get(reverse("todo:calendar"))
 
-    assert b"todo-cal__item--actual" in response.content
+    # Story 45, Phase B: the modifier is now `.cal-t.actual` (assets/css/
+    # components.css) — the mockup's calendar has no planned/actual concept
+    # of its own, so this class is Todo's own addition to it.
+    assert b'class="cal-t actual"' in response.content
     assert task.title.encode() in response.content
 
 

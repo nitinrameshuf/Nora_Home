@@ -1,43 +1,41 @@
-{% extends "base.html" %}{% load django_vite %}
-{% load static %}
-
-{% block head %}
-  {% comment %}Bridge to the old front end — not yet rewired onto tokens.css/components.css (Story 45, Phase B; CLAUDE.md §4).{% endcomment %}
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nora-home.css' %}">
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/todo.css' %}">
-{% endblock %}
+{% extends "base.html" %}{% load django_vite nh %}
 
 {% block heading %}Labels{% endblock %}
 
 {% block actions %}
-  <a class="btn" href="{% url 'todo:board' %}">Tasks</a>
+  {% url 'todo:board' as board_url %}
+  {% nh_button label="Tasks" href=board_url %}
 {% endblock %}
 
 {% block content %}
-  <div class="todo-labels">
+  {% nh_card title="Labels" %}
     {% for label in labels %}
-      <a class="todo-label-row" href="{% url 'todo:board' %}?label={{ label.name }}">
-        <span class="tag" {% if label.colour %}style="background:{{ label.colour }}22;color:{{ label.colour }}"{% endif %}>
+      <div class="row">
+        <a class="t" href="{% url 'todo:board' %}?label={{ label.name }}" style="display:flex;align-items:center;gap:8px">
+          <span class="lab-dot" style="background:{{ label.colour|default:'var(--arc-500)' }}"></span>
           {{ label.name }}
-        </span>
-        <span class="n">{{ label.task_count }}</span>
-      </a>
+        </a>
+        <span class="d">{{ label.task_count }}</span>
+      </div>
     {% empty %}
-      <div class="todo-empty">No labels yet.</div>
+      {% nh_empty title="No labels yet" %}
     {% endfor %}
-  </div>
+  {% endnh_card %}
 
-  <h2>New label</h2>
-  <form class="todo-form" method="post" style="max-width:360px">
-    {% csrf_token %}
-    <div class="field">
-      <label for="label-name">Name</label>
-      <input type="text" id="label-name" name="name" required maxlength="60">
-    </div>
-    <div class="field">
-      <label for="label-colour">Colour (optional)</label>
-      <input type="text" id="label-colour" name="colour" placeholder="#7dd3fc" maxlength="7">
-    </div>
-    <button class="btn btn-primary" type="submit">Add label</button>
-  </form>
+  {% nh_card title="New label" %}
+    <form method="post" style="max-width:360px">
+      {% csrf_token %}
+      <div class="field">
+        <label for="label-name">Name</label>
+        <input type="text" id="label-name" name="name" required maxlength="60">
+      </div>
+      <div class="field">
+        <label for="label-colour">Colour (optional)</label>
+        <input type="text" id="label-colour" name="colour" placeholder="#7dd3fc" maxlength="7">
+      </div>
+      <div class="sheet-foot" style="justify-content:flex-start;margin-top:10px">
+        {% nh_button label="Add label" variant="pri" button_type="submit" %}
+      </div>
+    </form>
+  {% endnh_card %}
 {% endblock %}

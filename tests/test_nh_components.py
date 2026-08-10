@@ -214,7 +214,11 @@ ASSETS_CSS = Path(settings.BASE_DIR) / "assets" / "css"
 # Same shape as tests/test_house_apps.py's KNOWN_MODEL_IMPORT_DEBT: named,
 # dated, and meant to shrink to nothing rather than grow.
 KNOWN_OLD_VS_NEW_COLLISIONS = {
-    "card", "btn", "empty",
+    # nh-scene.css (kept until Story 46) adds glass-pane background/blur/
+    # text-legibility to these — non-conflicting properties layered on top of
+    # what components.css/shell.css already draw, same relationship as .card.
+    "card", "empty", "dash__empty",
+    "kiosk-header", "kiosk-tile", "kiosk-controls", "kiosk-tile__hint",
 }
 
 RULE = re.compile(r"([^{}]+)\{([^{}]*)\}")
@@ -370,3 +374,20 @@ def test_old_vs_new_collisions_are_the_known_ones_and_no_more():
     assert not stale, (
         f"KNOWN_OLD_VS_NEW_COLLISIONS lists names that no longer collide — "
         f"shrink the allowlist: {sorted(stale)}")
+
+
+def test_every_tile_grid_gets_the_sizing_rule():
+    """`.nh-tile`'s --c/--r custom properties (set inline, per tile) only take
+    effect where a `grid-column: span var(--c)` rule actually matches — and
+    that rule was scoped to `.bento > .nh-tile` only. Reporting's own grid
+    (`.report-grid`) used the same --c/--r-bearing tiles but matched nothing,
+    so every report card rendered as a single default-width column instead of
+    the 6- or 12-wide span it asked for — text wrapped to a few characters
+    per line. Found by opening the page; every template and Python test
+    stayed green, because the tiles and their --c/--r were both present and
+    correct, and only the CSS connecting them to a grid track was missing."""
+    css = (ASSETS_CSS / "components.css").read_text(encoding="utf-8")
+    for grid_class in (".bento", ".report-grid"):
+        assert f"{grid_class} > .nh-tile" in css, (
+            f"{grid_class} has no `> .nh-tile` sizing rule — its tiles' "
+            f"--c/--r will be set but never read")

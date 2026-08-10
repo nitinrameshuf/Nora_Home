@@ -281,24 +281,30 @@ def test_the_bot_message_type_matches_its_consumer():
 
 # ── the wall's type scale, and what it silently depends on ───────────────────
 #
-# `html[data-surface="wall"] { font-size: N% }` only works because *everything
-# else* is rem. Anything sized in px keeps its laptop size while the text around
-# it grows, and the result is not "slightly off" — it clips. This has now been
-# found twice on the real 24" (Gridstack's cellHeight: 80, then --nav-width:
-# 244px cutting "Measurements" mid-word), both times by looking at the physical
-# screen rather than at the diff, because no unit test could see a browser
-# layout. These read the stylesheet as text, which is the part a test *can* see.
+# Story 44 replaced root-font-size scaling with CSS `zoom` (nora_home/ui/
+# zoom.py) specifically because zoom scales *every* length unit — px included
+# — while root-font-size only ever reached rem, which is what let a stray px
+# value (Gridstack's cellHeight: 80, then --nav-width: 244px cutting
+# "Measurements" mid-word) clip on the real 24" while every rem value around
+# it grew correctly. Under zoom that whole class of bug cannot recur — px and
+# rem now scale identically — so the old "must be rem" tests these two names
+# used to enforce (test_layout_tokens_are_rem_so_the_wall_scale_reaches_them,
+# test_the_card_grid_minimum_is_rem_not_px) are retired along with the
+# stylesheet they read, not carried forward: their premise is the thing that
+# changed, not just their target file.
+#
+# What's still real and still worth a test: no root-font-size scaling comes
+# back, and the wall's cursor stays gated on the idle flag — both now read
+# from the new system's own files (Story 45, Phase B).
 
-def _stylesheet() -> str:
+def _new_css() -> str:
     from pathlib import Path
 
     from django.conf import settings
 
-    # assets/, not static/: the stylesheets are Vite's *input* since Story 43.
-    # static/nora_home/dist holds its hashed, minified output, which is not
-    # something these tests can usefully read.
-    css = Path(settings.BASE_DIR) / "assets" / "css" / "nora-home.css"
-    return css.read_text(encoding="utf-8")
+    base = Path(settings.BASE_DIR) / "assets" / "css"
+    return (base / "shell.css").read_text(encoding="utf-8") + (
+        base / "components.css").read_text(encoding="utf-8")
 
 
 def test_the_type_scale_is_not_in_the_stylesheet():
@@ -309,7 +315,7 @@ def test_the_type_scale_is_not_in_the_stylesheet():
     wrong move, so this asserts it has not come back."""
     import re
 
-    assert not re.search(r'html\[data-surface="wall"\]\s*\{\s*font-size', _stylesheet()), (
+    assert not re.search(r'html\[data-surface="wall"\]\s*\{\s*font-size', _new_css()), (
         "the wall's type scale is back in CSS — see the comment on that rule")
 
 
@@ -318,10 +324,12 @@ def test_the_wall_only_hides_the_cursor_while_it_is_idle():
     it was a passive ambient view. It is the real app now and gets clicked
     directly, so every `cursor: none` has to stay behind the idle flag that
     nh-app.js clears on the first mouse move — otherwise the sidebar has to be
-    aimed at blind."""
+    aimed at blind. Regressed once already in Story 45, Phase B: deleting
+    nora-home.css deleted this rule with it, since nothing had re-added it to
+    shell.css yet — found by this test, not by looking at the wall."""
     import re
 
-    for selector, body in re.findall(r"([^{}]*)\{([^{}]*)\}", _stylesheet()):
+    for selector, body in re.findall(r"([^{}]*)\{([^{}]*)\}", _new_css()):
         if re.search(r"cursor:\s*none", body):
             assert 'data-cursor="idle"' in selector, (
                 f"`cursor: none` is not gated on the idle flag: {selector.strip()!r}")
@@ -345,28 +353,6 @@ def test_the_screens_launch_unscaled_so_the_setting_is_the_only_scale():
         assert scale in ("1", '"1024,600"'), (
             f"the {screen} launches at scale {scale} — that would multiply with "
             f"the zoom stored in Settings")
-
-
-@pytest.mark.parametrize("token", ["--nav-width", "--tap"])
-def test_layout_tokens_are_rem_so_the_wall_scale_reaches_them(token):
-    """A px value here is the bug that clipped the sidebar. Both of these size
-    boxes that hold text, so both have to grow when the text does."""
-    import re
-
-    match = re.search(rf"{token}:\s*([^;]+);", _stylesheet())
-
-    assert match, f"{token} is no longer defined"
-    value = match.group(1).strip()
-    assert value.endswith("rem"), (
-        f"{token} is {value!r} — a fixed pixel size does not follow the wall's "
-        f"root font-size, so its box stays laptop-sized while its contents grow")
-
-
-def test_the_card_grid_minimum_is_rem_not_px():
-    """`minmax(280px, 1fr)` would hold cards at laptop width on the wall while
-    their contents ran larger inside them."""
-    assert "minmax(17.5rem, 1fr)" in _stylesheet(), (
-        "the card grid's minimum column width must be rem — see --nav-width")
 
 
 # ── the Story 44 token layer ───────────────────────────────────────────────
@@ -621,7 +607,15 @@ class TestScreenZoom:
         assert event.detail["wall_zoom"] == 1.3
 
 
-# ── Story 45, Phase B: the shell rewrite ──────────────────────────────────
+# ── Story 45, Phase B: the shell rewrite, and every page converted ────────
+#
+# Phase B started with a bridge — pages not yet rewired onto components.css
+# added nora-home.css back in via their own {% block head %}, since base.html
+# stopped loading it centrally — and finished with every real page converted
+# and all four old stylesheets (nora-home.css, todo.css, dashboard.css,
+# displays.css) deleted. The bridge tests below reflect the end state, not
+# the transitional one; see docs/Main_App/progress.md's dated entry for the
+# transitional bridge mechanism itself, which no longer exists in the code.
 
 def _shell() -> str:
     from pathlib import Path
@@ -667,14 +661,21 @@ def test_the_rail_never_uses_the_old_sidebar_markup(client, admin_member):
 
 
 @pytest.mark.django_db
-def test_bridged_pages_still_load_the_old_stylesheet(client, admin_member):
-    """Pages not yet rewired onto components.css must bridge nora-home.css
-    themselves (base.html no longer loads it), or their content renders with
-    no styling at all — the exact failure this test would have caught."""
+def test_no_page_bridges_a_stylesheet_that_no_longer_exists(client, admin_member):
+    """The bridge (a page adding nora-home.css/todo.css/dashboard.css/
+    displays.css back in via its own {% block head %}, since base.html
+    stopped loading them centrally) was how every page kept rendering while
+    only some had been rewired onto components.css. Once every real page was
+    converted, all four old files were deleted — a leftover bridge link would
+    now 404 the whole page (DjangoViteAssetNotFoundError) rather than degrade
+    gracefully, since django-vite raises when a name isn't in the manifest."""
     from django.urls import reverse
 
     client.force_login(admin_member)
 
-    for name in ("core:system_status", "core:house_log", "notifications:inbox"):
+    for name in ("core:dashboard", "core:system_status", "core:house_log",
+                 "core:settings", "core:app_directory", "notifications:inbox",
+                 "todo:board", "todo:reporting"):
         body = client.get(reverse(name)).content.decode()
-        assert "nora-home" in body, f"{name} lost its bridge to the old stylesheet"
+        for old in ("nora-home.css", "todo.css", "dashboard.css", "displays.css"):
+            assert old not in body, f"{name} still references deleted {old}"

@@ -155,6 +155,26 @@
   .canvas { flex: 1; padding: 16px 20px; overflow: auto; min-height: 0; }
   html[data-app] .canvas { background: rgba(5, 10, 17, .72); }
 
+  /* The wall never scrolls at the body level — it is a fixed 1920x1080
+     kiosk display, and any scrollbar there is a bug, not a feature. */
+  html[data-surface="wall"] body { overflow: hidden; }
+
+  /* The wall hides its mouse pointer only while the mouse is *still*.
+
+     It is the real app now and gets driven directly, so a permanently
+     invisible pointer means aiming at the sidebar blind. `cursor: none` here
+     is NOT inherited-only: an inherited value loses to any directly-declared
+     one — including the browser's own `a:link { cursor: pointer }` — so the
+     pointer would vanish over the body and reappear over every link. `body *`
+     beats that explicitly, matching every link/card cursor:pointer rule
+     rather than merely being inherited past it.
+
+     Set by wireWallCursor() in nh-app.js, which starts idle so an untouched
+     wall never shows a pointer at all — carried over unchanged from the old
+     nora-home.css; only this rule's file moved. */
+  html[data-surface="wall"][data-cursor="idle"] body,
+  html[data-surface="wall"][data-cursor="idle"] body * { cursor: none; }
+
   /* ── pill (bell count, flash messages) ── */
   .pill {
     display: inline-flex; align-items: center; gap: .35rem; padding: 3px 10px; border-radius: 999px;

@@ -11,6 +11,14 @@
  *   ECharts    charts. Without it chart widgets show a short note instead.
  * The dashboard is deliberately useful with neither, because a Pi with no internet
  * on first boot should still show the family their day.
+ *
+ * Story 45, Phase B: the markup this file builds moved onto the arc-reactor
+ * component classes (.nh-tile/.card/.card-h/.body/.read/.row/.ck/.empty) —
+ * the same ones {% nh_tile %}/{% nh_card %}/{% nh_stat %}/{% nh_list %}
+ * render server-side, so a dashboard widget looks identical to any other
+ * card in the house. Gridstack's own x/y/w/h units are already a 12-column
+ * grid, same as --c/--r, so building a tile is a straight translation, not a
+ * redesign.
  */
 (function (window, document) {
   "use strict";
@@ -65,8 +73,12 @@
     if (window.GridStack && !window.__nhNoGridstack) {
       Dash.initGridstack();
     } else {
-      // Static fallback: honour each widget's width and height on a plain CSS grid.
-      Dash.gridEl.classList.add("dash__grid--static");
+      // Static fallback: honour each widget's width and height on a plain CSS
+      // grid — reuses .bento (components.css) rather than a parallel grid
+      // class, since .nh-tile's own grid-column/grid-row rule is already
+      // scoped to `.bento > .nh-tile` and a widget's --c/--r are set on it
+      // either way.
+      Dash.gridEl.classList.add("bento");
     }
 
     Dash.placed.forEach(function (item) {
@@ -99,7 +111,7 @@
       float: false,
       disableDrag: true,       // opt in via "Rearrange"
       disableResize: true,
-      handle: ".dash-tile__grip"
+      handle: ".dash-grip"
     }, Dash.gridEl);
 
     Dash.grid.on("change", function () {
@@ -111,39 +123,61 @@
     var widget = item.widget;
 
     var tile = document.createElement("div");
-    tile.className = "dash-tile-wrap";
+    tile.className = "nh-tile";
     tile.setAttribute("gs-x", item.x);
     tile.setAttribute("gs-y", item.y);
     tile.setAttribute("gs-w", item.w);
     tile.setAttribute("gs-h", item.h);
-    tile.style.setProperty("--w", item.w);
-    tile.style.setProperty("--h", item.h);
+    // Gridstack's own x/y/w/h are already a 12-column grid, the same units
+    // --c/--r expect, so no conversion — just the same numbers under the
+    // names components.css's .bento > .nh-tile rule actually reads.
+    tile.style.setProperty("--c", item.w);
+    tile.style.setProperty("--r", item.h);
     tile.dataset.key = widget.key;
 
-    var inner = document.createElement("div");
-    inner.className = "dash-tile grid-stack-item-content kind-" + widget.kind;
-    inner.innerHTML =
-      '<div class="dash-tile__head">' +
-        '<div>' +
-          '<div class="dash-tile__title"></div>' +
-          '<div class="dash-tile__sub"></div>' +
-        '</div>' +
-        '<div class="dash-tile__tools">' +
-          '<span class="dash-tile__app"></span>' +
-          '<button class="dash-tile__remove" type="button" aria-label="Remove">&times;</button>' +
-          '<span class="dash-tile__grip" aria-hidden="true">⠿</span>' +
-        '</div>' +
-      '</div>' +
-      '<div class="dash-tile__body" data-body></div>';
+    var card = document.createElement("div");
+    card.className = "card panel kind-" + widget.kind;
 
-    inner.querySelector(".dash-tile__title").textContent = widget.title || "";
-    inner.querySelector(".dash-tile__sub").textContent = widget.subtitle || "";
-    inner.querySelector(".dash-tile__app").textContent = widget.app || "";
-    inner.querySelector(".dash-tile__remove").addEventListener("click", function () {
-      Dash.remove(widget.key);
-    });
+    var head = document.createElement("div");
+    head.className = "card-h";
+    var titleWrap = document.createElement("div");
+    var title = document.createElement("h4");
+    title.textContent = widget.title || "";
+    titleWrap.appendChild(title);
+    if (widget.subtitle) {
+      var sub = document.createElement("span");
+      sub.className = "sub";
+      sub.textContent = widget.subtitle;
+      titleWrap.appendChild(sub);
+    }
+    head.appendChild(titleWrap);
 
-    tile.appendChild(inner);
+    var tools = document.createElement("div");
+    tools.className = "tools";
+    if (widget.app) {
+      var app = document.createElement("span");
+      app.className = "src";
+      app.textContent = widget.app;
+      tools.appendChild(app);
+    }
+    var grip = document.createElement("button");
+    grip.className = "dash-grip"; grip.type = "button";
+    grip.setAttribute("aria-label", "Drag to move"); grip.textContent = "\u283f";
+    tools.appendChild(grip);
+    var remove = document.createElement("button");
+    remove.className = "dash-remove"; remove.type = "button";
+    remove.setAttribute("aria-label", "Remove"); remove.textContent = "\u00d7";
+    remove.addEventListener("click", function () { Dash.remove(widget.key); });
+    tools.appendChild(remove);
+    head.appendChild(tools);
+    card.appendChild(head);
+
+    var body = document.createElement("div");
+    body.className = "body";
+    body.setAttribute("data-body", "");
+    card.appendChild(body);
+
+    tile.appendChild(card);
     return tile;
   };
 
@@ -169,7 +203,7 @@
       return;
     }
     var canvas = document.createElement("div");
-    canvas.className = "dash-tile__chart";
+    canvas.className = "nh-chart-holder";
     body.appendChild(canvas);
     // Give the tile a frame to reach its final size before ECharts measures it.
     window.requestAnimationFrame(function () {
@@ -179,66 +213,58 @@
 
   function drawStat(body, widget) {
     var stat = widget.stat || {};
-    var wrap = document.createElement("div");
-    wrap.className = "dash-stat status-" + (stat.status || "ok");
+    var read = document.createElement("div");
+    read.className = "read" + (stat.status ? " " + stat.status : "");
 
-    var value = document.createElement("div");
-    value.className = "dash-stat__value";
+    var value = document.createElement("b");
     value.textContent = stat.value === undefined || stat.value === null ? "—" : stat.value;
+    read.appendChild(value);
     if (stat.unit) {
       var unit = document.createElement("span");
-      unit.className = "dash-stat__unit";
-      unit.textContent = " " + stat.unit;
-      value.appendChild(unit);
+      unit.textContent = stat.unit;
+      read.appendChild(unit);
     }
-    wrap.appendChild(value);
+    body.appendChild(read);
 
-    if (stat.label) {
-      var label = document.createElement("div");
-      label.className = "dash-stat__label";
-      label.textContent = stat.label;
-      wrap.appendChild(label);
-    }
-    if (stat.delta) {
-      var delta = document.createElement("div");
-      delta.className = "dash-stat__delta";
-      delta.textContent = stat.delta;
-      wrap.appendChild(delta);
+    if (stat.label || stat.delta) {
+      var cap = document.createElement("span");
+      cap.className = "cap";
+      cap.textContent = stat.label ? (stat.delta ? stat.label + " \u00b7 " + stat.delta : stat.label) : stat.delta;
+      body.appendChild(cap);
     }
     if (stat.spark && stat.spark.length > 1) {
-      wrap.appendChild(sparkline(stat.spark));
+      body.appendChild(sparkline(stat.spark));
     }
-    body.appendChild(wrap);
   }
 
   /* A sparkline is drawn by hand rather than through ECharts: it is a dozen
      points inside a small tile, and spinning up a chart instance for that is
-     wasteful on a Pi. */
+     wasteful on a Pi. Same 64x20 viewBox and .nh-spark class as {% nh_stat %}'s
+     own — see nora_home/ui/templatetags/nh.py's _sparkline_points, which this
+     mirrors, so a widget looks the same drawn either way. */
   function sparkline(points) {
-    var width = 120;
-    var height = 28;
+    var width = 64;
+    var height = 20;
     var low = Math.min.apply(null, points);
     var high = Math.max.apply(null, points);
     var span = high - low || 1;
 
     var coords = points.map(function (value, index) {
       var x = (index / (points.length - 1)) * width;
-      var y = height - ((value - low) / span) * (height - 4) - 2;
+      var y = height - ((value - low) / span) * 18 - 1;
       return x.toFixed(1) + "," + y.toFixed(1);
     }).join(" ");
 
     var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("viewBox", "0 0 " + width + " " + height);
-    svg.setAttribute("class", "dash-stat__spark");
+    svg.setAttribute("class", "nh-spark");
     svg.setAttribute("preserveAspectRatio", "none");
 
     var line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
     line.setAttribute("points", coords);
     line.setAttribute("fill", "none");
     line.setAttribute("stroke", "currentColor");
-    line.setAttribute("stroke-width", "2");
-    line.setAttribute("stroke-linecap", "round");
-    line.setAttribute("stroke-linejoin", "round");
+    line.setAttribute("stroke-width", "1.6");
 
     svg.appendChild(line);
     return svg;
@@ -251,56 +277,55 @@
       return;
     }
 
-    var list = document.createElement("ul");
-    list.className = "item-list";
-
     rows.forEach(function (row) {
-      var li = document.createElement("li");
-      li.className = "item" + (row.status === "alert" ? " is-overdue" : "");
+      var item = document.createElement("div");
+      item.className = "row" + (row.status === "done" ? " done" : "");
 
+      var ck = document.createElement("span");
+      ck.className = "ck" + (row.status === "alert" || row.status === "late" ? " late" : "")
+        + (row.status === "done" ? " on" : "");
       if (row.action_url) {
         var tick = document.createElement("button");
-        tick.className = "tick";
         tick.type = "button";
+        tick.className = "ck" + (row.status === "alert" || row.status === "late" ? " late" : "");
         tick.setAttribute("aria-label", "Mark " + (row.title || "item") + " done");
         tick.setAttribute("data-complete-url", row.action_url);
-        li.appendChild(tick);
+        item.appendChild(tick);
+      } else {
+        item.appendChild(ck);
       }
 
-      var content = document.createElement("div");
-      content.className = "item-body";
-
-      var title = document.createElement("div");
-      title.className = "item-title";
       if (row.url) {
         var link = document.createElement("a");
+        link.className = "t";
         link.href = row.url;
         link.textContent = row.title || "";
-        title.appendChild(link);
+        item.appendChild(link);
       } else {
+        var title = document.createElement("span");
+        title.className = "t";
         title.textContent = row.title || "";
+        item.appendChild(title);
       }
-      content.appendChild(title);
 
       if (row.meta) {
-        var meta = document.createElement("div");
-        meta.className = "item-meta";
+        var meta = document.createElement("span");
+        meta.className = "d" + (row.status === "alert" || row.status === "late" ? " late" : "");
         meta.textContent = row.meta;
-        content.appendChild(meta);
+        item.appendChild(meta);
       }
 
-      li.appendChild(content);
-      list.appendChild(li);
+      body.appendChild(item);
     });
-
-    body.appendChild(list);
   }
 
   function drawNote(body, message) {
-    var note = document.createElement("p");
-    note.className = "dash-tile__note";
-    note.textContent = message;
-    body.appendChild(note);
+    var empty = document.createElement("div");
+    empty.className = "empty";
+    var b = document.createElement("b");
+    b.textContent = message;
+    empty.appendChild(b);
+    body.appendChild(empty);
   }
 
   /* ── refresh ─────────────────────────────────────────────────────────────── */
@@ -373,13 +398,13 @@
         var added = placedKeys.indexOf(entry.key) !== -1;
 
         var card = document.createElement("button");
-        card.className = "dash-picker__item" + (added ? " is-added" : "");
+        card.className = "dash-picker__item";
         card.type = "button";
         card.disabled = added;
 
         var title = document.createElement("div");
         title.className = "dash-picker__title";
-        title.textContent = entry.title + (added ? " · already added" : "");
+        title.textContent = entry.title + (added ? " \u00b7 already added" : "");
         card.appendChild(title);
 
         if (entry.description || entry.subtitle) {

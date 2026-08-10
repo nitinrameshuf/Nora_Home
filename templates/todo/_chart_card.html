@@ -1,41 +1,26 @@
+{% load nh %}
 {% comment %}
-One chart on the Reporting page (§10, Visual discipline).
+One chart on the Reporting page (§10, Visual discipline) — Story 45, Phase B.
+`option` travels as `json_script`, not through {% nh_chart %}'s own JSON
+attribute, because assets/js/todo-reporting.js already reads it that way and
+there is no reason to make it read two formats. Colours are still absent
+here — NoraHomeCharts.render() merges the house theme on, which is what
+keeps every chart in the house looking like one system.
 
-`option` is an ECharts option dict built by `views._reporting_charts()`, or
-None. **None is the whole point of this partial**: it renders one line of text
-instead of a chart, because §10's first rule is that empty is a sentence, never
-an axis. Nothing here draws a chart with no data in it.
-
-The option travels as `json_script` rather than an inline attribute so the
-browser parses it as JSON, not as HTML — chart data contains task labels people
-typed, and those must never be able to close a tag.
-
-Colours are deliberately absent. `NoraHomeCharts.render()` merges the house
-theme underneath whatever the app set, which is what keeps every chart in this
-house looking like one system (CLAUDE.md §4, "Widgets return data, not HTML").
-
-  title  heading
-  sub    one line under it, optional
-  id     unique on the page; ties the <script> to its holder
-  option the ECharts option, or None
-  empty  the sentence shown when there is nothing to draw
-  span   grid columns out of 12 (default 6)
-  h      chart height in px (default 240)
+Not {% nh_tile %}: its S/M/L/XL table is a fixed vocabulary and reporting's
+callers already pass an arbitrary span (6 or 12) out of the 12-column grid,
+same as the mockup's own .bento sizing mechanism — a plain div carrying the
+same --c/--r custom properties {% nh_tile %} would have set reproduces that
+exactly, without forcing a span this page never asked for into one of four
+fixed sizes.
 {% endcomment %}
-<section class="card todo-report__card{% if not option %} todo-report__card--empty{% endif %}"
-         style="grid-column:span {{ span|default:6 }}">
-  <h3 class="todo-report__title">{{ title }}</h3>
-  {% comment %}
-  The subtitle explains how to read the chart, so when there is no chart it is
-  just words taking up a card. Dropping it is half of "the quiet state is the
-  compact state" (§10); the other half is the padding, in todo.css.
-  {% endcomment %}
-  {% if sub and option %}<p class="todo-report__sub">{{ sub }}</p>{% endif %}
-  {% if option %}
-    {{ option|json_script:id }}
-    <div class="todo-chart" data-todo-chart="{{ id }}"
-         style="height:{{ h|default:240 }}px"></div>
-  {% else %}
-    <p class="todo-empty">{{ empty }}</p>
-  {% endif %}
-</section>
+<div class="nh-tile" style="--c:{{ span|default:6 }};--r:1">
+  {% nh_card title=title subtitle=sub %}
+    {% if option %}
+      {{ option|json_script:id }}
+      <div class="nh-chart-holder" data-todo-chart="{{ id }}" style="height:{{ h|default:240 }}px"></div>
+    {% else %}
+      {% nh_empty title="Nothing yet" message=empty %}
+    {% endif %}
+  {% endnh_card %}
+</div>

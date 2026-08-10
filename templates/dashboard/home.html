@@ -1,24 +1,28 @@
-{% extends "base.html" %}{% load django_vite %}
-{% load static %}
+{% extends "base.html" %}{% load django_vite static nh %}
 
 {% block heading %}Good to see you, {{ user.name }}{% endblock %}
 
+{% comment %}
+Hand-written, not {% nh_button %}: dashboard.js's wireControls() finds these
+by data-dash-add/data-dash-edit/data-dash-close (bare, presence-checked
+attributes) — a different contract from nh_button's own data-act/data-v,
+built for the mockup's click router, which nothing on this page uses.
+{% endcomment %}
 {% block actions %}
   <button class="btn" type="button" data-dash-add>Add a widget</button>
-  <button class="btn btn-ghost" type="button" data-dash-edit>Rearrange</button>
+  <button class="btn ghost" type="button" data-dash-edit>Rearrange</button>
 {% endblock %}
 
 {% block head %}
   {% comment %}
-  Bridge to the old front end — the dashboard grid is built client-side by
-  dashboard.js from a JSON payload (Gridstack drag/resize/save-layout), not
-  server-rendered markup, so converting it onto the nh_* components means
-  rewriting that JS's rendering internals, not just this template. Its own
-  pass — see CLAUDE.md §4's Story 45 entry.
+  Story 45, Phase B: dashboard.css is gone. Its .dash-tile/.dash-stat/
+  .dash-picker rules were fully replaced by the same .nh-tile/.card/.read/
+  .row/dialog.dash-picker rules components.css already carries — loading
+  both would have meant dashboard.css's unlayered .dash-picker__item beating
+  components.css's layered one regardless of which looks newer, the exact
+  cascade-layer trap shell.css hit (see CLAUDE.md §4).
   {% endcomment %}
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nora-home.css' %}">
   <link rel="stylesheet" href="{% static 'nora_home/vendor/gridstack.min.css' %}">
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/dashboard.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -34,18 +38,19 @@
         Pick visualizations from any app in the house and arrange them however you
         like. This layout is yours — nobody else sees it.
       </p>
-      <button class="btn btn-primary" type="button" data-dash-add>Add your first widget</button>
+      <button class="btn pri" type="button" data-dash-add>Add your first widget</button>
     </div>
 
     <div class="dash__grid" data-dash-grid></div>
   </div>
 
   <dialog class="dash-picker" data-dash-picker>
-    <div class="dash-picker__head">
-      <h2>Add a widget</h2>
-      <button class="btn btn-ghost" type="button" data-dash-close>Done</button>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+      <h2 style="margin:0;font-family:var(--font-mono);letter-spacing:.1em;text-transform:uppercase;font-size:var(--s1);color:var(--arc-300)">Add a widget</h2>
+      <span style="flex:1"></span>
+      <button class="btn ghost" type="button" data-dash-close>Done</button>
     </div>
-    <div class="dash-picker__body" data-dash-picker-body></div>
+    <div data-dash-picker-body></div>
   </dialog>
 {% endblock %}
 

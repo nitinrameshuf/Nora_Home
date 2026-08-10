@@ -1,22 +1,20 @@
-{% extends "base.html" %}{% load django_vite %}
-{% load static %}
-
-{% block head %}
-  {% comment %}Bridge to the old front end — not yet rewired onto tokens.css/components.css (Story 45, Phase B; CLAUDE.md §4).{% endcomment %}
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nora-home.css' %}">
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/todo.css' %}">
-{% endblock %}
+{% extends "base.html" %}{% load django_vite nh %}
 
 {% block heading %}{% if is_system %}System{% else %}Tasks{% endif %}{% endblock %}
 
 {% block actions %}
+  {% url 'todo:board' as board_url %}
+  {% url 'todo:search' as search_url %}
+  {% url 'todo:labels' as labels_url %}
+  {% url 'todo:calendar' as calendar_url %}
+  {% url 'todo:create' as create_url %}
   {% if is_system %}
-    <a class="btn" href="{% url 'todo:board' %}">Tasks</a>
+    {% nh_button label="Tasks" href=board_url %}
   {% else %}
-    <a class="btn" href="{% url 'todo:search' %}">Search</a>
-    <a class="btn" href="{% url 'todo:labels' %}">Labels</a>
-    <a class="btn" href="{% url 'todo:calendar' %}">Calendar</a>
-    <a class="btn btn-primary" href="{% url 'todo:create' %}">+ New task</a>
+    {% nh_button label="Search" href=search_url %}
+    {% nh_button label="Labels" href=labels_url %}
+    {% nh_button label="Calendar" href=calendar_url %}
+    {% nh_button label="+ New task" href=create_url variant="pri" %}
   {% endif %}
 {% endblock %}
 
@@ -29,54 +27,54 @@
   {% endcomment %}
   {% url 'todo:system_board' as system_url %}
   {% url 'todo:board' as user_url %}
+  {% url 'todo:create' as todo_create_url %}
 
-  <div class="todo-toolbar">
-    <a class="btn {% if not active_label and not due_today %}btn-primary{% endif %}"
+  {% comment %}
+  Plain <a class="chip"> rather than {% nh_chip %}: a filter is a URL, not
+  client state, so a link is the honest control for it — {% nh_chip %} only
+  ever emits a <button> with a data-act/data-v pair meant for JS to read, and
+  there is no JS here to read one.
+  {% endcomment %}
+  {% nh_toolbar %}
+    <a class="chip" aria-pressed="{% if not active_label and not due_today %}true{% else %}false{% endif %}"
        href="{% if is_system %}{{ system_url }}{% else %}{{ user_url }}{% endif %}">All</a>
     {% for label in labels %}
-      <a class="btn {% if active_label == label.name %}btn-primary{% endif %}"
+      <a class="chip" aria-pressed="{% if active_label == label.name %}true{% else %}false{% endif %}"
          href="{% if is_system %}{{ system_url }}{% else %}{{ user_url }}{% endif %}?label={{ label.name }}">{{ label.name }}</a>
     {% endfor %}
-    <a class="btn {% if due_today %}btn-primary{% endif %}"
+    <a class="chip" aria-pressed="{% if due_today %}true{% else %}false{% endif %}"
        href="{% if is_system %}{{ system_url }}{% else %}{{ user_url }}{% endif %}?due=today">Due today</a>
-    <div class="spacer"></div>
-    {% if not is_system %}
-      <a class="btn btn-primary" href="{% url 'todo:create' %}">+ New task</a>
-    {% endif %}
-  </div>
+    {% if not is_system %}{% nh_button label="+ New task" href=todo_create_url variant="pri" %}{% endif %}
+  {% endnh_toolbar %}
 
   {% if awaiting %}
-    <div class="todo-strip">
-      <div class="todo-strip__head">Awaiting approval</div>
+    {% nh_card title="Awaiting approval" %}
       {% for task in awaiting %}
         {% include "todo/_card.html" with task=task compact=True %}
       {% endfor %}
-    </div>
+    {% endnh_card %}
   {% endif %}
 
-  <div class="todo-board">
+  <div class="board">
     {% for priority, label, tasks in columns %}
-      <div class="todo-col todo-col--p{{ priority }}">
-        <div class="todo-col__head"><b>{{ label }}</b><span class="n">{{ tasks|length }}</span></div>
-        <div class="todo-col__list">
-          {% for task in tasks %}
-            {% include "todo/_card.html" with task=task %}
-          {% empty %}
-            <div class="todo-empty">Nothing here.</div>
-          {% endfor %}
-        </div>
+      <div class="col">
+        <div class="col-h"><i style="background:{% if priority == 1 %}var(--crit){% elif priority == 2 %}var(--warn){% else %}var(--arc-500){% endif %}"></i>
+          <b>{{ label }}</b><span class="n">{{ tasks|length }}</span></div>
+        {% for task in tasks %}
+          {% include "todo/_card.html" with task=task %}
+        {% empty %}
+          {% nh_empty title="Nothing here" %}
+        {% endfor %}
       </div>
     {% endfor %}
 
-    <div class="todo-col todo-col--archived">
-      <div class="todo-col__head"><b>Archived</b><span class="n">{{ archived|length }}</span></div>
-      <div class="todo-col__list">
-        {% for task in archived %}
-          {% include "todo/_card.html" with task=task archived_column=True %}
-        {% empty %}
-          <div class="todo-empty">Nothing parked.</div>
-        {% endfor %}
-      </div>
+    <div class="col">
+      <div class="col-h"><i style="background:var(--faint)"></i><b>Archived</b><span class="n">{{ archived|length }}</span></div>
+      {% for task in archived %}
+        {% include "todo/_card.html" with task=task archived_column=True %}
+      {% empty %}
+        {% nh_empty title="Nothing parked" %}
+      {% endfor %}
     </div>
   </div>
 {% endblock %}

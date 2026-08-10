@@ -1,27 +1,19 @@
-{% extends "base.html" %}{% load django_vite %}
-{% load static %}
-
-{% block head %}
-  {% comment %}Bridge to the old front end — not yet rewired onto tokens.css/components.css (Story 45, Phase B; CLAUDE.md §4).{% endcomment %}
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nora-home.css' %}">
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/todo.css' %}">
-{% endblock %}
+{% extends "base.html" %}{% load django_vite nh %}
 
 {% block heading %}{{ task.title }}{% endblock %}
 
 {% block actions %}
-  <a class="btn" href="{% url 'todo:edit' task.uuid %}">Edit</a>
+  {% url 'todo:edit' task.uuid as edit_url %}
+  {% nh_button label="Edit" href=edit_url %}
   {% if task.state == "archived" %}
-    <button class="btn" type="button" data-todo-action="restore"
-            data-url="{% url 'todo:restore' task.uuid %}">Restore</button>
+    <button class="btn" type="button" data-todo-action="restore" data-url="{% url 'todo:restore' task.uuid %}">Restore</button>
   {% elif task.state == "open" %}
-    <button class="btn btn-ghost" type="button" data-todo-action="archive"
-            data-url="{% url 'todo:archive' task.uuid %}">Not now</button>
+    <button class="btn ghost" type="button" data-todo-action="archive" data-url="{% url 'todo:archive' task.uuid %}">Not now</button>
   {% endif %}
   <form method="post" action="{% url 'todo:delete' task.uuid %}"
-        onsubmit="return confirm('Delete this task? This cannot be undone.')">
+        onsubmit="return confirm('Delete this task? This cannot be undone.')" style="display:inline">
     {% csrf_token %}
-    <button class="btn btn-danger" type="submit">Delete</button>
+    {% nh_button label="Delete" button_type="submit" %}
   </form>
 {% endblock %}
 
@@ -30,58 +22,51 @@
     {% for message in messages %}<div class="pill alert">{{ message }}</div>{% endfor %}
   {% endif %}
 
-  <div class="todo-detail__meta">
-    <span class="pill">Priority {{ task.priority }}</span>
-    <span class="pill">{{ task.get_state_display }}</span>
-    {% if task.is_recurring %}<span class="pill info">Recurring</span>{% endif %}
-    {% for label in task.labels.all %}<span class="tag">{{ label.name }}</span>{% endfor %}
-  </div>
+  {% nh_card title=task.title %}
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      {% nh_badge text="Priority "|add:task.priority status="" %}
+      {% nh_badge text=task.get_state_display status="" %}
+      {% if task.is_recurring %}{% nh_badge text="Recurring" status="ok" %}{% endif %}
+      {% for label in task.labels.all %}<span class="lab">{{ label.name }}</span>{% endfor %}
+    </div>
 
-  {% if task.description %}<p>{{ task.description|linebreaksbr }}</p>{% endif %}
+    {% if task.description %}<p style="margin-top:12px">{{ task.description|linebreaksbr }}</p>{% endif %}
 
-  <p>
-    Owner: {{ task.owner.name }}
-    {% if task.assignees.all %}
-      · Shared with {% for m in task.assignees.all %}{{ m.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
-    {% endif %}
-    {% if task.approver %} · Needs {{ task.approver.name }}'s approval{% endif %}
-  </p>
+    <p class="cap" style="margin-top:12px">
+      Owner: {{ task.owner.name }}
+      {% if task.assignees.all %}
+        &middot; Shared with {% for m in task.assignees.all %}{{ m.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+      {% endif %}
+      {% if task.approver %} &middot; Needs {{ task.approver.name }}'s approval{% endif %}
+    </p>
+  {% endnh_card %}
 
   {% if current %}
-    <h2>Current</h2>
-    <div class="todo-card" data-todo-card style="padding:0.9rem 0">
-      {% if current.outcome == "pending" %}
-        <button class="todo-card__tick" type="button" data-todo-action="complete"
-                data-url="{% url 'todo:complete' current.uuid %}"
-                aria-label="Mark done"></button>
-      {% else %}
-        <span class="todo-card__dot"></span>
-      {% endif %}
-      <div class="todo-card__body">
-        <div class="todo-card__meta">
-          Due {{ current.due_at|date:"D, M j · H:i" }}
-          <span class="todo-outcome">{{ current.get_outcome_display }}</span>
+    {% nh_card title="Current" %}
+      <div class="task" data-pri="{{ task.priority }}" data-todo-card>
+        <div class="tm">
+          <span class="due">Due {{ current.due_at|date:"D, M j &middot; H:i" }}</span>
+          <span class="lab">{{ current.get_outcome_display }}</span>
         </div>
         {% if current.outcome == "awaiting_approval" %}
-          <div class="todo-approve-actions">
-            <button class="btn btn-primary" type="button" data-todo-action="approve"
-                    data-url="{% url 'todo:approve' current.uuid %}">Approve</button>
-            <button class="btn btn-danger" type="button" data-todo-action="reject"
-                    data-url="{% url 'todo:reject' current.uuid %}">Reject</button>
+          <div class="t-foot" style="border-top:0;padding-top:0">
+            <button class="btn pri" type="button" data-todo-action="approve" data-url="{% url 'todo:approve' current.uuid %}">Approve</button>
+            <button class="btn" type="button" data-todo-action="reject" data-url="{% url 'todo:reject' current.uuid %}">Reject</button>
           </div>
         {% elif current.outcome == "pending" %}
-          <div class="todo-approve-actions">
-            <button class="btn" type="button" data-todo-action="skip"
-                    data-url="{% url 'todo:skip' current.uuid %}">Skip</button>
+          <div class="t-foot" style="border-top:0;padding-top:0">
+            <button class="btn" type="button" data-todo-action="skip" data-url="{% url 'todo:skip' current.uuid %}">Skip</button>
             {% if current.escalation_level and not current.acknowledged_at %}
-              <button class="btn" type="button" data-todo-action="acknowledge"
-                      data-url="{% url 'todo:acknowledge' current.uuid %}"
-                      title="Stops the escalation ladder without marking it done">Seen it</button>
+              <button class="btn" type="button" data-todo-action="acknowledge" data-url="{% url 'todo:acknowledge' current.uuid %}" title="Stops the escalation ladder without marking it done">Seen it</button>
             {% endif %}
+            <button class="ck" type="button" data-todo-action="complete"
+                    data-url="{% url 'todo:complete' current.uuid %}" aria-label="Mark done">
+              <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.5l2.6 2.6L10 3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+            </button>
           </div>
         {% endif %}
         {% if current.escalation_level %}
-          <div class="todo-card__meta">
+          <div class="cap">
             {% if current.acknowledged_at %}
               Acknowledged by {{ current.acknowledged_by.name }}
             {% else %}
@@ -90,34 +75,32 @@
           </div>
         {% endif %}
       </div>
-    </div>
+    {% endnh_card %}
   {% endif %}
 
   {% if approval_trail %}
-    <h2>Approval trail</h2>
-    <ul class="todo-history">
+    {% nh_card title="Approval trail" %}
       {% for event in approval_trail %}
-        <li>
-          <span>{{ event.to_value }}{% if event.reason %} — {{ event.reason }}{% endif %} ({{ event.actor.name }})</span>
-          <span>{{ event.created_at|date:"M j, H:i" }}</span>
-        </li>
+        <div class="row">
+          <span class="t">{{ event.to_value }}{% if event.reason %} — {{ event.reason }}{% endif %} ({{ event.actor.name }})</span>
+          <span class="d">{{ event.created_at|date:"M j, H:i" }}</span>
+        </div>
       {% endfor %}
-    </ul>
+    {% endnh_card %}
   {% endif %}
 
-  <h2>History</h2>
-  {% if history %}
-    <ul class="todo-history">
+  {% nh_card title="History" %}
+    {% if history %}
       {% for instance in history %}
-        <li>
-          <span>{{ instance.due_at|date:"D, M j" }}</span>
-          <span class="todo-outcome todo-outcome--{{ instance.outcome }}">{{ instance.get_outcome_display }}</span>
-        </li>
+        <div class="row">
+          <span class="t">{{ instance.due_at|date:"D, M j" }}</span>
+          <span class="d{% if instance.outcome == 'late' %} late{% endif %}">{{ instance.get_outcome_display }}</span>
+        </div>
       {% endfor %}
-    </ul>
-  {% else %}
-    <p class="card-subtitle">Nothing yet.</p>
-  {% endif %}
+    {% else %}
+      {% nh_empty title="Nothing yet" %}
+    {% endif %}
+  {% endnh_card %}
 {% endblock %}
 
 {% block scripts %}

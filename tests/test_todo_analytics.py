@@ -652,15 +652,21 @@ def test_every_card_is_compact_when_there_is_nothing_in_it(client, member):
     finished yet." before this — two of the six failures the Visual discipline
     table catalogues, on the page written to avoid them. Found by looking at
     the wall, not by reading the template.
+
+    Story 45, Phase B: the compactness moved from a server-toggled
+    `--empty` modifier class to a `.report-grid > .nh-tile:has(.empty)` CSS
+    rule (components.css) — the marker a test can see now is `.empty`
+    (nh_empty's own class) landing inside every report tile, not a class the
+    template no longer emits.
     """
     client.force_login(member)
 
     body = client.get(reverse("todo:reporting")).content.decode()
 
-    # Every report card on the page is an empty one in this state, so none of
-    # them may be rendering at full size.
-    assert body.count("todo-report__card--empty") == body.count("todo-report__card ")
-    assert "todo-report__card--empty" in body
+    # Every report card on the page is an empty one in this state, so every
+    # report tile must carry the marker that triggers the compact CSS rule.
+    assert body.count('class="nh-tile"') == body.count('class="empty"')
+    assert 'class="empty"' in body
 
 
 def test_a_card_with_content_is_not_compact(client, done_on, make_task, member):
@@ -675,7 +681,7 @@ def test_a_card_with_content_is_not_compact(client, done_on, make_task, member):
     assert 'data-todo-chart="chart-flow"' in body
     # The flow card has data, so its heading is not inside a compact card.
     assert "Arriving vs finishing" in body
-    assert body.count("todo-report__card--empty") < 12
+    assert body.count('class="empty"') < body.count('class="nh-tile"')
 
 
 def test_reporting_sets_no_colours(client, done_on, member):

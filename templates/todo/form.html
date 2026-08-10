@@ -1,137 +1,134 @@
-{% extends "base.html" %}{% load django_vite %}
-{% load static %}
-
-{% block head %}
-  {% comment %}Bridge to the old front end — not yet rewired onto tokens.css/components.css (Story 45, Phase B; CLAUDE.md §4).{% endcomment %}
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nora-home.css' %}">
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/todo.css' %}">
-{% endblock %}
+{% extends "base.html" %}{% load django_vite nh %}
 
 {% block heading %}{{ page_title }}{% endblock %}
 
 {% block content %}
-  {% if form.non_field_errors %}
-    <ul class="errorlist">{% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}</ul>
-  {% endif %}
+  {% nh_card title=page_title %}
+    {% if form.non_field_errors %}
+      <ul class="errorlist">{% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}</ul>
+    {% endif %}
 
-  <form class="todo-form" method="post">
-    {% csrf_token %}
+    <form method="post">
+      {% csrf_token %}
 
-    <div class="field">
-      <label for="{{ form.title.id_for_label }}">Title</label>
-      {{ form.title }}
-      {{ form.title.errors }}
-    </div>
-
-    <div class="field">
-      <label for="{{ form.description.id_for_label }}">Description</label>
-      {{ form.description }}
-      {{ form.description.errors }}
-    </div>
-
-    <div class="field">
-      <label>Priority</label>
-      <div class="checks">{{ form.priority }}</div>
-      {{ form.priority.errors }}
-    </div>
-
-    <div class="field">
-      <label for="{{ form.owner.id_for_label }}">Owner — who is responsible</label>
-      {{ form.owner }}
-      {{ form.owner.errors }}
-    </div>
-
-    <div class="field">
-      <label>Shared with — anyone who can also close it</label>
-      <div class="checks">{{ form.assignees }}</div>
-    </div>
-
-    <div class="field">
-      <label for="{{ form.approver.id_for_label }}">Needs approval from</label>
-      {{ form.approver }}
-      <p class="card-subtitle">Only for a task with no recurrence — an approver on a recurring task is not allowed.</p>
-      {{ form.approver.errors }}
-    </div>
-
-    <div class="field">
-      <label>Labels</label>
-      <div class="checks">{{ form.labels }}</div>
-    </div>
-
-    <div class="field">
-      <label for="{{ form.due_on.id_for_label }}">Due</label>
-      {{ form.due_on }} {{ form.due_time }}
-    </div>
-
-    <div class="field">
-      <label class="checks">{{ form.deadline_firm }} Firm deadline — cannot be shifted by scheduling suggestions</label>
-    </div>
-
-    <div class="field">
-      <label for="{{ form.planned_minutes.id_for_label }}">Planned minutes</label>
-      {{ form.planned_minutes }}
-    </div>
-
-    <div class="field">
-      <label for="{{ form.recurrence_type.id_for_label }}">Recurrence</label>
-      <select name="{{ form.recurrence_type.html_name }}" id="{{ form.recurrence_type.id_for_label }}"
-              data-recurrence-type>
-        {% for value, label in form.fields.recurrence_type.choices %}
-          <option value="{{ value }}" {% if form.recurrence_type.value == value %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <div class="field todo-recurrence-fields" data-recurrence-for="fixed">
-      <label for="{{ form.recurrence_kind.id_for_label }}">Pattern</label>
-      <select name="{{ form.recurrence_kind.html_name }}" id="{{ form.recurrence_kind.id_for_label }}"
-              data-recurrence-kind>
-        {% for value, label in form.fields.recurrence_kind.choices %}
-          <option value="{{ value }}" {% if form.recurrence_kind.value == value %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select>
-
-      <div class="todo-recurrence-fields" data-recurrence-for="weekly">
-        <label>Which days</label>
-        <div class="checks">{{ form.recurrence_weekdays }}</div>
+      <div class="field">
+        <label for="{{ form.title.id_for_label }}">Title</label>
+        {{ form.title }}
+        {{ form.title.errors }}
       </div>
-      <div class="todo-recurrence-fields" data-recurrence-for="monthly yearly">
-        <label for="{{ form.recurrence_day.id_for_label }}">Day of month</label>
-        {{ form.recurrence_day }}
+
+      <div class="field">
+        <label for="{{ form.description.id_for_label }}">Description</label>
+        {{ form.description }}
+        {{ form.description.errors }}
       </div>
-      <div class="todo-recurrence-fields" data-recurrence-for="yearly">
-        <label for="{{ form.recurrence_month.id_for_label }}">Month</label>
-        {{ form.recurrence_month }}
+
+      <div class="field">
+        <label>Priority</label>
+        <div class="checks">{{ form.priority }}</div>
+        {{ form.priority.errors }}
       </div>
-      <div class="todo-recurrence-fields" data-recurrence-for="interval">
-        <label for="{{ form.recurrence_interval_days.id_for_label }}">Every N days</label>
+
+      <div class="field">
+        <label for="{{ form.owner.id_for_label }}">Owner — who is responsible</label>
+        {{ form.owner }}
+        {{ form.owner.errors }}
+      </div>
+
+      <div class="field">
+        <label>Shared with — anyone who can also close it</label>
+        <div class="checks">{{ form.assignees }}</div>
+      </div>
+
+      <div class="field">
+        <label for="{{ form.approver.id_for_label }}">Needs approval from</label>
+        {{ form.approver }}
+        <p class="cap">Only for a task with no recurrence — an approver on a recurring task is not allowed.</p>
+        {{ form.approver.errors }}
+      </div>
+
+      <div class="field">
+        <label>Labels</label>
+        <div class="checks">{{ form.labels }}</div>
+      </div>
+
+      <div class="field">
+        <label for="{{ form.due_on.id_for_label }}">Due</label>
+        {{ form.due_on }} {{ form.due_time }}
+      </div>
+
+      <div class="field">
+        <label class="checks">{{ form.deadline_firm }} Firm deadline — cannot be shifted by scheduling suggestions</label>
+      </div>
+
+      <div class="field">
+        <label for="{{ form.planned_minutes.id_for_label }}">Planned minutes</label>
+        {{ form.planned_minutes }}
+      </div>
+
+      <div class="field">
+        <label for="{{ form.recurrence_type.id_for_label }}">Recurrence</label>
+        <select name="{{ form.recurrence_type.html_name }}" id="{{ form.recurrence_type.id_for_label }}"
+                data-recurrence-type>
+          {% for value, label in form.fields.recurrence_type.choices %}
+            <option value="{{ value }}" {% if form.recurrence_type.value == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field" data-recurrence-for="fixed">
+        <label for="{{ form.recurrence_kind.id_for_label }}">Pattern</label>
+        <select name="{{ form.recurrence_kind.html_name }}" id="{{ form.recurrence_kind.id_for_label }}"
+                data-recurrence-kind>
+          {% for value, label in form.fields.recurrence_kind.choices %}
+            <option value="{{ value }}" {% if form.recurrence_kind.value == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+
+        <div class="field" data-recurrence-for="weekly">
+          <label>Which days</label>
+          <div class="checks">{{ form.recurrence_weekdays }}</div>
+        </div>
+        <div class="field" data-recurrence-for="monthly yearly">
+          <label for="{{ form.recurrence_day.id_for_label }}">Day of month</label>
+          {{ form.recurrence_day }}
+        </div>
+        <div class="field" data-recurrence-for="yearly">
+          <label for="{{ form.recurrence_month.id_for_label }}">Month</label>
+          {{ form.recurrence_month }}
+        </div>
+        <div class="field" data-recurrence-for="interval">
+          <label for="{{ form.recurrence_interval_days.id_for_label }}">Every N days</label>
+          {{ form.recurrence_interval_days }}
+        </div>
+      </div>
+
+      <div class="field" data-recurrence-for="rolling">
+        <label for="{{ form.recurrence_interval_days.id_for_label }}">Days after last completion</label>
         {{ form.recurrence_interval_days }}
       </div>
-    </div>
 
-    <div class="field todo-recurrence-fields" data-recurrence-for="rolling">
-      <label for="{{ form.recurrence_interval_days.id_for_label }}">Days after last completion</label>
-      {{ form.recurrence_interval_days }}
-    </div>
+      <div class="field" data-recurrence-for="fixed rolling">
+        <label for="{{ form.recurrence_ends_on.id_for_label }}">Ends on (optional)</label>
+        {{ form.recurrence_ends_on }}
+      </div>
 
-    <div class="field todo-recurrence-fields" data-recurrence-for="fixed rolling">
-      <label for="{{ form.recurrence_ends_on.id_for_label }}">Ends on (optional)</label>
-      {{ form.recurrence_ends_on }}
-    </div>
+      <div class="field">
+        <label class="checks">{{ form.escalation_enabled }} Escalate if missed</label>
+        {{ form.escalation_policy }}
+      </div>
 
-    <div class="field">
-      <label class="checks">{{ form.escalation_enabled }} Escalate if missed</label>
-      {{ form.escalation_policy }}
-    </div>
+      <div class="field">
+        <label for="{{ form.alarm_kind.id_for_label }}">Alarm</label>
+        {{ form.alarm_kind }} {{ form.alarm_ref }}
+      </div>
 
-    <div class="field">
-      <label for="{{ form.alarm_kind.id_for_label }}">Alarm</label>
-      {{ form.alarm_kind }} {{ form.alarm_ref }}
-    </div>
-
-    <button class="btn btn-primary" type="submit">{% if is_new %}Create task{% else %}Save changes{% endif %}</button>
-    {% if task %}<a class="btn" href="{% url 'todo:detail' task.uuid %}">Cancel</a>{% endif %}
-  </form>
+      <div class="sheet-foot" style="justify-content:flex-start">
+        {% nh_button label=is_new|yesno:"Create task,Save changes" variant="pri" button_type="submit" %}
+        {% if task %}{% url 'todo:detail' task.uuid as cancel_url %}{% nh_button label="Cancel" href=cancel_url %}{% endif %}
+      </div>
+    </form>
+  {% endnh_card %}
 {% endblock %}
 
 {% block scripts %}

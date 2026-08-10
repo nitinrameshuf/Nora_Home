@@ -1,42 +1,23 @@
-{% extends "base.html" %}
-
-{% load django_vite %}
-{% block head %}
-{% comment %}
-  Bridge to the old front end — this page has not been rewired onto
-  tokens.css/components.css yet (Story 45, Phase B; see CLAUDE.md §4).
-  nora-home.css is unlayered and components.css is @layer comp, so this
-  wins for any class name both define (.card, .btn, .empty, ...) without
-  needing !important or higher specificity — see base.html's own head
-  comment for why that ordering is safe.
-{% endcomment %}
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nora-home.css' %}">
-{% endblock %}
+{% extends "base.html" %}{% load nh %}
 
 {% block content %}
-  <ul class="item-list">
+  {% nh_card title="Alerts" %}
     {% for notification in notifications %}
-      <li class="item">
-        <div class="item-body">
-          <div class="item-title">
-            {% if notification.url %}
-              <a href="{{ notification.url }}">{{ notification.title }}</a>
-            {% else %}{{ notification.title }}{% endif %}
-          </div>
-          {% if notification.body %}
-            <div class="item-meta">{{ notification.body|truncatechars:160 }}</div>
-          {% endif %}
-          <div class="item-meta">
-            {{ notification.created_at|timesince }} ago · {{ notification.app_slug }}
-            {% if not notification.recipient %} · whole house{% endif %}
-          </div>
-        </div>
-        <span class="pill {% if notification.severity == 'alert' or notification.severity == 'critical' %}alert{% elif notification.severity == 'warning' %}warn{% else %}info{% endif %}">
-          {{ notification.severity }}
+      <div class="row">
+        <span class="t">
+          {% if notification.url %}<a href="{{ notification.url }}" style="color:inherit">{{ notification.title }}</a>{% else %}{{ notification.title }}{% endif %}
+          {% if notification.body %}<span class="cap">&middot; {{ notification.body|truncatechars:160 }}</span>{% endif %}
         </span>
-      </li>
+        <span class="d">
+          {{ notification.created_at|timesince }} ago &middot; {{ notification.app_slug }}
+          {% if not notification.recipient %} &middot; whole house{% endif %}
+        </span>
+        {% if notification.severity == "alert" or notification.severity == "critical" %}{% nh_badge text=notification.severity status="crit" %}
+        {% elif notification.severity == "warning" %}{% nh_badge text=notification.severity status="warn" %}
+        {% else %}{% nh_badge text=notification.severity status="ok" %}{% endif %}
+      </div>
     {% empty %}
-      <li class="empty">Nothing to report. The house is quiet.</li>
+      {% nh_empty title="Nothing to report" message="The house is quiet." %}
     {% endfor %}
-  </ul>
+  {% endnh_card %}
 {% endblock %}

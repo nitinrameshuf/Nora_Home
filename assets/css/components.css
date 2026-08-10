@@ -118,6 +118,7 @@
     font-family: var(--font-mono); font-size: calc(var(--s0) * .8); padding: 5px 12px; border-radius: 999px;
     font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
     border: 1px solid var(--edge); background: transparent; color: var(--dim);
+    display: inline-flex; align-items: center; text-decoration: none;
   }
   .chip:hover { color: var(--arc-300); border-color: var(--edge-hot); }
   .chip[aria-pressed="true"] { background: var(--arc-500); border-color: var(--arc-500); color: #032430; }
@@ -199,7 +200,7 @@
     grid-auto-flow: row dense; gap: var(--gap);
     min-height: 100%; align-content: stretch;
   }
-  .bento > .nh-tile { grid-column: span var(--c, 3); grid-row: span var(--r, 1); min-width: 0; }
+  .bento > .nh-tile, .report-grid > .nh-tile { grid-column: span var(--c, 3); grid-row: span var(--r, 1); min-width: 0; }
   .nh-tile { display: flex; }
   .nh-tile > .card { flex: 1; min-width: 0; }
 
@@ -310,4 +311,285 @@
   .ph-tab.on { opacity: 1; }
   .ph-tab.on svg { color: var(--arc-400); filter: drop-shadow(0 0 8px var(--glow)); }
   .ph-tab.on span { color: var(--arc-300); font-weight: 700; }
+}
+
+@layer comp {
+  /* ── Todo: the board, the task card ── (Story 45, Phase B) */
+  .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); align-items: start; }
+  .col { display: flex; flex-direction: column; gap: 9px; }
+  .col-h { display: flex; align-items: center; gap: 8px; padding: 0 3px 4px; }
+  .col-h i { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+  .col-h b { font-family: var(--font-mono); font-size: var(--lab); font-weight: 700; letter-spacing: .15em; text-transform: uppercase; color: var(--dim); }
+  .col-h .n { margin-left: auto; font-family: var(--font-mono); font-size: calc(var(--s0) * .8); color: var(--faint); font-variant-numeric: tabular-nums; }
+
+  .task {
+    background: var(--panel-solid); border: 1px solid var(--edge); border-radius: 10px;
+    padding: 11px 12px 11px 15px; display: flex; flex-direction: column; gap: 9px;
+    position: relative; overflow: hidden; text-align: left; width: 100%;
+  }
+  .task::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+  .task[data-pri="1"]::before { background: var(--crit); box-shadow: 0 0 12px var(--crit); }
+  .task[data-pri="2"]::before { background: var(--warn); box-shadow: 0 0 12px var(--warn); }
+  .task[data-pri="3"]::before { background: var(--arc-500); box-shadow: 0 0 12px var(--arc-500); }
+  .task .tt { font-size: var(--s0); font-weight: 600; line-height: 1.34; }
+  .task .tt a { color: inherit; text-decoration: none; }
+  .task.done .tt { text-decoration: line-through; color: var(--faint); }
+  .task .tm { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .due { font-family: var(--font-mono); font-size: calc(var(--s0) * .76); padding: 2px 7px; border-radius: 4px; background: rgba(56, 214, 255, .09); color: var(--dim); font-variant-numeric: tabular-nums; }
+  .due.late { background: rgba(255, 77, 94, .18); color: var(--crit); font-weight: 700; }
+  .assignee {
+    margin-left: auto; width: 21px; height: 21px; border-radius: 50%; display: grid; place-items: center;
+    font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: #032430; flex: none;
+    background: linear-gradient(150deg, var(--arc-300), var(--arc-600));
+  }
+
+  .task .t-meta { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  /* Not a shared `.t-rep, .t-esc, .t-appr { ... }` rule followed by per-class
+     colour overrides: that grouped-then-refined shape (ordinary, legitimate
+     CSS) reads as a collision to test_nh_components.py's audit, which
+     compares each class's full rule body — a class with two different-
+     looking bodies (its share of the group, then its own override) trips
+     the same check that catches a genuine accidental reuse. Three complete,
+     independent rules avoid the false positive instead of suppressing it. */
+  .t-rep {
+    display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-mono);
+    font-size: calc(var(--s0) * .7); letter-spacing: .06em; padding: 2px 6px; border-radius: 4px;
+    color: var(--faint); background: rgba(120, 200, 235, .07);
+  }
+  .t-esc {
+    display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-mono);
+    font-size: calc(var(--s0) * .7); letter-spacing: .06em; padding: 2px 6px; border-radius: 4px;
+    color: var(--warn); background: rgba(255, 182, 72, .14); font-weight: 700;
+  }
+  .t-appr {
+    display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-mono);
+    font-size: calc(var(--s0) * .7); letter-spacing: .06em; padding: 2px 6px; border-radius: 4px;
+    color: var(--info); background: rgba(122, 162, 255, .14);
+  }
+  .task .t-foot { display: flex; align-items: center; gap: 8px; padding-top: 8px; border-top: 1px solid rgba(120, 200, 235, .09); }
+  .t-labels { display: flex; gap: 5px; flex-wrap: wrap; flex: 1; min-width: 0; }
+  .lab {
+    font-family: var(--font-mono); font-size: calc(var(--s0) * .66); letter-spacing: .09em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 999px; border: 1px solid var(--edge); color: var(--dim);
+  }
+
+  /* ── board summary strip ── */
+  .bstats { display: flex; gap: 10px; margin-bottom: var(--gap); flex-wrap: wrap; }
+  .bstat {
+    flex: 1; min-width: 96px; padding: 10px 13px; border-radius: 10px;
+    border: 1px solid var(--edge); background: var(--panel-solid);
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .bstat b { font-size: var(--s2); font-weight: 620; letter-spacing: -.02em; font-variant-numeric: tabular-nums; color: var(--arc-100); }
+  .bstat span { font-family: var(--font-mono); font-size: calc(var(--s0) * .7); letter-spacing: .13em; text-transform: uppercase; color: var(--faint); }
+  .bstat.crit b { color: var(--crit); }
+  .bstat.warn b { color: var(--warn); }
+  .bstat.ok b { color: var(--ok); }
+
+  /* ── search / labels ── */
+  .srch {
+    font: inherit; font-size: var(--s0); color: var(--txt); width: 100%;
+    background: rgba(56, 214, 255, .06); border: 1px solid var(--edge);
+    border-radius: 8px; padding: 10px 12px; min-height: var(--tap);
+  }
+  .srch:focus { border-color: var(--edge-hot); outline: none; box-shadow: 0 0 18px var(--glow-soft); }
+  .chips-row { display: flex; gap: 7px; flex-wrap: wrap; }
+  .lab-dot { width: 9px; height: 9px; border-radius: 2px; flex: none; box-shadow: 0 0 8px currentColor; }
+
+  /* ── calendar ── */
+  .cal { padding: var(--pad); display: flex; flex-direction: column; gap: 8px; height: 100%; }
+  .cal-h { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .cal-h span {
+    font-family: var(--font-mono); font-size: var(--lab); letter-spacing: .15em;
+    text-transform: uppercase; color: var(--faint); text-align: center;
+  }
+  .cal-g { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 1fr; gap: 6px; min-height: 0; }
+  .cal-d {
+    border: 1px solid rgba(120, 200, 235, .1); border-radius: 8px; padding: 6px;
+    display: flex; flex-direction: column; gap: 4px; min-height: 0; overflow: hidden;
+    background: rgba(56, 214, 255, .03);
+  }
+  .cal-d.out { opacity: .25; }
+  .cal-d.now { border-color: var(--arc-400); box-shadow: inset 0 0 20px var(--glow-soft); }
+  .cal-n { font-family: var(--font-mono); font-size: calc(var(--s0) * .74); color: var(--faint); }
+  .cal-d.now .cal-n { color: var(--arc-100); font-weight: 700; }
+  .cal-t {
+    display: block; font-size: calc(var(--s0) * .72); border-radius: 4px; padding: 2px 5px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; color: var(--txt);
+    background: rgba(56, 214, 255, .16); border-left: 2px solid var(--arc-500);
+  }
+  .cal-t[data-pri="1"] { background: rgba(255, 77, 94, .18); border-left-color: var(--crit); }
+  .cal-t[data-pri="2"] { background: rgba(255, 182, 72, .16); border-left-color: var(--warn); }
+  /* Todo's calendar (not the mockup's, which has no planned/actual concept of
+     its own) distinguishes what's scheduled from what already happened. */
+  .cal-t.actual { background: rgba(63, 240, 176, .16); border-left-color: var(--ok); }
+  .cal-t.event { background: rgba(157, 188, 207, .16); border-left-color: var(--faint); }
+
+  /* ── reporting: cumulative-flow bars ── */
+  .cf { flex: 1; display: flex; align-items: flex-end; gap: 9px; padding-top: 6px; min-height: 0; }
+  .cf-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; position: relative; }
+  .cf-col i { display: block; width: 100%; border-radius: 2px 2px 0 0; background: var(--arc-500); opacity: .85; }
+  .cf-col i.b { position: absolute; bottom: 16px; background: var(--ok); opacity: .9; width: 52%; border-radius: 2px 2px 0 0; }
+  .cf-col span { font-family: var(--font-mono); font-size: calc(var(--s0) * .66); color: var(--faint); }
+  .cf-key { display: flex; gap: 16px; font-family: var(--font-mono); font-size: calc(var(--s0) * .7); color: var(--faint); letter-spacing: .09em; }
+  .cf-key i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; }
+
+  /* ── checkbox/radio groups (not in the mockup by name; forms need them) ── */
+  .checks { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+  .checks label { display: inline-flex; align-items: center; gap: 6px; font-size: calc(var(--s0) * .92); color: var(--dim); }
+  .checks input[type="checkbox"], .checks input[type="radio"] { accent-color: var(--arc-500); width: 16px; height: 16px; }
+  .errorlist { list-style: none; margin: 0 0 12px; padding: 0; color: var(--crit); font-size: calc(var(--s0) * .88); }
+
+  /* ── a content-sized 12-column grid, for pages where rows should not be a
+     fixed height — .bento is the dashboard's own grid and is wrong here:
+     its `minmax(var(--row), 1fr)` track forces every row to at least one
+     widget-row tall, which is exactly what made an empty report card render
+     near-full-size before this was fixed (§10, "the quiet state is the
+     compact state" — found by a test, not by looking at the page, for once). ── */
+  .report-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: var(--gap); align-items: start; }
+  .report-grid > .nh-tile:has(.empty) .card { padding: 10px 13px; }
+  .report-grid > .nh-tile:has(.empty) .card-h h4 { font-size: calc(var(--lab) * .95); }
+  .report-grid > .nh-tile:has(.empty) .empty { border: 0; padding: 4px 0; text-align: left; align-items: flex-start; }
+
+  /* ── report tables (not in the mockup by name; same visual language) ── */
+  .tbl { width: 100%; border-collapse: collapse; font-size: calc(var(--s0) * .92); }
+  .tbl td { padding: 8px 6px; border-top: 1px solid rgba(120, 200, 235, .09); }
+  .tbl tr:first-child td { border-top: 0; }
+  .tbl td.num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--dim); }
+  .tbl a { color: var(--arc-300); text-decoration: none; }
+  .tbl a:hover { text-decoration: underline; }
+
+  /* ── the dashboard grid (Story 45, Phase B) ──
+     dashboard.js builds its tiles client-side from a JSON payload — see its
+     own module docstring — so this is markup no Django template ever emits,
+     but it deliberately reuses .nh-tile/.card/.card-h/.body/.read/.cap/.row/
+     .ck/.empty/.nh-spark, the exact classes {% nh_tile %}/{% nh_card %}/
+     {% nh_stat %}/{% nh_list %}/{% nh_empty %} already emit server-side, so
+     a widget looks identical whether Django or dashboard.js drew it. */
+  .dash-grip {
+    background: none; border: 0; color: var(--faint); cursor: grab; padding: 2px;
+    display: none; /* only relevant, and only shown, while editing */
+  }
+  [data-dash].is-editing .dash-grip { display: inline-flex; }
+  [data-dash].is-editing .nh-tile { outline: 1px dashed var(--edge-hot); outline-offset: 2px; }
+  .dash-remove {
+    background: none; border: 0; color: var(--faint); cursor: pointer; font-size: 16px;
+    line-height: 1; padding: 0 2px; display: none;
+  }
+  [data-dash].is-editing .dash-remove { display: inline-flex; }
+  .dash-remove:hover { color: var(--crit); }
+  /* Nothing on the wall is interactive — strip the editing affordances
+     regardless of edit state, matching the old dashboard.css's own rule. */
+  html[data-surface="wall"] .dash-grip,
+  html[data-surface="wall"] .dash-remove { display: none !important; }
+
+  .dash__empty {
+    padding: 48px 24px; text-align: center; border: 1px dashed var(--edge); border-radius: var(--rad);
+    color: var(--faint);
+  }
+  .dash__empty h3 { color: var(--txt); font-family: var(--font-mono); letter-spacing: .08em; text-transform: uppercase; font-size: var(--s1); }
+  .dash__empty p { max-width: 46ch; margin: 8px auto 16px; font-size: calc(var(--s0) * .92); }
+
+  dialog.dash-picker {
+    background: var(--panel-solid); border: 1px solid var(--edge-hot); border-radius: var(--rad);
+    padding: 22px; width: min(460px, 92vw); max-height: 80vh; overflow-y: auto;
+    box-shadow: 0 0 60px rgba(0, 0, 0, .6), 0 0 40px var(--glow-soft); color: var(--txt);
+  }
+  dialog.dash-picker::backdrop { background: rgba(2, 5, 10, .72); backdrop-filter: blur(4px); }
+  .dash-picker__group {
+    font-family: var(--font-mono); font-size: var(--lab); letter-spacing: .14em; text-transform: uppercase;
+    color: var(--faint); padding: 14px 2px 6px;
+  }
+  .dash-picker__group:first-child { padding-top: 0; }
+  .dash-picker__item {
+    display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left;
+    background: rgba(56, 214, 255, .06); border: 1px solid var(--edge); border-radius: 8px;
+    padding: 9px 12px; margin-bottom: 6px; color: var(--txt); font: inherit; min-height: var(--tap);
+  }
+  .dash-picker__item:hover:not(:disabled) { border-color: var(--edge-hot); background: var(--hover); }
+  .dash-picker__item:disabled { opacity: .45; cursor: default; }
+  .dash-picker__title { font-weight: 600; font-size: calc(var(--s0) * .94); }
+  .dash-picker__desc { font-size: calc(var(--s0) * .8); color: var(--faint); }
+
+  /* ── the kiosk shell (Story 45, Phase B) — the mockup's own "square keys"
+     bank (.hkey/.d-bank, already ported above) plus the header/footer/status/
+     toast chrome around it, which the mockup draws as part of .desk but this
+     app keeps as its own real page rather than the mockup's single-purpose
+     control-surface layout (kiosk.html still navigates the wall by URL, the
+     same job, simpler shell). ── */
+  body.kiosk { margin: 0; background: var(--void); color: var(--txt); font-family: var(--font-sans); overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+  .kiosk-header {
+    flex: none; display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; background: var(--panel-solid); border-bottom: 1px solid var(--edge);
+    font-family: var(--font-mono); font-size: calc(var(--s0) * .9);
+  }
+  .kiosk-header strong { letter-spacing: .1em; text-transform: uppercase; color: var(--arc-100); }
+  /* Default is connected — kiosk.js only ever adds .is-offline, on the
+     assumption the socket is up until told otherwise. */
+  .kiosk-status { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); display: inline-block; }
+  .kiosk-status.is-offline { background: var(--crit); box-shadow: 0 0 8px var(--crit); }
+  .kiosk-grid {
+    flex: 1; min-height: 0; overflow-y: auto; display: grid;
+    grid-template-columns: repeat(auto-fill, 128px); grid-auto-rows: 128px;
+    gap: 12px; padding: 16px; align-content: start;
+  }
+  .kiosk-tile {
+    --key: var(--arc-500);
+    position: relative; border: 1px solid rgba(120, 200, 235, .16); color: #dcecf5;
+    background: linear-gradient(180deg, #101a24 0%, #0b131b 55%, #070d14 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    font-family: var(--font-mono); text-transform: uppercase; border-radius: 12px;
+    padding: 12px; box-shadow: inset 0 1px 0 rgba(180, 225, 245, .09), 0 2px 0 #050b11, 0 5px 10px rgba(0, 0, 0, .5);
+  }
+  .kiosk-tile:hover { border-color: var(--edge-hot); }
+  .kiosk-tile:active, .kiosk-tile.is-pressed { transform: translateY(2px); border-color: var(--arc-500); }
+  .kiosk-tile__title { font-size: calc(var(--s0) * .92); font-weight: 700; letter-spacing: .08em; text-align: center; }
+  .kiosk-tile__hint { font-size: calc(var(--s0) * .64); color: var(--faint); letter-spacing: .08em; }
+  .kiosk-tile--back { --key: var(--faint); }
+  .kiosk-controls {
+    flex: none; display: flex; gap: 12px; padding: 12px 16px 20px;
+    background: var(--panel-solid); border-top: 1px solid var(--edge);
+  }
+  .kiosk-control { flex: 1; }
+  .kiosk-toast {
+    position: fixed; left: 50%; bottom: 96px; translate: -50% 0; z-index: 60;
+    background: var(--panel-solid); border: 1px solid var(--edge-hot); border-radius: 999px;
+    padding: 9px 18px; font-family: var(--font-mono); font-size: calc(var(--s0) * .86);
+    opacity: 0; pointer-events: none; transition: opacity .3s ease;
+  }
+  .kiosk-toast.is-visible { opacity: 1; }
+
+  /* ── the wall's own shell — a thin frame around the iframed app ── */
+  body.wall-live { margin: 0; height: 100vh; overflow: hidden; background: var(--void); }
+  body.wall-live [data-wall-frame] { width: 100%; height: 100%; border: 0; display: block; }
+  .wall-status {
+    width: 11px; height: 11px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 12px var(--ok);
+  }
+  .wall-status.is-offline { background: var(--crit); box-shadow: 0 0 12px var(--crit); }
+  .wall-live-dot { position: fixed; top: 10px; right: 10px; opacity: .7; z-index: 10; }
+  .wall-banner {
+    position: fixed; inset: auto 24px 24px; z-index: 20; max-width: 480px;
+    padding: 18px 22px; border-radius: var(--rad); background: var(--panel-solid);
+    border-left: 4px solid var(--info); box-shadow: 0 0 40px rgba(0, 0, 0, .5), 0 0 30px var(--glow-soft);
+    transform: translateY(140%); transition: transform .5s cubic-bezier(.2, .9, .25, 1);
+  }
+  .wall-banner.is-visible { transform: translateY(0); }
+  .wall-banner__title { font-family: var(--font-mono); font-size: var(--s1); font-weight: 700; letter-spacing: .08em; color: var(--arc-100); }
+  .wall-banner__body { font-size: calc(var(--s0) * .92); color: var(--dim); margin-top: 6px; }
+  .wall-banner__who { font-family: var(--font-mono); font-size: calc(var(--s0) * .7); color: var(--faint); margin-top: 8px; letter-spacing: .06em; }
+  .wall-banner.severity-warning { border-left-color: var(--warn); }
+  .wall-banner.severity-alert, .wall-banner.severity-critical {
+    border-left-color: var(--crit); animation: nh-wall-pulse 2.2s ease-in-out infinite;
+  }
+  @keyframes nh-wall-pulse {
+    0%, 100% { box-shadow: 0 0 40px rgba(0, 0, 0, .5), 0 0 30px var(--glow-soft); }
+    50% { box-shadow: 0 0 40px rgba(0, 0, 0, .5), 0 0 60px rgba(255, 77, 94, .4); }
+  }
+
+  /* ── settings rows ── */
+  .set-row { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-top: 1px solid rgba(120, 200, 235, .1); min-height: var(--tap); flex-wrap: wrap; }
+  .set-row:first-child { border-top: 0; }
+  .set-row .k { font-size: var(--s0); font-weight: 600; }
+  .set-row .h { font-family: var(--font-mono); font-size: calc(var(--s0) * .78); color: var(--faint); }
+  .set-row .v { margin-left: auto; font-family: var(--font-mono); font-size: calc(var(--s0) * .88); color: var(--dim); text-align: right; }
 }

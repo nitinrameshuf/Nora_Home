@@ -1,53 +1,29 @@
-{% extends "base.html" %}
-
-{% load django_vite %}
-{% block head %}
-{% comment %}
-  Bridge to the old front end — this page has not been rewired onto
-  tokens.css/components.css yet (Story 45, Phase B; see CLAUDE.md §4).
-  nora-home.css is unlayered and components.css is @layer comp, so this
-  wins for any class name both define (.card, .btn, .empty, ...) without
-  needing !important or higher specificity — see base.html's own head
-  comment for why that ordering is safe.
-{% endcomment %}
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nora-home.css' %}">
-{% endblock %}
+{% extends "base.html" %}{% load nh %}
 
 {% block content %}
-  <div class="card">
-    <div class="card-head">
-      <h3 class="card-title">{{ series.label }}</h3>
-      <span class="pill">{{ series.unit }}</span>
-    </div>
-    <div style="font-size:var(--step-4);font-weight:650">
-      {{ latest.value|default:"—" }}
-    </div>
-    <div class="card-subtitle">
-      {% if latest %}recorded {{ latest.recorded_at|timesince }} ago{% endif %}
-    </div>
+  {% nh_card title=series.label %}
+    {% nh_badge text=series.unit status="" %}
+    <div class="read"><b>{{ latest.value|default:"—" }}</b></div>
+    <span class="cap">{% if latest %}recorded {{ latest.recorded_at|timesince }} ago{% endif %}</span>
 
-    <form method="post" action="{% url 'telemetry:record' series.key %}"
-          style="display:flex;gap:0.6rem;margin-top:1.2rem">
+    <form method="post" action="{% url 'telemetry:record' series.key %}" style="display:flex;gap:9px;margin-top:14px">
       {% csrf_token %}
       <input type="number" step="any" name="value" placeholder="New reading" required>
-      <button class="btn btn-primary" type="submit">Record</button>
+      {% nh_button label="Record" variant="pri" button_type="submit" %}
     </form>
-  </div>
+  {% endnh_card %}
 
-  <h2 style="margin-top:2rem">Readings</h2>
-  <div class="table-scroll">
-    <table>
-      <thead><tr><th>When</th><th>Value</th><th>Who</th><th>Source</th></tr></thead>
-      <tbody>
-        {% for reading in readings %}
-          <tr>
-            <td>{{ reading.recorded_at|date:"d M H:i" }}</td>
-            <td>{{ reading.value }} {{ series.unit }}</td>
-            <td>{{ reading.member|default:"—" }}</td>
-            <td>{{ reading.source }}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
+  {% nh_card title="Readings" %}
+    <table class="tbl">
+      <tr><td><b>When</b></td><td><b>Value</b></td><td><b>Who</b></td><td><b>Source</b></td></tr>
+      {% for reading in readings %}
+        <tr>
+          <td>{{ reading.recorded_at|date:"d M H:i" }}</td>
+          <td>{{ reading.value }} {{ series.unit }}</td>
+          <td>{{ reading.member|default:"—" }}</td>
+          <td>{{ reading.source }}</td>
+        </tr>
+      {% endfor %}
     </table>
-  </div>
+  {% endnh_card %}
 {% endblock %}

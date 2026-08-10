@@ -1,225 +1,148 @@
-{% extends "base.html" %}
-
-{% load django_vite %}
-{% block head %}
-{% comment %}
-  Bridge to the old front end — this page has not been rewired onto
-  tokens.css/components.css yet (Story 45, Phase B; see CLAUDE.md §4).
-  nora-home.css is unlayered and components.css is @layer comp, so this
-  wins for any class name both define (.card, .btn, .empty, ...) without
-  needing !important or higher specificity — see base.html's own head
-  comment for why that ordering is safe.
-{% endcomment %}
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nora-home.css' %}">
-{% endblock %}
+{% extends "base.html" %}{% load nh %}
 
 {% comment %}
 Everything the house lets you change, plus who you are and what the two screens
 are doing. Read down, in groups — not a grid of cards, which is what this was:
 five panels of very different lengths in a three-column auto-fill grid never
-lined up, and the grouping read as arbitrary. See .settings in nora-home.css.
+lined up, and the grouping read as arbitrary.
 {% endcomment %}
 
 {% block content %}
-  <div class="settings">
-
-    <section class="settings__group">
-      <h2 class="settings__group-title">You</h2>
-      <div class="card settings__panel">
-        <div class="setting">
-          <div class="setting__label">Signed in as</div>
-          <div class="setting__control">
-            {{ member.name }} <span class="pill">{{ member.get_role_display }}</span>
-          </div>
-        </div>
-        <div class="setting">
-          <div class="setting__label">Username</div>
-          <div class="setting__control"><code>{{ member.username }}</code></div>
-        </div>
-        <div class="setting">
-          <div class="setting__label">Slack</div>
-          <div class="setting__control">{{ member.slack_user_id|default:"Not linked" }}</div>
-        </div>
-        <div class="setting">
-          <div class="setting__label">Quiet hours
-            <span class="setting__hint">Alerts and above still get through</span>
-          </div>
-          <div class="setting__control">
-            {{ member.quiet_hours_start }}:00 &ndash; {{ member.quiet_hours_end }}:00
-          </div>
-        </div>
-        <div class="setting">
-          <div class="setting__label">Notifications</div>
-          <div class="setting__control">
-            {% if member.notifications_enabled %}<span class="pill ok">On</span>
-            {% else %}<span class="pill">Off</span>{% endif %}
-          </div>
-        </div>
-        <div class="setting">
-          <div class="setting__label">Show me on the wall display</div>
-          <div class="setting__control">
-            {% if member.is_on_wall_display %}Yes{% else %}No{% endif %}
-          </div>
-        </div>
-        <div class="setting">
-          <div class="setting__label">Who hears about it
-            <span class="setting__hint">
-              When you don't do something, the escalation ladder walks this list one
-              rung at a time before telling the whole house.
-            </span>
-          </div>
-          <div class="setting__control">
-            {% for contact in chain %}
-              <span class="pill">L{{ forloop.counter }} {{ contact.name }}</span>
-            {% empty %}
-              No chain set &mdash; every adult
-            {% endfor %}
-          </div>
-        </div>
-        <div class="settings__actions">
-          <a class="btn" href="{% url 'accounts:household' %}">The household</a>
-          <a class="btn btn-ghost" href="{% url 'accounts:logout' %}">Switch profile</a>
-        </div>
-      </div>
-    </section>
-
-    {% comment %}
-    The screens. These were a whole "Displays" nav entry; two read-only status
-    rows did not earn that, and they belong next to the schedule that powers
-    them. /home/displays/ redirects here.
-
-    There is deliberately no Minimize or Close: Django runs in Docker with no
-    access to the Pi's X session, so nothing served from here can touch the
-    physical Chromium windows. That needs a host-side agent, the same way the
-    overnight schedule below does.
-    {% endcomment %}
-    <section class="settings__group">
-      <h2 class="settings__group-title">Screens</h2>
-      <div class="card settings__panel">
-        {% for display in displays %}
-          <div class="setting">
-            <div class="setting__label">{{ display.name }}
-              <span class="setting__hint">
-                {{ display.get_kind_display }} &middot;
-                {% if display.last_seen_at %}last seen {{ display.last_seen_at }}
-                {% else %}never seen{% endif %}
-              </span>
-            </div>
-            <div class="setting__control">
-              {% if display.is_online %}<span class="pill ok">Online</span>
-              {% else %}<span class="pill alert">Offline</span>{% endif %}
-              {% if display.kind == "kiosk" %}
-                <a class="btn" href="{% url 'displays:kiosk' %}">Open</a>
-              {% else %}
-                <a class="btn" href="{% url 'displays:wall_named' display.slug %}">Open</a>
-              {% endif %}
-            </div>
-          </div>
+  {% nh_card title="You" %}
+    <div class="set-row">
+      <span class="k">Signed in as</span>
+      <span class="h">{{ member.name }}</span>
+      {% nh_badge text=member.get_role_display status="" %}
+    </div>
+    <div class="set-row">
+      <span class="k">Username</span>
+      <span class="v"><code>{{ member.username }}</code></span>
+    </div>
+    <div class="set-row">
+      <span class="k">Slack</span>
+      <span class="v">{{ member.slack_user_id|default:"Not linked" }}</span>
+    </div>
+    <div class="set-row">
+      <span class="k">Quiet hours</span>
+      <span class="h">Alerts and above still get through</span>
+      <span class="v">{{ member.quiet_hours_start }}:00 &ndash; {{ member.quiet_hours_end }}:00</span>
+    </div>
+    <div class="set-row">
+      <span class="k">Notifications</span>
+      {% if member.notifications_enabled %}{% nh_badge text="On" status="ok" %}{% else %}{% nh_badge text="Off" status="" %}{% endif %}
+    </div>
+    <div class="set-row">
+      <span class="k">Show me on the wall display</span>
+      <span class="v">{% if member.is_on_wall_display %}Yes{% else %}No{% endif %}</span>
+    </div>
+    <div class="set-row">
+      <span class="k">Who hears about it</span>
+      <span class="h">When you don't do something, the escalation ladder walks this list one rung at a time before telling the whole house.</span>
+      <span class="v" style="display:flex;gap:6px;flex-wrap:wrap">
+        {% for contact in chain %}
+          <span class="lab">L{{ forloop.counter }} {{ contact.name }}</span>
         {% empty %}
-          <div class="setting">
-            <div class="setting__label">No screens registered yet
-              <span class="setting__hint">
-                Open <a href="{% url 'displays:wall' %}">the wall page</a> on the 24"
-                screen and it will register itself.
-              </span>
-            </div>
-            <div class="setting__control"></div>
-          </div>
+          No chain set — every adult
         {% endfor %}
+      </span>
+    </div>
+    <div class="sheet-foot" style="justify-content:flex-start;margin-top:12px">
+      {% url 'accounts:household' as household_url %}
+      {% url 'accounts:logout' as logout_url %}
+      {% nh_button label="The household" href=household_url %}
+      {% nh_button label="Switch profile" variant="ghost" href=logout_url %}
+    </div>
+  {% endnh_card %}
+
+  {% comment %}
+  The screens. These were a whole "Displays" nav entry; two read-only status
+  rows did not earn that, and they belong next to the schedule that powers
+  them. /home/displays/ redirects here.
+
+  There is deliberately no Minimize or Close: Django runs in Docker with no
+  access to the Pi's X session, so nothing served from here can touch the
+  physical Chromium windows. That needs a host-side agent, the same way the
+  overnight schedule below does.
+  {% endcomment %}
+  {% nh_card title="Screens" %}
+    {% for display in displays %}
+      <div class="set-row">
+        <span class="k">{{ display.name }}</span>
+        <span class="h">{{ display.get_kind_display }} &middot; {% if display.last_seen_at %}last seen {{ display.last_seen_at }}{% else %}never seen{% endif %}</span>
+        {% if display.is_online %}{% nh_badge text="Online" status="ok" %}{% else %}{% nh_badge text="Offline" status="crit" %}{% endif %}
+        {% if display.kind == "kiosk" %}
+          {% url 'displays:kiosk' as open_url %}
+        {% else %}
+          {% url 'displays:wall_named' display.slug as open_url %}
+        {% endif %}
+        {% nh_button label="Open" href=open_url %}
       </div>
+    {% empty %}
+      <div class="set-row">
+        <span class="k">No screens registered yet</span>
+        {% url 'displays:wall' as wall_url %}
+        <span class="h">Open <a href="{{ wall_url }}" style="color:var(--arc-300)">the wall page</a> on the 24" screen and it will register itself.</span>
+      </div>
+    {% endfor %}
+  {% endnh_card %}
 
-      {% comment %}
-      Its own form, separate from Overnight below, so saving a zoom does not
-      also rewrite the power schedule and vice versa.
+  {% comment %}
+  Its own form, separate from Overnight below, so saving a zoom does not
+  also rewrite the power schedule and vice versa.
 
-      Only these two screens are here. A phone or a laptop is held at arm's
-      length, which is what every browser default already assumes — there is
-      nothing to correct, and offering a control implies otherwise.
-      {% endcomment %}
-      <form method="post" class="card settings__panel">
-        {% csrf_token %}
-        <input type="hidden" name="form" value="zoom">
-        <p class="settings__note">
-          How large everything renders on the two fixed screens. The browser can
-          work out a screen's size but never how far away you are standing, so
-          this is the one thing it cannot guess &mdash; set it from in front of
-          the screen. Takes effect when that screen next loads a page.
-        </p>
+  Only these two screens are here. A phone or a laptop is held at arm's
+  length, which is what every browser default already assumes — there is
+  nothing to correct, and offering a control implies otherwise.
+  {% endcomment %}
+  {% nh_card title="Screen size" subtitle="How large everything renders on the two fixed screens. Set from in front of the screen; takes effect when it next loads a page." %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="form" value="zoom">
+      <div class="set-row">
+        <label class="k" for="zoom_wall">The 24&quot; wall</label>
+        <span class="h">Read from across the room. 1.25 is the default; higher makes everything bigger and fits less on.</span>
+        <input style="margin-left:auto;width:90px" type="number" name="zoom_wall" id="zoom_wall"
+               min="{{ zoom_min }}" max="{{ zoom_max_wall }}" step="0.05" value="{{ zoom.wall }}">
+      </div>
+      <div class="set-row">
+        <label class="k" for="zoom_kiosk">The 10.1&quot; touchscreen</label>
+        <span class="h">Held at arm's length, so 1 is usually right. Above {{ zoom_max_kiosk }} its layout gets too narrow for the buttons.</span>
+        <input style="margin-left:auto;width:90px" type="number" name="zoom_kiosk" id="zoom_kiosk"
+               min="{{ zoom_min }}" max="{{ zoom_max_kiosk }}" step="0.05" value="{{ zoom.kiosk }}">
+      </div>
+      <div class="sheet-foot" style="justify-content:flex-start;margin-top:12px">
+        {% nh_button label="Save screen sizes" variant="pri" button_type="submit" %}
+      </div>
+    </form>
+  {% endnh_card %}
 
-        <div class="setting">
-          <label class="setting__label" for="zoom_wall">The 24&quot; wall
-            <span class="setting__hint">Read from across the room. 1.25 is the
-              default; higher makes everything bigger and fits less on.</span>
-          </label>
-          <div class="setting__control">
-            <input type="number" name="zoom_wall" id="zoom_wall"
-                   min="{{ zoom_min }}" max="{{ zoom_max_wall }}" step="0.05"
-                   value="{{ zoom.wall }}">
-          </div>
-        </div>
-
-        <div class="setting">
-          <label class="setting__label" for="zoom_kiosk">The 10.1&quot; touchscreen
-            <span class="setting__hint">Held at arm's length, so 1 is usually
-              right. Above {{ zoom_max_kiosk }} its layout gets too narrow for
-              the buttons.</span>
-          </label>
-          <div class="setting__control">
-            <input type="number" name="zoom_kiosk" id="zoom_kiosk"
-                   min="{{ zoom_min }}" max="{{ zoom_max_kiosk }}" step="0.05"
-                   value="{{ zoom.kiosk }}">
-          </div>
-        </div>
-
-        <div class="settings__actions">
-          <button class="btn btn-primary" type="submit">Save screen sizes</button>
-        </div>
-      </form>
-    </section>
-
-    <section class="settings__group">
-      <h2 class="settings__group-title">Overnight</h2>
-      <form method="post" class="card settings__panel">
-        {% csrf_token %}
-        <div class="setting">
-          {% comment %}
-          A real <label for>, not a div: without it the checkbox has no
-          accessible name, and — the part anyone notices — tapping the text does
-          not toggle it, which on a 10" touchscreen is the whole interaction.
-          Caught by the QA suite's axe scan, 2026-08-04.
-          {% endcomment %}
-          <label class="setting__label" for="wall_schedule_enabled">Power the screens off overnight
-            <span class="setting__hint">
-              Both screens go together &mdash; the hardware can't turn off just one.
-              The house keeps running either way; this only affects the monitors.
-            </span>
-          </label>
-          <div class="setting__control">
-            <input type="checkbox" name="wall_schedule_enabled" id="wall_schedule_enabled"
-                   {% if wall_schedule.enabled %}checked{% endif %}>
-          </div>
-        </div>
-        <div class="setting">
-          <label class="setting__label" for="wall_schedule_start">Off from</label>
-          <div class="setting__control">
-            <input type="number" name="wall_schedule_start" id="wall_schedule_start"
-                   min="0" max="23" value="{{ wall_schedule.start_hour }}">
-            <span class="setting__hint">:00</span>
-          </div>
-        </div>
-        <div class="setting">
-          <label class="setting__label" for="wall_schedule_end">On again from</label>
-          <div class="setting__control">
-            <input type="number" name="wall_schedule_end" id="wall_schedule_end"
-                   min="0" max="23" value="{{ wall_schedule.end_hour }}">
-            <span class="setting__hint">:00</span>
-          </div>
-        </div>
-        <div class="settings__actions">
-          <button class="btn btn-primary" type="submit">Save</button>
-        </div>
-      </form>
-    </section>
-
-  </div>
+  {% nh_card title="Overnight" %}
+    <form method="post">
+      {% csrf_token %}
+      <div class="set-row">
+        {% comment %}
+        A real <label for>, not a div: without it the checkbox has no
+        accessible name, and — the part anyone notices — tapping the text does
+        not toggle it, which on a 10" touchscreen is the whole interaction.
+        Caught by the QA suite's axe scan, 2026-08-04.
+        {% endcomment %}
+        <label class="k" for="wall_schedule_enabled">Power the screens off overnight</label>
+        <span class="h">Both screens go together — the hardware can't turn off just one. The house keeps running either way; this only affects the monitors.</span>
+        <input style="margin-left:auto;width:18px;height:18px;accent-color:var(--arc-500)" type="checkbox" name="wall_schedule_enabled" id="wall_schedule_enabled" {% if wall_schedule.enabled %}checked{% endif %}>
+      </div>
+      <div class="set-row">
+        <label class="k" for="wall_schedule_start">Off from</label>
+        <input style="margin-left:auto;width:70px" type="number" name="wall_schedule_start" id="wall_schedule_start" min="0" max="23" value="{{ wall_schedule.start_hour }}">
+        <span class="h">:00</span>
+      </div>
+      <div class="set-row">
+        <label class="k" for="wall_schedule_end">On again from</label>
+        <input style="margin-left:auto;width:70px" type="number" name="wall_schedule_end" id="wall_schedule_end" min="0" max="23" value="{{ wall_schedule.end_hour }}">
+        <span class="h">:00</span>
+      </div>
+      <div class="sheet-foot" style="justify-content:flex-start;margin-top:12px">
+        {% nh_button label="Save" variant="pri" button_type="submit" %}
+      </div>
+    </form>
+  {% endnh_card %}
 {% endblock %}

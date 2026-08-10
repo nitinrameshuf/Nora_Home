@@ -1,14 +1,14 @@
 {% load django_vite nh %}<!doctype html>
 {% comment %}
 Every component in nora_home/ui/templatetags/nh.py, in every state — Story
-45's own file list. Deliberately its own shell, not an extension of
-base.html: base.html loads the OLD nora-home.css, whose `.card`/`.btn`/etc
-are unlayered and would silently beat every rule in components.css regardless
-of load order (an unlayered rule always wins over a layered one — that is
-the entire cascade mechanism `@layer` exists to opt into). Proving this
-system standalone, uncontaminated by the system it replaces, is the same
-"prove it before wiring anything to it" shape as Story 43's build pipeline
-and Story 44's token layer.
+45's own file list. Written as its own shell, not an extension of base.html,
+back when base.html still loaded the OLD nora-home.css — proving this system
+standalone, uncontaminated by the one it was replacing, was the same "prove it
+before wiring anything to it" shape as Story 43's build pipeline and Story
+44's token layer. nora-home.css is deleted now and base.html loads exactly
+what this page does, so the two have converged; this file stays independent
+regardless; a page purpose-built to show every state of every component in
+isolation earns that on its own terms, not as a historical accident.
 {% endcomment %}
 <html lang="en" data-surface="{{ surface }}" data-theme="dark">
 <head>

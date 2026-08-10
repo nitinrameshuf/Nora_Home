@@ -1,59 +1,37 @@
-{% extends "base.html" %}
-
-{% load django_vite %}
-{% block head %}
-{% comment %}
-  Bridge to the old front end — this page has not been rewired onto
-  tokens.css/components.css yet (Story 45, Phase B; see CLAUDE.md §4).
-  nora-home.css is unlayered and components.css is @layer comp, so this
-  wins for any class name both define (.card, .btn, .empty, ...) without
-  needing !important or higher specificity — see base.html's own head
-  comment for why that ordering is safe.
-{% endcomment %}
-  <link rel="stylesheet" href="{% vite_asset_url 'assets/css/nora-home.css' %}">
-{% endblock %}
+{% extends "base.html" %}{% load nh %}
 
 {% block content %}
   {% if not ai_enabled %}
-    <div class="empty">
-      <h3>AI is not switched on</h3>
-      <p>Set <code>ANTHROPIC_API_KEY</code> in <code>.env</code> and restart.</p>
-    </div>
+    {% nh_empty title="AI is not switched on" message="Set ANTHROPIC_API_KEY in .env and restart." %}
   {% else %}
-    <div class="card">
-      <div class="card-head">
-        <h3 class="card-title">Ask the house</h3>
-        <span class="pill">${{ spend|floatformat:2 }} this month</span>
-      </div>
-      <form id="ask-form" style="display:grid;gap:0.8rem">
+    {% nh_card title="Ask the house" %}
+      <span class="badge">${{ spend|floatformat:2 }} this month</span>
+      <form id="ask-form" style="display:grid;gap:12px;margin-top:10px">
         {% csrf_token %}
-        <textarea name="prompt" rows="3" required
+        <textarea name="prompt" rows="3" required style="font:inherit;background:rgba(56,214,255,.06);border:1px solid var(--edge);border-radius:7px;padding:9px 11px;color:var(--txt)"
                   placeholder="What should the house focus on this week?"></textarea>
-        <button class="btn btn-primary" type="submit">Ask</button>
+        {% nh_button label="Ask" variant="pri" button_type="submit" %}
       </form>
-      <div id="answer" class="card-subtitle" style="margin-top:1rem;white-space:pre-wrap"></div>
-    </div>
+      <div id="answer" class="cap" style="margin-top:12px;white-space:pre-wrap"></div>
+    {% endnh_card %}
   {% endif %}
 
-  <h2 style="margin-top:2.5rem">Recent calls</h2>
-  <div class="table-scroll">
-    <table>
-      <thead><tr><th>When</th><th>App</th><th>Model</th><th>Cost</th><th>Time</th></tr></thead>
-      <tbody>
-        {% for run in recent %}
-          <tr>
-            <td>{{ run.created_at|date:"d M H:i" }}</td>
-            <td><code>{{ run.app_slug }}</code></td>
-            <td>{{ run.model }}</td>
-            <td>${{ run.cost_usd|floatformat:4 }}</td>
-            <td>{{ run.duration_ms }} ms</td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="5" class="card-subtitle">No AI calls yet.</td></tr>
-        {% endfor %}
-      </tbody>
+  {% nh_card title="Recent calls" %}
+    <table class="tbl">
+      <tr><td><b>When</b></td><td><b>App</b></td><td><b>Model</b></td><td><b>Cost</b></td><td><b>Time</b></td></tr>
+      {% for run in recent %}
+        <tr>
+          <td>{{ run.created_at|date:"d M H:i" }}</td>
+          <td><code>{{ run.app_slug }}</code></td>
+          <td>{{ run.model }}</td>
+          <td class="num">${{ run.cost_usd|floatformat:4 }}</td>
+          <td class="num">{{ run.duration_ms }} ms</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">{% nh_empty title="No AI calls yet" %}</td></tr>
+      {% endfor %}
     </table>
-  </div>
+  {% endnh_card %}
 {% endblock %}
 
 {% block scripts %}
