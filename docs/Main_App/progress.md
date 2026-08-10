@@ -4378,3 +4378,22 @@ Story 49 is **Built, unproven** — not yet deployed to or seen on physical
 hardware; there is no physical phone this project tests against, so
 "physical hardware" for this story means the Pi-built assets actually
 running under the deployed house, not a screenshot of a phone.
+
+**Deployed and observed on the Pi.** `./nora upgrade` (all services healthy),
+`./nora test` on the Pi itself: **999 passed, 0 failed**. Fetched all 8 real
+pages (`/home/`, `/home/system/`, `/home/settings/`, `/todo/`,
+`/todo/calendar/`, `/home/alerts/`, `/home/measurements/`,
+`/home/integrations/`) over real HTTPS with a genuine iPhone UA — every one
+renders the phone shell, none carries the desktop rail. Both new JS assets
+(`nh-phone-nav.js`, the rebuilt `nh-picker.js`) serve 200 from the deployed
+bundle. `./nora screens relaunch` and a physical screenshot confirm the wall
+and kiosk — which run through the same `layouts/skeleton.html` split, just
+via `desktop_shell.html` — are unaffected: real data, Story 48's vitals
+(TEMP 53°, DISK 20%) still rendering correctly on the console rail.
+
+There is no physical phone this project tests against, so "seen on
+hardware" here means the Pi-served pages and the proof that the shared
+skeleton refactor didn't regress the two screens that are physical — not a
+photo of a phone. That is the honest ceiling for this story specifically.
+
+Story 49 is **Complete**.
