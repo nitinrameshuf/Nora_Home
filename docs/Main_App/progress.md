@@ -4796,3 +4796,10 @@ Python suite, which was already green either way): sidebar grouping,
 badge/count rendering, and the phone stacking all screenshotted and checked
 against actual DOM measurements, not just visual impression. `./scripts/run-tests.sh`
 green, 1055 passed.
+
+**Verified on the Pi.** `./nora test` green (1054 passed). Sent the wall a
+real `navigate` bus message to `/home/system/` and screenshotted it: sidebar
+correctly shows Home (Home/Alerts/System/Settings) and Apps (Measurements/
+Integrations/Todo), and the Health card shows "7 ok" — every real Pi service
+(MySQL, Redis, RabbitMQ, Mongo, MinIO, disk, CPU temp) genuinely healthy, not
+a demo. Story 54 is Complete.
