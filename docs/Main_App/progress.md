@@ -4803,3 +4803,73 @@ correctly shows Home (Home/Alerts/System/Settings) and Apps (Measurements/
 Integrations/Todo), and the Health card shows "7 ok" — every real Pi service
 (MySQL, Redis, RabbitMQ, Mongo, MinIO, disk, CPU temp) genuinely healthy, not
 a demo. Story 54 is Complete.
+
+### 2026-08-10 — Story 55: the QA suite, rewritten — and Story 54 reopened
+The QA suite (`tests/qa/*.py`, 226 checks) predated almost every Phase 8
+story that touched markup — Stories 45, 48, 50, 53, 54 all shipped new class
+names and none of them updated it, so it was silently testing a house that
+no longer existed: `.dash-tile`, `.todo-card__title`, `.kiosk-tile__title`,
+`.setting__label`, `.sidebar a`, `.profile-trigger`, `switch-app`/`show-menu`
+kiosk actions, a `data-kiosk-status`/`is-offline` dot Story 50 replaced with
+the desk's `.d-lamp`/`.lost`, and two whole parametrize axes (`theme:
+["dark","light"]`, `season: [...]`) testing states the house cannot enter
+any more (Phase 8 deleted the light theme and season both). Every selector
+in every file checked against the current templates rather than assumed —
+`conftest.py`, `test_smoke.py` (already current, no changes needed),
+`test_accessibility.py`, `test_journeys.py`, `test_screens.py`, and
+`test_todo_qa.py` (the largest rewrite — every `.todo-*` class from the old
+todo.css, `.todo-col--archived` for a column Story 53 deleted). Also removed
+`/home/apps/` from PLATFORM_PAGES (Story 47 deleted the Apps directory) and
+the dead `open_actions_menu()` helper — Story 45 Phase B moved page actions
+into the always-visible appbar; only the household switcher (`.profile-menu`,
+a native `<details>`) is still behind a click, renamed to
+`open_household_menu()`.
+
+Extended `tests/test_app_contract.py` per the story's own ask — "reaches
+every surface" used to mean "present in `navigation()`'s return value," which
+is data, not the same claim as "actually rendered." Added
+`test_it_reaches_the_rendered_sidebar`, which checks the real HTML of
+`core:dashboard` rather than the registry — and it is exactly the kind of
+check that would have caught the bug below on its own, mechanically, instead
+of needing a person to notice.
+
+**While checking Story 55's own selectors against the mockup, the user asked
+directly whether Story 54's nav fix had actually been checked against it —
+and it hadn't been, carefully enough.** Re-reading `ui-overhaul-mockup.html`'s
+`REGISTRY` confirmed Alerts belongs under Home (already fixed, Story 54). But
+the mockup's System page also has its own `SYS_VIEWS` — four tabs (Health,
+Measurements, Integrations, Log) — entirely missed the first time because it
+sits in a different part of the file from `REGISTRY`. Measurements and
+Integrations were never meant to be standalone nav destinations at all, only
+System tabs. **Story 54 was incomplete, not wrong** — Alerts-to-Home was
+correct, but Apps should have ended up as Todo alone.
+
+Fixed now: `core:system_status` takes `?tab=health|measurements|integrations|
+log` (health is the default), each tab's content gathered only when active.
+`nora_nav = False` on `TelemetryConfig`/`IntegrationsConfig` drops both from
+the sidebar/phone-tabs/palette everywhere at once, since all three walk the
+same `navigation()`. Their `index` views now redirect to the matching tab —
+same shape as `core:house_log`'s existing redirect into System, which itself
+had to start forcing `tab=log` explicitly once Health became the default (a
+bare redirect would otherwise land on the wrong tab with the log's own filter
+params silently ignored). `templates/telemetry/index.html` and `templates/
+integrations/index.html` are gone — their content became `_index_content.html`
+partials, `{% include %}`d from System's tabs, since nothing renders them as
+full pages any more. `wall_apps()`'s kiosk Home bank and `palette_
+destinations()` both got the same audit — `wall_apps()` was missing an Alerts
+key entirely (a hardcoded second copy of the Home group Story 54 never
+touched); `palette_destinations()` needed System's four tabs added explicitly
+so ⌘K can still find Measurements/Integrations now that they have no
+top-level entry of their own.
+
+Corrected the documentation that had asserted the wrong thing as settled —
+CLAUDE.md's Phase 8 section and Story 47's own dashboard entry both said
+"the only things called apps are the four registered apps with nav=True";
+both now carry a dated correction rather than being quietly edited as if the
+mistake never happened.
+
+`./scripts/run-tests.sh` green throughout (1053 passed). Verified in a real
+browser locally before deploying: all four System tabs, the old `/home/log/`,
+`/home/measurements/`, `/home/integrations/` URLs redirecting to the right
+tab with real data, sidebar showing Home (Home/Alerts/System/Settings) and
+Apps (Todo alone), no console errors.

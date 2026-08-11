@@ -1,17 +1,18 @@
 {% extends "base.html" %}{% load django_vite static nh %}
 
 {% comment %}
-The System page — Story 47 merged what used to be two separate pages, Status
-and the House log. "Recent activity" (system_status's own card, an
-unfiltered AuditEvent list) duplicated the log's own "audit" source, so it
-was dropped rather than kept as a third, competing list — the Timeline below
-already shows it, filterable, alongside health/notification/integration/
-telemetry events. /home/log/ redirects here, query string intact.
+The System page — four tabs, matching the mockup's own SYS_VIEWS exactly
+(ui-overhaul-mockup.html: Health, Measurements, Integrations, Log). Story 47
+first merged Status and the House log into one page; Story 55 found that
+Measurements and Integrations were never meant to be their own nav
+destinations either, only tabs here — see nora_home/core/views.py's
+system_status() docstring for how that was missed the first time and how it
+was actually checked.
 
-The filter form is a plain GET form on purpose — no JavaScript, no stored
-state. Every view of this page is a URL, so "look at what happened on
-Tuesday" is something one person can send another, and the back button does
-what it looks like it does.
+Each tab is `?tab=`, a plain GET link — no JavaScript, no stored state.
+"Recent activity" (system_status's own card, an unfiltered AuditEvent list)
+duplicated the log tab's own "audit" source, so it was dropped rather than
+kept as a third, competing list.
 
 Charts follow the same contract as Todo's Reporting page: the view hands over
 an ECharts option or `None`, and `None` renders as a sentence rather than an
@@ -21,125 +22,145 @@ must never be able to close a tag.
 {% endcomment %}
 
 {% block content %}
-  <div class="frow">
-    {% nh_card title="Health" %}
-      {% if health.healthy %}{% nh_badge text="healthy" status="ok" %}{% else %}{% nh_badge text="degraded" status="crit" %}{% endif %}
-      <p class="cap">
-        {% for row in health_summary %}{{ row.count }} {{ row.status }}{% if not forloop.last %} &middot; {% endif %}{% endfor %}
-      </p>
-      {% for name, probe in health.services.items %}
-        <div class="row">
-          <span class="t">{{ name }}</span>
-          <span class="d">{% if probe.host %}{{ probe.host }}{% elif probe.reason %}{{ probe.reason }}{% endif %}</span>
-          {% if probe.status == "ok" %}{% nh_badge text=probe.status status="ok" %}
-          {% elif probe.status == "down" or probe.status == "critical" %}{% nh_badge text=probe.status status="crit" %}
-          {% elif probe.status == "warning" %}{% nh_badge text=probe.status status="warn" %}
-          {% else %}{% nh_badge text=probe.status status="" %}{% endif %}
+  {% nh_toolbar %}
+    <a class="chip" aria-pressed="{% if tab == 'health' %}true{% else %}false{% endif %}"
+       href="?tab=health">Health</a>
+    <a class="chip" aria-pressed="{% if tab == 'measurements' %}true{% else %}false{% endif %}"
+       href="?tab=measurements">Measurements</a>
+    <a class="chip" aria-pressed="{% if tab == 'integrations' %}true{% else %}false{% endif %}"
+       href="?tab=integrations">Integrations</a>
+    <a class="chip" aria-pressed="{% if tab == 'log' %}true{% else %}false{% endif %}"
+       href="?tab=log">Log</a>
+  {% endnh_toolbar %}
+
+  {% if tab == "health" %}
+    <div class="frow">
+      {% nh_card title="Health" %}
+        {% if health.healthy %}{% nh_badge text="healthy" status="ok" %}{% else %}{% nh_badge text="degraded" status="crit" %}{% endif %}
+        <p class="cap">
+          {% for row in health_summary %}{{ row.count }} {{ row.status }}{% if not forloop.last %} &middot; {% endif %}{% endfor %}
+        </p>
+        {% for name, probe in health.services.items %}
+          <div class="row">
+            <span class="t">{{ name }}</span>
+            <span class="d">{% if probe.host %}{{ probe.host }}{% elif probe.reason %}{{ probe.reason }}{% endif %}</span>
+            {% if probe.status == "ok" %}{% nh_badge text=probe.status status="ok" %}
+            {% elif probe.status == "down" or probe.status == "critical" %}{% nh_badge text=probe.status status="crit" %}
+            {% elif probe.status == "warning" %}{% nh_badge text=probe.status status="warn" %}
+            {% else %}{% nh_badge text=probe.status status="" %}{% endif %}
+          </div>
+        {% endfor %}
+      {% endnh_card %}
+
+      {% nh_card title="This install" %}
+        <div class="row"><span class="t">Version</span><span class="d">{{ version }}</span></div>
+        <div class="row"><span class="t">Environment</span><span class="d">{{ environment }}</span></div>
+        <div class="row"><span class="t">Request</span><span class="d">{{ request_id }}</span></div>
+      {% endnh_card %}
+    </div>
+
+  {% elif tab == "measurements" %}
+    {% include "telemetry/_index_content.html" %}
+
+  {% elif tab == "integrations" %}
+    {% include "integrations/_index_content.html" %}
+
+  {% else %}
+    {% nh_card title="Filter" %}
+      <form method="get" role="search">
+        <input type="hidden" name="tab" value="log">
+        <div class="frow">
+          <div class="field">
+            <label>Window</label>
+            <select name="days">
+              <option value="1" {% if days == 1 %}selected{% endif %}>Last 24 hours</option>
+              <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
+              <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
+              <option value="90" {% if days == 90 %}selected{% endif %}>Last 90 days</option>
+              <option value="365" {% if days == 365 %}selected{% endif %}>Last year</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Severity</label>
+            <select name="severity">
+              <option value="">Everything</option>
+              {% for level in severities %}
+                <option value="{{ level }}" {% if severity == level %}selected{% endif %}>{{ level|capfirst }} and worse</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field" style="flex:2">
+            <label>Contains</label>
+            <input class="srch" type="search" name="q" value="{{ q }}" placeholder="a name, a subject, an error">
+          </div>
         </div>
+
+        <div class="field" style="margin-top:12px">
+          <label>Sources</label>
+          <div class="checks">
+            {% for key, label in sources.items %}
+              <label><input type="checkbox" name="source" value="{{ key }}" {% if key in chosen_sources %}checked{% endif %}> {{ label }}</label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="sheet-foot" style="justify-content:flex-start;margin-top:14px">
+          {% nh_button label="Filter" variant="pri" button_type="submit" %}
+          {% nh_button label="Reset" variant="ghost" href="?tab=log" %}
+        </div>
+      </form>
+    {% endnh_card %}
+
+    <div class="frow">
+      {% nh_card title="What happened, by day" %}
+        {% if charts.activity %}
+          {{ charts.activity|json_script:"log-activity" }}
+          <div class="nh-chart-holder" data-log-chart="log-activity"></div>
+        {% else %}
+          {% nh_empty title="Nothing recorded in this window" %}
+        {% endif %}
+      {% endnh_card %}
+
+      {% nh_card title="How loud it was" %}
+        {% if charts.mix %}
+          {{ charts.mix|json_script:"log-mix" }}
+          <div class="nh-chart-holder" data-log-chart="log-mix"></div>
+        {% else %}
+          {% nh_empty title="Nothing to weigh up yet" %}
+        {% endif %}
+      {% endnh_card %}
+    </div>
+
+    {% if truncated %}
+      <p class="cap" style="margin:14px 0">
+        Showing the most recent {{ limit }} entries. Narrow the window or a source to see further back.
+      </p>
+    {% endif %}
+
+    {% nh_card title="Timeline" %}
+      {% for entry in entries %}
+        <div class="row">
+          <span class="due" style="flex:none">{{ entry.at|date:"d M H:i" }}</span>
+          <span class="t">
+            {% if entry.url %}<a href="{{ entry.url }}" style="color:inherit">{{ entry.title }}</a>{% else %}{{ entry.title }}{% endif %}
+            {% if entry.detail %}<span class="cap">&middot; {{ entry.detail }}</span>{% endif %}
+          </span>
+          <span class="lab">{{ entry.source_label }}</span>
+          {% if entry.actor %}<span class="d">{{ entry.actor }}</span>{% endif %}
+          {% if entry.severity == "alert" or entry.severity == "critical" %}{% nh_badge text=entry.severity status="crit" %}
+          {% elif entry.severity == "warning" %}{% nh_badge text=entry.severity status="warn" %}
+          {% elif entry.severity == "info" %}{% nh_badge text=entry.severity status="ok" %}
+          {% endif %}
+        </div>
+      {% empty %}
+        {% comment %}
+        Deliberately not "no results": on a house that has just been set up this
+        is the true and expected answer, and it should not read like a failure.
+        {% endcomment %}
+        {% nh_empty title="Nothing yet" message="Nothing happened in this window that the house thought worth remembering." %}
       {% endfor %}
     {% endnh_card %}
-
-    {% nh_card title="This install" %}
-      <div class="row"><span class="t">Version</span><span class="d">{{ version }}</span></div>
-      <div class="row"><span class="t">Environment</span><span class="d">{{ environment }}</span></div>
-      <div class="row"><span class="t">Request</span><span class="d">{{ request_id }}</span></div>
-    {% endnh_card %}
-  </div>
-
-  {% nh_card title="Filter" %}
-    <form method="get" role="search">
-      <div class="frow">
-        <div class="field">
-          <label>Window</label>
-          <select name="days">
-            <option value="1" {% if days == 1 %}selected{% endif %}>Last 24 hours</option>
-            <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
-            <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
-            <option value="90" {% if days == 90 %}selected{% endif %}>Last 90 days</option>
-            <option value="365" {% if days == 365 %}selected{% endif %}>Last year</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Severity</label>
-          <select name="severity">
-            <option value="">Everything</option>
-            {% for level in severities %}
-              <option value="{{ level }}" {% if severity == level %}selected{% endif %}>{{ level|capfirst }} and worse</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="field" style="flex:2">
-          <label>Contains</label>
-          <input class="srch" type="search" name="q" value="{{ q }}" placeholder="a name, a subject, an error">
-        </div>
-      </div>
-
-      <div class="field" style="margin-top:12px">
-        <label>Sources</label>
-        <div class="checks">
-          {% for key, label in sources.items %}
-            <label><input type="checkbox" name="source" value="{{ key }}" {% if key in chosen_sources %}checked{% endif %}> {{ label }}</label>
-          {% endfor %}
-        </div>
-      </div>
-
-      <div class="sheet-foot" style="justify-content:flex-start;margin-top:14px">
-        {% nh_button label="Filter" variant="pri" button_type="submit" %}
-        {% url 'core:system_status' as reset_url %}
-        {% nh_button label="Reset" variant="ghost" href=reset_url %}
-      </div>
-    </form>
-  {% endnh_card %}
-
-  <div class="frow">
-    {% nh_card title="What happened, by day" %}
-      {% if charts.activity %}
-        {{ charts.activity|json_script:"log-activity" }}
-        <div class="nh-chart-holder" data-log-chart="log-activity"></div>
-      {% else %}
-        {% nh_empty title="Nothing recorded in this window" %}
-      {% endif %}
-    {% endnh_card %}
-
-    {% nh_card title="How loud it was" %}
-      {% if charts.mix %}
-        {{ charts.mix|json_script:"log-mix" }}
-        <div class="nh-chart-holder" data-log-chart="log-mix"></div>
-      {% else %}
-        {% nh_empty title="Nothing to weigh up yet" %}
-      {% endif %}
-    {% endnh_card %}
-  </div>
-
-  {% if truncated %}
-    <p class="cap" style="margin:14px 0">
-      Showing the most recent {{ limit }} entries. Narrow the window or a source to see further back.
-    </p>
   {% endif %}
-
-  {% nh_card title="Timeline" %}
-    {% for entry in entries %}
-      <div class="row">
-        <span class="due" style="flex:none">{{ entry.at|date:"d M H:i" }}</span>
-        <span class="t">
-          {% if entry.url %}<a href="{{ entry.url }}" style="color:inherit">{{ entry.title }}</a>{% else %}{{ entry.title }}{% endif %}
-          {% if entry.detail %}<span class="cap">&middot; {{ entry.detail }}</span>{% endif %}
-        </span>
-        <span class="lab">{{ entry.source_label }}</span>
-        {% if entry.actor %}<span class="d">{{ entry.actor }}</span>{% endif %}
-        {% if entry.severity == "alert" or entry.severity == "critical" %}{% nh_badge text=entry.severity status="crit" %}
-        {% elif entry.severity == "warning" %}{% nh_badge text=entry.severity status="warn" %}
-        {% elif entry.severity == "info" %}{% nh_badge text=entry.severity status="ok" %}
-        {% endif %}
-      </div>
-    {% empty %}
-      {% comment %}
-      Deliberately not "no results": on a house that has just been set up this
-      is the true and expected answer, and it should not read like a failure.
-      {% endcomment %}
-      {% nh_empty title="Nothing yet" message="Nothing happened in this window that the house thought worth remembering." %}
-    {% endfor %}
-  {% endnh_card %}
 {% endblock %}
 
 {% block scripts %}
@@ -148,7 +169,9 @@ must never be able to close a tag.
   which is deferred by definition, and a module executes in document order
   relative to any classic deferred script — so the vendor bundle is always
   parsed before nh-charts.js looks for `window.echarts`, and house-log.js always
-  runs after the theme is registered.
+  runs after the theme is registered. Loaded unconditionally rather than only
+  on the log tab: harmless elsewhere (nothing to find), and conditional script
+  loading has its own footguns (Story 43's whole build-pipeline story).
   {% endcomment %}
   <script src="{% static 'nora_home/vendor/echarts.min.js' %}"></script>
   {% vite_asset 'assets/js/nh-charts.js' %}

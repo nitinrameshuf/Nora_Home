@@ -106,17 +106,21 @@ def visit(page, path: str):
     return page
 
 
-def open_actions_menu(page):
-    """Open the profile dropdown.
+def open_household_menu(page):
+    """Open the household switcher — the one thing still behind a menu.
 
-    Page actions — "Add a widget", "Rearrange", the household switcher — live
-    inside it (`{% block actions %}` renders into `.profile-dropdown` in
-    base.html), so they are present in the DOM but not visible until it is
-    opened. Worth knowing before concluding a button is broken.
+    Story 45/49's `.profile-menu` (a native `<details>`, `templates/partials/
+    member_switcher.html`) holds who-you-are and "Everyone"/"the wall" — click
+    its `<summary class="me">` to reveal it. Page actions ("Add a widget",
+    "Rearrange") are a *different* thing and are NOT behind this any more:
+    Story 45 Phase B moved `{% block actions %}` to render directly into the
+    appbar, always visible — there is nothing to open for those. Renamed from
+    `open_actions_menu` (Story 55), which described that arrangement, not
+    this one.
     """
-    trigger = page.locator(".profile-trigger").first
+    trigger = page.locator(".profile-menu summary").first
     if trigger.count() == 0:
-        pytest.skip("no profile menu on this surface")
+        pytest.skip("no household switcher on this surface")
     trigger.click()
     page.wait_for_timeout(250)
     return page
@@ -140,10 +144,14 @@ def signed_in(page, house_url):
 
 # Pages every household member can reach. Kept here rather than in each test so
 # a new platform page gets smoke-tested by adding one line.
+#
+# "apps" (/home/apps/) is gone — Story 47 deleted the Apps directory in
+# favour of the ⌘K palette, and nothing 404ing here would have caught that
+# until this suite itself was checked against the pages it claims to cover
+# (Story 55).
 PLATFORM_PAGES = [
     ("home", "/home/"),
-    ("apps", "/home/apps/"),
-    ("status", "/home/system/"),
+    ("system", "/home/system/"),
     ("settings", "/home/settings/"),
     ("household", "/accounts/household/"),
     ("log", "/home/log/"),

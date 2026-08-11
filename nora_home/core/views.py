@@ -47,53 +47,89 @@ def weather_current(request):
     return JsonResponse(current_scene())
 
 
+SYSTEM_TABS = ["health", "measurements", "integrations", "log"]
+
+
 @login_required
 def system_status(request):
-    """The System page — Story 47 merged what used to be Status and the House
-    log. Health/install cards plus the log's own filterable timeline, on one
-    page; "Recent activity" (an unfiltered AuditEvent list) is gone, since the
-    timeline's own "audit" source already shows the same events, filterable
-    alongside health/notification/integration/telemetry ones — see
-    nora_home.core.houselog for what counts as an event and why most of what
-    the house does does not.
+    """The System page — four tabs (`?tab=`), matching the mockup's own
+    SYS_VIEWS exactly (ui-overhaul-mockup.html): Health, Measurements,
+    Integrations, Log. Story 47 first merged Status and the House log into
+    one page; Story 55 found — by actually checking the mockup rather than
+    trusting an earlier story's paraphrase of it — that Measurements and
+    Integrations were never meant to be their own nav destinations either,
+    only tabs here. `nora_nav = False` on both apps keeps them out of the
+    sidebar/phone-tabs/palette; their own `index` views now redirect here.
 
-    The filter form is a plain GET form on purpose — no JavaScript, no stored
-    state. Every view of this page is a URL, so "look at what happened on
-    Tuesday" is something one person can send another.
+    Each tab is a plain GET query param, no JavaScript, no stored state —
+    every view of this page is a URL, so "look at what happened on Tuesday"
+    or "send me the integrations tab" is something one person can send
+    another.
     """
-    from nora_home.core import houselog
+    tab = request.GET.get("tab", "health")
+    if tab not in SYSTEM_TABS:
+        tab = "health"
 
-    days = _clamp_int(request.GET.get("days"), houselog.DEFAULT_DAYS, 1, 365)
-    since = timezone.now() - timedelta(days=days)
-    chosen = [s for s in request.GET.getlist("source") if s in houselog.SOURCES]
-    severity = request.GET.get("severity", "")
-    query = request.GET.get("q", "").strip()
-
-    entries = houselog.timeline(since=since, sources=chosen or None,
-                                severity=severity, query=query)
-
-    health = collect_health()
-
-    return render(request, "core/system_status.html", {
-        "health": health,
-        "health_summary": _health_summary(health["services"]),
+    context = {
+        "tab": tab,
         "version": settings.NORA_HOME_VERSION,
         "environment": settings.NORA_HOME_ENV,
-        "entries": entries,
-        "charts": houselog.charts(entries, since=since, until=timezone.now()),
-        "sources": houselog.SOURCES,
-        "chosen_sources": chosen,
-        "severities": houselog.SEVERITY_ORDER,
-        "severity": severity,
-        "days": days,
-        "q": query,
-        # The cap is worth saying out loud rather than letting the page quietly
-        # end: "200 entries" and "200 entries, and there were more" are different
-        # answers to "did anything else happen".
-        "truncated": len(entries) >= houselog.DEFAULT_LIMIT,
-        "limit": houselog.DEFAULT_LIMIT,
         "page_title": "System",
-    })
+    }
+
+    if tab == "health":
+        health = collect_health()
+        context["health"] = health
+        context["health_summary"] = _health_summary(health["services"])
+
+    elif tab == "measurements":
+        from nora_home.telemetry.models import Series
+
+        context["series"] = Series.objects.filter(is_active=True)
+
+    elif tab == "integrations":
+        from nora_home.integrations.base import available
+        from nora_home.integrations.models import Integration
+
+        context["integrations"] = Integration.objects.all()
+        context["catalog"] = [
+            {"slug": slug, "name": klass.name or slug,
+             "description": klass.description, "icon": klass.icon}
+            for slug, klass in sorted(available().items())
+        ]
+
+    else:  # log — "Recent activity" (an unfiltered AuditEvent list) is gone,
+        # since the timeline's own "audit" source already shows the same
+        # events, filterable alongside health/notification/integration/
+        # telemetry ones — see nora_home.core.houselog for what counts as an
+        # event and why most of what the house does does not.
+        from nora_home.core import houselog
+
+        days = _clamp_int(request.GET.get("days"), houselog.DEFAULT_DAYS, 1, 365)
+        since = timezone.now() - timedelta(days=days)
+        chosen = [s for s in request.GET.getlist("source") if s in houselog.SOURCES]
+        severity = request.GET.get("severity", "")
+        query = request.GET.get("q", "").strip()
+
+        entries = houselog.timeline(since=since, sources=chosen or None,
+                                    severity=severity, query=query)
+        context.update({
+            "entries": entries,
+            "charts": houselog.charts(entries, since=since, until=timezone.now()),
+            "sources": houselog.SOURCES,
+            "chosen_sources": chosen,
+            "severities": houselog.SEVERITY_ORDER,
+            "severity": severity,
+            "days": days,
+            "q": query,
+            # The cap is worth saying out loud rather than letting the page
+            # quietly end: "200 entries" and "200 entries, and there were
+            # more" are different answers to "did anything else happen".
+            "truncated": len(entries) >= houselog.DEFAULT_LIMIT,
+            "limit": houselog.DEFAULT_LIMIT,
+        })
+
+    return render(request, "core/system_status.html", context)
 
 
 @login_required
@@ -148,10 +184,16 @@ def house_log(request):
     (a URL someone was sent, per the docstring this page used to carry) still
     lands somewhere useful rather than 404ing. @login_required stays so an
     unauthenticated hit goes straight to the login page rather than bouncing
-    through system/ first."""
-    qs = request.META.get("QUERY_STRING", "")
-    url = reverse("core:system_status")
-    return redirect(f"{url}?{qs}" if qs else url)
+    through system/ first.
+
+    Forces `tab=log` (Story 55): System defaults to the Health tab now that
+    it has four, so a bookmarked `?days=7` without it would silently land on
+    Health with those log filters just ignored — the redirect must choose the
+    tab those params actually belong to, not merely arrive at the right page.
+    """
+    params = request.GET.copy()
+    params["tab"] = "log"
+    return redirect(f"{reverse('core:system_status')}?{params.urlencode()}")
 
 
 def _clamp_int(raw, default: int, low: int, high: int) -> int:

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from nora_home.telemetry.api import record_reading, series_history
@@ -11,10 +12,11 @@ from nora_home.telemetry.models import Series
 
 @login_required
 def index(request):
-    return render(request, "telemetry/index.html", {
-        "series": Series.objects.filter(is_active=True),
-        "page_title": "Measurements",
-    })
+    """Retired 2026-08-10 (Story 55) — Measurements is a System tab now, not
+    its own destination: the mockup's System page (SYS_VIEWS.measurements)
+    never had a standalone one, only the four tabs. Kept as a redirect so an
+    old bookmark or nav link still lands somewhere real."""
+    return redirect(f"{reverse('core:system_status')}?tab=measurements")
 
 
 @login_required

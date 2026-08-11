@@ -249,6 +249,14 @@ def palette_destinations(role: str = "member") -> list[dict]:
     dests = [
         {"title": "Home", "url": reverse("core:dashboard")},
         {"title": "System", "url": reverse("core:system_status")},
+        # System's own tabs (Story 55) — Measurements and Integrations lost
+        # their standalone nav entries (nora_nav = False) when they folded
+        # into here, matching the mockup's SYS_VIEWS exactly. Named
+        # explicitly so ⌘K can still find them, the same reason Home's own
+        # pages are named explicitly above rather than derived.
+        {"title": "System — Measurements", "url": f"{reverse('core:system_status')}?tab=measurements"},
+        {"title": "System — Integrations", "url": f"{reverse('core:system_status')}?tab=integrations"},
+        {"title": "System — Log", "url": f"{reverse('core:system_status')}?tab=log"},
         {"title": "Settings", "url": reverse("core:settings")},
     ]
     for group in navigation(role):
@@ -304,8 +312,12 @@ def wall_apps(role: str = "member") -> list[dict]:
         "title": "Home",
         "icon": icon("home"),
         "path": reverse("core:dashboard"),
+        # Matches the desktop rail's own "Home" group exactly (Story 54,
+        # corrected after missing this file the first time — the sidebar was
+        # fixed, this hardcoded second copy of the same four was not).
         "controls": [
             {"title": "Dashboard", "path": reverse("core:dashboard")},
+            {"title": "Alerts", "path": reverse("notifications:inbox")},
             {"title": "System", "path": reverse("core:system_status")},
             {"title": "Settings", "path": reverse("core:settings")},
         ],

@@ -1,0 +1,36 @@
+{% comment %}
+The integrations list — Story 55. Used to be its own full page (templates/
+integrations/index.html); the mockup's own System page (SYS_VIEWS.
+integrations) has no standalone Integrations destination at all, it is one of
+System's four tabs. `integrations:index` now redirects here rather than
+rendering this itself — see nora_home/integrations/views.py.
+{% endcomment %}
+{% load nh %}
+<div class="frow">
+  {% for integration in integrations %}
+    <a href="{% url 'integrations:detail' integration.pk %}" style="text-decoration:none;color:inherit">
+      {% nh_card title=integration.name %}
+        {% if not integration.is_enabled %}{% nh_badge text="off" status="" %}
+        {% elif integration.is_healthy %}{% nh_badge text="ok" status="ok" %}
+        {% else %}<span class="badge crit">{{ integration.consecutive_failures }} fails</span>{% endif %}
+        <p class="cap">Every {{ integration.interval_minutes }} min &middot; last ok {{ integration.last_success_at|default:"never" }}</p>
+      {% endnh_card %}
+    </a>
+  {% empty %}
+    {% nh_empty title="Nothing connected yet" %}
+  {% endfor %}
+</div>
+
+{% nh_card title="Available" subtitle="Integration classes registered in code. Add a row in the admin to switch one on; credentials go in .env, never the database." %}
+  <div class="frow">
+    {% for item in catalog %}
+      <div class="panel" style="padding:var(--pad)">
+        <h4 style="margin:0 0 6px;font-family:var(--font-mono);font-size:var(--lab);letter-spacing:.1em;text-transform:uppercase;color:var(--arc-300)">{{ item.name }}</h4>
+        <p class="cap">{{ item.description }}</p>
+        <code>{{ item.slug }}</code>
+      </div>
+    {% empty %}
+      {% nh_empty title="No integration classes registered" message="See nora/integrations/base.py." %}
+    {% endfor %}
+  </div>
+{% endnh_card %}

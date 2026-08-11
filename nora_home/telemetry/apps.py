@@ -17,5 +17,9 @@ class TelemetryConfig(NoraAppConfig):
     nora_category = Category.HOUSE
     nora_order = 35
     nora_url_prefix = "home/measurements/"
+    # Not a nav destination (Story 55) — the mockup's System page has no
+    # standalone Measurements entry, only a tab (SYS_VIEWS.measurements).
+    # index() redirects there; detail pages stay real and reachable by URL.
+    nora_nav = False
     nora_provides_mcp_tools = True
     nora_widgets = ["nora_home.telemetry.widgets.HouseVitalsWidget"]

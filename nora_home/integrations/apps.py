@@ -17,6 +17,10 @@ class IntegrationsConfig(NoraAppConfig):
     nora_category = Category.INTEGRATIONS
     nora_order = 10
     nora_url_prefix = "home/integrations/"
+    # Not a nav destination (Story 55) — the mockup's System page has no
+    # standalone Integrations entry, only a tab (SYS_VIEWS.integrations).
+    # index() redirects there; detail pages stay real and reachable by URL.
+    nora_nav = False
 
     def ready(self):
         from nora_home.integrations import providers  # noqa: F401

@@ -304,10 +304,12 @@ def test_the_activity_chart_only_stacks_sources_that_appeared(adult):
 # ── the page — merged into System, Story 47 ───────────────────────────────────
 
 def test_the_page_renders(client, admin_member):
-    """/home/log/ redirects; the actual page is System now."""
+    """/home/log/ redirects; the actual page is System's Log tab now
+    (Story 55 gave System four tabs — Health is the default, so Timeline only
+    renders when asked for explicitly)."""
     client.force_login(admin_member)
 
-    response = client.get(reverse("core:system_status"))
+    response = client.get(reverse("core:system_status"), {"tab": "log"})
 
     assert response.status_code == 200
     assert "Timeline" in response.content.decode()
@@ -335,12 +337,21 @@ def test_the_page_survives_a_hand_edited_query_string(client, admin_member):
     client.force_login(admin_member)
 
     response = client.get(reverse("core:system_status"),
-                          {"days": "nonsense", "severity": "banana",
+                          {"tab": "log", "days": "nonsense", "severity": "banana",
                            "source": "no-such-source"})
 
     assert response.status_code == 200
     assert response.context["days"] == houselog.DEFAULT_DAYS
     assert response.context["chosen_sources"] == []
+
+
+def test_an_unknown_tab_falls_back_to_health(client, admin_member):
+    client.force_login(admin_member)
+
+    response = client.get(reverse("core:system_status"), {"tab": "nonsense"})
+
+    assert response.status_code == 200
+    assert response.context["tab"] == "health"
 
 
 def test_the_page_needs_a_signed_in_member(client):
@@ -355,4 +366,4 @@ def test_the_old_url_redirects_there_with_its_query_string(client, admin_member)
     response = client.get(reverse("core:house_log"), {"days": "30"})
 
     assert response.status_code == 302
-    assert response["Location"] == reverse("core:system_status") + "?days=30"
+    assert response["Location"] == reverse("core:system_status") + "?days=30&tab=log"

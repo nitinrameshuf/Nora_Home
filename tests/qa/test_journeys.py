@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from tests.qa.conftest import open_actions_menu, visit
+from tests.qa.conftest import open_household_menu, visit
 
 pytestmark = pytest.mark.qa
 
@@ -26,9 +26,11 @@ def test_adding_a_widget_puts_it_on_the_screen_and_keeps_it(signed_in, console_e
     """
     visit(signed_in, "/home/")
 
-    before = signed_in.locator(".dash-tile").count()
+    before = signed_in.locator(".nh-tile").count()
 
-    open_actions_menu(signed_in)
+    # No menu to open first — Story 45 Phase B moved page actions ("Add a
+    # widget", "Rearrange") to render directly in the appbar. Only the
+    # household switcher stays behind a click now (open_household_menu).
     trigger = signed_in.locator("[data-dash-add]:visible").first
     if trigger.count() == 0:
         pytest.skip("no widget picker on this page")
@@ -45,7 +47,7 @@ def test_adding_a_widget_puts_it_on_the_screen_and_keeps_it(signed_in, console_e
 
     signed_in.wait_for_timeout(1500)
     signed_in.reload(wait_until="domcontentloaded"); signed_in.wait_for_timeout(1200)
-    after = signed_in.locator(".dash-tile").count()
+    after = signed_in.locator(".nh-tile").count()
 
     assert not console_errors, "adding a widget logged: " + "; ".join(console_errors)
     assert after > before, (
@@ -57,9 +59,9 @@ def test_the_home_screen_renders_its_tiles(signed_in):
     """A grid that renders zero tiles is what a broken widget payload looks
     like — the page still returns 200."""
     visit(signed_in, "/home/")
-    signed_in.wait_for_timeout(1200)  # Gridstack lays out after load
+    signed_in.wait_for_timeout(600)
 
-    assert signed_in.locator(".dash-tile").count() > 0, "the home screen is empty"
+    assert signed_in.locator(".nh-tile").count() > 0, "the home screen is empty"
 
 
 def test_no_widget_rendered_as_unavailable(signed_in):
@@ -82,8 +84,12 @@ def test_saving_the_overnight_schedule_persists(signed_in, console_errors):
     original = start.input_value()
     new_value = "3" if original != "3" else "4"
 
+    # Settings has no wrapping `.settings` class any more (Story 45, Phase B) —
+    # each section is its own {% nh_card %} with its own <form>, so the save
+    # button has to be found relative to the field being tested.
+    save = signed_in.locator("form:has(#wall_schedule_start) button[type=submit]").first
     start.fill(new_value)
-    signed_in.locator(".settings form button[type=submit]").first.click()
+    save.click()
     signed_in.wait_for_load_state("load")
 
     try:
@@ -93,18 +99,19 @@ def test_saving_the_overnight_schedule_persists(signed_in, console_errors):
     finally:
         # Leave the house as we found it — this runs against the real Pi.
         signed_in.locator("#wall_schedule_start").fill(original)
-        signed_in.locator(".settings form button[type=submit]").first.click()
+        signed_in.locator("form:has(#wall_schedule_start) button[type=submit]").first.click()
         signed_in.wait_for_load_state("load")
 
 
 def test_the_profile_menu_closes_when_you_click_away(signed_in):
-    """Reported directly: the dropdown opened but only closed by clicking the
-    same icon again. A pure-JS behaviour, invisible to every Python test."""
+    """A native <details> now (Story 45/49's .profile-menu, member_switcher
+    .html) — nh-app.js's wireProfileMenu() closes it on an outside click,
+    which is the one part not already free from using <details>."""
     visit(signed_in, "/home/")
 
-    trigger = signed_in.locator(".profile-trigger").first
+    trigger = signed_in.locator(".profile-menu summary").first
     if trigger.count() == 0:
-        pytest.skip("no profile menu on this surface")
+        pytest.skip("no household switcher on this surface")
     trigger.click()
     menu = signed_in.locator(".profile-menu")
     assert menu.get_attribute("open") is not None, "the menu did not open"
@@ -116,9 +123,12 @@ def test_the_profile_menu_closes_when_you_click_away(signed_in):
 
 
 def test_switching_to_everyone_shows_the_shared_view(signed_in):
+    """"Everyone" lives in the household switcher (.profile-menu), not behind
+    a separate actions menu — Story 45/49 folded who-you-are and what-you're-
+    viewing into one control."""
     visit(signed_in, "/home/")
 
-    open_actions_menu(signed_in)
+    open_household_menu(signed_in)
 
     everyone = signed_in.locator("form[action*='everyone'] button").first
     if everyone.count() == 0:
@@ -136,9 +146,9 @@ def test_the_nav_only_links_somewhere_real(signed_in):
     visit(signed_in, "/home/")
 
     hrefs = signed_in.eval_on_selector_all(
-        ".sidebar a[href]", "els => els.map(e => e.getAttribute('href'))")
+        ".rail a[href]", "els => els.map(e => e.getAttribute('href'))")
     hrefs = [h for h in hrefs if h and h.startswith("/")]
-    assert hrefs, "the sidebar has no links at all"
+    assert hrefs, "the rail has no links at all"
 
     broken = []
     for href in dict.fromkeys(hrefs):

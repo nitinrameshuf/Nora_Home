@@ -865,14 +865,20 @@ def test_no_page_bridges_a_stylesheet_on_the_phone_either(client, admin_member):
 
 
 def test_phone_tabs_lists_home_then_every_nav_app_in_registry_order():
+    """telemetry and integrations dropped to three (Story 55): both are
+    `nora_nav = False` now that Measurements and Integrations are System tabs
+    rather than nav destinations, matching the mockup's own SYS_VIEWS — so
+    phone_tabs(), which walks the same navigation() every other nav surface
+    does, drops them too. Alerts (notifications) keeps nav=True — it moved to
+    the desktop rail's Home group in Story 54, but that was a template-level
+    placement, not a registry change, so it is unaffected here."""
     from nora_home.core.registry import phone_tabs
 
     tabs = phone_tabs("admin")
 
     assert tabs[0] == {"slug": "home", "title": "Home", "url": "/home/"}
     slugs = [t["slug"] for t in tabs]
-    assert slugs[1:] == sorted(slugs[1:]) or len(slugs) == 5  # grounded below
-    assert set(slugs) == {"home", "todo", "notifications", "telemetry", "integrations"}
+    assert set(slugs) == {"home", "todo", "notifications"}
 
 
 @pytest.mark.django_db

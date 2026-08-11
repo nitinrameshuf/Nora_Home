@@ -33,7 +33,7 @@ import pytest
 from django.apps import apps as django_apps
 from django.conf import settings
 from django.test import override_settings
-from django.urls import Resolver404, resolve
+from django.urls import Resolver404, resolve, reverse
 
 from nora_home.core.registry import house_apps, navigation, registered_apps
 from nora_home.dashboard.widgets import Widget, load_widget
@@ -87,6 +87,22 @@ def test_it_reaches_the_navigation(installed):
     listed = {a.slug for group in navigation("admin") for a in group["apps"]}
 
     assert installed.slug in listed
+
+
+def test_it_reaches_the_rendered_sidebar(client, admin_member, installed):
+    """The data check above is not the same claim as this one — Story 54 found
+    the gap the hard way: desktop_shell.html hand-codes Home's own group and
+    only *filters* the Apps loop by slug, so a registry entry can be entirely
+    correct in navigation()'s return value while a template change still
+    leaves it unrendered (or renders it in the wrong place). "Reaches every
+    surface" has to mean the HTML a browser actually gets, not just the data
+    a template would have read from if it asked."""
+    client.force_login(admin_member)
+
+    body = client.get(reverse("core:dashboard")).content.decode()
+
+    assert installed.title in body, (
+        f"{installed.slug} is in navigation() but never rendered into the sidebar")
 
 
 def test_its_page_is_mounted_and_loads(client, admin_member, installed):

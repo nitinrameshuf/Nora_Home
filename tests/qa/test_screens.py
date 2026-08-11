@@ -61,14 +61,16 @@ def _wall_iframe_src(wall) -> str:
 
 
 def test_the_kiosk_connects_to_the_house(screens):
-    """The status dot. If the socket is down every button silently falls back to
-    the HTTP endpoint — which was itself broken for months."""
+    """The link lamp (Story 50's `.d-lamp`, replacing the old status dot). It
+    starts linked and only ever goes `.lost` — if the socket is down every key
+    on the panel is dead, which is why kiosk.js says so plainly rather than
+    leaving someone pressing keys that go nowhere."""
     _, kiosk = screens
 
-    offline = kiosk.eval_on_selector(
-        "[data-kiosk-status]", "el => el.classList.contains('is-offline')")
+    lost = kiosk.eval_on_selector(
+        "[data-desk-lamp]", "el => el.classList.contains('lost')")
 
-    assert offline is False, "the kiosk reports itself offline"
+    assert lost is False, "the kiosk reports the wall unreachable"
 
 
 def test_the_wall_serves_the_iframe_shell(screens):
@@ -105,21 +107,26 @@ def test_the_kiosk_stays_on_its_own_buttons(screens):
     kiosk.wait_for_timeout(1500)
 
     assert kiosk.url == before, f"the kiosk navigated away from itself: {kiosk.url}"
-    assert kiosk.locator("[data-kiosk-screen]").count() > 0, "the kiosk lost its button grid"
+    assert kiosk.locator("[data-desk]").count() > 0, "the kiosk lost its own control desk"
 
 
 def test_the_kiosk_has_no_buttons_that_do_nothing(screens):
     """The recurring bug in this subsystem is silence, not a crash: the bus
     relays anything and the browser ignores what it cannot handle, so a dead
     control looks identical to a working one. It has happened twice — Dim/Wake,
-    and the notification banner."""
+    and the notification banner.
+
+    Known actions match KIOSK_ACTIONS (nora_home/displays/consumers.py) as of
+    Story 51 — navigate/refresh/say relay straight to the wall; zoom/volume/
+    scroll are the desk's own faders and bend wheel. The pre-Story-50 button
+    grid's switch-app/show-menu are gone with it — the app scroller (a Picker,
+    assets/js/nh-picker.js) replaced both."""
     _, kiosk = screens
 
     actions = kiosk.eval_on_selector_all(
         "[data-kiosk-action]", "els => [...new Set(els.map(e => e.dataset.kioskAction))]")
 
-    # navigate/refresh go to the wall; switch-app/show-menu are local to the kiosk.
-    known = {"navigate", "refresh", "say", "switch-app", "show-menu"}
+    known = {"navigate", "refresh", "say", "zoom", "volume", "scroll"}
     unknown = set(actions) - known
 
     assert not unknown, f"the kiosk shows buttons for unimplemented actions: {sorted(unknown)}"
@@ -154,19 +161,13 @@ def test_the_kiosk_shows_no_error_toast_when_idle(screens):
     assert visible is False, f"the kiosk is showing: {toast.inner_text()!r}"
 
 
-def test_the_back_button_returns_without_disturbing_the_wall(screens):
-    """Tapping Apps on the kiosk should change only the kiosk."""
-    wall, kiosk = screens
-    kiosk.locator("[data-kiosk-action='navigate'][data-path]").nth(1).click()
-    kiosk.wait_for_timeout(1500)
-    wall_src = _wall_iframe_src(wall)
-
-    kiosk.locator("[data-kiosk-action='show-menu']").first.click()
-    kiosk.wait_for_timeout(800)
-
-    assert _wall_iframe_src(wall) == wall_src, "going back on the kiosk moved the wall"
-    menu = kiosk.locator("[data-kiosk-screen='menu']")
-    assert menu.is_visible(), "the kiosk did not return to its main menu"
+# test_the_back_button_returns_without_disturbing_the_wall used to live here.
+# Story 50 replaced the two-level button grid (a main menu, a per-app screen,
+# a back button between them) with the control desk: one app scroller (a
+# Picker) that swaps the key bank directly, no "menu" screen and no back
+# button at all — the feature this test checked no longer exists to check.
+# test_the_kiosk_stays_on_its_own_buttons above already covers the property
+# that mattered (picking an app never navigates the kiosk itself).
 
 
 def test_an_alert_reaches_the_wall_as_a_banner(screens, house_url):

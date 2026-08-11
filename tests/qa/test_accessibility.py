@@ -78,50 +78,52 @@ def test_page_passes_the_enforced_accessibility_rules(signed_in, name, path):
 
 
 # The text worth measuring: what a person actually reads on each surface.
+# Class names ported to the arc-reactor component set (Story 45, Phase B) —
+# `.setting__label` -> `.set-row .k`, `.dash-tile` -> `.nh-tile`, `.card-title`
+# -> `.card-h h4`, `.sidebar a` -> `.rail .nav` (Story 55).
 TEXT_TARGETS = [
-    ("body copy", ".card p, .setting__label, .dash-tile", WCAG_AA_NORMAL),
-    ("headings", "h1, h2, .card-title", WCAG_AA_LARGE),
-    ("sidebar links", ".sidebar a", WCAG_AA_NORMAL),
+    ("body copy", ".card p, .set-row .k, .nh-tile", WCAG_AA_NORMAL),
+    ("headings", "h1, h2, .card-h h4", WCAG_AA_LARGE),
+    ("nav links", ".rail .nav", WCAG_AA_NORMAL),
 ]
 
 
-@pytest.mark.parametrize("theme", ["dark", "light"])
+# Phase 8 (CLAUDE.md §4) deleted the light theme rather than rebuild it —
+# "dark only" — and removed season from the scene entirely (Story 46: "time
+# of day and real weather only"). Both used to be parametrized here; testing
+# a state the house cannot enter any more was pure noise, worse than a gap,
+# because a pass either way said nothing true. Dropped rather than left "for
+# when it comes back" — the same rule CLAUDE.md gives the mockup itself: a
+# check that looks plausible but tests nothing real is worse than no check.
+
 @pytest.mark.parametrize("what,selector,threshold",
                          TEXT_TARGETS, ids=[t[0] for t in TEXT_TARGETS])
-def test_text_is_readable_in_both_themes(signed_in, theme, what, selector, threshold):
-    """The light theme has never been checked on real hardware (CLAUDE.md §2).
-    Contrast is the part that can be checked without a person looking."""
+def test_text_is_readable(signed_in, what, selector, threshold):
     visit(signed_in, "/home/")
-    signed_in.evaluate(f"document.documentElement.setAttribute('data-theme', '{theme}')")
-    signed_in.wait_for_timeout(500)  # let the transition settle before measuring
+    signed_in.wait_for_timeout(500)  # let the scene settle before measuring
 
     ratio = measure_text_contrast(signed_in, selector)
     if ratio is None:
         pytest.skip(f"no {what} on this page")
 
-    assert ratio >= threshold, (
-        f"{what} in the {theme} theme measures {ratio:.2f}:1, below {threshold}:1")
+    assert ratio >= threshold, f"{what} measures {ratio:.2f}:1, below {threshold}:1"
 
 
-@pytest.mark.parametrize("theme", ["dark", "light"])
 @pytest.mark.parametrize("daypart", ["dawn", "noon", "dusk", "night"])
-def test_the_page_heading_is_readable_on_the_bare_sky(signed_in, theme, daypart):
-    """The heading sits directly on the scene with no pane beneath it, which is
-    what made the light theme unreadable: pane tuning could never reach it. Every
-    theme x daypart combination, because the sky changes under it all day."""
+def test_the_page_heading_is_readable_on_the_bare_sky(signed_in, daypart):
+    """The heading sits directly on the scene with no pane beneath it. Every
+    daypart, because the sky changes under it all day and a heading that reads
+    fine at noon has failed at night before (CLAUDE.md's own 2026-08-03 story)."""
     visit(signed_in, "/home/")
-    signed_in.evaluate(f"""() => {{
-        document.documentElement.setAttribute('data-theme', '{theme}');
-        document.documentElement.setAttribute('data-daypart', '{daypart}');
-    }}""")
+    signed_in.evaluate(
+        f"document.documentElement.setAttribute('data-daypart', '{daypart}')")
     signed_in.wait_for_timeout(600)
 
     ratio = measure_text_contrast(signed_in, "h1")
     if ratio is None:
         pytest.skip("no heading on this page")
 
-    assert ratio >= WCAG_AA_LARGE, (
-        f"the heading in the {theme} theme at {daypart} measures {ratio:.2f}:1")
+    assert ratio >= WCAG_AA_LARGE, f"the heading at {daypart} measures {ratio:.2f}:1"
 
 
 @pytest.mark.parametrize("daypart", ["dawn", "noon", "dusk", "night"])
@@ -134,27 +136,12 @@ def test_text_stays_readable_at_every_time_of_day(signed_in, daypart):
         f"document.documentElement.setAttribute('data-daypart', '{daypart}')")
     signed_in.wait_for_timeout(500)
 
-    ratio = measure_text_contrast(signed_in, ".dash-tile")
+    ratio = measure_text_contrast(signed_in, ".nh-tile")
     if ratio is None:
         pytest.skip("no tiles on the home screen")
 
     assert ratio >= WCAG_AA_NORMAL, (
         f"home screen text at {daypart} measures {ratio:.2f}:1")
-
-
-@pytest.mark.parametrize("season", ["winter", "spring", "summer", "autumn"])
-def test_text_stays_readable_in_every_season(signed_in, season):
-    visit(signed_in, "/home/")
-    signed_in.evaluate(
-        f"document.documentElement.setAttribute('data-season', '{season}')")
-    signed_in.wait_for_timeout(500)
-
-    ratio = measure_text_contrast(signed_in, ".dash-tile")
-    if ratio is None:
-        pytest.skip("no tiles on the home screen")
-
-    assert ratio >= WCAG_AA_NORMAL, (
-        f"home screen text in {season} measures {ratio:.2f}:1")
 
 
 def test_the_wall_is_readable_at_its_own_size(signed_in):
@@ -176,39 +163,41 @@ def test_the_wall_is_readable_at_its_own_size(signed_in):
 # (1.94:1) and passed at night (7.79:1), so the bug was invisible for a whole
 # run and only appeared when the suite happened to be run again in daylight. A
 # check on a surface whose background changes all day has to pin the background.
-@pytest.mark.parametrize("theme", ["dark", "light"])
+#
+# Story 50 rebuilt the kiosk as a control desk — `.kiosk-tile__title`/
+# `.kiosk-tile__hint`/`.kiosk-header strong` are the pre-Story-50 button grid.
+# Every key's label is now `.hkey .lg` (the desk's illuminated square key);
+# the one "header" text worth checking is the dot-matrix readout showing
+# which app the wall is on, `.d-readout`. Dark is the only theme (Phase 8,
+# CLAUDE.md §4), so "light" is dropped from the parametrize below too.
 @pytest.mark.parametrize("daypart", ["dawn", "noon", "dusk", "night"])
 @pytest.mark.parametrize("what,selector", [
-    ("tile titles", ".kiosk-tile__title"),
-    ("tile hints", ".kiosk-tile__hint"),
-    ("the header", ".kiosk-header strong"),
+    ("key labels", ".hkey .lg"),
+    ("the readout", ".d-readout"),
 ])
-def test_the_kiosk_is_readable_at_every_hour(signed_in, theme, daypart,
-                                             what, selector):
+def test_the_kiosk_is_readable_at_every_hour(signed_in, daypart, what, selector):
     """1024x600 — the real panel. A wall-mounted control surface read at arm's
     length in a hallway, and daylight is when someone is standing at it."""
     signed_in.set_viewport_size({"width": 1024, "height": 600})
     visit(signed_in, "/home/displays/kiosk/")
-    signed_in.evaluate(f"""() => {{
-        document.documentElement.setAttribute('data-theme', '{theme}');
-        document.documentElement.setAttribute('data-daypart', '{daypart}');
-    }}""")
+    signed_in.evaluate(
+        f"document.documentElement.setAttribute('data-daypart', '{daypart}')")
     signed_in.wait_for_timeout(600)
 
     ratio = measure_text_contrast(signed_in, selector)
     if ratio is None:
         pytest.skip(f"no {what} on the kiosk")
 
-    assert ratio >= WCAG_AA_NORMAL, (
-        f"{what} on the kiosk, {theme} theme at {daypart}: {ratio:.2f}:1")
+    assert ratio >= WCAG_AA_NORMAL, f"{what} on the kiosk at {daypart}: {ratio:.2f}:1"
 
 
 def test_the_settings_labels_are_readable(signed_in):
     """axe flagged these at 3.25:1; measured from pixels they are fine. Kept as
-    a real check so a future palette change is caught honestly."""
+    a real check so a future palette change is caught honestly. `.setting__
+    label` -> `.set-row .k` (Story 45, Phase B)."""
     visit(signed_in, "/home/settings/")
 
-    ratio = measure_text_contrast(signed_in, ".setting__label")
+    ratio = measure_text_contrast(signed_in, ".set-row .k")
     if ratio is None:
         pytest.skip("no settings rows")
 

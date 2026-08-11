@@ -24,17 +24,18 @@ from nora_home.core.registry import registered_apps
 pytestmark = pytest.mark.django_db
 
 
-# Every platform page a person can reach, by URL name. core:house_log is
-# deliberately not here — Story 47 turned it into a redirect (see below),
-# not a page that renders 200 on its own.
+# Every platform page a person can reach, by URL name. core:house_log,
+# telemetry:index and integrations:index are deliberately not here — Story 47
+# and Story 55 turned all three into redirects (see below), not pages that
+# render 200 on their own. Measurements and Integrations folded into
+# core:system_status as tabs (Story 55) — the mockup's own SYS_VIEWS never
+# gave either one a standalone destination.
 PLATFORM_PAGES = [
     "core:dashboard",
     "core:system_status",
     "core:settings",
     "accounts:household",
     "notifications:inbox",
-    "telemetry:index",
-    "integrations:index",
     "ai:console",
     "todo:board",
     "todo:calendar",
@@ -271,17 +272,18 @@ def test_unticking_the_schedule_disables_it(client, adult):
 # ── the ⌘K palette tells the truth (Story 47 deleted the Apps directory) ─────
 
 def test_the_palette_lists_home_and_every_nav_app(client, admin_member):
-    """Home is the base app; the only things called apps are the four
-    registered apps with nav=True. A house app leaking in unnoticed, or a
-    platform page silently dropping out, would both be bugs the search box
-    would otherwise hide."""
+    """Home is the base app; Todo and Alerts are the only nav=True apps left
+    (Story 55 — Measurements and Integrations became System tabs, matching
+    the mockup's own SYS_VIEWS, with no standalone destination of their own).
+    A house app leaking in unnoticed, or a platform page silently dropping
+    out, would both be bugs the search box would otherwise hide."""
     from nora_home.core.registry import palette_destinations
 
     client.force_login(admin_member)
 
     titles = [d["title"] for d in palette_destinations("admin")]
-    for expected in ("Home", "System", "Settings", "Alerts", "Measurements",
-                     "Integrations"):
+    for expected in ("Home", "System", "System — Measurements",
+                     "System — Integrations", "System — Log", "Settings", "Alerts"):
         assert expected in titles, f"{expected} is missing from the palette"
     # Todo declares sections, so its own bare title never appears — "Todo —
     # Tasks" etc. does instead. See palette_destinations()'s own docstring.
@@ -311,15 +313,20 @@ def test_the_palette_is_empty_when_signed_out(rf):
     assert house(request)["nh_palette"] == []
 
 
-# ── the old House log URL still lands somewhere useful ───────────────────────
+# ── the old House log / Measurements / Integrations URLs still land somewhere useful ──
+# All three used to be real pages; Story 55 folded Measurements and
+# Integrations into System as tabs, matching the mockup's SYS_VIEWS exactly —
+# same shape as Story 47's earlier House-log-into-System redirect.
 
-def test_the_old_log_url_redirects_to_system(client, admin_member):
+def test_the_old_log_url_redirects_to_the_log_tab(client, admin_member):
+    """Forces ?tab=log explicitly (Story 55) — System defaults to Health now
+    that it has four tabs, so a bare redirect would land on the wrong one."""
     client.force_login(admin_member)
 
     response = client.get("/home/log/")
 
     assert response.status_code == 302
-    assert response["Location"] == reverse("core:system_status")
+    assert response["Location"] == reverse("core:system_status") + "?tab=log"
 
 
 def test_the_old_log_url_keeps_its_query_string(client, admin_member):
@@ -330,7 +337,26 @@ def test_the_old_log_url_keeps_its_query_string(client, admin_member):
     response = client.get("/home/log/", {"days": "30", "severity": "warning"})
 
     assert response.status_code == 302
-    assert response["Location"] == reverse("core:system_status") + "?days=30&severity=warning"
+    assert response["Location"] == (
+        reverse("core:system_status") + "?days=30&severity=warning&tab=log")
+
+
+def test_the_old_measurements_url_redirects_to_its_system_tab(client, admin_member):
+    client.force_login(admin_member)
+
+    response = client.get(reverse("telemetry:index"))
+
+    assert response.status_code == 302
+    assert response["Location"] == reverse("core:system_status") + "?tab=measurements"
+
+
+def test_the_old_integrations_url_redirects_to_its_system_tab(client, admin_member):
+    client.force_login(admin_member)
+
+    response = client.get(reverse("integrations:index"))
+
+    assert response.status_code == 302
+    assert response["Location"] == reverse("core:system_status") + "?tab=integrations"
 
 
 # ── error pages ──────────────────────────────────────────────────────────────
