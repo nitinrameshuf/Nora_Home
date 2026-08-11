@@ -228,6 +228,7 @@ write it down. Run `manage.py sync_docs` after changing the class.
 
 | Declare | Default | Effect |
 |---|---|---|
+| `nora_actions` · _list[dict]_ | — | |
 | `nora_category` · _str_ | `'house'` | |
 | `nora_color` · _str_ | — | |
 | `nora_dashboard_cards` · _list[str]_ | — | |

@@ -88,7 +88,8 @@ def test_the_alert_banner_is_still_handled():
 def test_kiosk_actions_stay_a_short_allow_list():
     """Actions accumulate; handlers do not. Keeping the list tight is what stops
     the two drifting apart again."""
-    assert KIOSK_ACTIONS == {"navigate", "refresh", "say", "scroll", "zoom", "volume"}
+    assert KIOSK_ACTIONS == {"navigate", "refresh", "say", "scroll", "zoom", "volume",
+                             "appaction"}
 
 
 # ── the bus ──────────────────────────────────────────────────────────────────

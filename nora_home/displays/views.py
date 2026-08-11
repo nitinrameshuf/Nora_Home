@@ -47,6 +47,11 @@ def kiosk(request):
     navigates to, because navigate/refresh/banner is the entire vocabulary
     wall-live.js implements.
 
+    An app's `nora_actions` filtered to `kiosk: True` (Story 57) become a
+    second, smaller row of "Do" keys below the destination bank — these carry
+    a verb, not a path, and the wall resolves it to a real button on whatever
+    page is already showing rather than navigating anywhere.
+
     The desk also carries controls whose capability the platform does not have
     yet — the two faders, the scroll wheel and wall-only power, all owned by
     Story 51. They render *dead* (see `.is-dead` in components.css and the
@@ -62,6 +67,11 @@ def kiosk(request):
     for index, app in enumerate(desk):
         for key_index, control in enumerate(app["controls"]):
             control["hue"] = KEY_HUES[key_index % len(KEY_HUES)]
+        # Offset by 5 (matching the mockup's own KEY_HUES[(i+5)%len]) so an
+        # app's "Do" keys (Story 57) never land on the same colour as its
+        # destination keys directly above them.
+        for action_index, action in enumerate(app["actions"]):
+            action["hue"] = KEY_HUES[(action_index + 5) % len(KEY_HUES)]
         app["index"] = index
 
     from nora_home.notifications import volume as volume_settings

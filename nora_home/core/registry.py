@@ -120,6 +120,17 @@ class NoraAppConfig(AppConfig):
     # sidebar is the platform's navigation, and until 2026-08-07 it showed the
     # house's own pages and nothing else no matter where you were.
     nora_sections: list[dict] = []
+    # A verb this app offers, declared once and rendered per surface (Story
+    # 57) — desktop and phone get a real button, the kiosk gets a key when
+    # `kiosk` is True, the wall gets nothing because it is read-only. Shape:
+    # [{"verb": "add-widget", "title": "Add a widget", "kiosk": False}].
+    # `kiosk` marks whether the verb fits a physical key at all: anything
+    # needing typing or a choice from the person standing at the panel
+    # cannot — "New task" opens a form, so it stays desktop/phone-only.
+    # Today this only *describes* an app's existing buttons for the kiosk's
+    # benefit; the desktop button each verb names already existed and is
+    # unchanged by this list.
+    nora_actions: list[dict] = []
 
     # Capability flags the platform uses to decide what to wire up
     nora_provides_mcp_tools: bool = False
@@ -157,6 +168,7 @@ class NoraAppConfig(AppConfig):
             widgets=list(self.nora_widgets),
             kiosk_controls=list(self.nora_kiosk_controls),
             sections=list(self.nora_sections),
+            actions=list(self.nora_actions),
             provides_mcp_tools=self.nora_provides_mcp_tools,
             telemetry_series=list(self.nora_owns_telemetry_series),
             minimum_role=self.nora_minimum_role,
@@ -183,6 +195,7 @@ class AppMetadata:
     widgets: list[str] = field(default_factory=list)
     kiosk_controls: list[dict] = field(default_factory=list)
     sections: list[dict] = field(default_factory=list)
+    actions: list[dict] = field(default_factory=list)
     provides_mcp_tools: bool = False
     telemetry_series: list[str] = field(default_factory=list)
     minimum_role: str = "member"
@@ -292,20 +305,34 @@ def wall_apps(role: str = "member") -> list[dict]:
     One entry per destination the desk's app scroller offers — Home first,
     then every nav=True app — each carrying the keys its bank shows:
 
-        {"slug", "title", "icon", "path", "controls": [{"title", "path"}]}
+        {"slug", "title", "icon", "path", "controls": [{"title", "path"}],
+         "actions": [{"verb", "title"}]}
 
     `controls` is the app's own `nora_kiosk_controls`, which is why installing
     an app gives it a key bank with no platform change. An app that declares
     none still gets one key: without it the bank would be empty and the desk
     would read as broken rather than as "this app has one destination".
 
+    `actions` (Story 57) is `nora_actions` filtered to `kiosk: True` — a verb
+    that needs typing or a choice cannot fit a physical key, so it never
+    reaches this list at all; the desk template only has to render whatever
+    is here.
+
     Home is not a registered app with nav=True (it is the base platform, see
     app_for_path) so its own destinations are named here — the same three the
-    desktop rail's "Home" group holds.
+    desktop rail's "Home" group holds — but its actions still come from
+    CoreConfig.nora_actions rather than a second hardcoded copy, which is
+    exactly the trap Story 54 fell into with the sections above before being
+    corrected.
     """
+    from django.apps import apps as django_apps
     from django.urls import reverse
 
     from nora_home.ui.icons import icon
+
+    home_actions = [{"verb": a["verb"], "title": a["title"]}
+                    for a in django_apps.get_app_config("core").nora_actions
+                    if a.get("kiosk")]
 
     desk = [{
         "slug": "home",
@@ -321,17 +348,21 @@ def wall_apps(role: str = "member") -> list[dict]:
             {"title": "System", "path": reverse("core:system_status")},
             {"title": "Settings", "path": reverse("core:settings")},
         ],
+        "actions": home_actions,
     }]
     for group in navigation(role):
         for app in group["apps"]:
             controls = [{"title": c["title"], "path": c["path"]}
                         for c in app.kiosk_controls]
+            actions = [{"verb": a["verb"], "title": a["title"]}
+                       for a in app.actions if a.get("kiosk")]
             desk.append({
                 "slug": app.slug,
                 "title": app.title,
                 "icon": icon(app.icon),
                 "path": app.url,
                 "controls": controls or [{"title": "Open", "path": app.url}],
+                "actions": actions,
             })
     return desk
 

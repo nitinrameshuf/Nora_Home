@@ -41,6 +41,10 @@
       };
       if (key.hasAttribute("data-path")) payload.path = key.getAttribute("data-path");
       if (key.hasAttribute("data-delta")) payload.delta = key.getAttribute("data-delta");
+      // Story 57 — a "Do" key (data-kiosk-action="appaction") carries which
+      // verb it is, e.g. "rearrange"; the wall matches it to a real button
+      // on whatever page it's already showing (wall-live.js's own handler).
+      if (key.hasAttribute("data-verb")) payload.verb = key.getAttribute("data-verb");
       Kiosk.send(payload);
     });
 

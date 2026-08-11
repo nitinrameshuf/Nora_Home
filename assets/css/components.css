@@ -707,6 +707,12 @@
   }
   .hkey.is-pressed { transform: translateY(2px); border-color: var(--arc-500); }
 
+  /* An app's "Do" keys (Story 57) — narrower and shorter than the .d-bank
+     destination grid above, since there are usually one or two, not a full
+     bank. Copied from the mockup's own .d-acts exactly. */
+  .d-acts { flex: none; display: flex; gap: 11px; flex-wrap: wrap; }
+  .d-acts .hkey { width: 148px; height: 56px; min-height: 0; }
+
   /* ── the wall's scroll control (Story 51) ── */
   .d-scroll {
     border-left: 1px solid #06232e; box-shadow: -1px 0 0 rgba(150, 210, 240, .05);

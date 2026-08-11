@@ -76,9 +76,28 @@
       case "banner":
         WallLive.banner(data);
         break;
+      case "appaction":
+        WallLive.appAction(data.verb);
+        break;
       default:
         break;
     }
+  };
+
+  /* A kiosk "Do" key (Story 57) names a verb from some app's nora_actions —
+   * "rearrange", say. "One implementation, whichever surface asked" (the
+   * design this mirrors): rather than reimplementing what Rearrange does,
+   * this finds the real button for that verb on whatever page the iframe
+   * already has loaded and clicks it, same as if a finger had touched the
+   * glass. Same-origin iframe, so contentDocument is reachable directly —
+   * no postMessage needed.
+   */
+  WallLive.appAction = function (verb) {
+    if (!verb || !WallLive.frame) return;
+    var doc = WallLive.frame.contentDocument;
+    if (!doc) return;
+    var target = doc.querySelector('[data-action="' + verb + '"]');
+    if (target) target.click();
   };
 
   /* Scrolling the wall (Story 51).

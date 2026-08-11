@@ -96,6 +96,26 @@ viewport under the 860px breakpoint while media queries still report 1024.
               </button>
             {% endfor %}
           </div>
+          {% comment %}
+          An app's "Do" keys (Story 57) — nora_actions filtered to kiosk:True.
+          Shares data-desk-bank with the destination bank above on purpose:
+          kiosk.js's own bank-visibility toggle already matches on that
+          attribute, so both show and hide together with no JS change. Must
+          stay after the .d-bank above in DOM order — Kiosk.visibleBank()
+          and updateBankLabel() both use the *first* [data-desk-bank] match,
+          which is the pagination-relevant destination bank, not this one.
+          {% endcomment %}
+          {% if app.actions %}
+            <div class="d-acts" data-desk-bank="{{ app.slug }}" {% if app.slug != current_app.slug %}hidden{% endif %}>
+              {% for action in app.actions %}
+                <button type="button" class="hkey act" style="--key:{{ action.hue }}"
+                        data-kiosk-action="appaction" data-verb="{{ action.verb }}">
+                  <span class="led"></span>
+                  <span class="lg">{{ action.title }}</span>
+                </button>
+              {% endfor %}
+            </div>
+          {% endif %}
         {% endfor %}
       </div>
 

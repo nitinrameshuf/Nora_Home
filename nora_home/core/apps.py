@@ -22,6 +22,13 @@ class CoreConfig(NoraAppConfig):
         "nora_home.core.widgets.CpuTemperatureWidget",
         "nora_home.core.widgets.DiskWidget",
     ]
+    # Story 57 — matches the mockup's own Home REGISTRY entry exactly:
+    # rearrange fits a physical key (it's a pure state toggle), add-widget
+    # does not (it opens a picker that needs a choice).
+    nora_actions = [
+        {"verb": "rearrange", "title": "Rearrange", "kiosk": True},
+        {"verb": "add-widget", "title": "Add a widget", "kiosk": False},
+    ]
 
     def ready(self):
         from nora_home.core import signals  # noqa: F401

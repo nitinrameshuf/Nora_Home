@@ -70,3 +70,16 @@ class TodoConfig(NoraAppConfig):
     ]
 
     nora_kiosk_controls = nora_sections
+
+    # Story 57. The mockup's own REGISTRY also declares complete-next and
+    # snooze-next for Todo, both kiosk:true — deliberately not carried over
+    # here. Neither has a real handler in this app today (no "complete the
+    # next due task" or "snooze it an hour" entry point exists anywhere,
+    # kiosk or otherwise), and inventing one would be new product behaviour
+    # nobody has approved, not a declare-once-derive-everywhere refactor.
+    # new-task is kiosk:false on purpose too: since Story 53, creating a task
+    # means picking a priority column, and picking a column is a choice — the
+    # same rule that keeps "Add a widget" off the kiosk.
+    nora_actions = [
+        {"verb": "new-task", "title": "New task", "kiosk": False},
+    ]

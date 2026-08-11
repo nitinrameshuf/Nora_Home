@@ -169,3 +169,81 @@ def test_registry_is_clean_once_the_app_is_gone():
     """Runs outside the fixture: by now the app is uninstalled again."""
     assert SLUG not in {a.slug for a in registered_apps()}
     assert not django_apps.is_installed(CONTRACT_APP)
+
+
+# ── nora_actions: declare once, derive everywhere (Story 57) ─────────────────
+#
+# A verb an app declares is supposed to reach two surfaces automatically: a
+# real button on desktop/phone (data-action="<verb>"), and — only when
+# kiosk=True — a key on the kiosk's own "Do" row (data-kiosk-action="appaction"
+# data-verb="<verb>"). wall-live.js's own handler for "appaction" is already
+# covered by test_displays.py's "every relayed kiosk action has a handler"
+# check. What's missing without these tests: an app could declare a verb with
+# no real button behind it anywhere, and nothing would fail — "a dead button
+# with no error anywhere," the exact shape of bug nora_actions exists to rule
+# out.
+
+def test_every_declared_action_has_the_right_shape():
+    """Every nora_actions entry across every registered app, not just Home
+    and Todo — this is the structural contract the other two tests below
+    assume holds before they go looking for a real button."""
+    for meta in registered_apps():
+        for action in meta.actions:
+            assert set(action) >= {"verb", "title", "kiosk"}, (
+                f"{meta.slug}'s action {action!r} is missing a required key")
+            assert isinstance(action["kiosk"], bool), (
+                f"{meta.slug}'s action {action['verb']!r} kiosk flag is not a bool")
+
+
+@pytest.mark.django_db
+def test_every_desktop_action_has_a_real_button(client, admin_member):
+    """Home's dashboard and Todo's board are where CoreConfig/TodoConfig's own
+    nora_actions verbs live today — checked against the actually-rendered
+    HTML, not the registry's own claim about itself (test_it_reaches_the_
+    rendered_sidebar, Story 55, is the same discipline applied here)."""
+    client.force_login(admin_member)
+
+    core_actions = django_apps.get_app_config("core").nora_actions
+    home_body = client.get(reverse("core:dashboard")).content.decode()
+    for action in core_actions:
+        assert f'data-action="{action["verb"]}"' in home_body, (
+            f"Home declares {action['verb']!r} but /home/ has no button for it")
+
+    todo_actions = django_apps.get_app_config("todo").nora_actions
+    board_body = client.get(reverse("todo:board")).content.decode()
+    for action in todo_actions:
+        assert f'data-action="{action["verb"]}"' in board_body, (
+            f"Todo declares {action['verb']!r} but /todo/ has no button for it")
+
+
+@pytest.mark.django_db
+def test_every_kiosk_eligible_action_has_a_key_on_the_desk(client, admin_member,
+                                                            kiosk_display):
+    """Only kiosk:True verbs should reach the desk at all — a kiosk:False verb
+    (add-widget, new-task) needs a choice or typing and correctly stays off
+    it, so this also guards against one leaking onto a physical key."""
+    client.force_login(admin_member)
+
+    body = client.get(reverse("displays:kiosk")).content.decode()
+
+    for meta in registered_apps():
+        if meta.slug != "todo":
+            continue
+        for action in meta.actions:
+            marker = f'data-verb="{action["verb"]}"'
+            if action["kiosk"]:
+                assert marker in body, (
+                    f"{action['verb']!r} is kiosk:True but has no key on the desk")
+            else:
+                assert marker not in body, (
+                    f"{action['verb']!r} is kiosk:False but rendered a key anyway")
+
+    core_actions = django_apps.get_app_config("core").nora_actions
+    for action in core_actions:
+        marker = f'data-verb="{action["verb"]}"'
+        if action["kiosk"]:
+            assert marker in body, (
+                f"Home's {action['verb']!r} is kiosk:True but has no key on the desk")
+        else:
+            assert marker not in body, (
+                f"Home's {action['verb']!r} is kiosk:False but rendered a key anyway")

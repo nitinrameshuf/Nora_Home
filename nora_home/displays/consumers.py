@@ -38,7 +38,12 @@ logger = logging.getLogger(__name__)
 # commit, which is what the rule above demands), while `zoom` is handled
 # server-side — it writes a house setting and turns into a `refresh`, so the
 # wall needs no handler for it at all.
-KIOSK_ACTIONS = {"navigate", "refresh", "say", "scroll", "zoom", "volume"}
+#
+# Story 57 adds `appaction`: a "Do" key for one of an app's nora_actions
+# (e.g. rearrange). It rides the same relayed-straight-through path as
+# navigate/scroll — the verb travels in the payload unparsed, same as
+# navigate's `path` — so wall-live.js needs a handler for it, same rule.
+KIOSK_ACTIONS = {"navigate", "refresh", "say", "scroll", "zoom", "volume", "appaction"}
 
 # The subset that is *not* relayed verbatim, and so is exempt from the
 # "wall-live.js must implement it" rule the test enforces.

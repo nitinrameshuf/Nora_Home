@@ -5148,3 +5148,77 @@ silently does nothing look identical from the outside, which is exactly how
 this subsystem's two prior real bugs (the kiosk's Dim/Wake buttons, the
 dropped banner notification) happened. `./scripts/run-tests.sh` green
 (1060 passed).
+
+### 2026-08-11 — Story 57: nora_actions
+A new `NoraAppConfig` field, `nora_actions` — `[{"verb", "title", "kiosk"}]`
+— alongside `nora_sections`, same shape, same "declare once, derive
+everywhere" reasoning. `AppMetadata` and `nora_home_metadata` both carry it
+through the same plumbing `nora_kiosk_controls`/`nora_sections` already use.
+`wall_apps()` now also returns each app's `actions` filtered to `kiosk:
+True` — Home's read from `CoreConfig.nora_actions` via
+`django_apps.get_app_config("core")` rather than a second hardcoded copy,
+which is exactly the trap `wall_apps()`'s own `controls` list fell into
+once already (Story 54) before being corrected.
+
+**Declared only what already has a real, working handler — not the
+mockup's full set.** The mockup's own `REGISTRY` also gives Todo
+`complete-next` and `snooze-next`, both `kiosk: true`. Neither exists
+anywhere in this app today — no "complete the next due task" or "snooze it
+an hour" entry point, kiosk or otherwise — so declaring them would be
+inventing new product behaviour under cover of a plumbing story, not
+describing something that already works. Left out on purpose, with the
+reasoning written down in `nora_home/todo/apps.py` rather than silently
+dropped. Home's `rearrange` (kiosk:true) and `add-widget` (kiosk:false),
+and Todo's `new-task` (kiosk:false, since Story 53 creating a task means
+picking a priority column — a choice, the same rule that keeps
+`add-widget` off a key) all matched real, already-working buttons and were
+declared as-is.
+
+**The full round trip, not just the declaration**, since "a verb pointing
+at nothing is a dead button with no error anywhere" is the story's own
+stated failure mode to guard against:
+- `data-action="<verb>"` added to the real existing button for each verb
+  (`templates/dashboard/home.html`, `templates/todo/board.html` — the
+  Priority 2 column's "Add task", the one reasonable default when the
+  trigger is remote rather than someone already looking at a column) —
+  additive, alongside whatever attribute the page's own JS already used
+  to find the button, so nothing already working could regress.
+- The kiosk's desk (`templates/displays/kiosk.html`) grew a second row per
+  app, `.d-acts` (copied from the mockup's own CSS exactly), for
+  `kiosk: True` verbs — sharing `data-desk-bank="<slug>"` with the
+  destination bank above it on purpose, so kiosk.js's existing
+  show/hide-by-slug toggle covers both with no JS change, as long as the
+  `.d-bank` stays first in the DOM (`Kiosk.visibleBank()` and
+  `updateBankLabel()` both take the *first* match).
+- `KIOSK_ACTIONS` gained `"appaction"` (`nora_home/displays/consumers.py`)
+  — it rides the same relayed-straight-through path `navigate`/`scroll`
+  already use, so no new server-side handling was needed, only the
+  allow-list entry.
+- `wall-live.js` grew `case "appaction":`, which finds
+  `[data-action="<verb>"]` inside its same-origin iframe and clicks it —
+  "one implementation, whichever surface asked" (the mockup's own comment
+  for this exact mechanism): the kiosk key and the desktop button both end
+  up triggering the identical real button, never a second reimplementation
+  of what it does.
+
+Three new tests in `tests/test_app_contract.py`: every declared action has
+the right shape (verb/title/kiosk keys, kiosk is a real bool); every
+declared verb has a real `data-action` button on the real rendered
+Home/Todo page (not the registry's own claim about itself — same
+discipline as Story 55's `test_it_reaches_the_rendered_sidebar`); and every
+`kiosk: True` verb has a key on the real rendered desk while every
+`kiosk: False` verb correctly does not. `test_displays.py`'s existing
+`test_kiosk_actions_stay_a_short_allow_list` and
+`test_every_relayed_kiosk_action_has_a_handler_on_the_wall` both extended
+automatically once `appaction` was added — no separate wall-handler test
+needed, since Story 55/earlier stories already guard that class of bug.
+`manage.py sync_docs` picked up the new declaration in
+`docs/Main_App/DEVELOPMENT.md`'s generated table. `./scripts/run-tests.sh`
+green (1063 passed).
+
+Verified locally in a browser before deploying: the kiosk's Home bank shows
+a real "REARRANGE" key below the destination grid; Todo's bank shows none
+(`new-task` is kiosk:false); clicking Home's real "Rearrange" button still
+enters editing mode exactly as before — the additive `data-action`
+attribute changed nothing about the existing behaviour. Not yet deployed
+or seen sending a real kiosk tap through to a real wall click.

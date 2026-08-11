@@ -14,10 +14,18 @@ the mockup makes (S.editing ? [Shuffle, Done] : [..., Rearrange, Add a
 widget]). dashboard.js's toggleEdit() flips `hidden` on both alongside the
 Rearrange/Done label swap it already did.
 {% endcomment %}
+{% comment %}
+data-action="<verb>" (Story 57) is a second, additive attribute alongside
+the bare data-dash-* ones above — dashboard.js still finds these buttons the
+same way it always has. data-action exists so the wall can find the same
+real button remotely: a kiosk "Do" key sends its verb, and wall-live.js
+clicks whatever [data-action="<verb>"] is on the page already loaded in its
+iframe, rather than reimplementing what the button does a second time.
+{% endcomment %}
 {% block actions %}
   <button class="btn" type="button" data-dash-shuffle hidden>Shuffle</button>
-  <button class="btn" type="button" data-dash-add>Add a widget</button>
-  <button class="btn ghost" type="button" data-dash-edit>Rearrange</button>
+  <button class="btn" type="button" data-dash-add data-action="add-widget">Add a widget</button>
+  <button class="btn ghost" type="button" data-dash-edit data-action="rearrange">Rearrange</button>
 {% endblock %}
 
 {% block content %}
