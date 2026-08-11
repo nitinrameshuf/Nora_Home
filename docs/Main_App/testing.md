@@ -323,30 +323,19 @@ half-started house. `./nora help` lists the rest.
 
 > ### If the house suddenly looks empty after a deploy, it is not
 >
-> `.env` was tracked in git for two days (fixed 2026-08-05 — it and `.env.*` are
-> ignored now), and while it was, the `git pull` inside `./nora upgrade` replaced
-> the house's real configuration with `.env.example`'s laptop defaults. The
-> rebuild that followed brought `web` up on a fresh, empty SQLite database in its
-> own container layer, because **there is no volume for `db.sqlite3`**.
->
-> The specific cause is fixed; the shape of the failure is worth remembering,
-> because anything that changes `.env` produces it. **It looks exactly like the
-> house losing all its data, and it is not.** MySQL still holds every row, and
-> any container you did *not* recreate is still using it. Do not restore from a
-> backup on this evidence alone — ask what the app is actually connected to:
+> **It looks exactly like the house losing all its data, and it is not** — the
+> shape of the failure and why (CLAUDE.md §4, ".env was tracked in git for two
+> days") is worth reading once, not restated here. What to actually do: ask
+> what the app is connected to before concluding anything —
 >
 > ```bash
 > docker compose exec -T web python manage.py shell -c "
 > from django.conf import settings; print(settings.DATABASES['default'])"
 > ```
 >
-> If it says sqlite and you expected MySQL, rebuild `.env` from a container that
-> has not been recreated — it kept the environment it started with, which makes
-> it the best record of the correct values — then `./nora recreate`:
->
-> ```bash
-> docker inspect nora-home-worker-1 --format '{{range .Config.Env}}{{println .}}{{end}}'
-> ```
+> — and if it says sqlite when you expected MySQL, rebuild `.env` from a
+> container that was not recreated (CLAUDE.md §4 has the exact commands),
+> then `./nora recreate`.
 
 The ones worth knowing while debugging:
 

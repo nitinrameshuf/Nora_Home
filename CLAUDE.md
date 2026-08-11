@@ -1033,13 +1033,18 @@ claiming a platform prefix.
 
 **Web app in kiosk mode, not a native app.** See §5.
 
-**Apache ECharts + Gridstack.js, vendored, no build step.** ECharts because it
-handles the whole range from sparkline to heatmap,
-themes cleanly, and renders acceptably on a Pi. Gridstack for the draggable home
-grid. Both are vendored into `static/nora_home/vendor/` rather than pulled from a CDN,
-because the house must work with the internet down. **There is deliberately no npm,
-no bundler, and no framework** — a family member's agent should be able to add a
-chart without a toolchain, and the Pi should never run a build.
+**Apache ECharts + Gridstack.js, vendored, no build step of their own.** ECharts
+because it handles the whole range from sparkline to heatmap, themes cleanly, and
+renders acceptably on a Pi. Gridstack for the draggable home grid. Both are
+vendored into `static/nora_home/vendor/` rather than pulled from a CDN, because
+the house must work with the internet down, and neither needs npm to use.
+
+This is narrower than it used to read. §4's Phase 8 entry withdrew the
+project-wide "no npm, no bundler, no framework" rule for the app's *own*
+CSS/JS — that now goes through Vite (`assets/` → committed `static/…/dist/`,
+node confined to a Docker build stage the Pi's runtime image never sees). What
+holds here is just ECharts and Gridstack specifically staying vendored,
+pre-built, dependency-free files — not a platform-wide stance any more.
 
 **A widget ships at every size it declares, including the phone.** Size
 variants (S/M/L/XL) are part of the widget contract from Phase 8, and each is a
@@ -1226,86 +1231,13 @@ docs/
 
 ## 8. Progress log
 
-Append here. Newest last. Keep entries short and factual.
-
-### 2026-07-31 — skeleton written and booted
-- Platform apps, registry, tracker (deleted 2026-08-06), escalation, notifications, AI, MCP, datastores,
-  displays, telemetry, integrations, dashboard.
-- Docker Compose stack, Makefile, Pi install script, `install_app` command.
-- URLs restructured: platform under `/home`, house apps at the root (`/habits/`).
-- Home screen is now a per-person grid of widgets from any app, with ECharts and
-  Gridstack vendored for offline use.
-- Migrations generated and applied; ran end to end on SQLite.
-- Four design directions rendered in `docs/design-options.html` (since deleted) — awaiting a choice.
-
-Two bugs worth remembering, both found only by actually running it:
-- **The registry was silently empty.** Django picks an app's config by inspecting
-  `AppConfig` subclasses in `apps.py`; because that file also imports `NoraAppConfig`
-  there were always two candidates, and with no tie-breaker Django quietly fell back
-  to a plain `AppConfig`. Fixed with `default = False` on the base plus
-  `__init_subclass__` marking real configs — see `nora/core/registry.py`. If the nav
-  and app directory ever go blank again, look there first.
-- **Multi-line `{# #}` template comments render as visible text.** Django's `{# #}`
-  is single-line only. Use `{% comment %}` blocks.
-
-### 2026-07-31 — renamed away from the robot, and docs made first-class
-- `nora` → `nora_home` everywhere: package, settings prefix, static path, CSS classes,
-  JS globals, websocket routes, and the AI system prompt. See §1 and
-  `docs/Main_App/progress.md` for the full table of what moved.
-- `docs/` established with a story dashboard (same shape as the robot project's),
-  architecture diagrams, and a progress log. Documentation duty written into §0.
-- First set of design directions rejected as too task-list-focused; a second,
-  visualization-led set produced for review.
-
-### 2026-07-31 — the third-party app-building path, actually tried
-Asked "is this ready to hand to others to build apps inside it?" — rather than
-answer from the code, actually played a new house-app author: cloned fresh,
-followed `docs/Main_App/DEVELOPMENT.md`'s "Ten-minute start" literally, and hit two real bugs
-that only showed up by doing it.
-
-- **`install_app` couldn't generate migrations for the very first app added in a
-  session.** `_migrate()` called Django's `makemigrations`/`migrate` in-process via
-  `call_command()`, but the process's app registry was already populated — from
-  the `.env` as it stood *before* `_register()` had just rewritten it — when the
-  command started. Django never hot-reloads `INSTALLED_APPS` mid-process, so the
-  new app was invisible to that call and it failed with `No installed app with
-  label 'workout'`, silently, one step into the documented flow. Fixed by running
-  `makemigrations`/`migrate`/`collectstatic` as fresh `manage.py` subprocesses
-  instead, which re-read `.env` from scratch. Verified: re-ran the same scratch
-  test with the fix and got `Applying workout.0001_initial... OK`.
-- **The reference app refers to itself in far more places than the docs said.**
-  Copying `houseapps/example_habit` and following the four documented steps
-  (rename `apps.py`, write your own models, your own views/urls) produces a crash
-  — `AlreadyRegistered: The model Habit is already registered with
-  'example_habit.HabitAdmin'` — the first time the new app's `admin.py` runs,
-  because seven files still say `from houseapps.example_habit import ...` and the
-  templates live in a directory named after the old app. `docs/Main_App/DEVELOPMENT.md`'s
-  "Ten-minute start" now opens with the actual mechanical fix (`grep -rl
-  example_habit | xargs sed -i ...` plus the templates-directory rename) instead
-  of leaving it to be discovered as a stack trace.
-- Also replaced every Unicode arrow/checkmark/ellipsis/em-dash in
-  `install_app.py`'s, `nora_restore.py`'s, and `bootstrap_home.py`'s
-  `self.stdout.write()` calls with plain ASCII — they crashed with
-  `UnicodeEncodeError` under a non-UTF-8 console/pipe context on Windows. Found
-  one instance first (a checkmark), fixed only that one, then hit a second
-  (an arrow) while testing the git-clone path below — so all `stdout.write()`
-  calls across the management commands were grepped and fixed together instead
-  of one at a time.
-
-**Then closed the one gap left open at the end of that session**: `install_app`'s
-git-clone acquisition path (`_from_git`) had never actually been run, only its
-local-path sibling. Built a real local git repo, cloned it through the actual
-`_from_git`/`_verify`/`_register`/`_migrate` pipeline (bypassing only the CLI's
-`http(s)://`/`git@` scheme sniff, which a `file://` test URL can't satisfy), and
-confirmed both the clone-and-strip-`.git` mechanics and the `nora-<name>` →
-`<name>` prefix-stripping convention shown in the command's own docstring —
-`nora-plants` correctly became `houseapps.plants`.
-
-**All of this was verified by redoing the exact failing scenarios afterward**, not
-just read over: fresh clones, corrected rename recipe, `install_app` via both the
-local-path and git-clone routes, `manage.py check` clean, servers boot, every
-app's URL routes correctly, each new app appears in `list_apps` with its own
-widgets and its own generated migration applied.
+This used to hold entries directly. It stopped on 2026-07-31, the same day
+`docs/Main_App/progress.md` was created as the dedicated history file — every
+session since has appended there instead, per §0's own table. Both the
+original three entries here and everything since now live at
+[`docs/Main_App/progress.md`](docs/Main_App/progress.md), which is the only
+place new entries go. Kept as a heading, not deleted outright, so nothing
+that ever linked to `CLAUDE.md#8-progress-log` breaks.
 
 ---
 

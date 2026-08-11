@@ -120,6 +120,59 @@ with a scoped device token.
 
 ---
 
+## 2026-07-31 — the third-party app-building path, actually tried
+
+Asked "is this ready to hand to others to build apps inside it?" — rather than
+answer from the code, actually played a new house-app author: cloned fresh,
+followed `docs/Main_App/DEVELOPMENT.md`'s "Ten-minute start" literally, and hit two real bugs
+that only showed up by doing it.
+
+- **`install_app` couldn't generate migrations for the very first app added in a
+  session.** `_migrate()` called Django's `makemigrations`/`migrate` in-process via
+  `call_command()`, but the process's app registry was already populated — from
+  the `.env` as it stood *before* `_register()` had just rewritten it — when the
+  command started. Django never hot-reloads `INSTALLED_APPS` mid-process, so the
+  new app was invisible to that call and it failed with `No installed app with
+  label 'workout'`, silently, one step into the documented flow. Fixed by running
+  `makemigrations`/`migrate`/`collectstatic` as fresh `manage.py` subprocesses
+  instead, which re-read `.env` from scratch. Verified: re-ran the same scratch
+  test with the fix and got `Applying workout.0001_initial... OK`.
+- **The reference app refers to itself in far more places than the docs said.**
+  Copying `houseapps/example_habit` and following the four documented steps
+  (rename `apps.py`, write your own models, your own views/urls) produces a crash
+  — `AlreadyRegistered: The model Habit is already registered with
+  'example_habit.HabitAdmin'` — the first time the new app's `admin.py` runs,
+  because seven files still say `from houseapps.example_habit import ...` and the
+  templates live in a directory named after the old app. `docs/Main_App/DEVELOPMENT.md`'s
+  "Ten-minute start" now opens with the actual mechanical fix (`grep -rl
+  example_habit | xargs sed -i ...` plus the templates-directory rename) instead
+  of leaving it to be discovered as a stack trace.
+- Also replaced every Unicode arrow/checkmark/ellipsis/em-dash in
+  `install_app.py`'s, `nora_restore.py`'s, and `bootstrap_home.py`'s
+  `self.stdout.write()` calls with plain ASCII — they crashed with
+  `UnicodeEncodeError` under a non-UTF-8 console/pipe context on Windows. Found
+  one instance first (a checkmark), fixed only that one, then hit a second
+  (an arrow) while testing the git-clone path below — so all `stdout.write()`
+  calls across the management commands were grepped and fixed together instead
+  of one at a time.
+
+**Then closed the one gap left open at the end of that session**: `install_app`'s
+git-clone acquisition path (`_from_git`) had never actually been run, only its
+local-path sibling. Built a real local git repo, cloned it through the actual
+`_from_git`/`_verify`/`_register`/`_migrate` pipeline (bypassing only the CLI's
+`http(s)://`/`git@` scheme sniff, which a `file://` test URL can't satisfy), and
+confirmed both the clone-and-strip-`.git` mechanics and the `nora-<name>` →
+`<name>` prefix-stripping convention shown in the command's own docstring —
+`nora-plants` correctly became `houseapps.plants`.
+
+**All of this was verified by redoing the exact failing scenarios afterward**, not
+just read over: fresh clones, corrected rename recipe, `install_app` via both the
+local-path and git-clone routes, `manage.py check` clean, servers boot, every
+app's URL routes correctly, each new app appears in `list_apps` with its own
+widgets and its own generated migration applied.
+
+---
+
 ## 2026-08-01 — first real install attempt on a Pi (Story 27, in progress)
 
 Ran `scripts/install-pi.sh` against an actual Raspberry Pi for the first time. Two
@@ -5222,3 +5275,82 @@ a real "REARRANGE" key below the destination grid; Todo's bank shows none
 enters editing mode exactly as before — the additive `data-action`
 attribute changed nothing about the existing behaviour. Not yet deployed
 or seen sending a real kiosk tap through to a real wall click.
+
+### 2026-08-11 — Story 58: Documentation De-duplication (partial, scoped
+honestly)
+
+Found and fixed the exact two classes of problem the story names, plus one
+it doesn't: a genuinely stale rule, not just a duplicated one.
+
+1. **A stale contradiction, not merely a duplicate.** CLAUDE.md §4 still
+   flatly said "there is deliberately no npm, no bundler, and no
+   framework" under "Apache ECharts + Gridstack.js" — unconditionally
+   false since Story 43 put Vite/npm behind the app's own CSS/JS, a fact
+   §4's *own* Phase 8 entry three screens up already states. This is
+   exactly the failure mode the story's motivating example describes
+   ("how §4's 'no build step' rule stayed authoritative for hours after
+   it had been overturned") — caught by grepping for the phrase and
+   finding it asserted twice, contradicting itself. Narrowed to what is
+   still actually true: ECharts/Gridstack specifically stay vendored,
+   pre-built files needing no npm — not a project-wide stance any more.
+
+2. **CLAUDE.md's own §8 "Progress log" was a frozen, three-entry fossil**
+   from 2026-07-31 — the exact day `docs/Main_App/progress.md` was
+   created as the dedicated file, and every session since correctly
+   appended there instead, per §0's own table. Two of its three entries
+   (the registry-silently-empty bug, the multi-line `{# #}` bug) were
+   already fully covered, better organized, in progress.md's own
+   `## 2026-07-31 — the skeleton` entry — pure restatement, deleted. The
+   third ("the third-party app-building path, actually tried" — the
+   `install_app` migration-registry bug, the reference-app self-import
+   bug, the Unicode `stdout.write()` crash, the git-clone path
+   verification) was genuinely **not** in progress.md at all — real,
+   unique bug post-mortems that would have been lost outright, not
+   merely relocated. Migrated verbatim into progress.md as its own dated
+   entry, *then* §8 was cut to a six-line pointer. "Keep every bug
+   post-mortem" (the story's own instruction) meant checking before
+   deleting, not assuming a section titled "progress log" was safe to
+   drop wholesale.
+
+3. **Story 40's migration mechanism** (the `RENAME TABLE` trick,
+   `NodeNotFoundError`, the `nora_rehearsal` rehearsal) was told in full
+   technical detail in three places — CLAUDE.md §4, this dashboard's
+   Decisions-tab card (which already ended with "see CLAUDE.md §4" *after*
+   repeating everything anyway), and this dashboard's `STORIES["40"].warn`
+   field. Trimmed the dashboard's two copies to match the terse,
+   2–3-sentence convention every sibling Decisions-tab entry already
+   uses (Story 40's was, at 496 characters, roughly double the median of
+   its neighbors) — CLAUDE.md §4 stays the one place with the mechanism.
+   `register_trackable()`'s gap, the one genuinely unique fact in the
+   `warn` field, was kept.
+
+4. **`docs/Main_App/testing.md`'s "if the house suddenly looks empty"
+   section** re-told the full `.env`-tracked-in-git incident — same
+   commands, same reasoning, same warning CLAUDE.md §4 already carries.
+   Trimmed to the operational essentials (the diagnostic command, what to
+   do next) with a pointer to §4 for the "why," rather than a parallel
+   full narrative that could drift from it.
+
+**What was deliberately not touched, and why:** §2's four dated
+"Verified on the Pi" blocks (2026-08-02 ×2, 2026-08-03, 2026-08-07,
+roughly 150 lines combined) cover ground `progress.md` also covers for
+the same dates, and were the obvious next target by size. Read closely,
+they are not pure restatement the way §8 was — they carry hard-won,
+still-relevant operational facts (the Wayland/X11 window-placement
+switch, the touchscreen's `TransformationMatrix` requirement, the
+`gcr-prompter` keyring dialog fix) that a future agent debugging a
+related Pi issue would want in the primary onboarding document, not only
+in a chronological log they'd have to know to go looking in. Rewriting
+150 dense lines of the project's single most load-bearing document, under
+a low-effort pass, to save duplication whose actual cost (two framings of
+the same facts, not two *sources of truth* that could drift, since the
+underlying fixes are also codified in `provision-pi.sh` itself) is lower
+than §8's or Story 40's, was judged not worth the risk of cutting
+something real. Left for a dedicated pass with more room to cross-check
+every sentence against progress.md's version before deciding what stays.
+
+`./scripts/run-tests.sh` green throughout (1063 passed) — no test parses
+CLAUDE.md's content directly, only cites section numbers in docstrings, so
+none of this needed test changes. Not yet re-verified that every markdown
+link/anchor this session touched still resolves inside GitHub's renderer
+specifically (only checked structurally, by reading the diffs).
