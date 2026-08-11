@@ -619,10 +619,22 @@ Four written decisions are reversed, deliberately:
 
 Two IA decisions follow from one rule — *Home is the base app; everything else
 is an app*: Status and the House log merge into a **System** page belonging to
-Home, and the Apps directory is deleted in favour of a ⌘K palette. Only the
-four registered apps with `nav=True` are called apps. **The platform/house
-distinction stays real in code and stops being visible**, which is what this
-file already says of Todo: *Level is deliberately not the test.*
+Home, and the Apps directory is deleted in favour of a ⌘K palette. **The
+platform/house distinction stays real in code and stops being visible**, which
+is what this file already says of Todo: *Level is deliberately not the test.*
+
+**Corrected 2026-08-10 (Story 54):** this used to also say "only the four
+registered apps with `nav=True` are called apps," grouping Alerts alongside
+Measurements and Integrations under "Apps" in the sidebar. Nobody had actually
+checked that against the mockup. `ui-overhaul-mockup.html`'s own `REGISTRY`
+puts `alerts` inside the `home` entry's own `sections` — next to Dashboard,
+System, Settings — and "Apps" there is Todo alone. Alerts now groups under
+Home to match. Measurements and Integrations stay under Apps: the mockup's
+`REGISTRY` doesn't model either one, so there was nothing there to follow for
+them, and inventing a placement would be the same mistake this correction
+fixes. Found by actually asking "does the sidebar match the mockup," not by
+re-deriving the rule from memory — see §4 on why every list here has to be
+grounded in something read, not reasoned about.
 
 **One thing in Phase 8 is not merely unbuilt but unsolved.** Story 51 wants the
 24" powered down without taking the kiosk with it. §2 records that `xset dpms

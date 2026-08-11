@@ -313,6 +313,24 @@ def test_the_page_renders(client, admin_member):
     assert "Timeline" in response.content.decode()
 
 
+def test_a_skipped_service_gets_the_same_badge_treatment_as_the_others(
+        client, admin_member, monkeypatch):
+    """Skipped/unknown used to fall back to a bare <span class="lab"> — a
+    different, dimmer chip than the .badge every ok/warn/crit status gets, so
+    the third state (of collect_health()'s three: ok, down, skipped) read as
+    an afterthought rather than a real answer."""
+    import nora_home.core.health as health_module
+
+    monkeypatch.setitem(health_module.PROBES, "database",
+                        lambda: {"status": "skipped", "reason": "test"})
+    client.force_login(admin_member)
+
+    body = client.get(reverse("core:system_status")).content.decode()
+
+    assert '<span class="badge ">skipped</span>' in body
+    assert '<span class="lab">skipped</span>' not in body
+
+
 def test_the_page_survives_a_hand_edited_query_string(client, admin_member):
     client.force_login(admin_member)
 

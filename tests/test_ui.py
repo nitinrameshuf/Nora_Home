@@ -319,6 +319,16 @@ def test_the_type_scale_is_not_in_the_stylesheet():
         "the wall's type scale is back in CSS — see the comment on that rule")
 
 
+def test_frow_stacks_to_one_column_on_the_phone():
+    """Found live on /home/system/ (Story 54): .frow's auto-fit floor is
+    140px, and two of those (280px) still fits inside a 375px phone with room
+    to spare — so a row like an IP address plus a status badge, or a
+    truncated request id, packed into two columns and clipped mid-word rather
+    than stacking. Same lesson CLAUDE.md already documents for widget sizes:
+    a container-sized row needs an explicit phone floor."""
+    assert 'html[data-surface="phone"] .frow { grid-template-columns: 1fr; }' in _new_css()
+
+
 def test_the_wall_only_hides_the_cursor_while_it_is_idle():
     """The wall hid its pointer outright until 2026-08-07, left over from when
     it was a passive ambient view. It is the real app now and gets clicked
@@ -664,6 +674,28 @@ def test_the_rail_never_uses_the_old_sidebar_markup(client, admin_member):
     assert "nav-link" not in body
     assert "profile-trigger" not in body
     assert "data-theme-toggle" not in body
+
+
+@pytest.mark.django_db
+def test_alerts_groups_under_home_not_apps(client, admin_member):
+    """Story 47 grouped Alerts under "Apps" on the strength of a rule nobody
+    had actually checked against the mockup: ui-overhaul-mockup.html's own
+    REGISTRY puts 'alerts' inside the home app's own `sections` alongside
+    Dashboard/System/Settings, and "Apps" there is Todo alone. Story 54
+    corrects the sidebar to match — Measurements and Integrations stay under
+    Apps because the mockup's REGISTRY doesn't model either one, so there is
+    nothing there to follow for them."""
+    from django.urls import reverse
+
+    client.force_login(admin_member)
+    body = client.get(reverse("core:dashboard")).content.decode()
+    rail = body.split('<nav class="rail"')[1].split("</nav>")[0]
+
+    home_group = rail.split('<div class="grp-lab">Home</div>')[1].split('<div class="grp-lab">Apps</div>')[0]
+    apps_group = rail.split('<div class="grp-lab">Apps</div>')[1]
+
+    assert reverse("notifications:inbox") in home_group
+    assert reverse("notifications:inbox") not in apps_group
 
 
 @pytest.mark.django_db

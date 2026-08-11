@@ -45,18 +45,28 @@ layouts/skeleton.html's own comment for why the split exists.
     {% endif %}
 
     {% comment %}
-    Two groups, seven destinations — Story 47. Home is the base app: its own
-    pages (Dashboard, System, Settings) group under it, nothing else does.
-    "Apps" is deliberately flat, not sub-grouped by Category the way
-    nora_home.core.registry.navigation() groups things elsewhere (the wall's
-    dashboard still lays out one column per category) — the only things
-    called apps here are the four registered apps with nav=True, and grouping
-    four items by category was the earlier draft's mistake this story's own
-    notes warn against repeating.
+    Two groups — Story 47, corrected in Story 54 to actually match the
+    mockup's own REGISTRY (ui-overhaul-mockup.html) rather than a since-
+    superseded rationale: its `home` entry's `sections` list is Dashboard,
+    **Alerts**, System, Settings, and `Apps` there is Todo alone. Story 47's
+    comment here used to claim "the only things called apps are the four
+    registered apps with nav=True" and grouped Alerts under Apps with
+    Measurements and Integrations — a plausible-sounding rule nobody had
+    actually checked against the reference. Alerts moves to Home to match;
+    Measurements and Integrations stay under Apps because the mockup's
+    REGISTRY doesn't model either one at all, so there is nothing there to
+    follow — inventing a placement for them would be the same mistake this
+    fix corrects. "Apps" is deliberately flat, not sub-grouped by Category
+    the way nora_home.core.registry.navigation() groups things elsewhere
+    (the wall's dashboard still lays out one column per category).
     {% endcomment %}
     <div class="grp-lab">Home</div>
     <a class="nav" href="{% url 'core:dashboard' %}"
        {% if request.path == '/home/' %}aria-current="page"{% endif %}>Home</a>
+    <a class="nav" href="{% url 'notifications:inbox' %}"
+       {% if request.path == '/home/alerts/' %}aria-current="page"{% endif %}>
+      Alerts <span class="pill" data-nh-bell data-count="0" hidden></span>
+    </a>
     <a class="nav" href="{% url 'core:system_status' %}"
        {% if request.path == '/home/system/' %}aria-current="page"{% endif %}>System</a>
     <a class="nav" href="{% url 'core:settings' %}"
@@ -65,12 +75,7 @@ layouts/skeleton.html's own comment for why the split exists.
     <div class="grp-lab">Apps</div>
     {% for group in nav %}
       {% for app in group.apps %}
-        {% if app.slug == 'notifications' %}
-          <a class="nav" href="{{ app.url }}"
-             {% if request.path == app.url %}aria-current="page"{% endif %}>
-            {{ app.title }} <span class="pill" data-nh-bell data-count="0" hidden></span>
-          </a>
-        {% else %}
+        {% if app.slug != 'notifications' %}
           <a class="nav" href="{{ app.url }}"
              {% if request.path == app.url %}aria-current="page"{% endif %}>{{ app.title }}</a>
         {% endif %}

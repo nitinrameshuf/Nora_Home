@@ -376,6 +376,39 @@ def test_a_critical_service_being_down_makes_the_house_unhealthy(monkeypatch):
     assert collect_health()["healthy"] is False
 
 
+# ── the System page's health summary (Story 54) ──────────────────────────────
+
+def test_health_summary_counts_every_status_honestly():
+    """The System page used to show only one healthy/degraded badge at the
+    top — "skipped" (Mongo/S3/RabbitMQ not enabled on this house) and
+    "unknown" (no thermal zone off the Pi) never appeared as a count anywhere,
+    even though collect_health() already reports them per-probe."""
+    from nora_home.core.views import _health_summary
+
+    services = {
+        "database": {"status": "ok"}, "disk": {"status": "ok"},
+        "redis": {"status": "down"}, "mongo": {"status": "skipped"},
+        "object_storage": {"status": "skipped"}, "cpu_temperature": {"status": "unknown"},
+    }
+
+    summary = _health_summary(services)
+
+    assert {"status": "ok", "count": 2} in summary
+    assert {"status": "skipped", "count": 2} in summary
+    assert {"status": "down", "count": 1} in summary
+    assert {"status": "unknown", "count": 1} in summary
+    assert sum(row["count"] for row in summary) == len(services)
+
+
+def test_health_summary_orders_ok_before_trouble():
+    from nora_home.core.views import _health_summary
+
+    summary = _health_summary({"a": {"status": "down"}, "b": {"status": "ok"},
+                               "c": {"status": "skipped"}})
+
+    assert [row["status"] for row in summary] == ["ok", "skipped", "down"]
+
+
 # ── the console rail's vitals (Story 48) ─────────────────────────────────────
 
 ALL_VITAL_KEYS = {"TEMP", "DISK", "CPU", "MEM", "FAN", "LOAD", "UP"}

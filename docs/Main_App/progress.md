@@ -4744,3 +4744,55 @@ Sheet on the physical screen with the actual family (nitin, priya) as
 owner/shared-with options — confirming the Vite-built `nh-sheet.js` works
 through the Pi's real Chromium and real data, not just the local dev server.
 Story 53 is Complete.
+
+### 2026-08-10 — Story 54: Home's Own Pages Through the System
+Same pattern as Story 53: Dashboard, System, Settings, Alerts, Measurements
+and Integrations were already rebuilt on the component set by Story 45 Phase
+B (`{% nh_card %}`, `{% nh_badge %}`, `{% nh_empty %}` throughout). The
+story's own claimed "half-width-content problem" on Settings turned out not
+to exist any more either — measured it directly (`getBoundingClientRect()`
+in the browser): every `{% nh_card %}` there already spans 1172 of 1212px
+available. Stale, from before Phase B's card CSS made cards stretch to fill
+their container.
+
+**What was real, found by actually checking rather than trusting the story
+text (same discipline Story 53 used):**
+
+- **The System page's Health card didn't tell the truth about its own third
+  state.** `collect_health()` already returns `ok` / `down` / `skipped` per
+  probe, with honest reasons ("broker is not rabbitmq", "local filesystem
+  storage") — but `skipped` and `unknown` fell back to a bare `<span
+  class="lab">`, a smaller, dimmer chip than the `.badge` every ok/warn/crit
+  status got, and there was no count anywhere summarising the mix. Added
+  `nora_home.core.views._health_summary()` ("2 ok · 2 skipped · 1 unknown · 2
+  down") and gave skipped/unknown the same `{% nh_badge %}` treatment as
+  everything else.
+- **The sidebar's "Apps" group didn't match the mockup, and hadn't been
+  checked against it.** Asked directly whether Alerts/Measurements/
+  Integrations belonged there — re-read `ui-overhaul-mockup.html`'s own
+  `REGISTRY` rather than going from memory, and its `home` entry's own
+  `sections` list is Dashboard, **Alerts**, System, Settings; "Apps" there is
+  Todo alone. Story 47's sidebar comment claimed "the only things called apps
+  are the four registered apps with nav=True" and grouped Alerts under Apps
+  with Measurements and Integrations — a plausible rule nobody had actually
+  verified. Alerts now groups under Home to match. Measurements and
+  Integrations stay under Apps: the mockup's REGISTRY doesn't model either
+  one, so there was nothing there to follow — moving them would have been the
+  same mistake (inventing UI not grounded in the reference) this fix
+  corrects. Corrected the stale claim in CLAUDE.md's own Phase 8 section and
+  Story 47's dashboard entry rather than leaving contradicting documentation
+  in place.
+- **`.frow` clips content on a phone.** Found live while checking the Health
+  card on a 375px viewport: two cards (`.frow`'s `auto-fit, minmax(140px,
+  1fr)`) still fit side by side at that width, and a row like an IP address
+  plus a status badge, or a truncated request id, needs more than 140px —
+  "127.0.0.1:6379" and its DOWN badge both clipped mid-word. Same lesson
+  CLAUDE.md already documents for widget sizes, just never applied to
+  `.frow` itself: `html[data-surface="phone"] .frow { grid-template-columns:
+  1fr }` forces it to stack.
+
+Verified locally in a real browser at both 1440px and 375px (not just the
+Python suite, which was already green either way): sidebar grouping,
+badge/count rendering, and the phone stacking all screenshotted and checked
+against actual DOM measurements, not just visual impression. `./scripts/run-tests.sh`
+green, 1055 passed.

@@ -176,6 +176,15 @@
     border: 1px solid var(--edge); border-radius: 7px; padding: 9px 11px; min-height: var(--tap);
   }
   .frow { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  /* 140px is a real floor on desktop but two of them (280px) still fits a
+     375px phone with room to spare, so auto-fit keeps packing two columns —
+     and a row like an IP address plus a status badge, or a truncated request
+     id, needs more than 140px to read. Found live on /home/system/ (Story
+     54): "127.0.0.1:6379" and its DOWN badge both clipped mid-word. Same
+     lesson as the widget-size floor CLAUDE.md already documents — a
+     container-sized row needs an explicit phone floor, not a smaller auto-fit
+     minimum. */
+  html[data-surface="phone"] .frow { grid-template-columns: 1fr; }
 
   /* ── Toolbar ── */
   .tools { display: flex; align-items: center; gap: 4px; }

@@ -72,8 +72,11 @@ def system_status(request):
     entries = houselog.timeline(since=since, sources=chosen or None,
                                 severity=severity, query=query)
 
+    health = collect_health()
+
     return render(request, "core/system_status.html", {
-        "health": collect_health(),
+        "health": health,
+        "health_summary": _health_summary(health["services"]),
         "version": settings.NORA_HOME_VERSION,
         "environment": settings.NORA_HOME_ENV,
         "entries": entries,
@@ -156,6 +159,29 @@ def _clamp_int(raw, default: int, low: int, high: int) -> int:
         return max(low, min(int(raw), high))
     except (TypeError, ValueError):
         return default
+
+
+# The order a person should read them in: what's fine first, what to worry
+# about last. Anything collect_health() ever returns that isn't in here
+# (there shouldn't be one) sorts after all of these rather than vanishing.
+_HEALTH_STATUS_ORDER = ["ok", "warning", "skipped", "unknown", "down", "critical"]
+
+
+def _health_summary(services: dict) -> list[dict]:
+    """"3 ok · 1 skipped · 2 down" — collect_health() already returns every
+    probe's real status (ok/down/skipped/warning/critical/unknown), including
+    the honest "skipped" state for anything not enabled on this house. The
+    System page used to only ever show a single healthy/degraded badge at the
+    top; this is the count behind it, in the same wording as each row below."""
+    counts: dict[str, int] = {}
+    for probe in services.values():
+        status = probe.get("status", "unknown")
+        counts[status] = counts.get(status, 0) + 1
+
+    ordered = sorted(counts.items(),
+                     key=lambda item: (_HEALTH_STATUS_ORDER.index(item[0])
+                                       if item[0] in _HEALTH_STATUS_ORDER else 99))
+    return [{"status": status, "count": count} for status, count in ordered]
 
 
 @login_required

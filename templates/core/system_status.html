@@ -24,6 +24,9 @@ must never be able to close a tag.
   <div class="frow">
     {% nh_card title="Health" %}
       {% if health.healthy %}{% nh_badge text="healthy" status="ok" %}{% else %}{% nh_badge text="degraded" status="crit" %}{% endif %}
+      <p class="cap">
+        {% for row in health_summary %}{{ row.count }} {{ row.status }}{% if not forloop.last %} &middot; {% endif %}{% endfor %}
+      </p>
       {% for name, probe in health.services.items %}
         <div class="row">
           <span class="t">{{ name }}</span>
@@ -31,7 +34,7 @@ must never be able to close a tag.
           {% if probe.status == "ok" %}{% nh_badge text=probe.status status="ok" %}
           {% elif probe.status == "down" or probe.status == "critical" %}{% nh_badge text=probe.status status="crit" %}
           {% elif probe.status == "warning" %}{% nh_badge text=probe.status status="warn" %}
-          {% else %}<span class="lab">{{ probe.status }}</span>{% endif %}
+          {% else %}{% nh_badge text=probe.status status="" %}{% endif %}
         </div>
       {% endfor %}
     {% endnh_card %}
