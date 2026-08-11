@@ -5354,3 +5354,41 @@ CLAUDE.md's content directly, only cites section numbers in docstrings, so
 none of this needed test changes. Not yet re-verified that every markdown
 link/anchor this session touched still resolves inside GitHub's renderer
 specifically (only checked structurally, by reading the diffs).
+
+### 2026-08-11 — Stories 56 and 57 observed on the physical wall and kiosk
+
+Deployed both (full asset round trip for 57's JS/CSS, `docker compose build
+--no-cache` given Story 55's own deploy-caching lesson), `./nora test` green
+on the Pi (1062 passed), then verified each story's own actual claim
+against real hardware rather than trusting the fast suite.
+
+**Story 56.** With the wall sitting on the real Home dashboard ("Change the
+water filter" showing overdue, "Open now: 7"), completed that same real
+task from a Django shell (`todo.api.complete()`, the identical call every
+real surface including Slack's Done button goes through) and, with no
+manual reload of any kind, watched the wall update on its own within
+~6 seconds: the task dropped off "Due next" and the count went 7 → 6.
+Reverted with `api.uncomplete()` immediately after to restore the real
+family data — that call correctly does *not* trigger a refresh (it isn't
+one of the four signals), confirmed by then force-reloading and seeing the
+task and count both back to their original state.
+
+**Story 57.** Tapped the kiosk's real "REARRANGE" key and — the first two
+attempts — nothing happened on the wall. Isolated the fault before assuming
+either surface was broken: `nora_home.displays.bus.send_to_display("wall",
+{"type": "appaction", "verb": "rearrange"})` from a Django shell, bypassing
+the kiosk entirely, put the real wall into editing mode instantly (Shuffle/
+Done buttons, dashed card borders) — proving the server relay and
+wall-live.js's `[data-action="rearrange"]` click-through were both correct.
+The actual fault was in this session's own test method: converting an
+earlier *browser-tool* screenshot's coordinates (a different, unrelated
+viewport scale from earlier local testing) into physical Pi-screen
+coordinates, landing the click's y-value 275px below the kiosk's actual
+600px-tall physical output — not on the app at all. Recomputed from a
+fresh screenshot of the kiosk's own region and the tap worked exactly as
+designed: the real wall entered editing mode from a real physical kiosk
+key, the full "one implementation, whichever surface asked" round trip,
+confirmed on the actual hardware rather than assumed from the earlier
+direct-bus test alone.
+
+Both stories are now Complete.
