@@ -1,6 +1,6 @@
 {
   "assets/css/components.css": {
-    "file": "css/components.D3TKVaJg.css",
+    "file": "css/components.DXiUEqiH.css",
     "src": "assets/css/components.css",
     "isEntry": true,
     "name": "css/components",
@@ -27,7 +27,7 @@
     ]
   },
   "assets/css/shell.css": {
-    "file": "css/shell.SDavmKsf.css",
+    "file": "css/shell.hxVJpzP_.css",
     "src": "assets/css/shell.css",
     "isEntry": true,
     "name": "css/shell",
@@ -36,7 +36,7 @@
     ]
   },
   "assets/css/tokens.css": {
-    "file": "css/tokens.Bv74RR6d.css",
+    "file": "css/tokens.D3d4klPz.css",
     "src": "assets/css/tokens.css",
     "isEntry": true,
     "name": "css/tokens",
@@ -57,7 +57,7 @@
     "isEntry": true
   },
   "assets/js/kiosk.js": {
-    "file": "js/kiosk.BQ2y6aMF.js",
+    "file": "js/kiosk.d9aolgd4.js",
     "name": "js/kiosk",
     "src": "assets/js/kiosk.js",
     "isEntry": true
@@ -123,7 +123,7 @@
     "isEntry": true
   },
   "assets/js/wall-live.js": {
-    "file": "js/wall-live.CqsI_mug.js",
+    "file": "js/wall-live.C_5Rk6no.js",
     "name": "js/wall-live",
     "src": "assets/js/wall-live.js",
     "isEntry": true
