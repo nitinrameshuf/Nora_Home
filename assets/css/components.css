@@ -322,6 +322,19 @@
   .col-h b { font-family: var(--font-mono); font-size: var(--lab); font-weight: 700; letter-spacing: .15em; text-transform: uppercase; color: var(--dim); }
   .col-h .n { margin-left: auto; font-family: var(--font-mono); font-size: calc(var(--s0) * .8); color: var(--faint); font-variant-numeric: tabular-nums; }
 
+  /* The column's own "Add task" (Story 53) — ported from the mockup's phone-
+     only .ph-add, used here on every surface since the board's toolbar no
+     longer carries a "New task" button at all; a column is what a new task
+     needs to pick anyway (its priority), so this is also where it starts. */
+  .col-add {
+    display: flex; align-items: center; gap: 9px; min-height: var(--tap);
+    border: 1px dashed var(--edge); border-radius: 11px; background: transparent;
+    color: var(--faint); padding: 0 14px; font-size: calc(var(--s0) * .9);
+    font-family: inherit; cursor: pointer; width: 100%;
+  }
+  .col-add svg { width: 15px; height: 15px; flex: none; }
+  .col-add:hover { border-color: var(--edge-hot); color: var(--arc-300); }
+
   .task {
     background: var(--panel-solid); border: 1px solid var(--edge); border-radius: 10px;
     padding: 11px 12px 11px 15px; display: flex; flex-direction: column; gap: 9px;

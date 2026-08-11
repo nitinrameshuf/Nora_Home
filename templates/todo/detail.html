@@ -45,7 +45,7 @@
     {% nh_card title="Current" %}
       <div class="task" data-pri="{{ task.priority }}" data-todo-card>
         <div class="tm">
-          <span class="due">Due {{ current.due_at|date:"D, M j &middot; H:i" }}</span>
+          <span class="due">Due {{ current.due_at|date:"D, M j" }} &middot; {{ current.due_at|date:"H:i" }}</span>
           <span class="lab">{{ current.get_outcome_display }}</span>
         </div>
         {% if current.outcome == "awaiting_approval" %}

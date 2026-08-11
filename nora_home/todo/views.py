@@ -67,10 +67,17 @@ def system_board(request):
 
 def _board_context(request, *, source: str) -> dict:
     members = scope_members(request)
-    tasks = (api.tasks_for(members, queryset=Task.objects.alive().filter(source=source))
-             .exclude(state=TaskState.DONE)
-             .prefetch_related("assignees", "labels")
-             .select_related("owner", "approver"))
+    # Archived is a filter, not a fourth column (Story 53) — sitting in a row
+    # with P1/P2/P3 made a state look like a level of urgency. The chip swaps
+    # the query rather than adding a column: same three priority groups,
+    # populated from whichever set is being looked at.
+    show_archived = request.GET.get("archived") == "1"
+    tasks = api.tasks_for(members, queryset=Task.objects.alive().filter(source=source))
+    if show_archived:
+        tasks = tasks.filter(state=TaskState.ARCHIVED)
+    else:
+        tasks = tasks.exclude(state=TaskState.DONE).exclude(state=TaskState.ARCHIVED)
+    tasks = tasks.prefetch_related("assignees", "labels").select_related("owner", "approver")
 
     label_slug = request.GET.get("label", "")
     if label_slug:
@@ -100,20 +107,20 @@ def _board_context(request, *, source: str) -> dict:
     # its own strip above the columns rather than sitting in a priority column
     # it has, in the sense that matters, already left.
     columns = {p: [] for p in Priority.values}
-    archived = []
     awaiting = []
     for task in tasks:
         task.current = current_by_task.get(task.pk)
-        if task.current is not None and task.current.outcome == InstanceOutcome.AWAITING_APPROVAL:
+        # An archived task can't be awaiting approval — approval blocks
+        # archiving — so this split only ever matters for the live view.
+        if (not show_archived and task.current is not None
+                and task.current.outcome == InstanceOutcome.AWAITING_APPROVAL):
             awaiting.append(task)
-        elif task.state == TaskState.ARCHIVED:
-            archived.append(task)
         else:
             columns[task.priority].append(task)
 
     return {
         "columns": [(p, Priority(p).label, columns[p]) for p in Priority.values],
-        "archived": archived,
+        "show_archived": show_archived,
         "awaiting": awaiting,
         "labels": Label.objects.all(),
         "active_label": label_slug,
@@ -483,6 +490,15 @@ def _reporting_charts(d: dict) -> dict:
 
 @login_required
 def create(request):
+    """GET/POST both branch on _is_fetch: the board's "+ Add task" opens this
+    as a Sheet (Story 53), so a plain page load must still work — direct
+    navigation, a bookmark, JS disabled — and does, via todo/form.html.
+    """
+    sheet = _is_fetch(request)
+    initial = {"owner": request.user}
+    if request.GET.get("priority") in {str(p) for p in Priority.values}:
+        initial["priority"] = request.GET["priority"]
+
     if request.method == "POST":
         form = TaskForm(request.POST, house_members=_house_members())
         if form.is_valid():
@@ -498,13 +514,18 @@ def create(request):
                 materialize(task)
                 ensure_default_reminder(task)
                 record("todo", "task.created", actor=request.user, subject=task.title)
+                if sheet:
+                    return JsonResponse({"ok": True, "redirect": reverse("todo:board")})
                 return redirect("todo:board")
     else:
-        form = TaskForm(initial={"owner": request.user},
-                        house_members=_house_members())
-    return render(request, "todo/form.html", {
-        "form": form, "page_title": "New task", "is_new": True,
-    })
+        form = TaskForm(initial=initial, house_members=_house_members())
+
+    context = {"form": form, "page_title": "New task", "is_new": True,
+              "form_action": reverse("todo:create")}
+    if sheet:
+        return render(request, "todo/_form_sheet.html", context,
+                      status=422 if request.method == "POST" else 200)
+    return render(request, "todo/form.html", context)
 
 
 @login_required
@@ -526,6 +547,7 @@ def detail(request, uuid):
 @login_required
 def edit(request, uuid):
     task = get_object_or_404(Task.objects.alive(), uuid=uuid)
+    sheet = _is_fetch(request)
     if request.method == "POST":
         # Snapshot *before* the form touches the instance — ModelForm mutates
         # the object it was given, so reading due_on/priority after
@@ -545,12 +567,19 @@ def edit(request, uuid):
                 materialize(task)
                 ensure_default_reminder(task)
                 record("todo", "task.edited", actor=request.user, subject=task.title)
+                if sheet:
+                    return JsonResponse({"ok": True,
+                                         "redirect": reverse("todo:detail", args=[task.uuid])})
                 return redirect("todo:detail", uuid=task.uuid)
     else:
         form = TaskForm(instance=task, house_members=_house_members())
-    return render(request, "todo/form.html", {
-        "form": form, "task": task, "page_title": f"Edit {task.title}", "is_new": False,
-    })
+
+    context = {"form": form, "task": task, "page_title": f"Edit {task.title}",
+              "is_new": False, "form_action": reverse("todo:edit", args=[task.uuid])}
+    if sheet:
+        return render(request, "todo/_form_sheet.html", context,
+                      status=422 if request.method == "POST" else 200)
+    return render(request, "todo/form.html", context)
 
 
 @login_required

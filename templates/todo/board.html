@@ -7,14 +7,12 @@
   {% url 'todo:search' as search_url %}
   {% url 'todo:labels' as labels_url %}
   {% url 'todo:calendar' as calendar_url %}
-  {% url 'todo:create' as create_url %}
   {% if is_system %}
     {% nh_button label="Tasks" href=board_url %}
   {% else %}
     {% nh_button label="Search" href=search_url %}
     {% nh_button label="Labels" href=labels_url %}
     {% nh_button label="Calendar" href=calendar_url %}
-    {% nh_button label="+ New task" href=create_url variant="pri" %}
   {% endif %}
 {% endblock %}
 
@@ -27,7 +25,6 @@
   {% endcomment %}
   {% url 'todo:system_board' as system_url %}
   {% url 'todo:board' as user_url %}
-  {% url 'todo:create' as todo_create_url %}
 
   {% comment %}
   Plain <a class="chip"> rather than {% nh_chip %}: a filter is a URL, not
@@ -35,16 +32,22 @@
   ever emits a <button> with a data-act/data-v pair meant for JS to read, and
   there is no JS here to read one.
   {% endcomment %}
+  {% comment %}
+  Archived is a filter, not a fourth column (Story 53) — a row of P1/P2/P3
+  plus Archived made a state look like a level of urgency. The chip swaps
+  ?archived=1 in; the board itself still groups by priority underneath.
+  {% endcomment %}
   {% nh_toolbar %}
-    <a class="chip" aria-pressed="{% if not active_label and not due_today %}true{% else %}false{% endif %}"
+    <a class="chip" aria-pressed="{% if not active_label and not due_today and not show_archived %}true{% else %}false{% endif %}"
        href="{% if is_system %}{{ system_url }}{% else %}{{ user_url }}{% endif %}">All</a>
     {% for label in labels %}
-      <a class="chip" aria-pressed="{% if active_label == label.name %}true{% else %}false{% endif %}"
+      <a class="chip" aria-pressed="{% if active_label == label.name and not show_archived %}true{% else %}false{% endif %}"
          href="{% if is_system %}{{ system_url }}{% else %}{{ user_url }}{% endif %}?label={{ label.name }}">{{ label.name }}</a>
     {% endfor %}
     <a class="chip" aria-pressed="{% if due_today %}true{% else %}false{% endif %}"
        href="{% if is_system %}{{ system_url }}{% else %}{{ user_url }}{% endif %}?due=today">Due today</a>
-    {% if not is_system %}{% nh_button label="+ New task" href=todo_create_url variant="pri" %}{% endif %}
+    <a class="chip" aria-pressed="{% if show_archived %}true{% else %}false{% endif %}"
+       href="{% if is_system %}{{ system_url }}{% else %}{{ user_url }}{% endif %}?archived=1">Archived</a>
   {% endnh_toolbar %}
 
   {% if awaiting %}
@@ -61,24 +64,27 @@
         <div class="col-h"><i style="background:{% if priority == 1 %}var(--crit){% elif priority == 2 %}var(--warn){% else %}var(--arc-500){% endif %}"></i>
           <b>{{ label }}</b><span class="n">{{ tasks|length }}</span></div>
         {% for task in tasks %}
-          {% include "todo/_card.html" with task=task %}
+          {% include "todo/_card.html" with task=task archived_column=show_archived %}
         {% empty %}
           {% nh_empty title="Nothing here" %}
         {% endfor %}
+        {% comment %}
+        Carries the column's own priority, so a task started from Priority 1
+        opens the sheet already set to Priority 1 (Story 53) — this is why the
+        board no longer needs a "New task" button in its toolbar.
+        {% endcomment %}
+        {% if not is_system %}
+          <button class="col-add" type="button" data-sheet-open="{% url 'todo:create' %}?priority={{ priority }}">
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+            Add task
+          </button>
+        {% endif %}
       </div>
     {% endfor %}
-
-    <div class="col">
-      <div class="col-h"><i style="background:var(--faint)"></i><b>Archived</b><span class="n">{{ archived|length }}</span></div>
-      {% for task in archived %}
-        {% include "todo/_card.html" with task=task archived_column=True %}
-      {% empty %}
-        {% nh_empty title="Nothing parked" %}
-      {% endfor %}
-    </div>
   </div>
 {% endblock %}
 
 {% block scripts %}
   {% vite_asset 'assets/js/todo.js' %}
+  {% vite_asset 'assets/js/nh-sheet.js' %}
 {% endblock %}

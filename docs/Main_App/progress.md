@@ -4674,3 +4674,63 @@ rather than forcing a host-binary bind-mount, which would be fragile across Pi
 OS updates for a feature that was a stretch goal, not the story's core ask.
 
 **Story 52 is done except that one gap.**
+
+### 2026-08-10 — Story 53: Todo Through the System
+Much of this story turned out already done: Story 45 Phase B had already
+rewired board/calendar/search/labels/reporting/settings onto the nh
+component set (`{% nh_card %}`, `{% nh_toolbar %}`, `{% nh_button %}`,
+`{% nh_empty %}`) and the task card already carried what the model holds
+(priority stripe, due chip, recurrence, escalation, approver, labels,
+assignee) — none of that needed redoing. What was actually missing, checked
+against the story's own notes and the mockup's `boardView()`/`sheet()`:
+
+- **Archived is a filter chip, not a fourth column.** `_board_context` now
+  branches the query on `?archived=1` instead of always fetching both sets —
+  the same three priority columns render either the live board or, filtered,
+  the archived one, matching the mockup's `vis()` exactly rather than adding
+  a `.col-h` labelled Archived next to P1/P2/P3.
+- **"+ New task" is gone from the board's toolbar; each column has its own
+  "Add task"** (`.col-add`, ported from the mockup's phone-only `.ph-add`,
+  used here on every surface since the story's own notes call for it board-
+  wide) carrying `?priority=N` so a task started from Priority 1 opens
+  already set to Priority 1.
+- **New/edit task opens in a Sheet.** `nora_home/todo/views.py`'s `create`/
+  `edit` now branch on the existing `_is_fetch` header check (already used by
+  every other todo action) — a fetch GET returns `_form_sheet.html`, a
+  fragment; a fetch POST returns JSON `{ok, redirect}` on success or the
+  fragment again with a 422 on validation failure. A plain page load still
+  works exactly as before (todo/form.html), unchanged for edit and for a
+  no-JS create. New `assets/js/nh-sheet.js` is the first real use of the
+  `{% nh_sheet %}`/`.scrim`/`.sheet` markup Story 45 built but nothing had
+  loaded yet — fetches the fragment, injects it, and intercepts the form's
+  submit only when it is actually inside `[data-nh-sheet]`, so the exact same
+  `_form_fields.html` partial works as both the Sheet's body and the full
+  page's, with zero JS-detection branching in the template itself.
+- **Quick-date chips** (Today/Tomorrow/This weekend/Next week/No date) fill
+  the real due-date field rather than replacing it — offsets ported verbatim
+  from the mockup's own `map` (+0/+1/+6/+7/clear), not "smart" weekend logic
+  it never had either.
+- **Sixteen fields fit the wide Sheet via `.frow` groups**, not an accordion
+  — the mockup's own task sheet never collapses anything, it just rows
+  fields two-to-three wide inside a `max-height:86%; overflow-y:auto` sheet,
+  so that is what `_form_fields.html` does too, extended for the fields the
+  mockup's simplified demo doesn't carry (assignees, labels, full recurrence).
+
+**One real bug found live in the browser, unrelated to this story but seen
+while checking it**: `todo/detail.html`'s Current-instance date used
+`{{ current.due_at|date:"D, M j &middot; H:i" }}` — `&middot;` written
+*inside* a `date` filter's format string is read as format characters
+(m/i/d/o/t are all real ones in Django's date filter), not a literal
+separator, and rendered as garbage ("&08001010202631;") instead of a middot.
+`_card.html` already did this safely with two separate `date` calls;
+detail.html was the one place still putting it inside the string. Fixed the
+same way, with a regression test.
+
+Verified in a real browser, not just the Python suite (`./scripts/run-tests.sh`
+green, 1050 passed): opened a column's "Add task", confirmed the priority
+radio came pre-selected, clicked "Today" and watched the due-date field fill,
+submitted and watched the task land in the right column with no reload
+flicker, edited it through the full-page fallback (same quick-date chips
+work there too, no sheet involved), archived it and confirmed it disappeared
+from "All" and appeared under the Archived chip with a Restore button, and
+confirmed Escape closes the sheet. No console errors at any point.

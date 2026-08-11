@@ -233,3 +233,165 @@ def test_due_today_shows_a_task_actually_due_today(client, member):
     response = client.get(reverse("todo:board"), {"due": "today"})
 
     assert today_task.title.encode() in response.content
+
+
+# ── Archived is a filter, not a fourth column (Story 53) ─────────────────────
+
+def test_archived_task_is_off_the_board_by_default(client, member, task):
+    client.force_login(member)
+    client.post(reverse("todo:archive", args=[task.uuid]))
+
+    response = client.get(reverse("todo:board"))
+
+    assert task.title.encode() not in response.content
+
+
+def test_the_archived_chip_shows_only_archived_tasks(client, member, task):
+    other = Task.objects.create(title="Still open", owner=member, priority=Priority.P2,
+                                due_on=MONDAY)
+    materialize(other)
+    client.force_login(member)
+    client.post(reverse("todo:archive", args=[task.uuid]))
+
+    response = client.get(reverse("todo:board"), {"archived": "1"})
+
+    assert task.title.encode() in response.content
+    assert other.title.encode() not in response.content
+
+
+def test_the_board_has_no_fourth_archived_column(client, member, task):
+    """The dashboard's own Story 53 notes: a row of P1/P2/P3 plus Archived
+    made a state look like a level of urgency. There is no fourth .col-h
+    labelled Archived any more — it is a chip in the toolbar instead."""
+    client.force_login(member)
+
+    response = client.get(reverse("todo:board"))
+
+    assert b"<b>Archived</b>" not in response.content  # the old column heading
+    assert b"?archived=1" in response.content  # the chip is still reachable
+
+
+# ── the task Sheet (Story 53) ─────────────────────────────────────────────────
+
+def test_the_board_offers_add_task_per_column_not_a_toolbar_button(client, member):
+    client.force_login(member)
+
+    response = client.get(reverse("todo:board"))
+
+    assert b"New task" not in response.content
+    assert response.content.count(b"data-sheet-open") == 3  # one per priority column
+    assert b"?priority=1" in response.content
+    assert b"?priority=2" in response.content
+    assert b"?priority=3" in response.content
+
+
+def test_create_over_fetch_returns_the_sheet_fragment_not_a_full_page(client, member):
+    client.force_login(member)
+
+    response = client.get(reverse("todo:create"), HTTP_X_REQUESTED_WITH="fetch")
+
+    assert response.status_code == 200
+    assert b"data-nh-sheet" in response.content
+    assert b'<html' not in response.content  # a fragment, not the whole shell
+
+
+def test_create_over_fetch_prefills_the_column_priority(client, member):
+    client.force_login(member)
+
+    response = client.get(reverse("todo:create"), {"priority": "1"},
+                          HTTP_X_REQUESTED_WITH="fetch")
+
+    assert b'value="1" required id="id_priority_0" checked' in response.content
+
+
+def test_a_nonsense_priority_query_param_is_ignored_not_500ed(client, member):
+    client.force_login(member)
+
+    response = client.get(reverse("todo:create"), {"priority": "not-a-priority"},
+                          HTTP_X_REQUESTED_WITH="fetch")
+
+    assert response.status_code == 200
+
+
+def test_creating_a_task_over_fetch_returns_json_not_a_redirect(client, member):
+    client.force_login(member)
+
+    response = client.post(reverse("todo:create"), {
+        "title": "Renew the passport", "description": "", "priority": Priority.P1,
+        "owner": member.pk, "assignees": [], "labels": [], "due_on": MONDAY.isoformat(),
+        "recurrence_type": "none", "recurrence_kind": "daily",
+    }, HTTP_X_REQUESTED_WITH="fetch")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True
+    assert body["redirect"] == reverse("todo:board")
+    assert Task.objects.filter(title="Renew the passport").exists()
+
+
+def test_an_invalid_task_over_fetch_re_renders_the_sheet_with_a_422(client, member, make_member):
+    """The sheet has to show the error inline rather than navigate away — a
+    plain redirect would lose the half-filled form."""
+    client.force_login(member)
+    approver = make_member("approver")
+
+    response = client.post(reverse("todo:create"), {
+        "title": "Daily standup", "description": "", "priority": Priority.P2,
+        "owner": member.pk, "assignees": [], "labels": [], "approver": approver.pk,
+        "recurrence_type": "fixed", "recurrence_kind": "daily",
+    }, HTTP_X_REQUESTED_WITH="fetch")
+
+    assert response.status_code == 422
+    assert b"data-nh-sheet" in response.content
+    assert not Task.objects.filter(title="Daily standup").exists()
+
+
+def test_editing_over_fetch_returns_json_with_the_detail_redirect(client, member, task):
+    client.force_login(member)
+
+    response = client.post(reverse("todo:edit", args=[task.uuid]), {
+        "title": task.title, "description": "", "priority": Priority.P1,
+        "owner": member.pk, "assignees": [], "labels": [], "due_on": MONDAY.isoformat(),
+        "recurrence_type": "none", "recurrence_kind": "daily",
+    }, HTTP_X_REQUESTED_WITH="fetch")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True
+    assert body["redirect"] == reverse("todo:detail", args=[task.uuid])
+
+
+def test_the_system_board_offers_no_add_task_button(client, member):
+    """§8: system tasks are created by the platform, never by hand."""
+    client.force_login(member)
+
+    response = client.get(reverse("todo:system_board"))
+
+    assert b"data-sheet-open" not in response.content
+
+
+# ── quick-date chips (Story 53) ────────────────────────────────────────────────
+
+def test_the_detail_pages_due_date_does_not_leak_a_raw_format_string(client, member, task):
+    """Found live in the browser while checking Story 53: `&middot;` written
+    *inside* a `date` filter's format string is read as format characters
+    (m/i/d/o/t are all real ones), not a literal separator — it rendered as
+    something like "&08001010202631;" instead of a middot. The two `date`
+    calls in _card.html already do this safely; detail.html's Current card
+    was the one place still putting it inside the string."""
+    client.force_login(member)
+
+    response = client.get(reverse("todo:detail", args=[task.uuid]))
+
+    assert b"&middot;" in response.content
+    assert b"08001010202631" not in response.content
+
+
+def test_the_sheet_carries_the_quick_date_chips(client, member):
+    client.force_login(member)
+
+    response = client.get(reverse("todo:create"), HTTP_X_REQUESTED_WITH="fetch")
+
+    for label in [b"Today", b"Tomorrow", b"This weekend", b"Next week", b"No date"]:
+        assert label in response.content
+    assert response.content.count(b"data-quick-date") == 5

@@ -1,0 +1,166 @@
+{% comment %}
+The create/edit form's actual fields — Story 53. Shared by the full page
+(form.html, the no-JS/edit fallback) and the Sheet fragment (_form_sheet.html,
+opened by board.html's per-column "Add task"). Grouped into `.frow` rows
+rather than one long vertical list, matching the mockup's own task sheet
+(ui-overhaul-mockup.html's `sheet()`, S.sheet==='task') — TaskForm has more
+fields than that demo shows, so the exact rows differ, but the shape (title,
+then priority/due/time together, quick-date chips, owner/approver together,
+labels, recurrence, alarm) is ported from it rather than invented.
+
+`data-sheet-form` is read by nh-sheet.js — only when this markup is actually
+inside a `[data-nh-sheet]` (the fragment path) does it intercept the submit;
+on the plain page it is inert and the form posts normally.
+{% endcomment %}
+{% load nh %}
+<form method="post" action="{{ form_action }}" data-sheet-form>
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <ul class="errorlist">{% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  <div class="field">
+    <label for="{{ form.title.id_for_label }}">What needs doing</label>
+    {{ form.title }}
+    {{ form.title.errors }}
+  </div>
+
+  <div class="field">
+    <label for="{{ form.description.id_for_label }}">Description</label>
+    {{ form.description }}
+    {{ form.description.errors }}
+  </div>
+
+  <div class="frow">
+    <div class="field">
+      <label>Priority</label>
+      <div class="checks">{{ form.priority }}</div>
+      {{ form.priority.errors }}
+    </div>
+    <div class="field">
+      <label for="{{ form.due_on.id_for_label }}">Due date</label>
+      {{ form.due_on }}
+    </div>
+    <div class="field">
+      <label for="{{ form.due_time.id_for_label }}">Time</label>
+      {{ form.due_time }}
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Quick dates</label>
+    <div class="chips-row">
+      <button type="button" class="chip" data-quick-date data-days="0" data-target="{{ form.due_on.id_for_label }}">Today</button>
+      <button type="button" class="chip" data-quick-date data-days="1" data-target="{{ form.due_on.id_for_label }}">Tomorrow</button>
+      <button type="button" class="chip" data-quick-date data-days="6" data-target="{{ form.due_on.id_for_label }}">This weekend</button>
+      <button type="button" class="chip" data-quick-date data-days="7" data-target="{{ form.due_on.id_for_label }}">Next week</button>
+      <button type="button" class="chip" data-quick-date data-target="{{ form.due_on.id_for_label }}">No date</button>
+    </div>
+  </div>
+
+  <div class="frow">
+    <div class="field">
+      <label for="{{ form.owner.id_for_label }}">Owner — who is responsible</label>
+      {{ form.owner }}
+      {{ form.owner.errors }}
+    </div>
+    <div class="field">
+      <label for="{{ form.approver.id_for_label }}">Needs approval from</label>
+      {{ form.approver }}
+      {{ form.approver.errors }}
+      <p class="cap">Only for a task with no recurrence.</p>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Shared with — anyone who can also close it</label>
+    <div class="checks">{{ form.assignees }}</div>
+  </div>
+
+  <div class="field">
+    <label>Labels</label>
+    <div class="checks">{{ form.labels }}</div>
+  </div>
+
+  <div class="frow">
+    <div class="field">
+      <label for="{{ form.recurrence_type.id_for_label }}">Repeat</label>
+      <select name="{{ form.recurrence_type.html_name }}" id="{{ form.recurrence_type.id_for_label }}"
+              data-recurrence-type>
+        {% for value, label in form.fields.recurrence_type.choices %}
+          <option value="{{ value }}" {% if form.recurrence_type.value == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="{{ form.planned_minutes.id_for_label }}">Expected effort (minutes)</label>
+      {{ form.planned_minutes }}
+    </div>
+    <div class="field">
+      <label for="{{ form.alarm_kind.id_for_label }}">Alarm</label>
+      {{ form.alarm_kind }} {{ form.alarm_ref }}
+    </div>
+  </div>
+
+  <div data-recurrence-for="fixed">
+    <div class="frow">
+      <div class="field">
+        <label for="{{ form.recurrence_kind.id_for_label }}">Pattern</label>
+        <select name="{{ form.recurrence_kind.html_name }}" id="{{ form.recurrence_kind.id_for_label }}"
+                data-recurrence-kind>
+          {% for value, label in form.fields.recurrence_kind.choices %}
+            <option value="{{ value }}" {% if form.recurrence_kind.value == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field" data-recurrence-for="monthly yearly">
+        <label for="{{ form.recurrence_day.id_for_label }}">Day of month</label>
+        {{ form.recurrence_day }}
+      </div>
+      <div class="field" data-recurrence-for="yearly">
+        <label for="{{ form.recurrence_month.id_for_label }}">Month</label>
+        {{ form.recurrence_month }}
+      </div>
+    </div>
+    <div class="field" data-recurrence-for="weekly">
+      <label>Which days</label>
+      <div class="checks">{{ form.recurrence_weekdays }}</div>
+    </div>
+    <div class="field" data-recurrence-for="interval">
+      <label for="{{ form.recurrence_interval_days.id_for_label }}">Every N days</label>
+      {{ form.recurrence_interval_days }}
+    </div>
+  </div>
+
+  <div class="field" data-recurrence-for="rolling">
+    <label for="{{ form.recurrence_interval_days.id_for_label }}">Days after last completion</label>
+    {{ form.recurrence_interval_days }}
+  </div>
+
+  <div class="field" data-recurrence-for="fixed rolling">
+    <label for="{{ form.recurrence_ends_on.id_for_label }}">Ends on (optional)</label>
+    {{ form.recurrence_ends_on }}
+  </div>
+
+  <div class="field">
+    <label class="switch">
+      {{ form.escalation_enabled }}
+      <span>Escalate if it slips</span>
+    </label>
+    {{ form.escalation_policy }}
+  </div>
+
+  <div class="field">
+    <label class="switch">
+      {{ form.deadline_firm }}
+      <span>Firm deadline — cannot be shifted by scheduling suggestions</span>
+    </label>
+  </div>
+
+  <div class="sheet-foot" style="justify-content:flex-start">
+    {% nh_button label=is_new|yesno:"Add the task,Save changes" variant="pri" button_type="submit" %}
+    {% if task %}{% url 'todo:detail' task.uuid as cancel_url %}{% else %}{% url 'todo:board' as cancel_url %}{% endif %}
+    <a class="btn" href="{{ cancel_url }}" data-sheet-close>Cancel</a>
+  </div>
+</form>

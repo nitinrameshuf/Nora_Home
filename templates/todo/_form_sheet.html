@@ -1,0 +1,14 @@
+{% comment %}
+The task form as a Sheet fragment — Story 53. Rendered directly (no
+{% extends %}), fetched by nh-sheet.js and injected into <body>. Mirrors
+templates/nh/sheet.html's own .scrim/.sheet structure rather than going
+through the {% nh_sheet %} tag, because that tag needs its body as inline
+template content, not something a view can hand it after the fact.
+{% endcomment %}
+{% load nh %}
+<div class="scrim" data-nh-sheet>
+  <div class="sheet panel wide">
+    <h3>{{ page_title }}</h3>
+    {% include "todo/_form_fields.html" %}
+  </div>
+</div>
