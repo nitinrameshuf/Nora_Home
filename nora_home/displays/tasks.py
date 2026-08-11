@@ -37,3 +37,19 @@ def check_displays_online():
             dedupe_key=f"display-offline:{display.slug}",
         )
     return {"checked": True}
+
+
+@shared_task(queue="platform")
+def broadcast_refresh():
+    """Push a plain "refresh" to every connected display (Story 56).
+
+    wall-live.js and kiosk.js both already have a "refresh" handler — this
+    is the same message `./nora upgrade` has always sent after a deploy,
+    just fired by nora_home.displays.receivers instead of a person. Scheduled
+    with a countdown by _schedule_refresh, so this always runs a few seconds
+    after the signal that triggered it, not synchronously in the request/task
+    that fired the signal.
+    """
+    from nora_home.displays.bus import broadcast
+
+    broadcast({"type": "refresh"})

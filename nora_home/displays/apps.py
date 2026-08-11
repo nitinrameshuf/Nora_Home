@@ -22,3 +22,6 @@ class DisplaysConfig(NoraAppConfig):
     # redirects there. The wall and kiosk pages themselves are unaffected —
     # they are what the two physical screens actually load.
     nora_nav = False
+
+    def ready(self):
+        from nora_home.displays import receivers  # noqa: F401 — connects the signal receivers

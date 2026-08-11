@@ -633,3 +633,113 @@ def test_the_volume_keys_cannot_drive_it_out_of_range():
     for _ in range(30):
         level = consumer._apply_volume.__wrapped__(consumer, -10)
     assert level == 0
+
+
+# ── live invalidation (Story 56) ──────────────────────────────────────────────
+# nora_home.displays held zero receivers before this — the signals fired
+# correctly and the bus could already push to a screen, but nothing connected
+# them, so a task completed on a phone left the wall stale until someone
+# reloaded it. These check that the connection is real, and that a burst of
+# signals collapses into one broadcast rather than one per signal.
+
+@pytest.fixture
+def captured_broadcasts(monkeypatch):
+    """Replace the actual broadcast with one that just records calls, so these
+    tests check "was a refresh scheduled" without touching the channel layer —
+    that plumbing is already covered by test_broadcast_reaches_the_layer."""
+    calls = []
+    import nora_home.displays.bus as bus
+
+    monkeypatch.setattr(bus, "broadcast", lambda payload: calls.append(payload))
+    return calls
+
+
+def test_completing_a_task_schedules_a_refresh(captured_broadcasts):
+    from nora_home.core.signals import item_completed
+
+    item_completed.send(sender=object(), item=None, member=None, completion=None)
+
+    assert captured_broadcasts == [{"type": "refresh"}]
+
+
+def test_a_burst_of_signals_sends_one_refresh_not_five(captured_broadcasts):
+    """"Completing five things does not send five refreshes" — the story's own
+    acceptance line. Each send() would eagerly run broadcast_refresh under
+    CELERY_TASK_ALWAYS_EAGER if nothing debounced it; this asserts it doesn't."""
+    from nora_home.core.signals import item_completed
+
+    for _ in range(5):
+        item_completed.send(sender=object(), item=None, member=None, completion=None)
+
+    assert len(captured_broadcasts) == 1
+
+
+def test_different_signal_types_still_coalesce_into_one_refresh(captured_broadcasts):
+    """The debounce key is shared across signal types on purpose — a task
+    completing and an escalation firing in the same few seconds is still one
+    thing changing on screen, not two refreshes."""
+    from nora_home.core.signals import escalation_raised, item_completed, item_missed
+
+    item_completed.send(sender=object(), item=None, member=None, completion=None)
+    item_missed.send(sender=object(), item=None, member=None, due_at=None)
+    escalation_raised.send(sender=object(), item=None, level=1, notified=[])
+
+    assert len(captured_broadcasts) == 1
+
+
+def test_a_threshold_crossing_also_schedules_a_refresh(captured_broadcasts):
+    """A real Series, not None — nora_home.todo.system_tasks also listens to
+    this same signal (§8.2) and does a real DB write with it, so a fake
+    sender here would crash that unrelated receiver, not just this one."""
+    from nora_home.core.signals import threshold_crossed
+    from nora_home.telemetry.models import Series
+
+    series = Series.objects.create(key="test.metric", label="Test metric")
+
+    threshold_crossed.send(sender=Series, series=series, value=1, threshold="warning",
+                           direction="above")
+
+    assert captured_broadcasts == [{"type": "refresh"}]
+
+
+def test_the_debounce_key_expires_so_a_later_burst_refreshes_again(captured_broadcasts):
+    from django.core.cache import cache
+
+    from nora_home.core.signals import item_completed
+    from nora_home.displays.receivers import DEBOUNCE_KEY
+
+    item_completed.send(sender=object(), item=None, member=None, completion=None)
+    assert len(captured_broadcasts) == 1
+
+    # Simulate the debounce window having elapsed, rather than sleeping the
+    # test for real seconds.
+    cache.delete(DEBOUNCE_KEY)
+    item_completed.send(sender=object(), item=None, member=None, completion=None)
+
+    assert len(captured_broadcasts) == 2
+
+
+def test_broadcast_refresh_sends_exactly_a_refresh_message(captured_broadcasts):
+    from nora_home.displays.tasks import broadcast_refresh
+
+    broadcast_refresh()
+
+    assert captured_broadcasts == [{"type": "refresh"}]
+
+
+def test_the_receivers_are_actually_connected():
+    """A signal with no receiver looks identical to one with a receiver that
+    does nothing — this is the guard against Story 56 quietly regressing to
+    that. Checks Django's own receiver registry rather than firing a signal,
+    so it fails loudly on a dispatch_uid typo instead of just not refreshing."""
+    from nora_home.core.signals import (
+        escalation_raised, item_completed, item_missed, threshold_crossed)
+
+    for signal, uid in [
+        (item_completed, "displays.item_completed"),
+        (item_missed, "displays.item_missed"),
+        (escalation_raised, "displays.escalation_raised"),
+        (threshold_crossed, "displays.threshold_crossed"),
+    ]:
+        connected = [r for r in signal.receivers if r[0][0] == uid]
+        assert connected, f"nora_home.displays has no receiver for {signal} ({uid})"

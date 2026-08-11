@@ -5106,3 +5106,45 @@ rather than patched per-symptom, the fast suite is green on both the laptop
 and the Pi, and — the distinction Story 41 exists to keep everyone honest
 about — the fixes were *seen* working on the physical wall and kiosk, not
 inferred from a green suite.
+
+### 2026-08-11 — Story 56: Live Invalidation
+`nora_home/displays/receivers.py` (new) connects four signals that already
+fired correctly — `item_completed`, `item_missed`, `escalation_raised`
+(`nora_home.core.signals`), `threshold_crossed` — to the bus that already
+knew how to push a message to a screen (`displays/bus.py`). Nothing new had
+to be taught to fire a signal; the gap was entirely that nothing in
+`nora_home.displays` was listening. Wired via `DisplaysConfig.ready()`,
+matching the pattern `nora_home/todo/apps.py` already uses for its own
+system-tasks receiver.
+
+Debounced through one shared cache key (`django.core.cache.cache.add`,
+3-second TTL): the first signal in a burst schedules a delayed Celery task
+(`broadcast_refresh`, `queue="platform"`) via `apply_async(countdown=3)`;
+every signal inside that window is a no-op, since `cache.add()` only
+succeeds once per window. `broadcast_refresh` sends the same `{"type":
+"refresh"}` message `./nora upgrade` has always sent after a deploy —
+`wall-live.js` and `kiosk.js` already both handle it, so no client-side
+change was needed at all.
+
+"Scoped so a display only reloads when what it's showing actually changed"
+(the story's own text) is scoped by *signal*, not by *display* — there is no
+server-side record of which page a given screen's browser tab currently has
+open, so a refresh goes to every connected display rather than one chosen
+screen. What keeps this cheap: `refresh`'s handler is a plain reload of
+whatever page is already loaded, so a wall sitting on Alerts reloading
+because a Todo item completed elsewhere just re-fetches Alerts — a harmless
+no-op, not a jump to a different screen. True per-display targeting would
+need the server to track what each display is currently showing, which
+nothing here does yet and which this story didn't ask for.
+
+Also covers Slack for free, as the story predicted: `item_completed` fires
+from `nora_home.todo.api.complete()` regardless of caller, and Slack's Done
+button already calls that same function.
+
+9 new tests in `tests/test_displays.py`, including one that asserts the
+receivers are actually connected (`signal.receivers`) rather than only
+testing behaviour — a signal with no receiver and one with a receiver that
+silently does nothing look identical from the outside, which is exactly how
+this subsystem's two prior real bugs (the kiosk's Dim/Wake buttons, the
+dropped banner notification) happened. `./scripts/run-tests.sh` green
+(1060 passed).

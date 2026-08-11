@@ -258,6 +258,17 @@ This has bitten twice, both fixed 2026-08-04: the kiosk's Dim/Wake buttons sent
 `banner` to a page with no banner handler, silently dropping every alert routed to
 the wall. **Adding a message type means adding its handler in the same commit.**
 
+**`refresh` also fires on its own now** (Story 56, `displays/receivers.py`) —
+whenever `nora_home.core.signals.item_completed` / `item_missed` /
+`escalation_raised` / `threshold_crossed` fires, from *any* surface (a
+phone, Slack's Done button, a Celery task), a debounced broadcast reaches
+every connected display a few seconds later. Before this, only a deploy
+(`./nora upgrade`) or a manual kiosk action ever sent `refresh`, so a task
+completed elsewhere left the wall showing stale data until someone reloaded
+it by hand. The debounce (one shared cache key, 3 seconds) coalesces a burst
+of signals into one broadcast rather than one per signal — completing five
+tasks in a row does not send five reloads.
+
 Screen power is not on this bus at all — it is a host-side concern, applied by
 `~/.nora/wall-power.sh` (`xset dpms`) on a systemd timer, because Django runs in
 Docker and the monitors belong to the Pi's own X session.
