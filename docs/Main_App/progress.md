@@ -5056,6 +5056,53 @@ pattern to match; a reasoned adaptation, not a drift.
 
 `./scripts/run-tests.sh` green throughout (1053 passed) — no test in either
 suite asserted the old literal title strings, so nothing needed updating
-alongside the fix. Not yet deployed or re-verified on the Pi as of this
-entry — that, plus a final physical check of the corrected headers, is the
-last step before this story can honestly be marked Complete.
+alongside the fix.
+
+**Deploying it surfaced one more real bug, and this one was in the
+templates, not the deploy.** A fresh authenticated `curl` after redeploying
+still showed `<h1>Tasks</h1>` — and stayed that way through a from-scratch
+`docker compose build --no-cache` and even an `nginx` restart (tried first,
+on the theory that nginx's cached upstream DNS for the recreated `web`
+container was stale — plausible, since nginx had been up 4 days across
+several container recreations, but wrong here: `/home/system/`'s title
+updated correctly through the same nginx, which a stale-DNS theory can't
+explain). `docker compose exec web python manage.py shell -c
+"inspect.getsource(...)"` confirmed the *view* was correct in the running
+process. The actual cause was in `board.html`, `calendar.html`,
+`labels.html`, `search.html`, `reporting.html`, and `settings.html`: each
+hardcodes its own `{% block heading %}` with the old literal text,
+completely ignoring the `page_title` context variable the view sets —
+only `form.html` and pages with no override at all (like
+`system_status.html`, which is why *that* title updated correctly) ever
+read it. Changed all six to `{{ page_title }}`, the same pattern already
+proven correct elsewhere, so this can't recur silently the next time a page
+title changes in the view but not the template.
+
+Redeployed, and this time verified by curling all seven Todo pages directly:
+`Todo · Board`, `Todo · Calendar`, `Todo · Search`, `Todo · Labels`, `Todo ·
+Reporting`, `Todo · Settings`, `Todo · System` — every one correct. `./nora
+test` green on the Pi (1052 passed). The physical observe pass followed,
+reloading both real Chromium sessions with `xdotool key F5` (they were still
+running pages from before this session's earlier redeploys, which is what
+briefly made an already-correct earlier fix — the kiosk's 4-key Home bank —
+look like a failed deploy rather than a stale tab): screenshotted, and
+confirmed directly on the hardware — the wall's Todo board reads "TODO ·
+BOARD" with "Change the water filter" and "Book the boiler service" in
+clearly readable bright text, no longer the ~1.1:1 contrast bug this entry
+opened with; the kiosk's Home key bank shows all four keys (Dashboard,
+Alerts, System, Settings) and its own app list correctly dropped
+Measurements/Integrations to just Home, Alerts, Todo.
+
+A fifth, final QA run came back **184 passed, 0 failed, 1 skipped** —
+every failure chased through this story was either a real application bug
+(the missing base text colour, six templates ignoring `page_title`) or a
+real bug in the QA suite itself (the corner-sampling contrast measurement,
+the phone-surface detection), and every one is now fixed and covered by a
+green run rather than papered over.
+
+**Story 55 is Complete.** All four gates from §13.4/CLAUDE.md §0 are met:
+the QA suite itself is trustworthy, real defects were fixed at their root
+rather than patched per-symptom, the fast suite is green on both the laptop
+and the Pi, and — the distinction Story 41 exists to keep everyone honest
+about — the fixes were *seen* working on the physical wall and kiosk, not
+inferred from a green suite.
