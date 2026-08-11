@@ -4651,3 +4651,26 @@ on every page. Still true to the file's own rule: a vital with no reading yet
 
 Local suite green (1037 passed). `manage.py sync_docs` picked up the new
 published API (`latest_value`) into cross-functionality.md.
+
+**Verified on the Pi.** `./nora test` green (1036 passed) against the real
+container. Ran `collect_vitals()` for real inside the web container — CPU,
+memory, load, uptime and fan all recorded genuine values (the Pi was still
+warm from the deploy's own docker build: 87% CPU, load 9.1 — real numbers,
+not fixtures). That crossed real thresholds and fired the real pipeline: two
+system tasks appeared on the Todo board ("CPU is warning (92.40%)", "Load
+average is alert (9.12)"), and the console rail on the physical wall showed
+all six vitals — TEMP/DISK/CPU/MEM/FAN/LOAD/UP — after a reload, LOAD's bar
+correctly amber for being over threshold.
+
+**`pi.throttled` does not work yet, and that is being said plainly rather than
+claimed.** `vcgencmd get_throttled` succeeds on the Pi's host (`throttled=0x0`)
+but the binary is not present inside the web/worker containers, and reading it
+needs `/dev/vcio` passed through — neither is set up. The probe degrades
+correctly (`read_throttled()` catches the missing binary and returns `None`,
+so `collect_vitals` simply records five series instead of six rather than
+raising), so nothing is broken. But the story's own flagged "most valuable
+metric" is not actually collected on this deployment. Left as a known gap
+rather than forcing a host-binary bind-mount, which would be fragile across Pi
+OS updates for a feature that was a stretch goal, not the story's core ask.
+
+**Story 52 is done except that one gap.**
