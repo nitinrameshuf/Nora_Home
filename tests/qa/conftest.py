@@ -205,10 +205,25 @@ def contrast_ratio(one, two) -> float:
 def measure_text_contrast(page, selector: str, index: int = 0) -> float | None:
     """Contrast between the glyphs and their background, as actually drawn.
 
-    Screenshots the element and treats the most common colour as the background
-    and the pixel furthest from it in luminance as the glyph. Antialiasing puts
-    plenty of in-between pixels in the box, but the extremes are what a person
-    reads. Returns None when the element is missing or too small to judge.
+    Screenshots the element and treats the *corner* pixels as the background,
+    and the pixel furthest from that in luminance as the glyph. Antialiasing
+    puts plenty of in-between pixels in the box, but the extremes are what a
+    person reads. Returns None when the element is missing or too small to
+    judge.
+
+    Two real bugs, both found live (Story 55) on `.task .tt` — visibly white
+    text on a dark card, measuring 1.08:1:
+
+    1. `page.screenshot(clip=box)` from a separately-fetched `bounding_box()`
+       is two calls that can desync (layout shifting between them, a font
+       finishing its swap) — `element.screenshot()` asks Playwright for the
+       pixels of *that element*, with no manual coordinate math to get wrong.
+    2. "The most common colour is the background" breaks for a tightly-
+       cropped bold label — no padding, box height equal to line-height,
+       several real rows in this house — where glyph-fill pixels outnumber
+       background ones inside the box. A short label's *corners* are
+       reliably background for any left-aligned text that doesn't itself
+       touch the box edges, which every real one here doesn't.
     """
     from collections import Counter
     from io import BytesIO
@@ -222,14 +237,16 @@ def measure_text_contrast(page, selector: str, index: int = 0) -> float | None:
     if not box or box["width"] < 4 or box["height"] < 4:
         return None
 
-    image = Image.open(BytesIO(page.screenshot(clip=box))).convert("RGB")
+    image = Image.open(BytesIO(element.screenshot())).convert("RGB")
+    width, height = image.size
     # getdata() is deprecated in Pillow 14; list(image) would give rows.
     pixels = list(image.convert("RGB").tobytes())
     pixels = [tuple(pixels[i:i + 3]) for i in range(0, len(pixels), 3)]
     if len(pixels) < 16:
         return None
 
-    background = Counter(pixels).most_common(1)[0][0]
+    corners = [pixels[0], pixels[width - 1], pixels[-width], pixels[-1]]
+    background = Counter(corners).most_common(1)[0][0]
     glyph = max(pixels, key=lambda p: abs(_relative_luminance(p)
                                           - _relative_luminance(background)))
     return contrast_ratio(glyph, background)

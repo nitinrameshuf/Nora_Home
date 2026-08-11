@@ -42,8 +42,23 @@
   .nh-main { position: relative; z-index: 1; }
 
   /* ── the rail ── */
+  /* `.nh-shell` is `min-height: 100vh`, not a fixed height, so it grows past
+     one screen on any page taller than the viewport — Reporting's eight
+     charts, for one. `.rail` used to be a plain flex sibling with no height
+     of its own, so it stretched (flex's default align-items: stretch) to
+     match `.nh-shell`'s full grown height, and `.rail-foot`'s `margin-top:
+     auto` pushed the vitals rail and the household switcher to the bottom
+     of *that* — hundreds of pixels below the actual viewport, invisible
+     without scrolling all the way down a page that was never meant to need
+     it. Found live (Story 55, reported directly): measured on Reporting,
+     viewport 798px tall, .rail-foot sitting at top:888px. `position: sticky`
+     with its own `height: 100vh` keeps the rail — and everything pinned to
+     its bottom — matched to the screen regardless of how tall the page next
+     to it grows; `overflow-y: auto` is the safety valve if the nav list
+     itself ever gets taller than that. */
   .rail {
     width: 228px; flex: none; padding: 14px 12px 12px; display: flex; flex-direction: column;
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
     border-right: 1px solid var(--edge-hot);
     background: linear-gradient(180deg, rgba(8, 17, 27, .86), rgba(5, 11, 19, .92));
     backdrop-filter: blur(20px) saturate(1.2);
@@ -237,9 +252,18 @@
   .ph-body > .card { min-height: 110px; }
 
   /* The section rail sits directly on top of the tab bar: which app, and
-     which part of it, both within thumb reach at the bottom of the screen. */
+     which part of it, both within thumb reach at the bottom of the screen.
+
+     min-width: 0 (Story 55, found live by the QA suite): a flex child's
+     default min-width is auto — its own content's natural width — which
+     `overflow-x: auto` on the same element does nothing to override. Without
+     this, a row of section chips wider than the screen just kept the whole
+     bar (and the page around it) that wide instead of scrolling internally;
+     every Todo page with more than a couple of sections scrolled sideways on
+     a phone because of this one rule, not because of anything specific to
+     each page. */
   .ph-sub {
-    flex: none; display: flex; gap: 7px; overflow-x: auto; padding: 9px 14px;
+    flex: none; min-width: 0; display: flex; gap: 7px; overflow-x: auto; padding: 9px 14px;
     border-top: 1px solid var(--edge); background: rgba(5, 10, 17, .55);
     -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
             mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
