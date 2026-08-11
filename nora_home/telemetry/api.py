@@ -94,3 +94,14 @@ def series_history(key: str, *, hours: int = 24, limit: int = 500):
     since = timezone.now() - timezone.timedelta(hours=hours)
     return (Reading.objects.filter(series__key=key, recorded_at__gte=since)
             .order_by("recorded_at")[:limit])
+
+
+def latest_value(key: str) -> float | None:
+    """The newest reading for a series, or None if it has never been recorded.
+
+    One indexed query (Reading has an index on series + -recorded_at) — cheap
+    enough for a context processor, unlike core.health's TCP probes.
+    """
+    reading = (Reading.objects.filter(series__key=key)
+               .order_by("-recorded_at").only("value").first())
+    return reading.value if reading else None

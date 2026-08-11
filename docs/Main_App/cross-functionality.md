@@ -73,6 +73,7 @@ matches. Do not hand-edit inside the markers — the prose around them is yours.
 | Call | What it does |
 |---|---|
 | `define_series(key: 'str', label: 'str', *, unit: 'str' = '', app_slug: 'str' = 'telemetry', category: 'str' = '', member=None, direction: 'str' = 'neutral', description: 'str' = '', warn_below=None, warn_above=None, alert_below=None, alert_above=None, show_on_wall: 'bool' = False, precision: 'int' = 2, retention_days: 'int' = 730) -> 'Series'` | — |
+| `latest_value(key: 'str') -> 'float | None'` | The newest reading for a series, or None if it has never been recorded |
 | `record_reading(key: 'str', value: 'float', *, member=None, source: 'str' = 'manual', recorded_at=None, app_slug: 'str' = 'telemetry', **tags) -> 'Reading'` | Store one measurement and fire a threshold signal if it crosses a bound |
 | `series_history(key: 'str', *, hours: 'int' = 24, limit: 'int' = 500)` | — |
 

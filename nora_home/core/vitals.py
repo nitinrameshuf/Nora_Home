@@ -5,21 +5,22 @@ One list of {key, value, bar, warm} — a short mono label, a formatted value, a
 optionally a 0-100 bar. The rail renders whatever it is given, so adding a vital
 is adding an entry here and nothing else.
 
-**Only what is genuinely measured appears.** The design mockup's rail showed six
-vitals — CPU, MEM, TEMP, FAN, LOAD, UP — and its own comment admits only
-temperature and disk are collected today. Story 52 adds the rest as *telemetry
-series* (with history, rollups and thresholds), which is a different and better
-thing than reading /proc on every page render. Until it lands this shows the two
-that are real. A rail that showed a plausible CPU number would be worse than a
-short rail: it would be believed.
+The design mockup's rail showed six vitals — CPU, MEM, TEMP, FAN, LOAD, UP — and
+Story 52 is what makes the last four real, as *telemetry series* recorded every
+five minutes by nora_home.telemetry.tasks.collect_vitals, rather than read from
+/proc on every page render. TEMP and DISK stay probed directly below (they were
+already cheap and already this file's own read); the rest come from
+telemetry.api.latest_value(), one indexed query per vital. **Still only what is
+genuinely measured appears** — a vital with no reading yet (a fresh install,
+before the first five-minute tick) is simply absent from the list rather than
+shown as zero, because a zero would be believed.
 
-Cheap probes only, and that constraint is load-bearing. This runs in a context
-processor on every page in the house, so it calls check_disk() and
-check_cpu_temperature() directly — both are local file reads — and never
-collect_health(), which additionally opens TCP connections to redis, rabbitmq,
-mongo and MinIO with a 2s timeout each. Eight seconds of socket work per page
-render is the kind of thing that looks fine on a laptop and makes the wall feel
-broken.
+Cheap reads only, and that constraint is load-bearing. This runs in a context
+processor on every page in the house. check_disk()/check_cpu_temperature() are
+local file reads; latest_value() is one indexed row lookup each. None of it is
+collect_health(), which opens TCP connections to redis, rabbitmq, mongo and
+MinIO with a 2s timeout each — eight seconds of socket work per page render is
+the kind of thing that looks fine on a laptop and makes the wall feel broken.
 """
 
 from __future__ import annotations
@@ -34,6 +35,10 @@ TEMP_FLOOR_C = 30.0
 TEMP_CEILING_C = 85.0
 TEMP_WARM_C = 70.0   # matches check_cpu_temperature()'s own "warning" threshold
 DISK_WARM_PERCENT = 80.0
+CPU_WARM_PERCENT = 85.0
+MEMORY_WARM_PERCENT = 85.0
+LOAD_CEILING = 8.0   # 2x a 4-core Pi 5; matches collect_vitals()'s own warn_above
+LOAD_WARM = 4.0
 
 
 def _scale(value: float, low: float, high: float) -> int:
@@ -72,5 +77,58 @@ def rail_vitals() -> list[dict]:
             })
     except Exception:
         logger.exception("The disk vital could not be read")
+
+    from nora_home.telemetry.api import latest_value
+
+    try:
+        cpu = latest_value("pi.cpu_percent")
+        if cpu is not None:
+            vitals.append({
+                "key": "CPU",
+                "value": f"{cpu:.0f}%",
+                "bar": _scale(cpu, 0, 100),
+                "warm": cpu >= CPU_WARM_PERCENT,
+            })
+    except Exception:
+        logger.exception("The cpu vital could not be read")
+
+    try:
+        memory = latest_value("pi.memory_percent")
+        if memory is not None:
+            vitals.append({
+                "key": "MEM",
+                "value": f"{memory:.0f}%",
+                "bar": _scale(memory, 0, 100),
+                "warm": memory >= MEMORY_WARM_PERCENT,
+            })
+    except Exception:
+        logger.exception("The memory vital could not be read")
+
+    try:
+        fan = latest_value("pi.fan_rpm")
+        if fan is not None:
+            vitals.append({"key": "FAN", "value": f"{fan:.0f}", "warm": False})
+    except Exception:
+        logger.exception("The fan vital could not be read")
+
+    try:
+        load = latest_value("pi.load_average")
+        if load is not None:
+            vitals.append({
+                "key": "LOAD",
+                "value": f"{load:.1f}",
+                "bar": _scale(load, 0, LOAD_CEILING),
+                "warm": load >= LOAD_WARM,
+            })
+    except Exception:
+        logger.exception("The load vital could not be read")
+
+    try:
+        uptime = latest_value("pi.uptime_hours")
+        if uptime is not None:
+            value = f"{uptime / 24:.0f}d" if uptime >= 48 else f"{uptime:.0f}h"
+            vitals.append({"key": "UP", "value": value, "warm": False})
+    except Exception:
+        logger.exception("The uptime vital could not be read")
 
     return vitals

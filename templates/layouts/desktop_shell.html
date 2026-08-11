@@ -80,10 +80,10 @@ layouts/skeleton.html's own comment for why the split exists.
     {% if request.user.is_authenticated %}
       <div class="rail-foot">
         {% comment %}
-        The console rail's vitals — Story 48. Only what the house genuinely
-        measures appears here; see nora_home/core/vitals.py for why the other
-        four the mockup drew are absent until Story 52 collects them, and why
-        this must stay a cheap local read rather than a health sweep.
+        The console rail's vitals — Story 48, filled out by Story 52. All six
+        the mockup drew now appear once collect_vitals has run at least once;
+        see nora_home/core/vitals.py for why this must stay a cheap local/
+        indexed read rather than a health sweep.
         {% endcomment %}
         {% if nh_vitals %}
           <div class="vitals panel">

@@ -378,17 +378,39 @@ def test_a_critical_service_being_down_makes_the_house_unhealthy(monkeypatch):
 
 # ── the console rail's vitals (Story 48) ─────────────────────────────────────
 
+ALL_VITAL_KEYS = {"TEMP", "DISK", "CPU", "MEM", "FAN", "LOAD", "UP"}
+
+
 def test_the_rail_only_shows_vitals_the_house_actually_measures():
-    """The mockup's rail drew six vitals — CPU, MEM, TEMP, FAN, LOAD, UP — and
-    its own comment admits only temperature and disk are collected. Story 52
-    adds the rest as telemetry series. Until then a rail showing a plausible
-    CPU number would be worse than a short rail, because it would be believed.
+    """The mockup's rail drew six vitals — CPU, MEM, TEMP, FAN, LOAD, UP.
+    Story 52 records the telemetry ones every five minutes; a fresh house with
+    no reading yet must not show one, because a placeholder would be believed.
     """
     from nora_home.core.vitals import rail_vitals
 
     keys = {vital["key"] for vital in rail_vitals()}
 
-    assert keys <= {"TEMP", "DISK"}, f"invented vitals: {keys - {'TEMP', 'DISK'}}"
+    assert keys <= ALL_VITAL_KEYS, f"invented vitals: {keys - ALL_VITAL_KEYS}"
+    # No collect_vitals task has run in this test, so the telemetry-backed
+    # ones must be absent — only the two direct-probe vitals can appear.
+    assert keys <= {"TEMP", "DISK"}
+
+
+def test_a_recorded_vital_appears_on_the_rail():
+    from nora_home.core.vitals import rail_vitals
+    from nora_home.telemetry.api import record_reading
+
+    record_reading("pi.cpu_percent", 42.0, source="probe")
+    record_reading("pi.load_average", 1.5, source="probe")
+    record_reading("pi.uptime_hours", 5.0, source="probe")
+
+    by_key = {v["key"]: v for v in rail_vitals()}
+
+    assert by_key["CPU"]["value"] == "42%"
+    assert by_key["CPU"]["bar"] == 42
+    assert by_key["LOAD"]["value"] == "1.5"
+    assert by_key["UP"]["value"] == "5h"
+    assert "bar" not in by_key["UP"] or by_key["UP"].get("bar") is None
 
 
 def test_the_rail_never_calls_the_full_health_sweep(monkeypatch):
@@ -446,6 +468,8 @@ def test_every_bar_is_a_percentage(monkeypatch):
                         lambda: {"status": "ok", "percent_used": -20.0, "free_gb": 1})
 
     for vital in rail_vitals():
+        if vital.get("bar") is None:
+            continue
         assert 0 <= vital["bar"] <= 100, f"{vital['key']} bar is {vital['bar']}"
 
 

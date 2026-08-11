@@ -193,3 +193,92 @@ def test_series_history_excludes_readings_outside_the_window(series):
 
 def test_series_history_for_an_unknown_key_is_empty():
     assert list(series_history("nothing.here")) == []
+
+
+# ── latest_value ──────────────────────────────────────────────────────────────
+
+def test_latest_value_returns_the_newest_reading():
+    from nora_home.telemetry.api import latest_value
+
+    record_reading("pi.cpu_percent", 10.0)
+    record_reading("pi.cpu_percent", 20.0)
+
+    assert latest_value("pi.cpu_percent") == 20.0
+
+
+def test_latest_value_for_an_unrecorded_series_is_none():
+    from nora_home.telemetry.api import latest_value
+
+    assert latest_value("nothing.here") is None
+
+
+# ── Pi vitals (Story 52) ─────────────────────────────────────────────────────
+
+def test_collect_vitals_records_whatever_the_probes_return(monkeypatch):
+    """A dev laptop has no fan tacho and no vcgencmd — those two must be
+    skipped, not raise, and the rest must still be recorded (CLAUDE.md §6,
+    failures degrade)."""
+    from nora_home.telemetry import probes, tasks
+
+    monkeypatch.setattr(probes, "read_cpu_percent", lambda: 12.5)
+    monkeypatch.setattr(probes, "read_memory_percent", lambda: 33.0)
+    monkeypatch.setattr(probes, "read_load_average", lambda: 0.8)
+    monkeypatch.setattr(probes, "read_uptime_hours", lambda: 100.0)
+    monkeypatch.setattr(probes, "read_fan_rpm", lambda: None)
+    monkeypatch.setattr(probes, "read_throttled", lambda: None)
+
+    result = tasks.collect_vitals()
+
+    assert set(result["recorded"]) == {
+        "pi.cpu_percent", "pi.memory_percent", "pi.load_average", "pi.uptime_hours",
+    }
+    assert Series.objects.get(key="pi.cpu_percent").latest_value() == 12.5
+    assert not Series.objects.filter(key="pi.fan_rpm").exists()
+
+
+def test_a_broken_probe_does_not_block_the_others(monkeypatch):
+    from nora_home.telemetry import probes, tasks
+
+    def explode():
+        raise OSError("no such file")
+
+    monkeypatch.setattr(probes, "read_cpu_percent", explode)
+    monkeypatch.setattr(probes, "read_memory_percent", lambda: 50.0)
+    monkeypatch.setattr(probes, "read_load_average", lambda: None)
+    monkeypatch.setattr(probes, "read_uptime_hours", lambda: None)
+    monkeypatch.setattr(probes, "read_fan_rpm", lambda: None)
+    monkeypatch.setattr(probes, "read_throttled", lambda: None)
+
+    result = tasks.collect_vitals()
+
+    assert result["recorded"] == ["pi.memory_percent"]
+
+
+def test_throttled_flags_being_set_is_an_alert(monkeypatch):
+    """Bit 0 is under-voltage happening right now — the single most valuable
+    Pi signal here, and it has no /proc or /sys equivalent."""
+    from nora_home.telemetry import probes, tasks
+
+    monkeypatch.setattr(probes, "read_cpu_percent", lambda: None)
+    monkeypatch.setattr(probes, "read_memory_percent", lambda: None)
+    monkeypatch.setattr(probes, "read_load_average", lambda: None)
+    monkeypatch.setattr(probes, "read_uptime_hours", lambda: None)
+    monkeypatch.setattr(probes, "read_fan_rpm", lambda: None)
+    monkeypatch.setattr(probes, "read_throttled", lambda: 0x50001)  # under-voltage now
+
+    tasks.collect_vitals()
+
+    series = Series.objects.get(key="pi.throttled")
+    assert series.classify(0x50001) == "alert"
+
+
+def test_cpu_percent_is_read_as_a_rate_not_a_running_total():
+    """A single /proc/stat read is jiffies since boot; the probe must sample
+    twice and diff, or the number would only ever grow."""
+    from nora_home.telemetry.probes import read_cpu_percent
+
+    value = read_cpu_percent(interval=0.05)
+
+    if value is None:
+        pytest.skip("no /proc/stat here (not Linux)")
+    assert 0 <= value <= 100

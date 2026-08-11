@@ -93,6 +93,11 @@ app.conf.beat_schedule = {
         "schedule": crontab(minute=7),
         "options": {"queue": "platform"},
     },
+    "telemetry.collect-vitals": {
+        "task": "nora_home.telemetry.tasks.collect_vitals",
+        "schedule": crontab(minute="*/5"),
+        "options": {"queue": "platform"},
+    },
     "datastores.nightly-backup": {
         "task": "nora_home.datastores.tasks.nightly_backup",
         "schedule": crontab(minute=30, hour=3),

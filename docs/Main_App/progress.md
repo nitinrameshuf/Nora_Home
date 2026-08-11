@@ -4627,3 +4627,27 @@ this is a decision for the family rather than a bug to fix.
 
 **Story 51 is three of four**, and the fourth is blocked by the hardware and an
 architectural choice rather than by effort.
+
+### 2026-08-10 — Story 52: Pi Vitals — Telemetry Probes
+CPU, memory, load average, uptime and fan speed now flow through
+`nora_home.telemetry.api` as real series (`nora_home/telemetry/probes.py`,
+collected every 5 minutes by `collect_vitals` in `nora_home/telemetry/tasks.py`,
+scheduled in `config/celery.py`). Temperature and disk already existed. All
+five reads are local files (`/proc/stat`, `/proc/meminfo`, `/proc/loadavg`,
+`/proc/uptime`, `/sys/class/hwmon/*/fan1_input`) — none of them shell out.
+
+Added the one Pi vital with no `/proc`/`/sys` equivalent: `vcgencmd
+get_throttled`, recorded as `pi.throttled` with `alert_above=0` so any bit set
+(under-voltage, frequency capping, throttling — now or historically) is an
+alert. This is the flagged gap from the story's own notes — undervoltage is
+the most common cause of unexplained Pi flakiness and degrades everything else
+silently before it fails outright.
+
+The console rail (`nora_home/core/vitals.py`, Story 48) now shows all six
+vitals the mockup drew, not just TEMP/DISK — added `telemetry.api.latest_value()`,
+one indexed query per vital, cheap enough for the context processor that runs
+on every page. Still true to the file's own rule: a vital with no reading yet
+(fresh install, before the first 5-minute tick) is absent, never shown as zero.
+
+Local suite green (1037 passed). `manage.py sync_docs` picked up the new
+published API (`latest_value`) into cross-functionality.md.
