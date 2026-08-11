@@ -38,6 +38,18 @@
      46 rewrites nh-scene.css properly; until then, nothing here reads its
      --pane-rgb/--pane-app system at all — .rail/.appbar bring their own glass
      via --panel/--panel-solid, already visible above). */
+  /* The mockup's own root wrapper (`@layer base { .ui { ...color:var(--txt)... } }`)
+     sets a default text colour every descendant inherits unless it overrides
+     to --dim/--faint. Nothing in this codebase's own base layer ever carried
+     that rule over — body/html/:root set none of the tokens.css colour tokens
+     at all — so any element that (correctly, by the mockup's own pattern)
+     relies on inheriting --txt rather than declaring it explicitly falls back
+     to the browser's UA-default black instead. Found live (Story 55): `.task
+     .tt` and `.set-row .k` both measured ~1.1:1 contrast — not a washed-out
+     colour, black text on a near-black panel, because that is exactly what
+     inheriting from an unset `color` produces. */
+  body { color: var(--txt); }
+
   .nh-shell { display: flex; min-height: 100vh; position: relative; z-index: 1; }
   .nh-main { position: relative; z-index: 1; }
 

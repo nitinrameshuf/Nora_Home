@@ -4873,3 +4873,94 @@ browser locally before deploying: all four System tabs, the old `/home/log/`,
 `/home/measurements/`, `/home/integrations/` URLs redirecting to the right
 tab with real data, sidebar showing Home (Home/Alerts/System/Settings) and
 Apps (Todo alone), no console errors.
+
+### 2026-08-11 — Story 55, continued: "you should show every option that is
+there, why are you limiting yourself?"
+The first pass above fixed the System tabs, but the user kept pushing —
+"there are inconsistencies between mockup and pi, make sure check is
+thorough" — and it found a real one the assistant then defended rather than
+fixed: Todo's `nora_kiosk_controls` was a hand-curated 5-of-7-item subset,
+described in its own comment as a deliberate Story 50 call for a physical
+touchscreen. Told the mockup's `WALL_APPS` derives a kiosk's key bank from
+*every* one of an app's `sections`, the assistant answered "that one's
+fine... a documented decision, not an oversight." The user's reply was
+direct: *"what does this even mean, you should show every option that is
+there, instead, why are you limiting yourself?"* — correctly rejecting a
+rationalized deviation instead of a fixed one.
+
+Fixed for real, and audited harder this time rather than spot-checked:
+`nora_kiosk_controls = nora_sections` (all 7, `nora_home/todo/apps.py`);
+`nora_sections`' first entry retitled "Tasks" -> "Board" to match
+`REGISTRY.todo.sections[0].title`; the desktop rail's Home link retitled
+"Home" -> "Dashboard" (`templates/layouts/desktop_shell.html`) — the group
+label stays "Home", only the link inside it changes, matching the mockup's
+own `home.sections[0].title` vs. its top-level `title`; a Shuffle button
+added next to "Add a widget" (`templates/dashboard/home.html`,
+`assets/js/dashboard.js` — randomizes each placed widget's size from its own
+valid sizes *and* the overall order, exactly matching the mockup's own
+`case 'shuffle':` handler); and System's Health tab second card swapped from
+"This install" metadata to real Pi vitals (temp/disk/cpu/mem/fan/load/
+uptime via `rail_vitals()`), matching `sysHealth()`'s actual pairing in the
+mockup rather than a differently-purposed card that happened to occupy the
+same slot.
+
+**This is now a standing rule, not a one-story fix** — CLAUDE.md §4 gained a
+dated entry: *"When the real implementation and the mockup disagree, the
+mockup is right, and the fix is to change the implementation — not to decide
+the implementation's version is reasonable and move on."* A genuine,
+reasoned adaptation (a real Django-vs-SPA constraint, documented inline like
+Story 49's phone-tabs comment) is still fine; a silent, individually-
+defensible drift is not, however small.
+
+Asked afterward to explain what actually went wrong, given CLAUDE.md has said
+"mockup first" since 2026-08-09: each drift was checked against only *part*
+of the mockup — `REGISTRY` but not `SYS_VIEWS`, the desktop rail but not the
+kiosk's own derivation logic — and each one individually looked like a
+reasonable engineering call, which is exactly how they survived a review that
+was real but not exhaustive. The fix was not more care in the abstract; it
+was checking every *executable* derivation in the mockup (`WALL_APPS`,
+`SYS_VIEWS`, `case 'shuffle':`) against the corresponding real code, not
+just the parts that are easy to eyeball on screen.
+
+**Two infrastructure bugs surfaced getting a trustworthy signal after all of
+this, neither one in the application:**
+
+1. **`docker compose build` (no `--no-cache`), as `./nora upgrade` runs it,
+   can silently keep a stale cached layer for the Dockerfile's `assets`
+   build stage** even when `assets/*.css` source has genuinely changed — a
+   deploy reports success while the running container still serves the
+   pre-fix build. Found by comparing the *container's own*
+   `static/nora_home/dist/.vite/manifest.json` against the host's freshly-
+   built one after an ordinary `./nora upgrade` and seeing them disagree.
+   Worked around this session with `docker compose build --no-cache web`
+   before every `up`; not yet fixed at the tooling level (`./nora upgrade`
+   itself), which is worth doing so this can't recur silently.
+2. **Vite's CSS output hash is not perfectly deterministic** across rebuilds
+   of identical source (`Bx6K6Mgf` vs. `DR8kgS5u` for the same `shell.css`,
+   twice, in this session alone) — almost certainly Tailwind v4/PostCSS
+   internal ordering. This makes hash-name comparison alone an unreliable way
+   to confirm a deploy; the only real check is grepping the served bytes for
+   the actual fix content, which is what finally confirmed this deploy was
+   live: an authenticated `curl` against `https://192.168.1.253/home/` and
+   the container's own dist files both showed the `.rail { position: sticky
+   }` fix and the Shuffle button's `data-dash-shuffle` JS, matching the
+   locally-built source exactly.
+
+**And a QA-suite bug, found only once the deploy was confirmed genuinely live
+and the same 13 failures still reproduced identically:** `page.
+set_viewport_size()` changes CSS pixels only — it never touches the User-
+Agent Playwright sends, and `nora_home.ui.middleware.SurfaceMiddleware`
+decides phone vs. desktop purely from the UA (or an `nh_surface` cookie
+override), never from viewport width. Every "iPhone"-labelled QA check, in
+this suite both before and after this story's rewrite, had therefore always
+been testing the 228px-fixed-rail *desktop* shell narrowed to 390px, never
+the real phone shell — a test-harness bug, not an application one. Added
+`set_surface(page, house_url, surface)` to `tests/qa/conftest.py`, using the
+same `nh_surface` cookie override the middleware already documents, and wired
+it into every iPhone/iPad-labelled check in `test_journeys.py` and
+`test_todo_qa.py` via a `SURFACE_FOR_LABEL` map.
+
+`./scripts/run-tests.sh` green throughout (1053 passed locally, 1052 on the
+Pi). Redeployed with the no-cache workaround from item 1 above, and this time
+verified the deploy was genuinely live by content, not by hash, before
+re-running the QA suite for a trustworthy result.
