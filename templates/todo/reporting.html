@@ -12,7 +12,7 @@ Reporting (§10). Every card follows the Visual discipline table:
   * Good news is small — "nothing late" is a word, not a card.
 {% endcomment %}
 
-{% block heading %}Reporting{% endblock %}
+{% block heading %}{{ page_title }}{% endblock %}
 
 {% block actions %}
   {% url 'todo:board' as board_url %}

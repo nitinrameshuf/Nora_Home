@@ -1,6 +1,6 @@
 {% extends "base.html" %}{% load django_vite nh %}
 
-{% block heading %}Search{% endblock %}
+{% block heading %}{{ page_title }}{% endblock %}
 
 {% block actions %}
   {% url 'todo:board' as board_url %}
