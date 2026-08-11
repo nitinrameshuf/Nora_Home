@@ -4734,3 +4734,13 @@ flicker, edited it through the full-page fallback (same quick-date chips
 work there too, no sheet involved), archived it and confirmed it disappeared
 from "All" and appeared under the Archived chip with a Restore button, and
 confirmed Escape closes the sheet. No console errors at any point.
+
+**Verified on the Pi.** `./nora test` green (1049 passed). Sent the wall a
+real `navigate` bus message to `/todo/` and screenshotted it: the real
+family board ("Change the water filter", "Book the boiler service"), no
+toolbar "New task" button, per-column "Add task", Archived chip present, no
+fourth column. A real touch (`xdotool`) on a column's "Add task" opened the
+Sheet on the physical screen with the actual family (nitin, priya) as
+owner/shared-with options — confirming the Vite-built `nh-sheet.js` works
+through the Pi's real Chromium and real data, not just the local dev server.
+Story 53 is Complete.
