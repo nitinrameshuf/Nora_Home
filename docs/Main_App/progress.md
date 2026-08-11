@@ -4964,3 +4964,98 @@ it into every iPhone/iPad-labelled check in `test_journeys.py` and
 Pi). Redeployed with the no-cache workaround from item 1 above, and this time
 verified the deploy was genuinely live by content, not by hash, before
 re-running the QA suite for a trustworthy result.
+
+**That run (fourth of the session) still failed five checks — but this time
+every failure was real, not an artifact of the harness.** The `set_surface`
+fix worked completely: every `test_no_horizontal_scroll[iPhone]` failure
+disappeared. What remained: `.task .tt` (board card titles) at ~1.09:1
+contrast on all four dayparts, and Settings labels at 1.35:1 — both survived
+the earlier corner-sampling measurement fix, which was the tell that these
+were genuine, not another measurement bug.
+
+**Root cause, found by reading `getComputedStyle` and CSS side by side rather
+than guessing:** neither rule declares its own `color`, which is correct —
+most of this app's secondary text (`.cap`, `.col-h b`, `.read span`, ...) is
+written the same way, explicitly inheriting from a base rule. The mockup
+provides that base rule on its own root wrapper — `@layer base { .ui {
+color: var(--txt); ... } }` — but nothing in this codebase's own `tokens.css`
+or `shell.css` ever carried the equivalent over. `body`/`html`/`:root` set
+none of the colour tokens as an actual `color:` property anywhere. So `.tt`
+and `.set-row .k` were falling back to the browser's own UA-default black —
+literally black text on the near-black `--panel-solid` background, which is
+exactly what a ~1.1:1 ratio looks like. Most other text escaped this because
+it happens to declare its own colour explicitly; these two did not, and nor
+would any future component built the same deliberate way the mockup's own
+components are. Fixed with one rule, `body { color: var(--txt); }` in
+`shell.css` — the file every real page loads — rather than patching the two
+symptoms individually, since the missing piece was the base layer, not
+either component.
+
+Verified the same way as the Docker gotcha above: hash comparison is
+unreliable, so confirmed via `grep` on the container's own served CSS
+(`body{color:var(--txt)}`) and an authenticated `curl` against
+`https://192.168.1.253/home/` before redeploying for real. `./nora test`
+green on the Pi again (1052 passed), and a fifth QA run — the first one this
+session with nothing left to chase — came back **226/226 (184 tests,
+including parametrized variants), 0 failed, 1 skipped, clean.**
+
+**Not yet Complete — deliberately not claiming it on this evidence alone.**
+Every check above is `./nora test` and a headless Playwright QA run against
+the real Pi over HTTPS; neither one is a screenshot of the physical wall or
+kiosk hardware, which is exactly the distinction CLAUDE.md's status
+vocabulary exists to enforce and exactly the mistake Story 41 made once
+already (§2, "the observe pass"). Story 55's own warn text says as much:
+*"not Complete until the wall and the kiosk have been screenshotted showing
+the new UI on the real hardware."* That physical pass is the next step, not
+yet done as of this entry.
+
+The broader "verify every page against the mockup, button by button" audit
+the user asked for continued in parallel: Home's nav groups, the Apps
+group's membership, Todo's kiosk key bank, and the ⌘K palette's destination
+list (including a check that Alerts — folded into Home's own section list —
+still resolves through `palette_destinations()`'s registry-driven loop
+rather than needing a hardcoded entry) were each re-verified directly
+against the mockup's own `REGISTRY`/`WALL_APPS`/palette `dests` arrays, not
+from memory.
+
+**Then the physical observe pass itself, on the real hardware — and it
+found one more real gap along the way.** Screenshotted both screens over
+`scrot`: the wall's kiosk-driven "Home" key bank initially showed only 3
+keys (Dashboard, System, Settings), not the 4 the source now declares —
+looked like a redeploy failure at first, and would have been exactly that
+kind of bug if it had been. It was not: `docker compose exec web grep` on
+the container confirmed the code was already correct; the physical
+Chromium tabs on the wall and kiosk are long-running sessions that had
+simply never reloaded since this session's several redeploys. `xdotool key
+F5` against both windows was enough — no relaunch, no flag change, nothing
+CLAUDE.md's "changing a launch flag needs `./nora screens relaunch`" note
+applies to. After that: the kiosk's Home bank correctly shows all 4 keys,
+its app list correctly dropped Measurements/Integrations to just
+Home/Alerts/Todo, and — the actual regression this session set out to fix —
+"Change the water filter" and "Book the boiler service" render as clearly
+readable bright text on the wall's real Todo board, not the ~1.1:1 black-on-
+near-black this entry opened with.
+
+**Comparing the live board's own header to the mockup surfaced a further,
+systematic mismatch, caught only because the physical screenshot was sitting
+right next to the mockup's source on screen at the same time.** The mockup's
+`appbar()` titles every Todo/System page as `"Todo · " + section` or
+`"System · " + tab` (`Todo · Board`, `Todo · Calendar`, `System · Health`,
+...) — a real, deliberate pattern, not incidental. The real app's pages were
+titled flatly per-view instead — "Tasks", "Calendar", "Search", "Labels",
+"Todo settings", "Reporting", and a `board()` view that additionally
+retitled itself to "Due today" when a filter chip was active, which the
+mockup's own header never does (chips filter content; only navigating
+between declared `sections` changes the title there). Fixed in
+`nora_home/core/views.py` (`page_title` now `f"System · {tab.capitalize()}"`)
+and `nora_home/todo/views.py` (every section view now `"Todo · <Section>"`,
+and `board()`'s title no longer changes with the due-today filter). Left the
+task detail/new/edit views alone — those are full pages in the real app but
+Sheets (modals with no page header) in the mockup, so there is no mockup
+pattern to match; a reasoned adaptation, not a drift.
+
+`./scripts/run-tests.sh` green throughout (1053 passed) — no test in either
+suite asserted the old literal title strings, so nothing needed updating
+alongside the fix. Not yet deployed or re-verified on the Pi as of this
+entry — that, plus a final physical check of the corrected headers, is the
+last step before this story can honestly be marked Complete.

@@ -71,7 +71,10 @@ def system_status(request):
 
     context = {
         "tab": tab,
-        "page_title": "System",
+        # "System · Health", matching the mockup's own appbar exactly —
+        # `<h1>System &middot; ${SYS_SECTIONS.find(...)}</h1>` — rather than a
+        # flat "System" that never told you which tab you were looking at.
+        "page_title": f"System · {tab.capitalize()}",
     }
 
     if tab == "health":

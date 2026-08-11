@@ -49,7 +49,10 @@ def board(request):
     in, and stays there until someone edits it.
     """
     context = _board_context(request, source=TaskSource.USER)
-    context["page_title"] = "Due today" if context["due_today"] else "Tasks"
+    # Always "Todo · Board", matching the mockup's own appbar() exactly — it
+    # retitles on which *section* you're in (Board/Calendar/...), never on a
+    # chip filter like "due today" within the same section.
+    context["page_title"] = "Todo · Board"
     return render(request, "todo/board.html", context)
 
 
@@ -60,7 +63,7 @@ def system_board(request):
     integration lands here (nora_home.todo.system_tasks); nothing else creates
     one, so there is no create button and no label toolbar to manage."""
     context = _board_context(request, source=TaskSource.SYSTEM)
-    context["page_title"] = "System"
+    context["page_title"] = "Todo · System"
     context["is_system"] = True
     return render(request, "todo/board.html", context)
 
@@ -188,7 +191,7 @@ def calendar_view(request):
         "prev_url": f"?year={prev_year}&month={prev_month}",
         "next_url": f"?year={next_year}&month={next_month}",
         "on_current_month": year == today.year and month == today.month,
-        "page_title": "Calendar",
+        "page_title": "Todo · Calendar",
     })
 
 
@@ -213,7 +216,7 @@ def search(request):
         "house_members": _house_members(),
         "labels": Label.objects.all(),
         "saved_filters": SavedFilter.objects.filter(owner=request.user),
-        "page_title": "Search",
+        "page_title": "Todo · Search",
     })
 
 
@@ -265,7 +268,7 @@ def labels_view(request):
 
     return render(request, "todo/labels.html", {
         "labels": labels,
-        "page_title": "Labels",
+        "page_title": "Todo · Labels",
     })
 
 
@@ -307,7 +310,7 @@ def settings_view(request):
         "hours": range(24),
         "tone_cards": _tone_cards(preference),
         "overrides": _override_rows(preference, effective),
-        "page_title": "Todo settings",
+        "page_title": "Todo · Settings",
     })
 
 
@@ -384,7 +387,7 @@ def reporting(request):
         "overdue_phrase": tone.describe_overdue(data["load"]["overdue"], settings)
                           if data["load"]["overdue"] else "",
         "red_overdue": tone.may_show_red("overdue", settings),
-        "page_title": "Reporting",
+        "page_title": "Todo · Reporting",
     })
 
 
