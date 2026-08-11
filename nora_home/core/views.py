@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
@@ -72,15 +71,21 @@ def system_status(request):
 
     context = {
         "tab": tab,
-        "version": settings.NORA_HOME_VERSION,
-        "environment": settings.NORA_HOME_ENV,
         "page_title": "System",
     }
 
     if tab == "health":
+        from nora_home.core.vitals import rail_vitals
+
         health = collect_health()
         context["health"] = health
         context["health_summary"] = _health_summary(health["services"])
+        # "The Pi" card (Story 55) — the mockup's sysHealth() pairs the probe
+        # list with the same vitals the sidebar rail shows (rail_vitals()),
+        # not install metadata. Reusing that function rather than re-reading
+        # /proc directly keeps this the one place that decides what counts as
+        # a vital and how it's formatted.
+        context["vitals"] = rail_vitals()
 
     elif tab == "measurements":
         from nora_home.telemetry.models import Series

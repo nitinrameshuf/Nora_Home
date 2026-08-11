@@ -106,6 +106,28 @@ def visit(page, path: str):
     return page
 
 
+def set_surface(page, house_url, surface: str | None):
+    """Force which shell the next `visit()` renders, via the same `nh_surface`
+    cookie override `nora_home.ui.middleware.SurfaceMiddleware` documents.
+
+    A real gap this closes (Story 55, found live): `page.set_viewport_size()`
+    only changes CSS pixels — it does not touch the User-Agent Playwright
+    sends, and surface detection is UA-based, not width-based. Every "iPhone"
+    check in this suite was narrowing the *desktop* shell (a 228px fixed
+    rail, no phone stacking CSS at all) to 390px and calling whatever broke
+    a phone bug, when it was really just the desktop layout with nowhere to
+    go — a completely different, far worse failure shape than an unstacked
+    phone grid. `surface=None` clears the cookie back to real UA detection.
+    """
+    if surface is None:
+        page.context.clear_cookies(name="nh_surface")
+        return
+    page.context.add_cookies([{
+        "name": "nh_surface", "value": surface,
+        "url": house_url,
+    }])
+
+
 def open_household_menu(page):
     """Open the household switcher — the one thing still behind a menu.
 

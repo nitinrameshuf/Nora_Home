@@ -52,10 +52,18 @@ must never be able to close a tag.
         {% endfor %}
       {% endnh_card %}
 
-      {% nh_card title="This install" %}
-        <div class="row"><span class="t">Version</span><span class="d">{{ version }}</span></div>
-        <div class="row"><span class="t">Environment</span><span class="d">{{ environment }}</span></div>
-        <div class="row"><span class="t">Request</span><span class="d">{{ request_id }}</span></div>
+      {% comment %}
+      "The Pi" (Story 55) — the mockup's sysHealth() pairs the probe list
+      with the same vitals the sidebar rail shows, not install metadata.
+      rail_vitals() already degrades to whatever is genuinely measured (see
+      its own module docstring), so this card is honest on a laptop too.
+      {% endcomment %}
+      {% nh_card title="The Pi" %}
+        {% for vital in vitals %}
+          <div class="row"><span class="t">{{ vital.key }}</span><span class="d">{{ vital.value }}</span></div>
+        {% empty %}
+          {% nh_empty title="Nothing measured yet" %}
+        {% endfor %}
       {% endnh_card %}
     </div>
 

@@ -352,6 +352,9 @@
     var edit = document.querySelector("[data-dash-edit]");
     if (edit) edit.addEventListener("click", Dash.toggleEdit);
 
+    var shuffle = document.querySelector("[data-dash-shuffle]");
+    if (shuffle) shuffle.addEventListener("click", Dash.shuffle);
+
     var close = document.querySelector("[data-dash-close]");
     if (close) close.addEventListener("click", Dash.closePicker);
   };
@@ -362,6 +365,42 @@
 
     var button = document.querySelector("[data-dash-edit]");
     if (button) button.textContent = Dash.editing ? "Done" : "Rearrange";
+
+    // Shuffle only makes sense while editing; Add a widget only while not —
+    // the same split the mockup makes (S.editing ? [Shuffle, Done] :
+    // [..., Rearrange, Add a widget]).
+    var shuffle = document.querySelector("[data-dash-shuffle]");
+    if (shuffle) shuffle.hidden = !Dash.editing;
+    var add = document.querySelector("[data-dash-add]");
+    if (add) add.hidden = Dash.editing;
+  };
+
+  /* Randomise order AND size (Story 55, matching the mockup exactly — its
+     own comment: "the grid must stay clean regardless, that is the whole
+     claim the size system is making"). A size the widget stopped offering
+     never gets picked: this only draws from the sizes it declares right now. */
+  Dash.shuffle = function () {
+    Dash.placed.forEach(function (item) {
+      var sizes = item.widget.sizes && item.widget.sizes.length
+        ? item.widget.sizes : [item.widget.size];
+      item.widget.size = sizes[Math.floor(Math.random() * sizes.length)];
+    });
+    Dash.placed.sort(function () { return Math.random() - 0.5; });
+
+    Dash.save()
+      .then(function () {
+        return Promise.all(Dash.placed.map(function (item) {
+          return Dash.fetchWidget(item.widget.key, item.widget.size)
+            .then(function (fresh) { if (fresh) item.widget = fresh; });
+        }));
+      })
+      .then(function () {
+        Dash.render();
+        if (window.NoraHome && window.NoraHome.say) {
+          window.NoraHome.say("Shuffled — still tiles clean.", { mood: "proud" });
+        }
+      })
+      .catch(function () { /* save() already told the family */ });
   };
 
   /* Change one widget's size. The server owns what a size means — a list at M

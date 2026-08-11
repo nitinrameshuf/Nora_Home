@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import pytest
 
-from tests.qa.conftest import measure_text_contrast, visit
+from tests.qa.conftest import measure_text_contrast, set_surface, visit
 
 pytestmark = pytest.mark.qa
 
@@ -362,6 +362,12 @@ def test_every_reporting_chart_card_has_content_or_a_sentence(signed_in):
 
 
 # ── no sideways scroll, the five real sizes ──────────────────────────────────
+# label -> the surface that size actually renders as. See test_journeys.py's
+# SURFACE_FOR_LABEL for why this is required, not cosmetic: set_viewport_size
+# alone never changes the User-Agent SurfaceMiddleware reads, so without this
+# every "iPhone" row here was testing the desktop shell narrowed to 390px.
+SURFACE_FOR_LABEL = {"iPhone": "phone", "iPad": "tablet"}
+
 
 @pytest.mark.parametrize("width,height,label", [
     (390, 844, "iPhone"),
@@ -371,7 +377,8 @@ def test_every_reporting_chart_card_has_content_or_a_sentence(signed_in):
     (1024, 600, "the 10-inch kiosk"),
 ])
 @pytest.mark.parametrize("name,path", TODO_PAGES, ids=[n for n, _ in TODO_PAGES])
-def test_no_horizontal_scroll(signed_in, name, path, width, height, label):
+def test_no_horizontal_scroll(signed_in, house_url, name, path, width, height, label):
+    set_surface(signed_in, house_url, SURFACE_FOR_LABEL.get(label))
     signed_in.set_viewport_size({"width": width, "height": height})
     visit(signed_in, path)
 

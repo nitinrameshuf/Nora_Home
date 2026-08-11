@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from tests.qa.conftest import open_household_menu, visit
+from tests.qa.conftest import open_household_menu, set_surface, visit
 
 pytestmark = pytest.mark.qa
 
@@ -159,6 +159,14 @@ def test_the_nav_only_links_somewhere_real(signed_in):
     assert not broken, "sidebar links that do not resolve:\n  " + "\n  ".join(broken)
 
 
+# label -> the surface that size actually renders as. Wall/kiosk are decided
+# by URL path (SurfaceMiddleware), not viewport or UA, so they are left at
+# whatever real detection gives a plain /home/ request — None, same as
+# "desktop", which is honest: this suite never visits the real wall/kiosk
+# URLs, so calling these two "the wall"/"the kiosk" was already aspirational.
+SURFACE_FOR_LABEL = {"iPhone": "phone", "iPad": "tablet"}
+
+
 @pytest.mark.parametrize("width,height,label", [
     (390, 844, "iPhone"),
     (820, 1180, "iPad"),
@@ -166,9 +174,18 @@ def test_the_nav_only_links_somewhere_real(signed_in):
     (1920, 1080, "the 24-inch wall"),
     (1024, 600, "the 10-inch kiosk"),
 ])
-def test_the_home_screen_works_on_every_surface(signed_in, width, height, label):
+def test_the_home_screen_works_on_every_surface(signed_in, house_url, width, height, label):
     """Five surfaces, one codebase — the promise in CLAUDE.md §5. Checked at the
-    real sizes rather than at arbitrary breakpoints."""
+    real sizes rather than at arbitrary breakpoints.
+
+    set_surface is required, not cosmetic (Story 55, found live):
+    set_viewport_size alone leaves the request's User-Agent as desktop
+    Chromium, and nora_home.ui.middleware.SurfaceMiddleware decides phone vs.
+    desktop from the UA, never from viewport width — so without it, "iPhone"
+    was testing the 228px-fixed-rail desktop shell squeezed to 390px, not the
+    phone shell at all.
+    """
+    set_surface(signed_in, house_url, SURFACE_FOR_LABEL.get(label))
     signed_in.set_viewport_size({"width": width, "height": height})
     visit(signed_in, "/home/")
 

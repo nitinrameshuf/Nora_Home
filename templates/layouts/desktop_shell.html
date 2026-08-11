@@ -62,7 +62,7 @@ layouts/skeleton.html's own comment for why the split exists.
     {% endcomment %}
     <div class="grp-lab">Home</div>
     <a class="nav" href="{% url 'core:dashboard' %}"
-       {% if request.path == '/home/' %}aria-current="page"{% endif %}>Home</a>
+       {% if request.path == '/home/' %}aria-current="page"{% endif %}>Dashboard</a>
     <a class="nav" href="{% url 'notifications:inbox' %}"
        {% if request.path == '/home/alerts/' %}aria-current="page"{% endif %}>
       Alerts <span class="pill" data-nh-bell data-count="0" hidden></span>

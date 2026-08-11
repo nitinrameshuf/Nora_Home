@@ -8,7 +8,14 @@ by data-dash-add/data-dash-edit/data-dash-close (bare, presence-checked
 attributes) — a different contract from nh_button's own data-act/data-v,
 built for the mockup's click router, which nothing on this page uses.
 {% endcomment %}
+{% comment %}
+Shuffle only shows while editing, Add a widget only while not — same split
+the mockup makes (S.editing ? [Shuffle, Done] : [..., Rearrange, Add a
+widget]). dashboard.js's toggleEdit() flips `hidden` on both alongside the
+Rearrange/Done label swap it already did.
+{% endcomment %}
 {% block actions %}
+  <button class="btn" type="button" data-dash-shuffle hidden>Shuffle</button>
   <button class="btn" type="button" data-dash-add>Add a widget</button>
   <button class="btn ghost" type="button" data-dash-edit>Rearrange</button>
 {% endblock %}

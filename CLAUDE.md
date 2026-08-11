@@ -579,6 +579,29 @@ worse than no mockup**, because it gets approved and then built. If you add a
 screen to it, ground every list the same way and say in a comment where the
 data came from.
 
+**Follow the mockup exactly, every time — do not deviate from it (2026-08-10,
+Story 55).** Stated plainly because it was not followed carefully enough once
+already: Story 54 moved Alerts to the sidebar's Home group (right — the
+mockup's `REGISTRY` puts it there) but left Measurements and Integrations
+under Apps on the reasoning that the mockup "doesn't model them" — true of
+`REGISTRY` alone, but the same mockup's `SYS_VIEWS` gives System four tabs
+including both, missed because it sits in a different part of the file. A
+label ("Tasks" vs. the mockup's "Board"), a kiosk key bank quietly narrowed to
+five items instead of all seven sections, a "Home" nav link where the mockup
+says "Dashboard," a missing Shuffle button, a Health tab showing different
+content than the mockup's own — none of these were deliberate calls someone
+signed off on. They were small, independent driftings, each individually
+defensible ("this is arguably better engineering") and collectively a mockup
+that had stopped being the reference. **When the real implementation and the
+mockup disagree, the mockup is right, and the fix is to change the
+implementation — not to decide the implementation's version is reasonable and
+move on.** If a real constraint (Django is server-rendered, not a SPA; a
+family app has more registered apps than the mockup's two-entry toy REGISTRY)
+genuinely forces a difference, write down *why*, in the same style as Story
+49's phone-tabs comment — a reasoned, visible adaptation, not a silent one.
+The difference between the two is whether someone reading the code six months
+from now can tell it was a decision rather than a drift.
+
 **The front end is rewritten from the mockup, not migrated (2026-08-09).**
 Phase 8 is greenfield. `static/nora_home/css/*` and `static/nora_home/js/*` are
 deleted and rebuilt from `ui-overhaul-mockup.html`; templates keep their Django
