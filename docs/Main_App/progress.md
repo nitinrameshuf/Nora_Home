@@ -1025,8 +1025,10 @@ why it was "either theme", and why only pages with real cards were spared.
    with rasterisation). Right mechanism, but tuned against one sky state:
    `.sidebar` was never bumped at all and stayed worst.
 4. **Flat ~0.86 alpha on every pane.** Guaranteed contrast at the worst-case
-   bright noon sky — and undid the entire premise of the design, since night's
-   already-dark sky got the same near-opaque scrim as noon's. Keying
+   bright noon sky — and undid the entire premise of the design, reported
+   immediately as *"thematic elements are barely visible now, know? day, night,
+   seasons?"*, since night's already-dark sky got the same near-opaque scrim as
+   noon's. Keying
    `--pane-alpha` to `data-daypart` fixed that and was **still rejected**, on
    the grounds that opacity is the wrong lever however it is tuned: it fights
    the scene to make text readable. Reverted to `28ccbbd`.

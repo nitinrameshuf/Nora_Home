@@ -11,6 +11,9 @@ Companion documents:
   the index of what every app can call from every other app.
 - [`docs/Main_App/testing.md`](docs/Main_App/testing.md) — **how to verify your own
   work on the real hardware**, including SSH access to the Pi.
+- [`docs/Main_App/found-by-the-user.md`](docs/Main_App/found-by-the-user.md) —
+  every bug, invented rule and over-claim **the user caught rather than an
+  agent**. Read it before trusting your own review of your own work.
 - [`docs/`](docs/) — the project's record of itself. See §0 below: **updating it is
   part of every change, not a separate chore.**
 
