@@ -22,7 +22,7 @@ docs/
 │   ├── architecture.md            how the pieces fit together, with diagrams
 │   ├── testing.md                 the test suite, and how to verify on real hardware
 │   ├── progress.md                the narrative log, newest last
-│   ├── found-by-the-user.md       what the user caught, not an agent
+│   ├── who-found-what.md          bugs by who caught them: user / agent / QA
 │   └── subsystems/                one file per platform subsystem
 │
 └── House_Apps/        the family's own apps
@@ -66,7 +66,7 @@ person rather than an agent — the HTML views — goes in `User/`.
 | File | What it is | Update when |
 |---|---|---|
 | [`Main_App/progress.md`](Main_App/progress.md) | The narrative log — what happened, in order, with dates | Every working session that changes code |
-| [`Main_App/found-by-the-user.md`](Main_App/found-by-the-user.md) | Bugs, invented rules and over-claims the user caught rather than an agent | When the user finds something an agent did not |
+| [`Main_App/who-found-what.md`](Main_App/who-found-what.md) | Every bug and invented rule, sorted by who caught it — user, agent, or QA | When anyone finds something the others missed |
 | [`Main_App/architecture.md`](Main_App/architecture.md) | How the system fits together, with Mermaid diagrams | A component, boundary, or data flow changes |
 | [`Main_App/DEVELOPMENT.md`](Main_App/DEVELOPMENT.md) | The guide for anyone writing a house app | The app contract, surfaces, or platform APIs change |
 | [`Main_App/cross-functionality.md`](Main_App/cross-functionality.md) | Index of every published cross-app API | You add, change, or remove a published function |

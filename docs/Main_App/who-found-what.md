@@ -1,24 +1,32 @@
-# Found by the user
+# Who found what
 
-Every mistake, bug, invented rule and piece of drift in this project that **the
-user caught, not an agent**. Kept separately from `progress.md` because the
-pattern only shows up when they are read together: these are the things that
-shipped, or were claimed done, or were written into the rules, and survived
-until a person looked at the screen and said so.
+Every mistake, bug, invented rule and piece of drift in this project, sorted by
+**which mechanism caught it**: the user, an agent, or the automated QA layer.
 
-Read it as a list of what agent self-review missed.
+Kept separately from `progress.md` because the pattern only shows when the three
+are read side by side. Each catches a different class of defect, and none of them
+catches the others' — which is the argument for keeping all three.
 
 ---
 
 ## Summary
 
-| Class | Count |
-|---|---|
-| Constraints invented by an agent and stated as settled fact | 5 |
-| Work reported complete that was not | 4 |
-| Defects that shipped to real screens | 9 |
-| Lessons recorded, then not applied elsewhere | 3 |
-| Process failures | 4 |
+| Found by | Items | Catches | Blind to |
+|---|---|---|---|
+| **The user** (§1) | 25 | Invented rules, over-claims, anything that looks wrong on a real screen | Nothing structural — but only sees what it renders |
+| **An agent** (§2) | 18 | Wiring, crashes, migration graphs, anything reachable by running the thing | Its own assumptions; taste; whether a rule was ever agreed |
+| **QA / the suite** (§3) | 6 | Accessibility, contrast measured from pixels, regressions | Anything nobody wrote a check for; and it lies when the tool is wrong for the medium |
+
+**The one-line version:** the agent finds what breaks, QA finds what regresses,
+and the user finds what was never right in the first place.
+
+---
+---
+
+# §1 — Found by the user
+
+The most expensive class, because these survived agent review, shipped, and
+needed a person to look at a screen and say so.
 
 ---
 
@@ -193,7 +201,7 @@ mid-work is the job, not an incident to apologise for.
 
 ---
 
-## What the pattern says
+## What §1 says about agent review
 
 1. **Nothing here was found by reading code.** Every item came from looking at a
    real screen, running the thing, or asking who agreed to a rule.
@@ -204,3 +212,158 @@ mid-work is the job, not an incident to apologise for.
    before they recurred somewhere else.
 4. **"Done" claimed from a passing test is not done.** B1 and B4 both reported
    success while the observable world disagreed.
+
+---
+---
+
+# §2 — Found by an agent
+
+Almost all of these came from **running the thing**, not reading it. That is the
+distinction worth preserving: agent review of agent code is weak, but agent
+*execution* of agent code is strong.
+
+## F. Found only by actually running it
+
+**F1. The app registry was silently empty.** Django picks an app's config by
+inspecting `AppConfig` subclasses in `apps.py`. Because that file also imports
+`NoraAppConfig`, there were always two candidates, and with no tie-breaker Django
+quietly fell back to a plain `AppConfig` — so nav and the app directory were
+blank with no error anywhere. Fixed with `default = False` plus `__init_subclass__`.
+
+**F2. Multi-line `{# #}` template comments render as visible text.** Django's
+`{# #}` is single-line only. Visible on the page; invisible in review.
+
+**F3. `install_app` could not migrate the first app added in a session.** It
+called `makemigrations` in-process, but the process's app registry was already
+populated from `.env` *as it stood before* `_register()` rewrote it. Django never
+hot-reloads `INSTALLED_APPS`, so the new app was invisible and it failed with
+`No installed app with label 'workout'` — one step into the documented flow.
+Fixed by shelling out to fresh subprocesses.
+
+**F4. The reference app referred to itself in seven files.** Following the
+documented four-step copy recipe produced `AlreadyRegistered` on first run.
+
+**F5. `UnicodeEncodeError` on every management command** under a non-UTF-8
+console. Found one (a checkmark), fixed only that, then hit a second (an arrow) —
+which is why all `stdout.write()` calls were then grepped and fixed together.
+
+**F6. The git-clone install path had never been executed**, only its local-path
+sibling. Running it end to end confirmed the clone mechanics and the
+`nora-<name>` → `<name>` prefix convention.
+
+**F7. Celery looked broken for days and never was.** `worker` and `beat`
+inherited the Dockerfile's `HEALTHCHECK`, which curls the *web* role's port — a
+check that can never pass for a process running no HTTP server. It sat
+`unhealthy` with a 473-long failing streak while the worker pinged instantly.
+
+**F8. `bootstrap_home`'s `_storage()` caught only `StorageUnavailable`**, not the
+Pi's actual MinIO signature-mismatch error — so it was silently killing
+everything after it, including the integration-seeding step.
+
+**F9. A billable Groq call inside the unit suite.** See §1 E2 — found by an agent,
+but only because two tests asserting the degraded path failed with real WAV bytes.
+
+**F10. Verification code as the bug.** Chased "leftover test litter" for over an
+hour. `Task.objects.filter()` without `.alive()` counts soft-deleted rows;
+`.alive()` had been 0 the whole time. Nothing was wrong except the check.
+
+## G. Found by reasoning about the system
+
+**G1. A migration naming a node no installed app can supply does not degrade.**
+Deleting the tracker would have left two Todo migrations depending on
+`('tracker', '0001_initial')`; Django refuses to build the graph at all and every
+management command dies with `NodeNotFoundError`.
+
+**G2. `RENAME TABLE` carries rows, primary keys, indexes *and* rewrites foreign
+keys in referencing tables** on both MySQL and SQLite — which is what let an
+irreversible migration converge in one statement instead of
+create-copy-repoint-drop. Rehearsed on a throwaway `nora_rehearsal` database
+before touching production.
+
+**G3. Unlayered CSS beats layered CSS whatever the specificity.** The cascade
+compares layers before it looks at selectors.
+
+**G4. `{% block head %}` comes after the base `<link>`s**, so per-page sheets
+override anything linked above them.
+
+**G5. `collectstatic` walks everything under `static/`** and
+`ManifestStaticFilesStorage` rewrites `@import` targets in every `.css` — which
+turned a Tailwind source file into `MissingFileError` and took the web container
+down on boot, with three other services refusing to start behind it.
+
+## H. Agent-caused regressions, caught by an agent
+
+**H1. Deleting the tracker stripped every dashboard.** See §1 E3. Worth listing
+twice: it was *found* by an agent and also **documented approvingly** as graceful
+degradation in the same commit — the review and the defect were the same act.
+
+**H2. `dev.py` is not hermetic.** It layers on `base.py`, which reads the
+database from `.env`, so the suite tried to create `test_nora_home` on the Pi's
+MySQL and errored — while passing on a laptop.
+
+**H3. `run-tests.sh` must pass `--ds`.** pytest-django's precedence is `--ds`,
+then the environment variable, then the ini file — so `pyproject.toml` loses
+inside a container that exports `config.settings.pi`.
+
+---
+---
+
+# §3 — Found by QA and the test suite
+
+Six items, and the third one is the most important thing in this file.
+
+**Q1. A checkbox with no accessible name.** The overnight schedule's toggle used
+a `<div>`, not `<label for>`, so it had no accessible name and tapping its text
+did nothing — on a touchscreen, that is the entire interaction. *(First run of
+`./nora qa`, 2026-08-04.)*
+
+**Q2. The light theme unreadable at dusk** — near-black text on the evening sky,
+**2.06:1** against a floor of 3.0. Not a stray colour: `nh-scene.css` drove the
+sky from `data-daypart` with no `data-theme` branch, so three of four dayparts
+were dark whatever the theme said. Anyone tapping "Theme" got it.
+
+**Q3. axe's own contrast rule is unusable in this app — and believing it would
+have made things worse.** axe composites translucent panes onto the nearest
+opaque ancestor. This app paints a living gradient behind everything with
+`backdrop-filter` over it. So axe reported kiosk tiles at **1.95:1** against
+`#b4b5b6` — a grey that appears nowhere on screen. Measured from actual rendered
+pixels: **18:1**. Acting on the tool would have meant "fixing" perfectly readable
+text. Contrast has been measured from pixels ever since.
+
+**Q4. `.todo-card` had no glass pane at all**, unlike every other surface in the
+house, measuring as low as **2.04:1** in dark theme. Found by Story 41's 87 new
+Todo browser tests — after a whole session of unit tests that could never have
+seen it.
+
+**Q5. Three clock-dependent tests in `test_speech.py`.** Caught by the suite
+itself, but only because it happened to run at 00:05. Passed all day.
+
+**Q6. Regression cover that has since paid off** — `test_displays.py` asserts
+every kiosk action has a wall handler; `test_house_apps.py` walks every registered
+app's source with `ast`. Both exist because of earlier defects in this file.
+
+## What §3 says about tooling
+
+- **A green tool is not a correct tool.** Q3 is the case: an industry-standard
+  accessibility engine confidently reported a number derived from a colour that
+  does not exist on screen. The medium (translucency over a moving gradient) was
+  outside its model.
+- **Browser tests see a class of bug unit tests structurally cannot.** Q1, Q2 and
+  Q4 are all invisible to 900+ passing unit tests.
+- **QA only finds what someone wrote a check for.** Every item in §1 got past a
+  green suite.
+
+---
+---
+
+# What the three columns say together
+
+1. **They do not overlap.** The agent finds what breaks, QA finds what regresses,
+   and the user finds what was never right. No column would have caught the
+   others' items.
+2. **The user's column is the one that should shrink**, and the way to shrink it
+   is not more review — §1 shows review does not catch these. It is deploying and
+   looking, asking who agreed to a rule, and refusing to call something done from
+   a passing test.
+3. **Running beats reading, in every column.** §2 is almost entirely execution;
+   §3 is entirely execution; §1 is a person looking at a real screen.
